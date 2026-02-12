@@ -295,6 +295,15 @@ fun CalculatorScreen(fileId: Long, viewModel: CalculatorViewModel, onBack: () ->
                     }
                     DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                         DropdownMenuItem(
+                            text = { Text("Help") },
+                            leadingIcon = { Icon(Icons.Default.HelpOutline, contentDescription = null) },
+                            onClick = {
+                                showMenu = false
+                                onHelp()
+                            }
+                        )
+                        HorizontalDivider()
+                        DropdownMenuItem(
                             text = { Text("Rename File") },
                             leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
                             onClick = {
@@ -315,15 +324,6 @@ fun CalculatorScreen(fileId: Long, viewModel: CalculatorViewModel, onBack: () ->
                                         Toast.makeText(context, "Copy failed: ${error.message}", Toast.LENGTH_LONG).show()
                                     }
                                 }
-                            }
-                        )
-                        HorizontalDivider()
-                        DropdownMenuItem(
-                            text = { Text("Help") },
-                            leadingIcon = { Icon(Icons.Default.HelpOutline, contentDescription = null) },
-                            onClick = {
-                                showMenu = false
-                                onHelp()
                             }
                         )
                         HorizontalDivider()

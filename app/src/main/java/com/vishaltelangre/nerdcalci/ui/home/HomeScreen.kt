@@ -80,10 +80,9 @@ fun HomeScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
-    // Get app name from resources
+    // Get app name from strings.xml
     val appName = context.getString(R.string.app_name)
 
-    // Helper function to create file
     fun createFile() {
         if (newFileName.isNotBlank()) {
             val trimmedName = newFileName.trim().take(Constants.MAX_FILE_NAME_LENGTH)
@@ -121,7 +120,7 @@ fun HomeScreen(
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         if (files.isEmpty()) {
-            // Empty state
+            // Empty state placeholder
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -174,7 +173,6 @@ fun HomeScreen(
                         },
                         onTogglePin = {
                             viewModel.togglePinFile(file.id) {
-                                // Show snackbar when max pinned reached
                                 coroutineScope.launch {
                                     snackbarHostState.showSnackbar("Maximum ${Constants.MAX_PINNED_FILES} files can be pinned")
                                 }
@@ -204,7 +202,7 @@ fun HomeScreen(
                                 filtered.take(Constants.MAX_FILE_NAME_LENGTH)
                             }
                         },
-                        placeholder = { Text("e.g., Monthly Budget") },
+                        placeholder = { Text("Enter a file name") },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(

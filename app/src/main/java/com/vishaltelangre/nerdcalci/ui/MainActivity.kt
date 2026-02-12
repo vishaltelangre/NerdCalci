@@ -135,7 +135,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
     val slideOutToRight = slideOutHorizontally(animationSpec = tween(300), targetOffsetX = { it })
 
     NavHost(navController = navController, startDestination = "home") {
-        // Screen 1: File List
+        // Home Screen
         composable("home") {
             HomeScreen(
                 viewModel = viewModel,
@@ -144,7 +144,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
             )
         }
 
-        // Screen 2: The Calculator Editor
+        // Calculator Editor Screen
         composable(
             "editor/{fileId}",
             arguments = listOf(navArgument("fileId") { type = NavType.LongType }),
@@ -162,7 +162,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
             )
         }
 
-        // Screen 3: Settings
+        // Settings Screen
         composable(
             "settings",
             enterTransition = { slideInFromRight },
@@ -184,7 +184,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
             )
         }
 
-        // Screen 4: Help
+        // Help Screen
         composable(
             "help",
             enterTransition = { slideInFromRight },

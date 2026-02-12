@@ -5,8 +5,12 @@ import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
 import kotlinx.coroutines.flow.Flow
 
+/**
+ * Data Access Object for calculator database operations.
+ */
 @Dao
 interface CalculatorDao {
+    // Returns files with pinned files first, then sorted by most recently modified
     @Query("SELECT * FROM files ORDER BY isPinned DESC, lastModified DESC")
     fun getAllFiles(): Flow<List<FileEntity>>
 
@@ -16,9 +20,11 @@ interface CalculatorDao {
     @Query("SELECT COUNT(*) FROM files WHERE isPinned = 1")
     suspend fun getPinnedFilesCount(): Int
 
+    // Returns lines ordered by sortOrder (determines display order in UI)
     @Query("SELECT * FROM lines WHERE fileId = :fileId ORDER BY sortOrder ASC")
     fun getLinesForFile(fileId: Long): Flow<List<LineEntity>>
 
+    // Synchronous version for operations that need immediate results
     @Query("SELECT * FROM lines WHERE fileId = :fileId ORDER BY sortOrder ASC")
     suspend fun getLinesForFileSync(fileId: Long): List<LineEntity>
 

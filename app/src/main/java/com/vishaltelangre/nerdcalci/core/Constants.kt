@@ -11,7 +11,7 @@ object Constants {
     // Database
     const val DATABASE_NAME = "calci-db"
 
-    // Developer & Legal (not in standard Android files)
+    // General info
     const val SOURCE_CODE_URL = "https://github.com/vishaltelangre/nerdcalci"
     const val DEVELOPER_NAME = "Vishal Telangre"
     const val LICENSE = "GNU General Public License v3.0"

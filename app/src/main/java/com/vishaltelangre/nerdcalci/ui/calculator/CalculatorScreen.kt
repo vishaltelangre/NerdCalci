@@ -108,6 +108,11 @@ private val PercentColorLight = Color(0xFFA31515)
 private val CommentColorLight = Color(0xFF5A7A5A) // Dimmer but readable green
 
 // Apply syntax highlighting
+/**
+ * Apply syntax highlighting to calculator expressions.
+ *
+ * Colors adapt to dark/light theme for optimal readability.
+ */
 private fun applySyntaxHighlighting(
     text: String,
     numberColor: Color,
@@ -127,7 +132,7 @@ private fun applySyntaxHighlighting(
                     withStyle(SpanStyle(color = commentColor, fontStyle = FontStyle.Italic)) {
                         append(text.substring(i))
                     }
-                    break // Done with this line
+                    break
                 }
                 char.isDigit() || (char == '.' && i + 1 < text.length && text[i + 1].isDigit()) -> {
                     val start = i
@@ -150,8 +155,17 @@ private fun applySyntaxHighlighting(
     }
 }
 
+/**
+ * Extract variable names from calculator expressions for autocomplete.
+ *
+ * Parses assignment statements (e.g., "price = 100") and extracts the variable name.
+ * Supports both underscore and space-separated names:
+ * - "monthly_salary = 5000" → "monthly_salary"
+ * - "monthly salary = 5000" → "monthly salary"
+ *
+ * @return Set of variable names defined in the file
+ */
 @OptIn(ExperimentalMaterial3Api::class)
-// Extract variable names from expressions (including space-based names)
 private fun extractVariables(lines: List<LineEntity>): Set<String> {
     val variables = mutableSetOf<String>()
     lines.forEach { line ->
@@ -173,6 +187,14 @@ private fun extractVariables(lines: List<LineEntity>): Set<String> {
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Main calculator editor screen.
+ *
+ * @param fileId ID of the file to edit
+ * @param viewModel ViewModel managing calculator state and operations
+ * @param onBack Callback when back button is pressed
+ * @param onHelp Callback when help button is pressed
+ */
 @Composable
 fun CalculatorScreen(fileId: Long, viewModel: CalculatorViewModel, onBack: () -> Unit, onHelp: () -> Unit) {
     val context = LocalContext.current
@@ -188,14 +210,14 @@ fun CalculatorScreen(fileId: Long, viewModel: CalculatorViewModel, onBack: () ->
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     val fileName = files.find { it.id == fileId }?.name ?: "Editor"
 
-    // Track which line should be focused and cursor position (for programmatic focus like navigation)
+    // Track which line should be focused and cursor position
     var focusLineId by remember { mutableStateOf<Long?>(null) }
     var focusCursorPosition by remember { mutableStateOf<Int?>(null) }
 
     // Track which line is currently focused by the user
     var currentlyFocusedLineId by remember { mutableStateOf<Long?>(null) }
 
-    // Track toolbar text insertion requests
+    // Track toolbar text insertion requests (used for inserting symbols using custom keyboard shortcuts)
     var insertTextRequest by remember { mutableStateOf<Pair<Long, String>?>(null) }
 
     // Check if keyboard is visible
@@ -240,7 +262,6 @@ fun CalculatorScreen(fileId: Long, viewModel: CalculatorViewModel, onBack: () ->
                 }
             },
             actions = {
-                // Undo button
                 IconButton(
                     onClick = { viewModel.undo(fileId) },
                     enabled = canUndo
@@ -252,7 +273,6 @@ fun CalculatorScreen(fileId: Long, viewModel: CalculatorViewModel, onBack: () ->
                     )
                 }
 
-                // Redo button
                 IconButton(
                     onClick = { viewModel.redo(fileId) },
                     enabled = canRedo
@@ -264,7 +284,6 @@ fun CalculatorScreen(fileId: Long, viewModel: CalculatorViewModel, onBack: () ->
                     )
                 }
 
-                // More options menu
                 Box {
                     IconButton(onClick = { showMenu = true }) {
                         Icon(Icons.Default.MoreVert, "More options", tint = MaterialTheme.colorScheme.onSurface)
@@ -353,8 +372,8 @@ fun CalculatorScreen(fileId: Long, viewModel: CalculatorViewModel, onBack: () ->
                         commentColor = commentColor,
                         isDarkTheme = isDarkTheme,
                         onFocused = {
-                            currentlyFocusedLineId = line.id  // Track which line user is focused on
-                            focusLineId = null  // Clear programmatic focus flag
+                            currentlyFocusedLineId = line.id
+                            focusLineId = null
                             focusCursorPosition = null
                         },
                         onBlur = {
@@ -489,7 +508,7 @@ fun CalculatorScreen(fileId: Long, viewModel: CalculatorViewModel, onBack: () ->
     if (showClearConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showClearConfirmDialog = false },
-            title = { Text("Clear All Lines?") },
+            title = { Text("Clear all lines?") },
             text = { Text("This will delete all lines in this file. This action cannot be undone.") },
             confirmButton = {
                 TextButton(
@@ -513,7 +532,7 @@ fun CalculatorScreen(fileId: Long, viewModel: CalculatorViewModel, onBack: () ->
     if (showDeleteConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirmDialog = false },
-            title = { Text("Delete File?") },
+            title = { Text("Delete file?") },
             text = { Text("This will permanently delete \"$fileName\" and all its contents. This action cannot be undone.") },
             confirmButton = {
                 TextButton(
@@ -640,7 +659,7 @@ private fun LineRow(
 
     // Auto-focus empty lines:
     // - Line 1: if it's the only line and empty (on file open)
-    // - Other lines: newly created empty lines (but not if we're doing programmatic focus)
+    // - Other lines: newly created empty lines (but not if we're focusing programmatically)
     LaunchedEffect(line.id, line.expression) {
         if (line.expression.isEmpty() && !shouldFocus) {
             if (lineNumber == 1) {
@@ -697,7 +716,6 @@ private fun LineRow(
             val newText = currentText.substring(0, cursorPosition) + insertTextRequest + currentText.substring(cursorPosition)
             val newCursorPosition = cursorPosition + insertTextRequest.length
 
-            // Update the text field
             textFieldValue = TextFieldValue(
                 annotatedString = applySyntaxHighlighting(
                     newText,
@@ -711,13 +729,11 @@ private fun LineRow(
                 selection = TextRange(newCursorPosition)
             )
 
-            // Save the change
             val trimmedText = newText.trim()
             if (trimmedText != line.expression) {
                 onValueChange(trimmedText)
             }
 
-            // Notify that we handled the request
             onInsertHandled()
         }
     }

@@ -24,7 +24,6 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 
-// Data class to represent a snapshot of file state
 data class FileSnapshot(
     val lines: List<LineEntity>
 )
@@ -51,19 +50,17 @@ class CalculatorViewModel(private val dao: CalculatorDao) : ViewModel() {
     private val _canRedo = MutableStateFlow<Map<Long, Boolean>>(emptyMap())
     val canRedo: StateFlow<Map<Long, Boolean>> = _canRedo
 
-    // 1. Get all files for the Home Screen
     val allFiles = dao.getAllFiles()
 
-    // 2. Get lines for a specific file
     fun getLines(fileId: Long): Flow<List<LineEntity>> = dao.getLinesForFile(fileId)
 
-    // Helper to update undo/redo availability
+    // Update undo/redo availability for a file
     private fun updateUndoRedoState(fileId: Long) {
         _canUndo.value = _canUndo.value + (fileId to (undoStacks[fileId]?.isNotEmpty() == true))
         _canRedo.value = _canRedo.value + (fileId to (redoStacks[fileId]?.isNotEmpty() == true))
     }
 
-    // Save current state before making changes
+    // Save current state before making changes (used for undo/redo)
     private suspend fun saveStateForUndo(fileId: Long) {
         val currentLines = dao.getLinesForFileSync(fileId)
         val snapshot = FileSnapshot(currentLines.map { it.copy() })
@@ -127,12 +124,10 @@ class CalculatorViewModel(private val dao: CalculatorDao) : ViewModel() {
         val currentLines = dao.getLinesForFileSync(fileId)
         val snapshotLines = snapshot.lines
 
-        // Strategy: Update existing lines in-place, then handle extras
-        // This minimizes UI flashing by keeping IDs stable
-
+        // Update existing lines in-place, then handle extras
         val minSize = minOf(currentLines.size, snapshotLines.size)
 
-        // Update existing lines (keeps same IDs, just updates content)
+        // Update existing lines
         for (i in 0 until minSize) {
             val updatedLine = currentLines[i].copy(
                 expression = snapshotLines[i].expression,
@@ -169,16 +164,16 @@ class CalculatorViewModel(private val dao: CalculatorDao) : ViewModel() {
         updateUndoRedoState(fileId)
     }
 
-    // Helper function to format lines with intelligent result display
+    // Format lines with intelligent result display
     private fun formatFileContent(lines: List<LineEntity>): String {
         return lines.joinToString("\n") { line ->
             val expr = line.expression.trim()
             val result = line.result.trim()
 
             // Don't show result if:
-            // 1. Expression is empty or result is empty/error
-            // 2. It's a comment line (starts with #)
-            // 3. It's a simple assignment like "a = 5" where result is just "5"
+            // - Expression is empty or result is empty/error
+            // - It's a comment line (starts with #)
+            // - It's a simple assignment like "a = 5" where result is just "5"
             when {
                 expr.isEmpty() || result.isBlank() || result == "Err" -> expr
                 expr.trimStart().startsWith("#") -> expr // Full comment line
@@ -196,7 +191,7 @@ class CalculatorViewModel(private val dao: CalculatorDao) : ViewModel() {
         // Check if it's a simple assignment like "a = 5"
         val simpleAssignmentRegex = Regex("""^\s*[a-zA-Z][a-zA-Z0-9\s]*\s*=\s*[\d.]+\s*$""")
         if (simpleAssignmentRegex.matches(expression)) {
-            // For "a = 5", result is "5", no need to show
+            // For "a = 5", result is "5", no need to show result
             return false
         }
 
@@ -204,30 +199,26 @@ class CalculatorViewModel(private val dao: CalculatorDao) : ViewModel() {
         return hasOperators || !expression.contains("=")
     }
 
-    // 3. Update a line and RECALCULATE everything below it
+    // Update a line and recalculate everything below it
     fun updateLine(updatedLine: LineEntity) {
         viewModelScope.launch(Dispatchers.IO) {
-            android.util.Log.d("CalculatorViewModel", "Updating line id=${updatedLine.id}, expr='${updatedLine.expression}'")
-
-            // First, save the user's current typing
+            // Save the user's current typing
             dao.updateLine(updatedLine)
 
             // Fetch all lines for this file to ensure context is correct
             val allLines = dao.getLinesForFileSync(updatedLine.fileId)
-            android.util.Log.d("CalculatorViewModel", "Fetched ${allLines.size} lines for calculation")
 
-            // Run the MathEngine logic we wrote in Step 2
+            // Run the MathEngine logic
             val calculatedLines = MathEngine.calculate(allLines)
 
             // Save the results back to the DB so the UI updates
             calculatedLines.forEach { calculatedLine ->
-                android.util.Log.d("CalculatorViewModel", "Saving line id=${calculatedLine.id}, result='${calculatedLine.result}'")
                 dao.updateLine(calculatedLine)
             }
         }
     }
 
-    // 4. Create a new file
+    // Create a new file
     fun createNewFile(name: String, onCreated: (Long) -> Unit = {}) {
         viewModelScope.launch(Dispatchers.IO) {
             val fileId = dao.insertFile(FileEntity(name = name, lastModified = System.currentTimeMillis()))
@@ -247,7 +238,7 @@ class CalculatorViewModel(private val dao: CalculatorDao) : ViewModel() {
 
             val allLines = dao.getLinesForFileSync(fileId)
 
-            // Shift all lines AFTER this position down by 1
+            // Shift all lines after this position down by 1
             allLines.filter { it.sortOrder >= sortOrder }
                 .sortedByDescending { it.sortOrder }
                 .forEach { line ->
@@ -267,7 +258,7 @@ class CalculatorViewModel(private val dao: CalculatorDao) : ViewModel() {
             // Delete the line
             dao.deleteLine(line)
 
-            // Shift all lines AFTER this position up by 1
+            // Shift all lines after this position up by 1
             val allLines = dao.getLinesForFileSync(line.fileId)
             allLines.filter { it.sortOrder > line.sortOrder }
                 .sortedBy { it.sortOrder }
@@ -336,7 +327,6 @@ class CalculatorViewModel(private val dao: CalculatorDao) : ViewModel() {
     suspend fun exportAllFiles(context: Context, outputUri: Uri): Result<String> {
         return withContext(Dispatchers.IO) {
             try {
-                // Get all files - use first() to get the first emission from Flow
                 val filesList = dao.getAllFiles().first()
 
                 if (filesList.isEmpty()) {
@@ -357,7 +347,6 @@ class CalculatorViewModel(private val dao: CalculatorDao) : ViewModel() {
                             zipOut.closeEntry()
                             fileCount++
                         }
-                        // Explicitly finish the ZIP stream
                         zipOut.finish()
                     }
                 } ?: return@withContext Result.failure(Exception("Could not open output stream"))
@@ -375,7 +364,6 @@ class CalculatorViewModel(private val dao: CalculatorDao) : ViewModel() {
             try {
                 var fileCount = 0
 
-                // Get existing files
                 val existingFilesList = dao.getAllFiles().first()
 
                 context.contentResolver.openInputStream(inputUri)?.use { inputStream ->
@@ -387,7 +375,6 @@ class CalculatorViewModel(private val dao: CalculatorDao) : ViewModel() {
                                 val fileName = entry.name.removeSuffix(Constants.EXPORT_FILE_EXTENSION)
                                 val content = BufferedReader(InputStreamReader(zipIn)).readText()
 
-                                // Parse lines (ignore results after #)
                                 val expressions = content.lines()
                                     .filter { it.isNotBlank() }
                                     .map { line ->

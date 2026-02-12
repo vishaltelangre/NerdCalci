@@ -62,7 +62,7 @@ fun HelpScreen(onBack: () -> Unit) {
                 content = buildAnnotatedString {
                     append("Perform calculations line by line:\n")
                     withStyle(SpanStyle(fontFamily = FiraCodeFamily)) {
-                        append("2 + 3\n5 × 4  # × works too\n10 ÷ 2  # ÷ works too")
+                        append("2 + 3\n5 * 4  # × works too\n10 / 2  # ÷ works too")
                     }
                 }
             )
@@ -92,7 +92,7 @@ fun HelpScreen(onBack: () -> Unit) {
                 content = buildAnnotatedString {
                     append("Add comments using # symbol:\n")
                     withStyle(SpanStyle(fontFamily = FiraCodeFamily)) {
-                        append("price = 100  # base price\nprice * 1.18  # with 18% tax")
+                        append("# Price calculations:\nprice = 100  # base price\nprice * 1.18  # with 18% tax")
                     }
                 }
             )

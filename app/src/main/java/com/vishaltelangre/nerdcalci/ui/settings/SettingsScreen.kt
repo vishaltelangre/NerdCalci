@@ -61,8 +61,8 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     var showThemeDialog by remember { mutableStateOf(false) }
-    
-    // Get app metadata from system
+
+    // Get app name from strings.xml
     val appName = context.getString(com.vishaltelangre.nerdcalci.R.string.app_name)
     val appVersion = remember {
         try {
@@ -96,7 +96,7 @@ fun SettingsScreen(
         ) {
             // Appearance Section
             SettingsSection(title = "Appearance")
-            
+
             SettingsItem(
                 icon = Icons.Default.DarkMode,
                 title = "Theme",
@@ -107,38 +107,38 @@ fun SettingsScreen(
                 },
                 onClick = { showThemeDialog = true }
             )
-            
+
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            
+
             // Data Section
             SettingsSection(title = "Data")
-            
+
             SettingsItem(
                 icon = Icons.Default.FileUpload,
                 title = "Export All Files",
                 subtitle = "Export all files as ZIP",
                 onClick = onExport
             )
-            
+
             SettingsItem(
                 icon = Icons.Default.FileDownload,
                 title = "Import Files",
-                subtitle = "Import from ZIP (existing files will be overwritten)",
+                subtitle = "Import from ZIP (existing files with the same name will be replaced)",
                 onClick = onImport
             )
-            
+
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            
+
             // About Section
             SettingsSection(title = "About")
-            
+
             SettingsItem(
                 icon = Icons.Default.Info,
                 title = "App Version",
                 subtitle = appVersion,
                 onClick = null
             )
-            
+
             SettingsItem(
                 icon = Icons.Default.Code,
                 title = "Source Code",
@@ -148,14 +148,14 @@ fun SettingsScreen(
                     context.startActivity(intent)
                 }
             )
-            
+
             SettingsItem(
                 icon = Icons.Default.Info,
                 title = "Developer",
                 subtitle = Constants.DEVELOPER_NAME,
                 onClick = null
             )
-            
+
             SettingsItem(
                 icon = Icons.Default.Info,
                 title = "License",
@@ -164,7 +164,7 @@ fun SettingsScreen(
             )
         }
     }
-    
+
     // Theme selection dialog
     if (showThemeDialog) {
         AlertDialog(
@@ -222,7 +222,7 @@ private fun SettingsItem(
             .fillMaxWidth()
             .padding(16.dp)
     }
-    
+
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically

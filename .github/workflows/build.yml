@@ -1,10 +1,10 @@
-name: Build APK
+name: Build and Test
 
 on:
   push:
-    branches: [ main ]
+    branches: [ '**' ]
   pull_request:
-    branches: [ main ]
+    branches: [ '**' ]
 
 jobs:
   build:
@@ -23,10 +23,22 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
+    - name: Run Unit Tests
+      run: ./gradlew :app:testDebugUnitTest
+
+    - name: Upload Test Results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results
+        path: app/build/reports/tests/testDebugUnitTest/
+
     - name: Build Debug APK
+      if: github.ref == 'refs/heads/main'
       run: ./gradlew assembleDebug
 
     - name: Upload APK
+      if: github.ref == 'refs/heads/main'
       uses: actions/upload-artifact@v4
       with:
         name: app-debug

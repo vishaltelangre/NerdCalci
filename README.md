@@ -102,7 +102,26 @@ _Submission in progress - will be available soon!_
 
 ## Development
 
-#### Generate App Icons
+### Running Tests
+
+Run all unit tests:
+
+```bash
+./gradlew :app:testDebugUnitTest
+```
+
+Run specific test class:
+```bash
+./gradlew :app:testDebugUnitTest --tests "com.vishaltelangre.nerdcalci.core.MathEngineTest"
+```
+
+After running tests, view the HTML report:
+
+```bash
+open app/build/reports/tests/testDebugUnitTest/index.html
+```
+
+### Generate App Icons
 
 Automatically generate all required app icon sizes from a single source image:
 

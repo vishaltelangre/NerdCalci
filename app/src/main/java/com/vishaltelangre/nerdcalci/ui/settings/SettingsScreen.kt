@@ -66,7 +66,10 @@ fun SettingsScreen(
     val appName = context.getString(com.vishaltelangre.nerdcalci.R.string.app_name)
     val appVersion = remember {
         try {
-            context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "Unknown"
+            val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            val versionName = packageInfo.versionName ?: "Unknown"
+            val versionCode = packageInfo.longVersionCode
+            "$versionName ($versionCode)"
         } catch (e: Exception) {
             "Unknown"
         }

@@ -1,0 +1,25 @@
+Categories:
+  - Science & Education
+  - Writing
+License: GPL-3.0-or-later
+AuthorName: Vishal Telangre
+AuthorEmail: vishal.telangre@gmail.com
+WebSite: https://github.com/vishaltelangre/nerdcalci
+SourceCode: https://github.com/vishaltelangre/nerdcalci
+IssueTracker: https://github.com/vishaltelangre/nerdcalci/issues
+
+RepoType: git
+Repo: https://github.com/vishaltelangre/nerdcalci
+
+Builds:
+  - versionName: 1.0.0
+    versionCode: 1
+    commit: v1.0.0
+    subdir: app
+    gradle:
+      - yes
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags
+CurrentVersion: 1.0.0
+CurrentVersionCode: 1

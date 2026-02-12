@@ -58,7 +58,11 @@ class MainActivity : ComponentActivity() {
             AppDatabase::class.java, Constants.DATABASE_NAME
         ).build()
 
-        val viewModel: CalculatorViewModel by viewModels { CalculatorViewModelFactory(db.calculatorDao()) }
+        val prefs = getSharedPreferences("nerdcalci_prefs", MODE_PRIVATE)
+
+        val viewModel: CalculatorViewModel by viewModels {
+            CalculatorViewModelFactory(db.calculatorDao(), prefs)
+        }
 
         setContent {
             val currentTheme by viewModel.currentTheme.collectAsState()

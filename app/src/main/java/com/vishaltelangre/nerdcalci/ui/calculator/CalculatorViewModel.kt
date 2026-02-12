@@ -3,6 +3,7 @@ package com.vishaltelangre.nerdcalci.ui.calculator
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.SharedPreferences
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -28,14 +29,26 @@ data class FileSnapshot(
     val lines: List<LineEntity>
 )
 
-class CalculatorViewModel(private val dao: CalculatorDao) : ViewModel() {
+class CalculatorViewModel(
+    private val dao: CalculatorDao,
+    private val prefs: SharedPreferences? = null
+) : ViewModel() {
 
-    // Theme state
-    private val _currentTheme = MutableStateFlow("system")
+    companion object {
+        private const val PREF_THEME = "theme"
+        private const val DEFAULT_THEME = "system"
+    }
+
+    // Theme state - load saved preference or default to "system"
+    private val _currentTheme = MutableStateFlow(
+        prefs?.getString(PREF_THEME, DEFAULT_THEME) ?: DEFAULT_THEME
+    )
     val currentTheme: StateFlow<String> = _currentTheme
 
     fun setTheme(theme: String) {
         _currentTheme.value = theme
+        // Persist theme preference
+        prefs?.edit()?.putString(PREF_THEME, theme)?.apply()
     }
 
     // Undo/Redo stacks with max limit per file

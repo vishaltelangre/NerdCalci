@@ -1,25 +1,34 @@
 Categories:
   - Science & Education
   - Writing
+  - System
 License: GPL-3.0-or-later
 AuthorName: Vishal Telangre
-AuthorEmail: vishal.telangre@gmail.com
+AuthorEmail: vishaltelangre@gmail.com
 WebSite: https://github.com/vishaltelangre/nerdcalci
 SourceCode: https://github.com/vishaltelangre/nerdcalci
 IssueTracker: https://github.com/vishaltelangre/nerdcalci/issues
+Changelog: https://github.com/vishaltelangre/nerdcalci/releases
+Donate: https://github.com/sponsors/vishaltelangre
+
+AutoName: NerdCalci
 
 RepoType: git
-Repo: https://github.com/vishaltelangre/nerdcalci
+Repo: https://github.com/vishaltelangre/nerdcalci.git
+Binaries:
+  https://github.com/vishaltelangre/nerdcalci/releases/download/v%v/NerdCalci-v%v.apk
 
 Builds:
   - versionName: 1.0.0
-    versionCode: 1
-    commit: v1.0.0
+    versionCode: 100
+    commit: 8a9ea4b267810fb4282ddd3e63cf9559a5b167b5
     subdir: app
     gradle:
       - yes
 
+AllowedAPKSigningKeys: 00472f5642fdf6cc01f84dc3433837f6e4d68398c0741e2f6cfc3f453c73f186
+
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
 CurrentVersion: 1.0.0
-CurrentVersionCode: 1
+CurrentVersionCode: 100

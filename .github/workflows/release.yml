@@ -79,7 +79,12 @@ jobs:
         fi
 
         echo "Found APK: $APK_PATH"
-        echo "APK_PATH=$APK_PATH" >> $GITHUB_ENV
+
+        NEW_APK_PATH="app/build/outputs/apk/release/NerdCalci-v${VERSION_NAME}.apk"
+        mv "$APK_PATH" "$NEW_APK_PATH"
+
+        echo "Renamed APK to: $NEW_APK_PATH"
+        echo "APK_PATH=$NEW_APK_PATH" >> $GITHUB_ENV
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4

@@ -685,7 +685,8 @@ class MathEngineTest {
             createLine("sqrt(16)", sortOrder = 2),
             createLine("sqrt 16", sortOrder = 3),
             createLine("abs(-42)", sortOrder = 4),
-            createLine("abs -42", sortOrder = 5)
+            createLine("abs -42", sortOrder = 5),
+            createLine("abs 42", sortOrder = 6),
         )
         val result = MathEngine.calculate(lines)
         assertEquals("3", result[0].result)
@@ -693,6 +694,7 @@ class MathEngineTest {
         assertEquals("4", result[2].result)
         assertEquals("4", result[3].result)
         assertEquals("42", result[4].result)
-        assertEquals("42", result[5].result)
+        assertEquals("Err", result[5].result)
+        assertEquals("42", result[6].result)
     }
 }

@@ -1,0 +1,1 @@
+Improved the file list empty state with a Material 3 hero, polished copy, and explicit CTAs for creating, importing, or opening help so beginners feel guided right away.

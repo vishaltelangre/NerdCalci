@@ -147,7 +147,9 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
             HomeScreen(
                 viewModel = viewModel,
                 onFileClick = { fileId -> navController.navigate("editor/$fileId") },
-                onSettingsClick = { navController.navigate("settings") }
+                onSettingsClick = { navController.navigate("settings") },
+                onHelpClick = { navController.navigate("help") },
+                onImportClick = { importLauncher.launch(arrayOf("application/zip")) }
             )
         }
 

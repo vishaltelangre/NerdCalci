@@ -99,6 +99,13 @@ _Submission in progress - will be available soon!_
     alt="Get it on F-Droid"
     height="80">](https://f-droid.org/packages/com.vishaltelangre.nerdcalci/)
 
+### From IzzyOnDroid
+
+[<img 
+src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid.png"
+ height="80" alt="Get it at 
+IzzyOnDroid">](https://apt.izzysoft.de/packages/com.vishaltelangre.nerdcalci)
+
 ### From Obtainium
 
 [<img src="https://github.com/user-attachments/assets/713d71c5-3dec-4ec4-a3f2-8d28d025a9c6"

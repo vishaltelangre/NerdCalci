@@ -168,24 +168,6 @@ After running tests, view the HTML report:
 open app/build/reports/tests/testDebugUnitTest/index.html
 ```
 
-### Generate App Icons
-
-Automatically generate all required app icon sizes from a single source image:
-
-```bash
-./scripts/generate-icons.sh ~/Downloads/app-icon.png
-```
-
-This creates:
-- Android mipmap icons (mdpi, hdpi, xhdpi, xxhdpi, xxxhdpi)
-- Fastlane metadata icon
-- Both regular and round launcher icons
-
-**Requirements:**
-- Source image: PNG, minimum 512x512 (recommended: 2048x2048)
-- Square aspect ratio (1:1)
-- macOS: `sips` (built-in) or ImageMagick
-
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.

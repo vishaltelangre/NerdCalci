@@ -1,0 +1,3 @@
+- Added file search functionality
+- Search highlights matching text and shows number of matches.
+- Returning from a file preserves search query and search result position.

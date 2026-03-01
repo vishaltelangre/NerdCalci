@@ -923,7 +923,12 @@ private fun LineRow(
                         }
 
                         // Detect backspace deleting the leading space (empty line deletion)
-                        if (filteredText.isEmpty() && lineNumber > 1) {
+                        // This fixes an Android/Compose issue where we couldn't easily tell
+                        // if the user pressed backspace on an empty line.
+                        // This *hack* ensures there's always a dummy space on empty lines.
+                        // When that space is deleted, AND the line was already empty,
+                        // then we know the user is actually trying to delete the line itself.
+                        if (filteredText.isEmpty() && line.expression.isEmpty() && lineNumber > 1) {
                             onDelete()
                             return@BasicTextField
                         }
@@ -942,7 +947,17 @@ private fun LineRow(
                         val displayText =
                             if (actualText.isEmpty() && lineNumber > 1) " " else actualText
 
-                        previousSelection = newValue.selection
+                        var newSelection = newValue.selection
+                        if (actualText.isEmpty() && line.expression.isNotEmpty() && lineNumber > 1) {
+                            newSelection = TextRange(1)
+                        } else if (actualText.isNotEmpty() && line.expression.isEmpty() && lineNumber > 1) {
+                            newSelection = TextRange(
+                                maxOf(0, newValue.selection.start - 1),
+                                maxOf(0, newValue.selection.end - 1)
+                            )
+                        }
+
+                        previousSelection = newSelection
                         textFieldValue = newValue.copy(
                             annotatedString = applySyntaxHighlighting(
                                 displayText,
@@ -952,7 +967,8 @@ private fun LineRow(
                                 percentColor,
                                 commentColor,
                                 defaultTextColor
-                            )
+                            ),
+                            selection = newSelection
                         )
                         onValueChange(actualText)
                     },

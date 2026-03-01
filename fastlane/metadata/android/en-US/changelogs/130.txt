@@ -1,0 +1,1 @@
+- Fix: The backspace key will now properly clear out a line's text when deleting the last character instead of deleting the entire line along with it. This restores the natural and expected editing behavior in the calculator!

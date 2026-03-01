@@ -10,6 +10,7 @@ Features:
 - Comments - Document your calculations with # comments
 - Multiple Files - Organize calculations in separate files with auto-save
 - Pin Files - Keep frequently used files at the top
+- Search - Search your files easily
 - Duplicate Files - Create a copy of a file with a new name
 - Undo/Redo - Up to 30 steps per file
 - Backups - Automatically or manually backup your files to app storage or a custom folder

@@ -78,6 +78,7 @@
 - **Multiple Files**: Create and manage separate calculation files
 - **Auto-save**: Changes are saved automatically
 - **Pin Files**: Keep important files at the top (max 10 pinned files)
+- **Search**: Search files easily
 - **Duplicate Files**: Create a copy of a file with a new name
 - **Backups**: Automatically or manually backup your files to app storage or a custom folder
 - **Restore from backups**: Restore your files from backups
@@ -101,9 +102,9 @@ _Submission in progress - will be available soon!_
 
 ### From IzzyOnDroid
 
-[<img 
+[<img
 src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid.png"
- height="80" alt="Get it at 
+ height="80" alt="Get it at
 IzzyOnDroid">](https://apt.izzysoft.de/packages/com.vishaltelangre.nerdcalci)
 
 ### From Obtainium

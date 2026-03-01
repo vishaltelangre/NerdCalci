@@ -1,5 +1,6 @@
 package com.vishaltelangre.nerdcalci.ui.home
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -14,29 +15,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.FileCopy
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
-import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -57,25 +50,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.vishaltelangre.nerdcalci.R
 import com.vishaltelangre.nerdcalci.core.Constants
-import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
 import com.vishaltelangre.nerdcalci.ui.calculator.CalculatorViewModel
-import com.vishaltelangre.nerdcalci.ui.components.DeleteFileDialog
-import com.vishaltelangre.nerdcalci.ui.components.DuplicateFileDialog
-import com.vishaltelangre.nerdcalci.ui.components.RenameFileDialog
+import com.vishaltelangre.nerdcalci.ui.components.addFileItems
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -90,6 +76,9 @@ fun HomeScreen(
     val files by viewModel.allFiles.collectAsState(initial = emptyList())
     var showDialog by remember { mutableStateOf(false) }
     var newFileName by remember { mutableStateOf("") }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var searchBarVisible by rememberSaveable { mutableStateOf(false) }
+    var searchBarActive by rememberSaveable { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
@@ -107,26 +96,64 @@ fun HomeScreen(
         }
     }
 
+    val hasQuery = searchQuery.trim().isNotEmpty()
+    val isSearchViewActive = searchBarActive || hasQuery
+    val isSearchUiVisible = searchBarVisible || isSearchViewActive
+    val visibleFiles = files
+    val visiblePinnedFiles = visibleFiles.filter { it.isPinned }
+    val visibleUnpinnedFiles = visibleFiles.filterNot { it.isPinned }
+
+    fun dismissSearch(clearQuery: Boolean = true) {
+        if (clearQuery) searchQuery = ""
+        searchBarActive = false
+        searchBarVisible = false
+    }
+
+    BackHandler(enabled = isSearchUiVisible) {
+        dismissSearch(clearQuery = true)
+    }
+
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text(appName, color = MaterialTheme.colorScheme.onSurface) },
-                actions = {
-                    IconButton(onClick = onSettingsClick) {
-                        Icon(Icons.Default.Settings, "Settings", tint = MaterialTheme.colorScheme.onSurface)
-                    }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
+            if (!isSearchViewActive) {
+                CenterAlignedTopAppBar(
+                    title = { Text(appName, color = MaterialTheme.colorScheme.onSurface) },
+                    actions = {
+                        IconButton(
+                            onClick = {
+                                searchBarVisible = true
+                                searchBarActive = true
+                            },
+                            enabled = files.isNotEmpty()
+                        ) {
+                            Icon(
+                                Icons.Default.Search,
+                                "Search",
+                        tint = if (isSearchUiVisible) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                }
+                            )
+                        }
+                        IconButton(onClick = onSettingsClick) {
+                            Icon(Icons.Default.Settings, "Settings", tint = MaterialTheme.colorScheme.onSurface)
+                        }
+                    },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background
+                    )
                 )
-            )
+            }
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showDialog = true },
-                containerColor = MaterialTheme.colorScheme.primary
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "New Calculation")
+            if (!isSearchViewActive) {
+                FloatingActionButton(
+                    onClick = { showDialog = true },
+                    containerColor = MaterialTheme.colorScheme.primary
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "New Calculation")
+                }
             }
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
@@ -210,34 +237,91 @@ fun HomeScreen(
                 }
             }
         } else {
-            LazyColumn(
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
             ) {
-                items(files) { file ->
-                    FileItem(
-                        file = file,
-                        onClick = { onFileClick(file.id) },
-                        onRename = { newName ->
-                            viewModel.renameFile(file.id, newName.take(Constants.MAX_FILE_NAME_LENGTH))
-                        },
-                        onDuplicate = { newName ->
-                            viewModel.duplicateFile(file.id, newName.take(Constants.MAX_FILE_NAME_LENGTH)) { newFileId ->
-                                onFileClick(newFileId)
+                if (isSearchUiVisible) {
+                    HomeSearchBar(
+                        query = searchQuery,
+                        files = files,
+                        active = isSearchViewActive,
+                        onQueryChange = { searchQuery = it.replace("\n", "") },
+                        onActiveChange = { active ->
+                            searchBarActive = active
+                            if (!active && searchQuery.isBlank()) {
+                                searchBarVisible = false
                             }
                         },
-                        onDelete = {
-                            viewModel.deleteFile(file.id)
-                        },
-                        onTogglePin = {
-                            viewModel.togglePinFile(file.id) {
-                                coroutineScope.launch {
-                                    snackbarHostState.showSnackbar("Maximum ${Constants.MAX_PINNED_FILES} files can be pinned")
+                        onClearQuery = { searchQuery = "" },
+                        onDismissSearch = { dismissSearch(clearQuery = true) },
+                        onFileClick = onFileClick
+                    )
+                }
+
+                if (isSearchViewActive) {
+                    return@Column
+                }
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 96.dp)
+                ) {
+                    if (visiblePinnedFiles.isNotEmpty()) {
+                        item { SectionHeader(title = "Pinned") }
+                        addFileItems(
+                            files = visiblePinnedFiles,
+                            onFileClick = onFileClick,
+                            onRename = { fileId, newName ->
+                                viewModel.renameFile(fileId, newName.take(Constants.MAX_FILE_NAME_LENGTH))
+                            },
+                            onDuplicate = { fileId, newName ->
+                                viewModel.duplicateFile(fileId, newName.take(Constants.MAX_FILE_NAME_LENGTH)) { newFileId ->
+                                    onFileClick(newFileId)
+                                }
+                            },
+                            onDelete = viewModel::deleteFile,
+                            onTogglePin = { fileId ->
+                                viewModel.togglePinFile(fileId) {
+                                    coroutineScope.launch {
+                                        snackbarHostState.showSnackbar(
+                                            "Maximum ${Constants.MAX_PINNED_FILES} files can be pinned"
+                                        )
+                                    }
                                 }
                             }
+                        )
+                    }
+
+                    if (visibleUnpinnedFiles.isNotEmpty()) {
+                        item {
+                            SectionHeader(
+                                title = if (visiblePinnedFiles.isNotEmpty()) "All files" else "Files"
+                            )
                         }
-                    )
+                        addFileItems(
+                            files = visibleUnpinnedFiles,
+                            onFileClick = onFileClick,
+                            onRename = { fileId, newName ->
+                                viewModel.renameFile(fileId, newName.take(Constants.MAX_FILE_NAME_LENGTH))
+                            },
+                            onDuplicate = { fileId, newName ->
+                                viewModel.duplicateFile(fileId, newName.take(Constants.MAX_FILE_NAME_LENGTH)) { newFileId ->
+                                    onFileClick(newFileId)
+                                }
+                            },
+                            onDelete = viewModel::deleteFile,
+                            onTogglePin = { fileId ->
+                                viewModel.togglePinFile(fileId) {
+                                    coroutineScope.launch {
+                                        snackbarHostState.showSnackbar(
+                                            "Maximum ${Constants.MAX_PINNED_FILES} files can be pinned"
+                                        )
+                                    }
+                                }
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -294,149 +378,11 @@ fun HomeScreen(
 }
 
 @Composable
-fun FileItem(
-    file: FileEntity,
-    onClick: () -> Unit,
-    onRename: (String) -> Unit,
-    onDuplicate: (String) -> Unit,
-    onDelete: () -> Unit,
-    onTogglePin: () -> Unit
-) {
-    var showMenu by remember { mutableStateOf(false) }
-    var showRenameDialog by remember { mutableStateOf(false) }
-    var showDuplicateDialog by remember { mutableStateOf(false) }
-    var showDeleteDialog by remember { mutableStateOf(false) }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                Icons.Default.Description,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = file.name,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
-                    )
-                    if (file.isPinned) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Icon(
-                            Icons.Filled.PushPin,
-                            contentDescription = "Pinned",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(start = 4.dp)
-                        )
-                    }
-                }
-                Text(
-                    "Last edited: ${SimpleDateFormat("MMM dd, yyyy hh:mm a", Locale.getDefault()).format(file.lastModified)}",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Box {
-                IconButton(onClick = { showMenu = true }) {
-                    Icon(
-                        Icons.Default.MoreVert,
-                        contentDescription = "More options",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                DropdownMenu(
-                    expanded = showMenu,
-                    onDismissRequest = { showMenu = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text(if (file.isPinned) "Unpin" else "Pin") },
-                        leadingIcon = {
-                            Icon(
-                                if (file.isPinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
-                                contentDescription = null
-                            )
-                        },
-                        onClick = {
-                            showMenu = false
-                            onTogglePin()
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Rename") },
-                        leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
-                        onClick = {
-                            showMenu = false
-                            showRenameDialog = true
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Duplicate") },
-                        leadingIcon = { Icon(Icons.Default.FileCopy, contentDescription = null) },
-                        onClick = {
-                            showMenu = false
-                            showDuplicateDialog = true
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Delete") },
-                        leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
-                        onClick = {
-                            showMenu = false
-                            showDeleteDialog = true
-                        }
-                    )
-                }
-            }
-        }
-    }
-
-    // Rename dialog
-    if (showRenameDialog) {
-        RenameFileDialog(
-            currentName = file.name,
-            onDismiss = { showRenameDialog = false },
-            onConfirm = { newName ->
-                onRename(newName.take(Constants.MAX_FILE_NAME_LENGTH))
-                showRenameDialog = false
-            }
-        )
-    }
-
-    // Duplicate dialog
-    if (showDuplicateDialog) {
-        DuplicateFileDialog(
-            originalName = file.name,
-            onDismiss = { showDuplicateDialog = false },
-            onConfirm = { newName ->
-                onDuplicate(newName.take(Constants.MAX_FILE_NAME_LENGTH))
-                showDuplicateDialog = false
-            }
-        )
-    }
-
-    // Delete confirmation dialog
-    if (showDeleteDialog) {
-        DeleteFileDialog(
-            fileName = file.name,
-            onDismiss = { showDeleteDialog = false },
-            onConfirm = {
-                onDelete()
-                showDeleteDialog = false
-            }
-        )
-    }
+private fun SectionHeader(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+    )
 }

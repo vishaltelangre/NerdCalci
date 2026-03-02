@@ -44,6 +44,31 @@ object MathEngine {
         return result
     }
 
+    private fun preprocessCompositeOperations(expr: String): String {
+        var result = expr.trim()
+
+        // Match increment and decrement first (e.g. "a++", "b--")
+        val incDecPattern = Regex("""^([a-zA-Z_][a-zA-Z0-9_]*)\s*(\+\+|--)$""")
+        val incDecMatch = incDecPattern.find(result)
+        if (incDecMatch != null) {
+            val varName = incDecMatch.groupValues[1]
+            val op = if (incDecMatch.groupValues[2] == "++") "+" else "-"
+            return "$varName = $varName $op 1"
+        }
+
+        // Match compound assignments (e.g. "a += 5", "b -= 2", "c %= 3")
+        val compoundPattern = Regex("""^([a-zA-Z_][a-zA-Z0-9_]*)\s*(\+=|-=|\*=|/=|%=)\s*(.+)$""")
+        val compoundMatch = compoundPattern.find(result)
+        if (compoundMatch != null) {
+            val varName = compoundMatch.groupValues[1]
+            val op = compoundMatch.groupValues[2].substring(0, 1) // +, -, *, /, %
+            val rightSide = compoundMatch.groupValues[3]
+            return "$varName = $varName $op ($rightSide)"
+        }
+
+        return result
+    }
+
 
     /**
      * Calculate results for all lines in a file, maintaining variable state across lines.
@@ -84,6 +109,7 @@ object MathEngine {
                 // Normalize and preprocess the expression
                 var processed = normalizeOperators(exprWithoutComments)
                 processed = preprocessPercentages(processed)
+                processed = preprocessCompositeOperations(processed)
 
                 // Parse variable assignment (e.g., price = 100)
                 val parts = processed.split("=")

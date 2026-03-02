@@ -32,6 +32,16 @@
   b = 200
   total = a + b  # 300
   ```
+- **Composite Operations**: Compound assignments and increment/decrement
+  ```
+  score = 10
+  score += 5     # 15
+  score++        # 16
+  score *= 2     # 32
+  score /= 4     # 8
+  score %= 5     # 3 (remainder)
+  score--        # 2
+  ```
 - **Percentage Calculations**: Natural percentage syntax
   ```
   20% of 50000    # 10000

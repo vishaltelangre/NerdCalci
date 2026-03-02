@@ -74,6 +74,11 @@ fun HelpScreen(onBack: () -> Unit) {
                 CodeBlock("a = 10\nb = 20\na + b")
             }
 
+            HelpSection(title = "Composite Operations") {
+                DescriptionText("Update variables using compound assignments and increments:")
+                CodeBlock("score = 10\nscore += 5  # 15\nscore++     # 16\nscore *= 2  # 32\nscore /= 4  # 8\nscore %= 5  # 3\nscore--     # 2")
+            }
+
             HelpSection(title = "Percentages") {
                 DescriptionText("Calculate percentages easily:")
                 CodeBlock("20% of 500\n15% off 1000\n50000 + 10%\n50000 - 5%")

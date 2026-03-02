@@ -697,4 +697,81 @@ class MathEngineTest {
         assertEquals("Err", result[5].result)
         assertEquals("42", result[6].result)
     }
+
+    @Test
+    fun `increment operator increases variable by 1`() {
+        val lines = listOf(
+            createLine("count = 5", sortOrder = 0),
+            createLine("count++", sortOrder = 1)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("5", result[0].result)
+        assertEquals("6", result[1].result)
+    }
+
+    @Test
+    fun `decrement operator decreases variable by 1`() {
+        val lines = listOf(
+            createLine("count = 5", sortOrder = 0),
+            createLine("count--", sortOrder = 1)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("5", result[0].result)
+        assertEquals("4", result[1].result)
+    }
+
+    @Test
+    fun `compound addition assignment`() {
+        val lines = listOf(
+            createLine("total = 10", sortOrder = 0),
+            createLine("total += 5 + 2", sortOrder = 1)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("10", result[0].result)
+        assertEquals("17", result[1].result) // 10 + (5 + 2)
+    }
+
+    @Test
+    fun `compound subtraction assignment`() {
+        val lines = listOf(
+            createLine("total = 20", sortOrder = 0),
+            createLine("total -= 5 * 2", sortOrder = 1)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("20", result[0].result)
+        assertEquals("10", result[1].result) // 20 - (5 * 2)
+    }
+
+    @Test
+    fun `compound multiplication assignment`() {
+        val lines = listOf(
+            createLine("factor = 3", sortOrder = 0),
+            createLine("factor *= 2 + 1", sortOrder = 1)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("3", result[0].result)
+        assertEquals("9", result[1].result) // 3 * (2 + 1)
+    }
+
+    @Test
+    fun `compound division assignment`() {
+        val lines = listOf(
+            createLine("value = 100", sortOrder = 0),
+            createLine("value /= 5", sortOrder = 1)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("100", result[0].result)
+        assertEquals("20", result[1].result)
+    }
+
+    @Test
+    fun `compound modulo (remainder) assignment`() {
+        val lines = listOf(
+            createLine("value = 10", sortOrder = 0),
+            createLine("value %= 3", sortOrder = 1)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("10", result[0].result)
+        assertEquals("1", result[1].result)
+    }
 }

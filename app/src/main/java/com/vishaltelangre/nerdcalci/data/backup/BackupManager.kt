@@ -3,6 +3,7 @@ package com.vishaltelangre.nerdcalci.data.backup
 import android.content.Context
 import android.content.SharedPreferences
 import android.net.Uri
+import android.util.Log
 import androidx.documentfile.provider.DocumentFile
 import com.vishaltelangre.nerdcalci.core.Constants
 import com.vishaltelangre.nerdcalci.core.MathEngine
@@ -25,6 +26,8 @@ import java.util.Locale
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
+
+private const val TAG = "BackupManager"
 
 enum class BackupFrequency(val prefValue: String, val intervalDays: Long) {
     DAILY("daily", 1L),
@@ -124,8 +127,10 @@ object BackupManager {
                     importFromZip(dao, inputStream)
                 } ?: return@withContext Result.failure(Exception("Could not open input stream"))
 
+                Log.d(TAG, "Imported $importedCount file(s) from ${inputUri.lastPathSegment}")
                 Result.success("Imported $importedCount file(s)")
             } catch (e: Exception) {
+                Log.e(TAG, "Import failed from ${inputUri.lastPathSegment}", e)
                 Result.failure(e)
             }
         }
@@ -137,18 +142,22 @@ object BackupManager {
                 val settings = readSettings(prefs(context))
                 val preferredCustom = settings.locationMode == BackupLocationMode.CUSTOM_FOLDER && !settings.customFolderUri.isNullOrBlank()
                 val result: Result<String> = if (preferredCustom) {
+                    Log.d(TAG, "Starting backup to custom folder")
                     val customResult = writeToCustomFolder(context, dao, settings)
                     if (customResult.isSuccess) {
                         customResult
                     } else {
+                        Log.w(TAG, "Custom folder backup failed, falling back to app storage")
                         val fallbackResult = writeToAppStorage(context, dao, settings.keepLatestCount)
                         if (fallbackResult.isSuccess) {
                             Result.success("Custom folder unavailable. Saved backup in app storage instead.")
                         } else {
+                            Log.e(TAG, "Fallback to app storage also failed")
                             fallbackResult
                         }
                     }
                 } else {
+                    Log.d(TAG, "Starting backup to app storage")
                     writeToAppStorage(context, dao, settings.keepLatestCount)
                 }
                 val message = result.getOrNull()
@@ -157,6 +166,7 @@ object BackupManager {
                 }
                 result
             } catch (e: Exception) {
+                Log.e(TAG, "Backup failed", e)
                 Result.failure(e)
             }
         }
@@ -182,6 +192,7 @@ object BackupManager {
     suspend fun restoreFromBackup(context: Context, dao: CalculatorDao, backup: BackupFileInfo): Result<String> {
         return withContext(Dispatchers.IO) {
             try {
+                Log.d(TAG, "Restoring from backup: ${backup.displayName}")
                 val importedCount = when (backup.source) {
                     BackupSource.APP_STORAGE -> {
                         FileInputStream(File(backup.pathOrUri)).use { input ->
@@ -196,8 +207,10 @@ object BackupManager {
                         } ?: return@withContext Result.failure(Exception("Could not open backup file"))
                     }
                 }
+                Log.d(TAG, "Successfully restored $importedCount file(s) from ${backup.displayName}")
                 Result.success("Restored $importedCount file(s)")
             } catch (e: Exception) {
+                Log.e(TAG, "Restore failed from ${backup.displayName}", e)
                 Result.failure(e)
             }
         }

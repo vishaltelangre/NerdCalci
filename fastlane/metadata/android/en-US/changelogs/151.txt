@@ -1,0 +1,3 @@
+- Added a new Legal section in Settings with quick links to Privacy Policy and Terms of Service.
+- Added a "Report an Issue" action in Settings that opens GitHub issue creation for support.
+- Updated and clarified privacy policy details around backups (automatic/manual behavior and retention).

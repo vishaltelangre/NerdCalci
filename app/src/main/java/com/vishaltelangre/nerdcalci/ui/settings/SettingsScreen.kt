@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Coffee
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LightMode
@@ -118,6 +119,10 @@ fun SettingsScreen(
         mode = backupLocationMode,
         customFolderSummary = backupLocationSummary
     )
+    fun openUrl(url: String) {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+        context.startActivity(intent)
+    }
 
     Scaffold(
         topBar = {
@@ -248,6 +253,34 @@ fun SettingsScreen(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Spacer(modifier = Modifier.height(8.dp))
 
+            SettingsSection(title = "Legal")
+            SettingsItem(
+                icon = Icons.Default.Info,
+                title = "Privacy Policy",
+                subtitle = Constants.PRIVACY_POLICY_URL.removePrefix("https://"),
+                onClick = { openUrl(Constants.PRIVACY_POLICY_URL) }
+            )
+
+            SettingsItem(
+                icon = Icons.Default.Description,
+                title = "Terms of Service",
+                subtitle = Constants.TERMS_OF_SERVICE_URL.removePrefix("https://"),
+                onClick = { openUrl(Constants.TERMS_OF_SERVICE_URL) }
+            )
+
+            SettingsItem(
+                icon = Icons.AutoMirrored.Filled.Help,
+                title = "Report an Issue",
+                subtitle = Constants.SUPPORT_ISSUES_URL.removePrefix("https://"),
+                onClick = {
+                    openUrl(Constants.SUPPORT_ISSUES_URL)
+                }
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Spacer(modifier = Modifier.height(8.dp))
+
             SettingsSection(title = "About")
             SettingsItem(
                 icon = Icons.Default.Info,
@@ -261,8 +294,7 @@ fun SettingsScreen(
                 title = "Source Code",
                 subtitle = Constants.SOURCE_CODE_URL.removePrefix("https://"),
                 onClick = {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(Constants.SOURCE_CODE_URL))
-                    context.startActivity(intent)
+                    openUrl(Constants.SOURCE_CODE_URL)
                 }
             )
 

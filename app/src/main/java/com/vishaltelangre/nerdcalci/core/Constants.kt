@@ -13,6 +13,9 @@ object Constants {
 
     // General info
     const val SOURCE_CODE_URL = "https://github.com/vishaltelangre/NerdCalci"
+    const val PRIVACY_POLICY_URL = "https://github.com/vishaltelangre/NerdCalci/blob/main/PRIVACY.md"
+    const val TERMS_OF_SERVICE_URL = "https://github.com/vishaltelangre/NerdCalci/blob/main/TERMS.md"
+    const val SUPPORT_ISSUES_URL = "https://github.com/vishaltelangre/NerdCalci/issues/new"
     const val DEVELOPER_NAME = "Vishal Telangre"
     const val LICENSE = "GNU General Public License v3.0"
 

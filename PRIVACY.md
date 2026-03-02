@@ -1,6 +1,6 @@
-# Privacy Policy for NerdCalci
+# Privacy Policy
 
-Effective date: February 21, 2026
+Effective date: March 2, 2026
 
 NerdCalci ("the app") is designed to work offline and to keep your data on your device.
 
@@ -26,17 +26,31 @@ This data is stored in app-local storage (Room database and shared preferences) 
 ## Import, Export, and Clipboard
 
 The app supports optional features initiated by you:
-- Import: You can import `.zip` files containing NerdCalci data.
-- Export: You can export your data to a `.zip` file at a location you choose.
+- Restore: You can restore your data from a `.zip` file.
+- Backup: You can backup your data to a `.zip` file at a location you choose.
 - Copy with Results: You can copy content to your system clipboard.
 
 These actions occur only when you trigger them.
+
+## Backups (Automatic and Manual)
+
+NerdCalci supports local backups of your calculator files.
+
+- Automatic backups: Enabled by default and can be disabled (daily or weekly).
+- Manual backups: You can trigger "Back up now" at any time.
+- Backup location: Backups are saved either in app storage or in a custom folder you select.
+- Retention: Older backup files are automatically removed, keeping only the most recent backups (default keep count is 30).
+- Fallback behavior: If a custom folder is unavailable during backup, the app may save the backup in app storage instead.
+
+Backups are created and managed on your device. NerdCalci does not upload backup content to developer-controlled servers.
 
 ## Internet and Network Use
 
 NerdCalci does not require internet access for core functionality and does not send your calculator data to remote servers.
 
 The app may open external links (for example, source code, support, or documentation pages) in your browser when you tap those links. Any data handling on those external websites is governed by their own privacy policies.
+
+If you choose to report an issue on GitHub, any information you submit there is processed by GitHub under GitHub's own terms and privacy policy.
 
 ## Android Backup
 
@@ -60,8 +74,4 @@ We may update this Privacy Policy from time to time. Updates will be reflected b
 
 ## Contact
 
-If you have questions about this Privacy Policy, contact:
-
-- Vishal Telangre
-- Email: vishaltelangre@gmail.com
-- Project: https://github.com/vishaltelangre/NerdCalci
+If you have questions about this Privacy Policy, please report an issue in the project's issue tracker here - https://github.com/vishaltelangre/NerdCalci/issues/new.

@@ -113,7 +113,7 @@ fun HelpScreen(onBack: () -> Unit) {
 
                     val linkText = buildAnnotatedString {
                         append("Find the full list of all available mathematical functions in the ")
-                        val url = "https://redmine.riddler.com.ar/projects/exp4j/wiki/Built_in_Functions"
+                        val url = "https://www.objecthunter.net/exp4j/"
                         withLink(LinkAnnotation.Url(url)) {
                             withStyle(
                                 SpanStyle(

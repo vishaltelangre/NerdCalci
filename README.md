@@ -54,7 +54,7 @@
   price = 1000  # base price
   tax = 18% of price  # 180
   ```
-- **Mathematical Functions**: Built-in support for common math functions (see [exp4j documentation](https://redmine.riddler.com.ar/projects/exp4j/wiki/Built_in_Functions) for more details)
+- **Mathematical Functions**: Built-in support for common math functions (see [exp4j documentation](https://www.objecthunter.net/exp4j/) for more details)
   ```
   sqrt(16)           # 4
   sqrt 16            # 4

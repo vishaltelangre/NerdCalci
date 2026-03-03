@@ -38,6 +38,9 @@ interface CalculatorDao {
     suspend fun updateLine(line: LineEntity)
 
     @Update
+    suspend fun updateLines(lines: List<LineEntity>)
+
+    @Update
     suspend fun updateFile(file: FileEntity)
 
     @Delete

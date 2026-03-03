@@ -4,6 +4,19 @@ import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
 import net.objecthunter.exp4j.ExpressionBuilder
 
 object MathEngine {
+    // exp4j built-in functions and constants — excluded from the undefined-variable check.
+    // https://www.objecthunter.net/exp4j/
+    private val BUILT_IN_IDENTIFIERS = setOf(
+        "sin", "cos", "tan", "asin", "acos", "atan",
+        "sinh", "cosh", "tanh",
+        "log", "log10", "log2", "log1p",
+        "sqrt", "cbrt", "abs", "floor", "ceil", "signum",
+        "exp", "expm1", "pow", "e", "pi"
+    )
+
+    // Matches valid variable/function name tokens in an expression.
+    private val VARIABLE_PATTERN = Regex("""[a-zA-Z_][a-zA-Z0-9_]*""")
+
     // Strip comments (anything after #)
     private fun stripComments(expr: String): String {
         val hashIndex = expr.indexOf('#')
@@ -96,7 +109,79 @@ object MathEngine {
      * @return List of line entities with populated results
      */
     fun calculate(lines: List<LineEntity>): List<LineEntity> {
+        return calculateWithVariables(lines, mutableMapOf())
+    }
+
+    /**
+     * Collect variable state from preceding lines (those before the changed line) without
+     * storing results. Used to seed partial recalculation with the correct variable context.
+     */
+    private fun buildVariableState(lines: List<LineEntity>): MutableMap<String, Double> {
         val variables = mutableMapOf<String, Double>()
+        for (line in lines) {
+            try {
+                val exprWithoutComments = stripComments(line.expression)
+                if (exprWithoutComments.isBlank()) continue
+
+                var processed = normalizeOperators(exprWithoutComments)
+                processed = preprocessPercentages(processed)
+                processed = preprocessCompositeOperations(processed)
+
+                val parts = processed.split("=")
+                if (parts.size != 2) continue
+                val varName = parts[0].trim()
+                val exprToEval = parts[1].trim()
+
+                if (!varName.matches(Regex(Constants.VARIABLE_NAME_PATTERN))) continue
+
+                val hasUndefined = VARIABLE_PATTERN.findAll(exprToEval).any { match ->
+                    !variables.containsKey(match.value) && !BUILT_IN_IDENTIFIERS.contains(match.value.lowercase())
+                }
+                if (hasUndefined) continue
+
+                val builder = ExpressionBuilder(exprToEval).implicitMultiplication(false)
+                if (variables.isNotEmpty()) builder.variables(variables.keys.toSet())
+                val expression = builder.build()
+                if (variables.isNotEmpty()) variables.forEach { (k, v) -> expression.setVariable(k, v) }
+
+                variables[varName] = expression.evaluate()
+            } catch (_: Exception) {
+                // Skip lines that can't be evaluated during the pre-pass
+            }
+        }
+        return variables
+    }
+
+    /**
+     * Partially recalculate only lines from [changedIndex] onward.
+     *
+     * Preceding lines (those before [changedIndex]) are silently scanned to collect variable
+     * assignments, so that affected lines (from [changedIndex] onward) see the correct variable
+     * state without needing to re-evaluate the entire file.
+     *
+     * @param allLines  Complete ordered list of lines for the file.
+     * @param changedIndex  Index of the first line that changed (0-based).
+     * @return Recalculated affected lines: `allLines[changedIndex..end]` with updated results.
+     */
+    fun calculateFrom(allLines: List<LineEntity>, changedIndex: Int): List<LineEntity> {
+        val firstAffectedIndex = changedIndex.coerceIn(0, allLines.size)
+        val precedingLines = allLines.subList(0, firstAffectedIndex)
+        val affectedLines = allLines.subList(firstAffectedIndex, allLines.size)
+        // Collect variable state from preceding lines, then fully recalculate affected lines
+        val inheritedVariables = buildVariableState(precedingLines)
+        return calculateWithVariables(affectedLines, inheritedVariables)
+    }
+
+    /**
+     * Core evaluation loop: processes [lines] in order, building variable state from
+     * [initialVariables] as assignments are encountered. A copy of [initialVariables] is made
+     * on entry so the caller's map is never modified.
+     */
+    private fun calculateWithVariables(
+        lines: List<LineEntity>,
+        initialVariables: Map<String, Double>
+    ): List<LineEntity> {
+        val variables = initialVariables.toMutableMap()
 
         return lines.map { line ->
             if (line.expression.isBlank()) return@map line.copy(result = "")
@@ -124,23 +209,12 @@ object MathEngine {
                     return@map line.copy(result = "Err")
                 }
 
-                // exp4j built-in functions (exclude from undefined variable check)
-                // https://redmine.riddler.com.ar/projects/exp4j/wiki/Built_in_Functions
-                val builtInFunctions = setOf(
-                    "sin", "cos", "tan", "asin", "acos", "atan",
-                    "sinh", "cosh", "tanh",
-                    "log", "log10", "log2", "log1p",
-                    "sqrt", "cbrt", "abs", "floor", "ceil", "signum",
-                    "exp", "expm1", "pow", "e", "pi"
-                )
-
                 // Validate that expression doesn't contain undefined variables
                 // This prevents issues like "rate2" being tokenized as "rate" + "2" by exp4j
-                val variablePattern = Regex("""[a-zA-Z_][a-zA-Z0-9_]*""")
-                variablePattern.findAll(exprToEval).forEach { match ->
+                VARIABLE_PATTERN.findAll(exprToEval).forEach { match ->
                     val varRef = match.value
                     // Check if this looks like a variable but isn't defined or a built-in function
-                    if (!variables.containsKey(varRef) && !builtInFunctions.contains(varRef.lowercase())) {
+                    if (!variables.containsKey(varRef) && !BUILT_IN_IDENTIFIERS.contains(varRef.lowercase())) {
                         // It's an undefined variable - return error
                         return@map line.copy(result = "Err")
                     }

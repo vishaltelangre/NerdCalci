@@ -774,4 +774,87 @@ class MathEngineTest {
         assertEquals("10", result[0].result)
         assertEquals("1", result[1].result)
     }
+
+    @Test
+    fun `calculateFrom returns only the affected lines starting at changedIndex`() {
+        val lines =
+                listOf(
+                        createLine("1 + 1", sortOrder = 0),
+                        createLine("2 + 2", sortOrder = 1),
+                        createLine("3 + 3", sortOrder = 2)
+                )
+        val result = MathEngine.calculateFrom(lines, changedIndex = 1)
+        // Should return lines[1..2] only (2 lines)
+        assertEquals(2, result.size)
+        assertEquals("4", result[0].result)
+        assertEquals("6", result[1].result)
+    }
+
+    @Test
+    fun `calculateFrom respects variables defined in preceding lines`() {
+        val lines =
+                listOf(
+                        createLine("price = 100", sortOrder = 0), // preceding (not recalculated)
+                        createLine("tax = 10", sortOrder = 1), // preceding (not recalculated)
+                        createLine("price + tax", sortOrder = 2) // affected — must see both vars
+                )
+        val result = MathEngine.calculateFrom(lines, changedIndex = 2)
+        assertEquals(1, result.size)
+        assertEquals("110", result[0].result)
+    }
+
+    @Test
+    fun `calculateFrom with changedIndex 0 is equivalent to full calculate`() {
+        val lines =
+                listOf(
+                        createLine("a = 5", sortOrder = 0),
+                        createLine("b = a * 2", sortOrder = 1),
+                        createLine("a + b", sortOrder = 2)
+                )
+        val full = MathEngine.calculate(lines)
+        val partial = MathEngine.calculateFrom(lines, changedIndex = 0)
+        assertEquals(full.map { it.result }, partial.map { it.result })
+    }
+
+    @Test
+    fun `calculateFrom propagates variable reassignment from preceding lines to affected lines`() {
+        // Simulate the user having changed line at index 1 (x = 10), now recalculating affected lines
+        val lines =
+                listOf(
+                        createLine("x = 5", sortOrder = 0), // preceding: x = 5
+                        createLine(
+                                "x = 10",
+                                sortOrder = 1
+                        ), // changed line (changedIndex = 1, first affected)
+                        createLine("x * 2", sortOrder = 2) // should use x = 10 from the changed line
+                )
+        val result = MathEngine.calculateFrom(lines, changedIndex = 1)
+        assertEquals(2, result.size)
+        assertEquals("10", result[0].result) // x = 10
+        assertEquals("20", result[1].result) // x * 2 = 20
+    }
+
+    @Test
+    fun `calculateFrom clamps out-of-bounds changedIndex gracefully`() {
+        val lines = listOf(
+                            createLine("5 + 5", sortOrder = 0),
+                           createLine("2 * 3", sortOrder = 1)
+                    )
+        // changedIndex beyond list size — should return empty (nothing to recalculate)
+        val result = MathEngine.calculateFrom(lines, changedIndex = 100)
+        assertEquals(0, result.size)
+    }
+
+    @Test
+    fun `calculateFrom clamps negative changedIndex to full recalculation`() {
+        val lines = listOf(
+            createLine("a = 5", sortOrder = 0),
+            createLine("a * 2", sortOrder = 1)
+        )
+        // Negative index should clamp to 0 and recalculate everything
+        val result = MathEngine.calculateFrom(lines, changedIndex = -99)
+        assertEquals(2, result.size)
+        assertEquals("5", result[0].result)
+        assertEquals("10", result[1].result)
+    }
 }

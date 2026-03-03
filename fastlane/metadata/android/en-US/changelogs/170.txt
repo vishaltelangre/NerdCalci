@@ -1,0 +1,2 @@
+- Improved responsiveness when editing large files: recalculation now only processes lines affected by the edit, skipping unchanged preceding lines.
+- All database result writes are now batched into a single transaction per edit, reducing per-keystroke overhead.

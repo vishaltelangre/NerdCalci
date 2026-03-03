@@ -32,7 +32,10 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.FileCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.PictureAsPdf
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
@@ -98,24 +101,13 @@ import com.vishaltelangre.nerdcalci.ui.components.DeleteFileDialog
 import com.vishaltelangre.nerdcalci.ui.components.DuplicateFileDialog
 import com.vishaltelangre.nerdcalci.ui.components.RenameFileDialog
 import com.vishaltelangre.nerdcalci.ui.theme.FiraCodeFamily
+import com.vishaltelangre.nerdcalci.utils.ExportUtils
+import com.vishaltelangre.nerdcalci.utils.SyntaxUtils
+import com.vishaltelangre.nerdcalci.utils.TokenType
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-// Syntax highlighting colors (dark theme) - High contrast for readability
-private val NumberColorDark = Color(0xFFFFD54F) // Bright yellow for numbers
-private val VariableColorDark = Color(0xFF64FFDA) // Bright cyan/teal for variables
-private val OperatorColorDark = Color.White // Pure white for operators (=, +, -, etc)
-private val PercentColorDark = Color(0xFFFFAB40) // Bright amber for percentages
-private val CommentColorDark = Color(0xFF607D8B) // Muted blue-gray for comments (dimmer)
-
-// Syntax highlighting colors (light theme)
-private val NumberColorLight = Color(0xFF09885A)
-private val VariableColorLight = Color(0xFF001080)
-private val OperatorColorLight = Color(0xFF000000)
-private val PercentColorLight = Color(0xFFA31515)
-private val CommentColorLight = Color(0xFF5A7A5A) // Dimmer but readable green
-
-// Apply syntax highlighting
+import com.vishaltelangre.nerdcalci.ui.theme.SyntaxColors
 /**
  * Apply syntax highlighting to calculator expressions.
  *
@@ -131,42 +123,30 @@ private fun applySyntaxHighlighting(
     defaultColor: Color
 ): AnnotatedString {
     return buildAnnotatedString {
-        var i = 0
-        while (i < text.length) {
-            val char = text[i]
-            when {
-                // Comments: everything from # to end of string
-                char == '#' -> {
-                    withStyle(SpanStyle(color = commentColor, fontStyle = FontStyle.Italic)) {
-                        append(text.substring(i))
-                    }
-                    break
-                }
-
-                char.isDigit() || (char == '.' && i + 1 < text.length && text[i + 1].isDigit()) -> {
-                    val start = i
-                    while (i < text.length && (text[i].isDigit() || text[i] == '.')) i++
-                    withStyle(SpanStyle(color = numberColor)) { append(text.substring(start, i)) }
-                    continue
-                }
-
-                char.isLetter() -> {
-                    val start = i
-                    while (i < text.length && (text[i].isLetterOrDigit() || text[i] == '_')) i++
-                    withStyle(
-                        SpanStyle(
-                            color = variableColor,
-                            fontWeight = FontWeight.Bold
-                        )
-                    ) { append(text.substring(start, i)) }
-                    continue
-                }
-
-                char == '%' -> withStyle(SpanStyle(color = percentColor)) { append(char) }
-                char in "+-*/^()=×÷" -> withStyle(SpanStyle(color = operatorColor)) { append(char) }
-                else -> withStyle(SpanStyle(color = defaultColor)) { append(char) }
+        val tokens = SyntaxUtils.parseSyntaxTokens(text)
+        for (token in tokens) {
+            val elementText = text.substring(token.start, token.end)
+            val color = when (token.type) {
+                TokenType.Number -> numberColor
+                TokenType.Variable -> variableColor
+                TokenType.Operator -> operatorColor
+                TokenType.Percent -> percentColor
+                TokenType.Comment -> commentColor
+                TokenType.Default -> defaultColor
             }
-            i++
+            if (token.type == TokenType.Variable) {
+                withStyle(SpanStyle(color = color, fontWeight = FontWeight.Bold)) {
+                    append(elementText)
+                }
+            } else if (token.type == TokenType.Comment) {
+                withStyle(SpanStyle(color = color, fontStyle = FontStyle.Italic)) {
+                    append(elementText)
+                }
+            } else {
+                withStyle(SpanStyle(color = color)) {
+                    append(elementText)
+                }
+            }
         }
     }
 }
@@ -280,11 +260,11 @@ fun CalculatorScreen(
         "dark" -> true
         else -> isSystemInDarkTheme()
     }
-    val numberColor = if (isDarkTheme) NumberColorDark else NumberColorLight
-    val variableColor = if (isDarkTheme) VariableColorDark else VariableColorLight
-    val operatorColor = if (isDarkTheme) OperatorColorDark else OperatorColorLight
-    val percentColor = if (isDarkTheme) PercentColorDark else PercentColorLight
-    val commentColor = if (isDarkTheme) CommentColorDark else CommentColorLight
+    val numberColor = if (isDarkTheme) SyntaxColors.NumberColorDark else SyntaxColors.NumberColorLight
+    val variableColor = if (isDarkTheme) SyntaxColors.VariableColorDark else SyntaxColors.VariableColorLight
+    val operatorColor = if (isDarkTheme) SyntaxColors.OperatorColorDark else SyntaxColors.OperatorColorLight
+    val percentColor = if (isDarkTheme) SyntaxColors.PercentColorDark else SyntaxColors.PercentColorLight
+    val commentColor = if (isDarkTheme) SyntaxColors.CommentColorDark else SyntaxColors.CommentColorLight
 
     Scaffold(
         modifier = Modifier
@@ -384,6 +364,7 @@ fun CalculatorScreen(
                                         showDuplicateDialog = true
                                     }
                                 )
+                                HorizontalDivider()
                                 DropdownMenuItem(
                                     text = { Text("Copy File Content") },
                                     leadingIcon = {
@@ -407,6 +388,38 @@ fun CalculatorScreen(
                                                     Toast.LENGTH_LONG
                                                 ).show()
                                             }
+                                        }
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Export as PDF") },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Default.PictureAsPdf,
+                                            contentDescription = null
+                                        )
+                                    },
+                                    onClick = {
+                                        showMenu = false
+                                        val safeFileName = fileName.replace(Regex("[^a-zA-Z0-9.-]"), "_")
+                                        coroutineScope.launch {
+                                            ExportUtils.exportAsPdf(context, safeFileName, lines)
+                                        }
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Export as Image") },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Default.Image,
+                                            contentDescription = null
+                                        )
+                                    },
+                                    onClick = {
+                                        showMenu = false
+                                        val safeFileName = fileName.replace(Regex("[^a-zA-Z0-9.-]"), "_")
+                                        coroutineScope.launch {
+                                            ExportUtils.exportAsImage(context, safeFileName, lines)
                                         }
                                     }
                                 )

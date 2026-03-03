@@ -4,6 +4,19 @@ import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
 import net.objecthunter.exp4j.ExpressionBuilder
 
 object MathEngine {
+    // exp4j built-in functions — excluded from the undefined-variable check.
+    // https://redmine.riddler.com.ar/projects/exp4j/wiki/Built_in_Functions
+    private val BUILT_IN_FUNCTIONS = setOf(
+        "sin", "cos", "tan", "asin", "acos", "atan",
+        "sinh", "cosh", "tanh",
+        "log", "log10", "log2", "log1p",
+        "sqrt", "cbrt", "abs", "floor", "ceil", "signum",
+        "exp", "expm1", "pow", "e", "pi"
+    )
+
+    // Matches valid variable/function name tokens in an expression.
+    private val VARIABLE_PATTERN = Regex("""[a-zA-Z_][a-zA-Z0-9_]*""")
+
     // Strip comments (anything after #)
     private fun stripComments(expr: String): String {
         val hashIndex = expr.indexOf('#')
@@ -121,17 +134,8 @@ object MathEngine {
 
                 if (!varName.matches(Regex(Constants.VARIABLE_NAME_PATTERN))) continue
 
-                val builtInFunctions = setOf(
-                    "sin", "cos", "tan", "asin", "acos", "atan",
-                    "sinh", "cosh", "tanh",
-                    "log", "log10", "log2", "log1p",
-                    "sqrt", "cbrt", "abs", "floor", "ceil", "signum",
-                    "exp", "expm1", "pow", "e", "pi"
-                )
-
-                val variablePattern = Regex("""[a-zA-Z_][a-zA-Z0-9_]*""")
-                val hasUndefined = variablePattern.findAll(exprToEval).any { match ->
-                    !variables.containsKey(match.value) && !builtInFunctions.contains(match.value.lowercase())
+                val hasUndefined = VARIABLE_PATTERN.findAll(exprToEval).any { match ->
+                    !variables.containsKey(match.value) && !BUILT_IN_FUNCTIONS.contains(match.value.lowercase())
                 }
                 if (hasUndefined) continue
 
@@ -200,23 +204,12 @@ object MathEngine {
                     return@map line.copy(result = "Err")
                 }
 
-                // exp4j built-in functions (exclude from undefined variable check)
-                // https://redmine.riddler.com.ar/projects/exp4j/wiki/Built_in_Functions
-                val builtInFunctions = setOf(
-                    "sin", "cos", "tan", "asin", "acos", "atan",
-                    "sinh", "cosh", "tanh",
-                    "log", "log10", "log2", "log1p",
-                    "sqrt", "cbrt", "abs", "floor", "ceil", "signum",
-                    "exp", "expm1", "pow", "e", "pi"
-                )
-
                 // Validate that expression doesn't contain undefined variables
                 // This prevents issues like "rate2" being tokenized as "rate" + "2" by exp4j
-                val variablePattern = Regex("""[a-zA-Z_][a-zA-Z0-9_]*""")
-                variablePattern.findAll(exprToEval).forEach { match ->
+                VARIABLE_PATTERN.findAll(exprToEval).forEach { match ->
                     val varRef = match.value
                     // Check if this looks like a variable but isn't defined or a built-in function
-                    if (!variables.containsKey(varRef) && !builtInFunctions.contains(varRef.lowercase())) {
+                    if (!variables.containsKey(varRef) && !BUILT_IN_FUNCTIONS.contains(varRef.lowercase())) {
                         // It's an undefined variable - return error
                         return@map line.copy(result = "Err")
                     }

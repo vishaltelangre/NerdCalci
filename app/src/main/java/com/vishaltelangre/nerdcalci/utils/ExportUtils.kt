@@ -39,7 +39,9 @@ object ExportUtils {
         val file = withContext(Dispatchers.IO) {
             val bitmap = createBitmapFromLines(lines)
             val fileNameWithDate = "${fileName}_${getTimestamp()}"
-            val file = File(context.cacheDir, "$fileNameWithDate.png")
+val exportDir = File(context.cacheDir, "exports").apply { mkdirs() }
+val file = File(exportDir, "$fileNameWithDate.png")
+
             FileOutputStream(file).use { out ->
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
             }
@@ -126,7 +128,9 @@ object ExportUtils {
                 document.finishPage(page)
 
                 val fileNameWithDate = "${fileName}_${getTimestamp()}"
-                val file = File(context.cacheDir, "$fileNameWithDate.pdf")
+val exportDir = File(context.cacheDir, "exports").apply { mkdirs() }
+val file = File(exportDir, "$fileNameWithDate.pdf")
+
                 FileOutputStream(file).use { out ->
                     document.writeTo(out)
                 }

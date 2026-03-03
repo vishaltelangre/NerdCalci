@@ -4,9 +4,9 @@ import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
 import net.objecthunter.exp4j.ExpressionBuilder
 
 object MathEngine {
-    // exp4j built-in functions — excluded from the undefined-variable check.
-    // https://redmine.riddler.com.ar/projects/exp4j/wiki/Built_in_Functions
-    private val BUILT_IN_FUNCTIONS = setOf(
+    // exp4j built-in functions and constants — excluded from the undefined-variable check.
+    // https://www.objecthunter.net/exp4j/
+    private val BUILT_IN_IDENTIFIERS = setOf(
         "sin", "cos", "tan", "asin", "acos", "atan",
         "sinh", "cosh", "tanh",
         "log", "log10", "log2", "log1p",
@@ -135,7 +135,7 @@ object MathEngine {
                 if (!varName.matches(Regex(Constants.VARIABLE_NAME_PATTERN))) continue
 
                 val hasUndefined = VARIABLE_PATTERN.findAll(exprToEval).any { match ->
-                    !variables.containsKey(match.value) && !BUILT_IN_FUNCTIONS.contains(match.value.lowercase())
+                    !variables.containsKey(match.value) && !BUILT_IN_IDENTIFIERS.contains(match.value.lowercase())
                 }
                 if (hasUndefined) continue
 
@@ -209,7 +209,7 @@ object MathEngine {
                 VARIABLE_PATTERN.findAll(exprToEval).forEach { match ->
                     val varRef = match.value
                     // Check if this looks like a variable but isn't defined or a built-in function
-                    if (!variables.containsKey(varRef) && !BUILT_IN_FUNCTIONS.contains(varRef.lowercase())) {
+                    if (!variables.containsKey(varRef) && !BUILT_IN_IDENTIFIERS.contains(varRef.lowercase())) {
                         // It's an undefined variable - return error
                         return@map line.copy(result = "Err")
                     }

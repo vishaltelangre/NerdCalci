@@ -845,4 +845,16 @@ class MathEngineTest {
         assertEquals(0, result.size)
     }
 
+    @Test
+    fun `calculateFrom clamps negative changedIndex to full recalculation`() {
+        val lines = listOf(
+            createLine("a = 5", sortOrder = 0),
+            createLine("a * 2", sortOrder = 1)
+        )
+        // Negative index should clamp to 0 and recalculate everything
+        val result = MathEngine.calculateFrom(lines, changedIndex = -99)
+        assertEquals(2, result.size)
+        assertEquals("5", result[0].result)
+        assertEquals("10", result[1].result)
+    }
 }

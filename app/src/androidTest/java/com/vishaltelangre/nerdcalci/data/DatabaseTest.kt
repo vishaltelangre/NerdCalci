@@ -152,6 +152,37 @@ class DatabaseTest {
     }
 
     @Test
+    fun updateLines_allChangesPersistedInBatch() = runBlocking {
+        val fileId = dao.insertFile(FileEntity(name = "Test", lastModified = 1000L))
+        dao.insertLine(LineEntity(fileId = fileId, sortOrder = 0, expression = "1 + 1", result = ""))
+        dao.insertLine(LineEntity(fileId = fileId, sortOrder = 1, expression = "2 + 2", result = ""))
+        dao.insertLine(LineEntity(fileId = fileId, sortOrder = 2, expression = "3 + 3", result = ""))
+
+        val lines = dao.getLinesForFileSync(fileId)
+        val updated = lines.mapIndexed { i, line -> line.copy(result = "${(i + 1) * 2}") }
+        dao.updateLines(updated)
+
+        val retrieved = dao.getLinesForFileSync(fileId)
+        assertEquals(3, retrieved.size)
+        assertEquals("2", retrieved[0].result)
+        assertEquals("4", retrieved[1].result)
+        assertEquals("6", retrieved[2].result)
+    }
+
+    @Test
+    fun updateLines_emptyListIsNoOp() = runBlocking {
+        val fileId = dao.insertFile(FileEntity(name = "Test", lastModified = 1000L))
+        dao.insertLine(LineEntity(fileId = fileId, sortOrder = 0, expression = "1 + 1", result = "2"))
+
+        // Should not throw and should leave existing data untouched
+        dao.updateLines(emptyList())
+
+        val lines = dao.getLinesForFileSync(fileId)
+        assertEquals(1, lines.size)
+        assertEquals("2", lines[0].result)
+    }
+
+    @Test
     fun deleteLine_removesFromDatabase() = runBlocking {
         val fileId = dao.insertFile(FileEntity(name = "Test", lastModified = 1000L))
         dao.insertLine(LineEntity(fileId = fileId, sortOrder = 0, expression = "keep"))

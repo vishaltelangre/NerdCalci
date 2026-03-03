@@ -172,11 +172,16 @@ object MathEngine {
         return calculateWithVariables(affectedLines, inheritedVariables)
     }
 
+    /**
+     * Core evaluation loop: processes [lines] in order, building variable state from
+     * [initialVariables] as assignments are encountered. A copy of [initialVariables] is made
+     * on entry so the caller's map is never modified.
+     */
     private fun calculateWithVariables(
         lines: List<LineEntity>,
-        initialVariables: MutableMap<String, Double>
+        initialVariables: Map<String, Double>
     ): List<LineEntity> {
-        val variables = initialVariables
+        val variables = initialVariables.toMutableMap()
 
         return lines.map { line ->
             if (line.expression.isBlank()) return@map line.copy(result = "")

@@ -30,7 +30,7 @@ object SyntaxUtils {
                     continue
                 }
 
-                char.isLetter() -> {
+                char.isLetter() || char == '_' -> {
                     val start = i
                     while (i < text.length && (text[i].isLetterOrDigit() || text[i] == '_')) i++
                     tokens.add(SyntaxToken(start, i, TokenType.Variable))

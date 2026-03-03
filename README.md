@@ -93,6 +93,7 @@
 - **Backups**: Automatically or manually backup your files to app storage or a custom folder
 - **Restore from backups**: Restore your files from backups
 - **Copy with Results**: Copy file content with calculated results to clipboard
+- **Export**: Share your calculations as a PNG image or a multi-page PDF
 
 ### And More...
 - **Offline**: Works without internet

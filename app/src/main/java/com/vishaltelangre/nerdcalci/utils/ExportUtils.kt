@@ -16,6 +16,8 @@ import android.text.TextPaint
 import android.text.style.ForegroundColorSpan
 import android.text.style.StyleSpan
 import androidx.core.content.FileProvider
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
 import com.vishaltelangre.nerdcalci.ui.theme.SyntaxColors
 import com.vishaltelangre.nerdcalci.ui.theme.ResultSuccess
@@ -30,97 +32,109 @@ import kotlin.math.max
 
 object ExportUtils {
 
-    fun exportAsImage(context: Context, fileName: String, lines: List<LineEntity>) {
-        val bitmap = createBitmapFromLines(lines)
-        val fileNameWithDate = "${fileName}_${getTimestamp()}"
-        val file = File(context.cacheDir, "$fileNameWithDate.png")
-        FileOutputStream(file).use { out ->
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+    suspend fun exportAsImage(context: Context, fileName: String, lines: List<LineEntity>) {
+        val file = withContext(Dispatchers.IO) {
+            val bitmap = createBitmapFromLines(lines)
+            val fileNameWithDate = "${fileName}_${getTimestamp()}"
+            val file = File(context.cacheDir, "$fileNameWithDate.png")
+            FileOutputStream(file).use { out ->
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+            }
+            file
         }
-        shareFile(context, file, "image/png")
+        withContext(Dispatchers.Main) {
+            shareFile(context, file, "image/png")
+        }
     }
 
-    fun exportAsPdf(context: Context, fileName: String, lines: List<LineEntity>) {
-        val document = PdfDocument()
-        val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create() // A4 size
-        var page = document.startPage(pageInfo)
-        var canvas = page.canvas
+    suspend fun exportAsPdf(context: Context, fileName: String, lines: List<LineEntity>) {
+        val file = withContext(Dispatchers.IO) {
+            val document = PdfDocument()
+            try {
+                val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create() // A4 size
+                var page = document.startPage(pageInfo)
+                var canvas = page.canvas
 
-        val paint = TextPaint().apply {
-            color = Color.BLACK
-            textSize = 12f
-            typeface = Typeface.MONOSPACE
-            isAntiAlias = true
-        }
-        val resultPaint = TextPaint().apply {
-            color = Color.DKGRAY
-            textSize = 12f
-            typeface = Typeface.DEFAULT_BOLD
-            isAntiAlias = true
-        }
-        val separatorPaint = Paint().apply {
-            color = Color.LTGRAY
-            strokeWidth = 1f
-        }
+                val paint = TextPaint().apply {
+                    color = Color.BLACK
+                    textSize = 12f
+                    typeface = Typeface.MONOSPACE
+                    isAntiAlias = true
+                }
+                val resultPaint = TextPaint().apply {
+                    color = Color.DKGRAY
+                    textSize = 12f
+                    typeface = Typeface.DEFAULT_BOLD
+                    isAntiAlias = true
+                }
+                val separatorPaint = Paint().apply {
+                    color = Color.LTGRAY
+                    strokeWidth = 1f
+                }
 
-        val padding = 40f
-        val startX = padding
-        var startY = padding
+                val padding = 40f
+                val startX = padding
+                var startY = padding
 
-        val usableWidth = pageInfo.pageWidth - padding * 2
-        val exprWidth = (usableWidth * 0.6f).toInt()
-        val resWidth = usableWidth.toInt() - exprWidth - 20
-        val separatorX = startX + exprWidth + 10f
+                val usableWidth = pageInfo.pageWidth - padding * 2
+                val exprWidth = (usableWidth * 0.6f).toInt()
+                val resWidth = usableWidth.toInt() - exprWidth - 20
+                val separatorX = startX + exprWidth + 10f
 
-        // Draw top border
-        canvas.drawLine(startX, startY, pageInfo.pageWidth - padding, startY, separatorPaint)
-
-        lines.forEach { line ->
-            val exprLayout = getStaticLayout(highlightSyntax(line.expression), paint, exprWidth, Layout.Alignment.ALIGN_NORMAL)
-            val resLayout = getStaticLayout(formatResult(line.result), resultPaint, resWidth, Layout.Alignment.ALIGN_OPPOSITE)
-
-            val rowHeight = max(exprLayout.height, resLayout.height) + 20f
-
-            if (startY + rowHeight > pageInfo.pageHeight - padding) {
-                document.finishPage(page)
-                page = document.startPage(pageInfo)
-                canvas = page.canvas
-                startY = padding
-                // Top border for new page
+                // Draw top border
                 canvas.drawLine(startX, startY, pageInfo.pageWidth - padding, startY, separatorPaint)
+
+                lines.forEach { line ->
+                    val exprLayout = getStaticLayout(highlightSyntax(line.expression), paint, exprWidth, Layout.Alignment.ALIGN_NORMAL)
+                    val resLayout = getStaticLayout(formatResult(line.result), resultPaint, resWidth, Layout.Alignment.ALIGN_OPPOSITE)
+
+                    val rowHeight = max(exprLayout.height, resLayout.height) + 20f
+
+                    if (startY + rowHeight > pageInfo.pageHeight - padding) {
+                        document.finishPage(page)
+                        page = document.startPage(pageInfo)
+                        canvas = page.canvas
+                        startY = padding
+                        // Top border for new page
+                        canvas.drawLine(startX, startY, pageInfo.pageWidth - padding, startY, separatorPaint)
+                    }
+
+                    // Draw Expression
+                    canvas.save()
+                    canvas.translate(startX, startY + 10f)
+                    exprLayout.draw(canvas)
+                    canvas.restore()
+
+                    // Draw Result
+                    canvas.save()
+                    canvas.translate(separatorX + 10f, startY + 10f)
+                    resLayout.draw(canvas)
+                    canvas.restore()
+
+                    // Draw Vertical Separator
+                    canvas.drawLine(separatorX, startY, separatorX, startY + rowHeight, separatorPaint)
+
+                    startY += rowHeight
+
+                    // Draw Horizontal Separator
+                    canvas.drawLine(startX, startY, pageInfo.pageWidth - padding, startY, separatorPaint)
+                }
+
+                document.finishPage(page)
+
+                val fileNameWithDate = "${fileName}_${getTimestamp()}"
+                val file = File(context.cacheDir, "$fileNameWithDate.pdf")
+                FileOutputStream(file).use { out ->
+                    document.writeTo(out)
+                }
+                file
+            } finally {
+                document.close()
             }
-
-            // Draw Expression
-            canvas.save()
-            canvas.translate(startX, startY + 10f)
-            exprLayout.draw(canvas)
-            canvas.restore()
-
-            // Draw Result
-            canvas.save()
-            canvas.translate(separatorX + 10f, startY + 10f)
-            resLayout.draw(canvas)
-            canvas.restore()
-
-            // Draw Vertical Separator
-            canvas.drawLine(separatorX, startY, separatorX, startY + rowHeight, separatorPaint)
-
-            startY += rowHeight
-
-            // Draw Horizontal Separator
-            canvas.drawLine(startX, startY, pageInfo.pageWidth - padding, startY, separatorPaint)
         }
-
-        document.finishPage(page)
-
-        val fileNameWithDate = "${fileName}_${getTimestamp()}"
-        val file = File(context.cacheDir, "$fileNameWithDate.pdf")
-        FileOutputStream(file).use { out ->
-            document.writeTo(out)
+        withContext(Dispatchers.Main) {
+            shareFile(context, file, "application/pdf")
         }
-        document.close()
-
-        shareFile(context, file, "application/pdf")
     }
 
     private fun createBitmapFromLines(lines: List<LineEntity>): Bitmap {

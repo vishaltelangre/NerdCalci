@@ -32,6 +32,8 @@ import kotlin.math.max
 
 object ExportUtils {
 
+    private const val MAX_BITMAP_HEIGHT_PX = 10_000f
+
     suspend fun exportAsImage(context: Context, fileName: String, lines: List<LineEntity>) {
         val file = withContext(Dispatchers.IO) {
             val bitmap = createBitmapFromLines(lines)
@@ -174,16 +176,14 @@ object ExportUtils {
             totalHeight += rowHeight
 
             layouts.add(Pair(exprLayout, resLayout))
-            if (totalHeight > 10000f) {
-                // Hard cap at max height to prevent OOM bounds
-                totalHeight = 10000f
-                break
+            if (totalHeight > MAX_BITMAP_HEIGHT_PX) {
+                throw IllegalStateException("Image export too large. Please export as PDF.")
             }
         }
 
         totalHeight += padding
 
-        val bitmapHeight = Math.min(totalHeight.toInt(), 10000)
+        val bitmapHeight = totalHeight.toInt()
         val bitmap = Bitmap.createBitmap(width, bitmapHeight, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         canvas.drawColor(Color.WHITE)

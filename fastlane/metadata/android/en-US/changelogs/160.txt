@@ -1,0 +1,2 @@
+- Added ability to export a calculation file as a PDF or an image file.
+- Improved logging for backup and restore operations to help with debugging.

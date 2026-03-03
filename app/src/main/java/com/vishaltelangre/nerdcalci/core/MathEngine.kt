@@ -96,7 +96,83 @@ object MathEngine {
      * @return List of line entities with populated results
      */
     fun calculate(lines: List<LineEntity>): List<LineEntity> {
+        return calculateWithVariables(lines, mutableMapOf())
+    }
+
+    /**
+     * Collect variable state from preceding lines (those before the changed line) without
+     * storing results. Used to seed partial recalculation with the correct variable context.
+     */
+    private fun buildVariableState(lines: List<LineEntity>): MutableMap<String, Double> {
         val variables = mutableMapOf<String, Double>()
+        for (line in lines) {
+            try {
+                val exprWithoutComments = stripComments(line.expression)
+                if (exprWithoutComments.isBlank()) continue
+
+                var processed = normalizeOperators(exprWithoutComments)
+                processed = preprocessPercentages(processed)
+                processed = preprocessCompositeOperations(processed)
+
+                val parts = processed.split("=")
+                if (parts.size != 2) continue
+                val varName = parts[0].trim()
+                val exprToEval = parts[1].trim()
+
+                if (!varName.matches(Regex(Constants.VARIABLE_NAME_PATTERN))) continue
+
+                val builtInFunctions = setOf(
+                    "sin", "cos", "tan", "asin", "acos", "atan",
+                    "sinh", "cosh", "tanh",
+                    "log", "log10", "log2", "log1p",
+                    "sqrt", "cbrt", "abs", "floor", "ceil", "signum",
+                    "exp", "expm1", "pow", "e", "pi"
+                )
+
+                val variablePattern = Regex("""[a-zA-Z_][a-zA-Z0-9_]*""")
+                val hasUndefined = variablePattern.findAll(exprToEval).any { match ->
+                    !variables.containsKey(match.value) && !builtInFunctions.contains(match.value.lowercase())
+                }
+                if (hasUndefined) continue
+
+                val builder = ExpressionBuilder(exprToEval).implicitMultiplication(false)
+                if (variables.isNotEmpty()) builder.variables(variables.keys.toSet())
+                val expression = builder.build()
+                if (variables.isNotEmpty()) variables.forEach { (k, v) -> expression.setVariable(k, v) }
+
+                variables[varName] = expression.evaluate()
+            } catch (_: Exception) {
+                // Skip lines that can't be evaluated during the pre-pass
+            }
+        }
+        return variables
+    }
+
+    /**
+     * Partially recalculate only lines from [changedIndex] onward.
+     *
+     * Preceding lines (those before [changedIndex]) are silently scanned to collect variable
+     * assignments, so that affected lines (from [changedIndex] onward) see the correct variable
+     * state without needing to re-evaluate the entire file.
+     *
+     * @param allLines  Complete ordered list of lines for the file.
+     * @param changedIndex  Index of the first line that changed (0-based).
+     * @return Recalculated affected lines: `allLines[changedIndex..end]` with updated results.
+     */
+    fun calculateFrom(allLines: List<LineEntity>, changedIndex: Int): List<LineEntity> {
+        val firstAffectedIndex = changedIndex.coerceIn(0, allLines.size)
+        val precedingLines = allLines.subList(0, firstAffectedIndex)
+        val affectedLines = allLines.subList(firstAffectedIndex, allLines.size)
+        // Collect variable state from preceding lines, then fully recalculate affected lines
+        val inheritedVariables = buildVariableState(precedingLines)
+        return calculateWithVariables(affectedLines, inheritedVariables)
+    }
+
+    private fun calculateWithVariables(
+        lines: List<LineEntity>,
+        initialVariables: MutableMap<String, Double>
+    ): List<LineEntity> {
+        val variables = initialVariables
 
         return lines.map { line ->
             if (line.expression.isBlank()) return@map line.copy(result = "")

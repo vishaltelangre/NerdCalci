@@ -255,10 +255,10 @@ class CalculatorViewModel(
             }
         }
 
-        // Recalculate everything
+        // Recalculate everything and batch-write results in one transaction
         val allLines = dao.getLinesForFileSync(fileId)
         val calculatedLines = MathEngine.calculate(allLines)
-        calculatedLines.forEach { dao.updateLine(it) }
+        dao.updateLines(calculatedLines)
     }
 
     // Clear undo/redo history for a file
@@ -303,7 +303,7 @@ class CalculatorViewModel(
         return hasOperators || !expression.contains("=")
     }
 
-    // Update a line and recalculate everything below it
+    // Update a line and recalculate everything from it downward
     fun updateLine(updatedLine: LineEntity) {
         viewModelScope.launch(Dispatchers.IO) {
             // Save the user's current typing
@@ -312,13 +312,16 @@ class CalculatorViewModel(
             // Fetch all lines for this file to ensure context is correct
             val allLines = dao.getLinesForFileSync(updatedLine.fileId)
 
-            // Run the MathEngine logic
-            val calculatedLines = MathEngine.calculate(allLines)
+            // Find where the changed line sits. Preceding lines are not re-evaluated;
+            // their variable state is inherited. If not found, fall back to 0 (recalculate all).
+            val changedIndex = allLines.indexOfFirst { it.id == updatedLine.id }.coerceAtLeast(0)
 
-            // Save the results back to the DB so the UI updates
-            calculatedLines.forEach { calculatedLine ->
-                dao.updateLine(calculatedLine)
-            }
+            // Recalculate only affected lines (from changedIndex onward), inheriting variable
+            // state from the preceding lines without re-evaluating them.
+            val affectedLines = MathEngine.calculateFrom(allLines, changedIndex)
+
+            // Batch-write all updated results in one DB transaction
+            dao.updateLines(affectedLines)
         }
     }
 

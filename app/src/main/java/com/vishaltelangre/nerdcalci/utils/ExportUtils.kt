@@ -186,6 +186,10 @@ val file = File(exportDir, "$fileNameWithDate.pdf")
             }
         }
 
+        if (totalHeight + padding > MAX_BITMAP_HEIGHT_PX) {
+            throw IllegalStateException("Image export too large. Please export as PDF.")
+        }
+
         totalHeight += padding
 
         val bitmapHeight = totalHeight.toInt()
@@ -290,9 +294,7 @@ val file = File(exportDir, "$fileNameWithDate.pdf")
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             if (context !is Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-        if (intent.resolveActivity(context.packageManager) != null) {
-            context.startActivity(chooserIntent)
-        }
+        context.startActivity(chooserIntent)
     }
 
     private fun getTimestamp(): String {

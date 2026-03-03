@@ -1,5 +1,6 @@
 package com.vishaltelangre.nerdcalci.utils
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -281,7 +282,13 @@ object ExportUtils {
             putExtra(Intent.EXTRA_STREAM, uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        context.startActivity(Intent.createChooser(intent, "Share via"))
+        val chooserIntent = Intent.createChooser(intent, "Share via").apply {
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            if (context !is Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        if (intent.resolveActivity(context.packageManager) != null) {
+            context.startActivity(chooserIntent)
+        }
     }
 
     private fun getTimestamp(): String {

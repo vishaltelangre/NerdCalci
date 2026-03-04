@@ -1,0 +1,2 @@
+- Introduced a custom, in-house expression engine replacing the external no-longer maintained `exp4j` library.
+- Added a comprehensive in-app Language Reference accessible from the Help screen.

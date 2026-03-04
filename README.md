@@ -54,22 +54,21 @@
   price = 1000  # base price
   tax = 18% of price  # 180
   ```
-- **Mathematical Functions**: Built-in support for common math functions (see [exp4j documentation](https://www.objecthunter.net/exp4j/) for more details)
+- **Mathematical Functions**: Built-in support for common math functions
   ```
   sqrt(16)           # 4
-  sqrt 16            # 4
-  sin(pi/2)          # 1
+  sin(PI/2)          # 1
   log10(1000)        # 3
   pow(2, 8)          # 256
   abs(-42)           # 42
 
   # Calculate circle area
   radius = 5
-  area = pi() * pow(radius, 2)  # 78.54
+  area = PI * pow(radius, 2)  # 78.54
 
   # Convert degrees to radians and calculate sine
   degrees = 45
-  radians = degrees * pi / 180
+  radians = degrees * PI / 180
   result = sin(radians)  # 0.71
 
   # Exponential growth
@@ -155,7 +154,6 @@ You need to install [Obtainium](https://github.com/ImranR98/Obtainium) first on 
 - [**Jetpack Compose**](https://developer.android.com/compose) - Modern UI toolkit
 - [**Room Database**](https://developer.android.com/training/data-storage/room) - Local data persistence
 - [**Material Design 3**](https://developer.android.com/jetpack/androidx/releases/compose-material3) - UI components and theming
-- [**exp4j**](https://github.com/fasseg/exp4j) - Mathematical expression evaluation
 - [**Fira Code**](https://github.com/tonsky/FiraCode) - Monospace font with ligatures
 
 ## Development

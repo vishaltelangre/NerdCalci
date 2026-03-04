@@ -184,3 +184,9 @@ node_modules/
 
 # Cursor IDE
 .cursor/
+
+# Copied files to be included in the APK
+app/src/main/assets/*.md
+
+# Local todos
+todo.md

@@ -580,7 +580,7 @@ class MathEngineTest {
         val lines = listOf(
             createLine("log10(1000)", sortOrder = 0),
             createLine("log2(8)", sortOrder = 1),
-            createLine("log(e())", sortOrder = 2)  // Natural log of e should be 1
+            createLine("log(E)", sortOrder = 2)  // Natural log of E should be 1
         )
         val result = MathEngine.calculate(lines)
         assertEquals("3", result[0].result)
@@ -625,29 +625,27 @@ class MathEngineTest {
     @Test
     fun `constants work`() {
         val lines = listOf(
-            createLine("pi()", sortOrder = 0),
-            createLine("e()", sortOrder = 1),
-            createLine("pi() * 2", sortOrder = 2),
-            createLine("e() + 1", sortOrder = 3)
+            createLine("PI", sortOrder = 0),
+            createLine("E", sortOrder = 1),
+            createLine("PI * 2", sortOrder = 2),
+            createLine("E + 1", sortOrder = 3)
         )
         val result = MathEngine.calculate(lines)
 
-        // Check that pi() returns approximately 3.14 (rounded for display)
         val piValue = result[0].result.toDoubleOrNull()
-        assertNotNull("pi() should return a number, got: ${result[0].result}", piValue)
-        assertTrue("pi() should be ~3.14, got: $piValue", piValue!! >= 3.14 && piValue <= 3.15)
+        assertNotNull("PI should return a number, got: ${result[0].result}", piValue)
+        assertTrue("PI should be ~3.14, got: $piValue", piValue!! >= 3.14 && piValue <= 3.15)
 
-        // Check that e() returns approximately 2.72 (rounded for display)
         val eValue = result[1].result.toDoubleOrNull()
-        assertNotNull("e() should return a number, got: ${result[1].result}", eValue)
-        assertTrue("e() should be ~2.72, got: $eValue", eValue!! >= 2.71 && eValue <= 2.73)
+        assertNotNull("E should return a number, got: ${result[1].result}", eValue)
+        assertTrue("E should be ~2.72, got: $eValue", eValue!! >= 2.71 && eValue <= 2.73)
     }
 
     @Test
     fun `functions can be used with variables`() {
         val lines = listOf(
             createLine("radius = 5", sortOrder = 0),
-            createLine("area = pi * pow(radius, 2)", sortOrder = 1)
+            createLine("area = PI * pow(radius, 2)", sortOrder = 1)
         )
         val result = MathEngine.calculate(lines)
         assertEquals("5", result[0].result)
@@ -678,24 +676,18 @@ class MathEngineTest {
     }
 
     @Test
-    fun `functions work with and without parentheses for single argument`() {
+    fun `functions require parentheses`() {
         val lines = listOf(
             createLine("floor(3.7)", sortOrder = 0),
             createLine("floor 3.7", sortOrder = 1),
             createLine("sqrt(16)", sortOrder = 2),
             createLine("sqrt 16", sortOrder = 3),
-            createLine("abs(-42)", sortOrder = 4),
-            createLine("abs -42", sortOrder = 5),
-            createLine("abs 42", sortOrder = 6),
         )
         val result = MathEngine.calculate(lines)
         assertEquals("3", result[0].result)
-        assertEquals("3", result[1].result)
+        assertEquals("Err", result[1].result)
         assertEquals("4", result[2].result)
-        assertEquals("4", result[3].result)
-        assertEquals("42", result[4].result)
-        assertEquals("Err", result[5].result)
-        assertEquals("42", result[6].result)
+        assertEquals("Err", result[3].result)
     }
 
     @Test

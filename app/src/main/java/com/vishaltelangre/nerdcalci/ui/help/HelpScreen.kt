@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import android.text.method.ScrollingMovementMethod
 import android.widget.TextView
 import io.noties.markwon.Markwon
 
@@ -84,6 +85,8 @@ private fun HelpScreenContent() {
         factory = { ctx ->
             TextView(ctx).apply {
                 setTextColor(context.getColor(android.R.color.tab_indicator_text))
+                movementMethod = ScrollingMovementMethod.getInstance()
+                isVerticalScrollBarEnabled = true
             }
         },
         update = { textView ->

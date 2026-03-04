@@ -639,6 +639,14 @@ class MathEngineTest {
         val eValue = result[1].result.toDoubleOrNull()
         assertNotNull("E should return a number, got: ${result[1].result}", eValue)
         assertTrue("E should be ~2.72, got: $eValue", eValue!! >= 2.71 && eValue <= 2.73)
+
+        val piTimesTwo = result[2].result.toDoubleOrNull()
+        assertNotNull("PI * 2 should return a number, got: ${result[2].result}", piTimesTwo)
+        assertTrue("PI * 2 should be ~6.28, got: $piTimesTwo", piTimesTwo!! >= 6.28 && piTimesTwo <= 6.29)
+
+        val ePlusOne = result[3].result.toDoubleOrNull()
+        assertNotNull("E + 1 should return a number, got: ${result[3].result}", ePlusOne)
+        assertTrue("E + 1 should be ~3.71, got: $ePlusOne", ePlusOne!! >= 3.71 && ePlusOne <= 3.73)
     }
 
     @Test

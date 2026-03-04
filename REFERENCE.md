@@ -7,7 +7,7 @@ All standard arithmetic operations are supported and follow the standard mathema
 
 Adds two numbers.
 
-```
+```text
 2 + 3       # evaluates to 5
 ```
 
@@ -15,7 +15,7 @@ Adds two numbers.
 
 Subtracts right from left.
 
-```
+```text
 10 - 4      # evaluates to 6
 ```
 
@@ -23,7 +23,7 @@ Subtracts right from left.
 
 Multiplies two numbers.
 
-```
+```text
 5 * 4       # evaluates to 20
 5 × 4       # evaluates to 20
 ```
@@ -32,7 +32,7 @@ Multiplies two numbers.
 
 Divides left by right.
 
-```
+```text
 10 / 2      # evaluates to 5
 10 ÷ 2      # evaluates to 5
 ```
@@ -41,7 +41,7 @@ Divides left by right.
 
 Returns the remainder of division.
 
-```
+```text
 10 % 3      # evaluates to 1
 ```
 
@@ -49,7 +49,7 @@ Returns the remainder of division.
 
 Raises left to the power of right.
 
-```
+```text
 2 ^ 3       # evaluates to 8
 2 ^ 3 ^ 4   # evaluates to 2 ^ (3 ^ 4) = 2 ^ 81
 ```
@@ -58,7 +58,7 @@ Raises left to the power of right.
 
 Overrides standard precedence.
 
-```
+```text
 (2 + 3) * 4 # evaluates to 20
 ```
 
@@ -70,7 +70,7 @@ NerdCalci maintains variable state seamlessly across multiple lines. You can ass
 
 Use the `=` operator to create or update a variable. Variable names must start with a letter or underscore, and can contain numbers (`price`, `tax_rate`, `taxRate2`).
 
-```
+```text
 price = 100
 tax = 15
 total = price + tax     # evaluates to 115
@@ -80,7 +80,7 @@ total = price + tax     # evaluates to 115
 
 Modify an existing variable in-place using compound operators: `+=`, `-=`, `*=`, `×=`, `/=`, `÷=`, `%=`.
 
-```
+```text
 score = 10
 score += 5              # score is now 15
 score *= 2              # score is now 30
@@ -90,7 +90,7 @@ score *= 2              # score is now 30
 
 Quickly add or subtract 1 from an existing variable using `++` and `--`.
 
-```
+```text
 count = 5
 count++                 # count is now 6
 count--                 # count is now 5
@@ -102,7 +102,7 @@ count--                 # count is now 5
 
 Calculate a slice of a number using `% of`.
 
-```
+```text
 20% of 500  # evaluates to 100
 ```
 
@@ -110,7 +110,7 @@ Calculate a slice of a number using `% of`.
 
 Subtract a percentage from a base number using `% off`.
 
-```
+```text
 15% off 1000 # evaluates to 850
 ```
 
@@ -118,7 +118,7 @@ Subtract a percentage from a base number using `% off`.
 
 When adding or subtracting a bare percentage to/from a number, it applies to that specific number.
 
-```
+```text
 100 + 20%   # evaluates to 120 (adds 20% of 100)
 100 - 15%   # evaluates to 85  (subtracts 15% of 100)
 ```
@@ -187,7 +187,7 @@ NerdCalci provides common mathematical constants.
 You can add comments to your calculations using the `#` symbol.
 Everything after the `#` on that line is ignored.
 
-```
+```text
 # Monthly expenses
 
 rent = 1200      # Base rent

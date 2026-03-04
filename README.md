@@ -31,8 +31,8 @@
 > For a complete language reference of all operators, functions, and advanced syntax, please see the [Language Reference Guide](REFERENCE.md).
 
 - **Variable Support**
--
-  ```
+
+  ```text
   a = 100
   b = 200
   total = a + b  # 300
@@ -40,7 +40,7 @@
 
 - **Composite Operations**
 -
-  ```
+  ```text
   score = 10
   score += 5     # 15
   score++        # 16
@@ -49,7 +49,7 @@
 
 - **Percentage Calculations**
 -
-  ```
+  ```text
   20% of 50000    # 10000
   15% off 1000    # 850
   50000 + 10%     # 55000
@@ -57,13 +57,15 @@
   ```
 
 - **Comments**
-  ```
+-
+  ```text
   price = 1000  # base price
   tax = 18% of price  # 180
   ```
 
 - **Mathematical Functions**
-  ```
+-
+  ```text
   sqrt(16)           # 4
   sin(PI/2)          # 1
   ```

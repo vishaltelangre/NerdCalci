@@ -22,7 +22,17 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.unit.sp
+import androidx.core.content.res.ResourcesCompat
+import io.noties.markwon.core.CorePlugin
+import io.noties.markwon.core.MarkwonTheme
+import com.vishaltelangre.nerdcalci.R
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -65,33 +75,50 @@ fun HelpScreen(onBack: () -> Unit) {
 private fun HelpScreenContent() {
     val context = LocalContext.current
     val markwon = remember {
+        val firaCodeTypeface = ResourcesCompat.getFont(context, R.font.fira_code_regular)
+
+        val defaultTextSize = android.widget.TextView(context).textSize
+
         Markwon.builder(context)
+            .usePlugin(object : CorePlugin() {
+                override fun configureTheme(builder: MarkwonTheme.Builder) {
+                    builder.codeTextSize((defaultTextSize * 0.85f).toInt())
+                    firaCodeTypeface?.let {
+                        builder.codeTypeface(it)
+                        builder.codeBlockTypeface(it)
+                    }
+                }
+            })
             .usePlugin(io.noties.markwon.ext.tables.TablePlugin.create(context))
             .build()
     }
 
     // Read the markdown text from the assets/REFERENCE.md file bundled during build
-    val markdownText = remember {
-        try {
-            context.assets.open("REFERENCE.md").bufferedReader().use { it.readText() }
+    val markdownText by produceState(initialValue = "", context) {
+        value = try {
+            withContext(Dispatchers.IO) {
+                context.assets.open("REFERENCE.md").bufferedReader().use { it.readText() }
+            }
         } catch (e: Exception) {
             Log.e("HelpScreen", "Failed to load REFERENCE.md from assets", e)
             "Error loading language reference. Please report this issue."
         }
     }
 
+    val markdownTextColor = MaterialTheme.colorScheme.onSurface.toArgb()
+
     AndroidView(
         modifier = Modifier
             .fillMaxSize()
-            .padding(start = 16.dp, end = 16.dp, top = 32.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 16.dp),
         factory = { ctx ->
             TextView(ctx).apply {
-                setTextColor(context.getColor(android.R.color.tab_indicator_text))
                 movementMethod = ScrollingMovementMethod.getInstance()
                 isVerticalScrollBarEnabled = true
             }
         },
         update = { textView ->
+            textView.setTextColor(markdownTextColor)
             markwon.setMarkdown(textView, markdownText)
         }
     )

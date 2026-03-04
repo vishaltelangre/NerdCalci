@@ -28,6 +28,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import android.text.method.ScrollingMovementMethod
+import android.util.Log
 import android.widget.TextView
 import io.noties.markwon.Markwon
 
@@ -74,6 +75,7 @@ private fun HelpScreenContent() {
         try {
             context.assets.open("REFERENCE.md").bufferedReader().use { it.readText() }
         } catch (e: Exception) {
+            Log.e("HelpScreen", "Failed to load REFERENCE.md from assets", e)
             "Error loading language reference. Please report this issue."
         }
     }

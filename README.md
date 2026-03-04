@@ -39,7 +39,7 @@
   ```
 
 - **Composite Operations**
--
+
   ```text
   score = 10
   score += 5     # 15
@@ -48,7 +48,7 @@
   ```
 
 - **Percentage Calculations**
--
+
   ```text
   20% of 50000    # 10000
   15% off 1000    # 850
@@ -57,14 +57,14 @@
   ```
 
 - **Comments**
--
+
   ```text
   price = 1000  # base price
   tax = 18% of price  # 180
   ```
 
 - **Mathematical Functions**
--
+
   ```text
   sqrt(16)           # 4
   sin(PI/2)          # 1

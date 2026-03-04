@@ -83,7 +83,7 @@ private fun HelpScreenContent() {
     AndroidView(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 32.dp),
         factory = { ctx ->
             TextView(ctx).apply {
                 setTextColor(context.getColor(android.R.color.tab_indicator_text))

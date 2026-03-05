@@ -208,7 +208,7 @@ rent = 950
 total               # evaluates to 1115.50
 ```
 
-Blank lines create blocks — `total` only sums within the current block:
+Blank lines create blocks — `sum`/`total` only sums within the current block:
 
 ```text
 a = 10
@@ -219,7 +219,7 @@ c = 5
 total               # evaluates to 5
 ```
 
-Use `total` inside expressions:
+Use `sum` or `total` inside expressions:
 
 ```text
 item1 = 25

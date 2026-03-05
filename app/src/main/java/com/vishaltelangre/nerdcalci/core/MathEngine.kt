@@ -54,10 +54,11 @@ object MathEngine {
 
     /**
      * Collect variable state and line results from preceding lines (those before the changed
-     * line). Used to seed partial recalculation with the correct
+     * line) without storing results. Used to seed partial recalculation with the correct
      * variable context and aggregate state.
      *
      * Returns a triple of (variables, lineResults, userAssignedAggregates).
+     */
     private fun buildVariableState(
         lines: List<LineEntity>
     ): Triple<MutableMap<String, Double>, MutableList<Double?>, MutableSet<String>> {

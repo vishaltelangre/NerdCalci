@@ -1,0 +1,3 @@
+- Added `sum` and `total` aggregate keywords to calculate the sum of all line results in the current block (up to the nearest blank line)
+- `sum` and `total` are aliases; both can be used inline in expressions (e.g. total * 0.05)
+- Explicit reassignment (e.g. total = 4) overrides the aggregate meaning

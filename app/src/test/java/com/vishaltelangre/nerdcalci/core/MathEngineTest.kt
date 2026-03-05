@@ -857,4 +857,123 @@ class MathEngineTest {
         assertEquals("5", result[0].result)
         assertEquals("10", result[1].result)
     }
+
+    @Test
+    fun `total sums all results above in same block`() {
+        val lines = listOf(
+            createLine("4 / 2", sortOrder = 0),
+            createLine("b = 2", sortOrder = 1),
+            createLine("a = 4", sortOrder = 2),
+            createLine("total", sortOrder = 3)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("2", result[0].result)
+        assertEquals("2", result[1].result)
+        assertEquals("4", result[2].result)
+        assertEquals("8", result[3].result)
+    }
+
+    @Test
+    fun `sum is an alias for total`() {
+        val lines = listOf(
+            createLine("10", sortOrder = 0),
+            createLine("20", sortOrder = 1),
+            createLine("sum", sortOrder = 2)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("30", result[2].result)
+    }
+
+    @Test
+    fun `blank line resets the block for total`() {
+        val lines = listOf(
+            createLine("a = 10", sortOrder = 0),
+            createLine("b = 20", sortOrder = 1),
+            createLine("total", sortOrder = 2),
+            createLine("", sortOrder = 3),
+            createLine("c = 5", sortOrder = 4),
+            createLine("total", sortOrder = 5)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("30", result[2].result)  // 10 + 20
+        assertEquals("", result[3].result)
+        assertEquals("5", result[4].result)
+        assertEquals("5", result[5].result)   // only c = 5 in this block
+    }
+
+    @Test
+    fun `comment-only lines do not contribute to total`() {
+        val lines =
+                listOf(
+                        createLine("10", sortOrder = 0),
+                        createLine("# just a comment", sortOrder = 1),
+                        createLine("20", sortOrder = 2),
+                        createLine("total", sortOrder = 3)
+                )
+        val result = MathEngine.calculate(lines)
+        // comment-only line produces null → breaks the block
+        // so total only sees 20
+        assertEquals("20", result[3].result)
+    }
+
+    @Test
+    fun `total used in an expression`() {
+        val lines = listOf(
+            createLine("item1 = 25", sortOrder = 0),
+            createLine("item2 = 75", sortOrder = 1),
+            createLine("tax = total * 0.10", sortOrder = 2)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("25", result[0].result)
+        assertEquals("75", result[1].result)
+        assertEquals("10", result[2].result)
+    }
+
+    @Test
+    fun `total assignment overrides aggregate meaning`() {
+        val lines = listOf(
+            createLine("10", sortOrder = 0),
+            createLine("20", sortOrder = 1),
+            createLine("total = 4", sortOrder = 2),
+            createLine("total / 2", sortOrder = 3)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("10", result[0].result)
+        assertEquals("20", result[1].result)
+        assertEquals("4", result[2].result)
+        assertEquals("2", result[3].result)  // uses assigned value, not aggregate
+    }
+
+    @Test
+    fun `total with no preceding results is 0`() {
+        val lines = listOf(
+            createLine("total", sortOrder = 0)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("0", result[0].result)
+    }
+
+    @Test
+    fun `calculateFrom correctly handles total in affected lines`() {
+        val lines = listOf(
+            createLine("a = 10", sortOrder = 0),
+            createLine("b = 20", sortOrder = 1),
+            createLine("total", sortOrder = 2)
+        )
+        val result = MathEngine.calculateFrom(lines, changedIndex = 2)
+        assertEquals(1, result.size)
+        assertEquals("30", result[0].result)
+    }
+
+    @Test
+    fun `total includes its own block results across calculateFrom boundary`() {
+        val lines = listOf(
+            createLine("5", sortOrder = 0),
+            createLine("15", sortOrder = 1),
+            createLine("total * 2", sortOrder = 2)
+        )
+        val result = MathEngine.calculateFrom(lines, changedIndex = 2)
+        assertEquals(1, result.size)
+        assertEquals("40", result[0].result)
+    }
 }

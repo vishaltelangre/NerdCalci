@@ -117,6 +117,7 @@ private fun applySyntaxHighlighting(
     text: String,
     numberColor: Color,
     variableColor: Color,
+    keywordColor: Color,
     operatorColor: Color,
     percentColor: Color,
     commentColor: Color,
@@ -129,12 +130,13 @@ private fun applySyntaxHighlighting(
             val color = when (token.type) {
                 TokenType.Number -> numberColor
                 TokenType.Variable -> variableColor
+                TokenType.Keyword -> keywordColor
                 TokenType.Operator -> operatorColor
                 TokenType.Percent -> percentColor
                 TokenType.Comment -> commentColor
                 TokenType.Default -> defaultColor
             }
-            if (token.type == TokenType.Variable) {
+            if (token.type == TokenType.Variable || token.type == TokenType.Keyword) {
                 withStyle(SpanStyle(color = color, fontWeight = FontWeight.Bold)) {
                     append(elementText)
                 }
@@ -262,6 +264,7 @@ fun CalculatorScreen(
     }
     val numberColor = if (isDarkTheme) SyntaxColors.NumberColorDark else SyntaxColors.NumberColorLight
     val variableColor = if (isDarkTheme) SyntaxColors.VariableColorDark else SyntaxColors.VariableColorLight
+    val keywordColor = if (isDarkTheme) SyntaxColors.KeywordColorDark else SyntaxColors.KeywordColorLight
     val operatorColor = if (isDarkTheme) SyntaxColors.OperatorColorDark else SyntaxColors.OperatorColorLight
     val percentColor = if (isDarkTheme) SyntaxColors.PercentColorDark else SyntaxColors.PercentColorLight
     val commentColor = if (isDarkTheme) SyntaxColors.CommentColorDark else SyntaxColors.CommentColorLight
@@ -560,6 +563,7 @@ fun CalculatorScreen(
                         onInsertHandled = { insertTextRequest = null },
                         numberColor = numberColor,
                         variableColor = variableColor,
+                        keywordColor = keywordColor,
                         operatorColor = operatorColor,
                         percentColor = percentColor,
                         commentColor = commentColor,
@@ -735,6 +739,7 @@ private fun LineRow(
     onInsertHandled: () -> Unit,
     numberColor: Color,
     variableColor: Color,
+    keywordColor: Color,
     operatorColor: Color,
     percentColor: Color,
     commentColor: Color,
@@ -758,6 +763,7 @@ private fun LineRow(
                     displayText,
                     numberColor,
                     variableColor,
+                    keywordColor,
                     operatorColor,
                     percentColor,
                     commentColor,
@@ -819,6 +825,7 @@ private fun LineRow(
                     displayText,
                     numberColor,
                     variableColor,
+                    keywordColor,
                     operatorColor,
                     percentColor,
                     commentColor,
@@ -869,6 +876,7 @@ private fun LineRow(
                     newText,
                     numberColor,
                     variableColor,
+                    keywordColor,
                     operatorColor,
                     percentColor,
                     commentColor,
@@ -976,6 +984,7 @@ private fun LineRow(
                                 displayText,
                                 numberColor,
                                 variableColor,
+                                keywordColor,
                                 operatorColor,
                                 percentColor,
                                 commentColor,
@@ -1097,6 +1106,7 @@ private fun LineRow(
                                                 newText,
                                                 numberColor,
                                                 variableColor,
+                                                keywordColor,
                                                 operatorColor,
                                                 percentColor,
                                                 commentColor,

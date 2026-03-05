@@ -5,6 +5,17 @@ import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
 object MathEngine {
 
     /**
+     * Registry of aggregate keywords.
+     *
+     * Each entry maps a keyword name to a function that computes its value from
+     * the current block's line results.
+     */
+    private val AGGREGATES: Map<String, (List<Double?>) -> Double> = mapOf(
+        "sum"   to ::computeBlockSum,
+        "total" to ::computeBlockSum
+    )
+
+    /**
      * Calculate results for all lines in a file, maintaining variable state across lines.
      *
      * ## Architecture
@@ -38,23 +49,38 @@ object MathEngine {
      * @return List of line entities with populated results
      */
     fun calculate(lines: List<LineEntity>): List<LineEntity> {
-        return calculateWithVariables(lines, mutableMapOf())
+        return calculateWithVariables(lines, mutableMapOf(), mutableListOf())
     }
 
     /**
-     * Collect variable state from preceding lines (those before the changed line) without
-     * storing results. Used to seed partial recalculation with the correct variable context.
+     * Collect variable state and line results from preceding lines (those before the changed
+     * line) without storing results. Used to seed partial recalculation with the correct
+     * variable context and aggregate state.
+     *
+     * Returns a triple of (variables, lineResults, userAssignedAggregates).
      */
-    private fun buildVariableState(lines: List<LineEntity>): MutableMap<String, Double> {
+    private fun buildVariableState(
+        lines: List<LineEntity>
+    ): Triple<MutableMap<String, Double>, MutableList<Double?>, MutableSet<String>> {
         val variables = mutableMapOf<String, Double>()
+        val lineResults = mutableListOf<Double?>()
+        val userAssignedAggregates = mutableSetOf<String>()
         for (line in lines) {
+            if (line.expression.isBlank()) {
+                lineResults.add(null)
+                continue
+            }
             try {
-                evaluateLine(line.expression, variables)
+                injectAggregates(variables, lineResults, userAssignedAggregates)
+                val result = evaluateLine(line.expression, variables)
+                lineResults.add(result)
+                // Track if user explicitly assigned an aggregate name
+                trackAggregateAssignment(line.expression, userAssignedAggregates)
             } catch (_: Exception) {
-                // Skip lines that can't be evaluated during the pre-pass
+                lineResults.add(null)
             }
         }
-        return variables
+        return Triple(variables, lineResults, userAssignedAggregates)
     }
 
     /**
@@ -74,35 +100,106 @@ object MathEngine {
         val precedingLines = allLines.subList(0, firstAffectedIndex)
         val affectedLines = allLines.subList(firstAffectedIndex, allLines.size)
 
-        // Collect variable state from preceding lines, then fully recalculate affected lines
-        val inheritedVariables = buildVariableState(precedingLines)
-        return calculateWithVariables(affectedLines, inheritedVariables)
+        // Collect variable state and line results from preceding lines,
+        // then fully recalculate affected lines
+        val (inheritedVariables, lineResults, userAssignedAggregates) = buildVariableState(precedingLines)
+        return calculateWithVariables(affectedLines, inheritedVariables, lineResults, userAssignedAggregates)
     }
 
     /**
      * Core evaluation loop: processes [lines] in order, building variable state from
      * [initialVariables] as assignments are encountered.
+     *
+     * [lineResults] tracks the numeric result of each line (null for blank/comment/error),
+     * used to compute values for aggregates like `sum`/`total`.
      */
     private fun calculateWithVariables(
         lines: List<LineEntity>,
-        initialVariables: Map<String, Double>
+        initialVariables: Map<String, Double>,
+        lineResults: MutableList<Double?>,
+        userAssignedAggregates: MutableSet<String> = mutableSetOf()
     ): List<LineEntity> {
         val variables = initialVariables.toMutableMap()
 
         return lines.map { line ->
-            if (line.expression.isBlank()) return@map line.copy(result = "")
+            if (line.expression.isBlank()) {
+                lineResults.add(null)
+                return@map line.copy(result = "")
+            }
 
             try {
+                // Inject aggregate variables before evaluating the line
+                injectAggregates(variables, lineResults, userAssignedAggregates)
+
                 // Evaluate the line, updating `variables` if it's an assignment
                 val result = evaluateLine(line.expression, variables)
-                    ?: return@map line.copy(result = "")
+                    ?: run {
+                        lineResults.add(null)
+                        return@map line.copy(result = "")
+                    }
+
+                lineResults.add(result)
+
+                // Track if user explicitly assigned an aggregate name
+                trackAggregateAssignment(line.expression, userAssignedAggregates)
 
                 // Format result for display
                 line.copy(result = formatResult(result))
             } catch (_: Exception) {
+                lineResults.add(null)
                 line.copy(result = "Err")
             }
         }
+    }
+
+    /**
+     * Detect if a line contains an explicit assignment to an aggregate name.
+     * If so, mark that name as user-assigned so we stop injecting it.
+     */
+    private fun trackAggregateAssignment(expression: String, userAssigned: MutableSet<String>) {
+        // Strip comments
+        val hashIdx = expression.indexOf('#')
+        val expr = if (hashIdx >= 0) expression.substring(0, hashIdx).trim() else expression.trim()
+
+        for (name in AGGREGATES.keys) {
+            if (expr.startsWith(name) && expr.length > name.length) {
+                val rest = expr.substring(name.length).trimStart()
+                if (rest.startsWith("=") || rest.startsWith("+=") || rest.startsWith("-=") ||
+                    rest.startsWith("*=") || rest.startsWith("/=") || rest.startsWith("%=")) {
+                    userAssigned.add(name)
+                }
+            }
+        }
+    }
+
+    /**
+     * Inject each registered aggregate into [variables] by calling its computation
+     * function against the current [lineResults].  Skips any name the user has
+     * explicitly assigned.
+     */
+    private fun injectAggregates(
+        variables: MutableMap<String, Double>,
+        lineResults: List<Double?>,
+        userAssigned: Set<String>
+    ) {
+        for ((name, compute) in AGGREGATES) {
+            if (name !in userAssigned) {
+                variables[name] = compute(lineResults)
+            }
+        }
+    }
+
+    /**
+     * Sum the current block's line results, scanning backward from the end of
+     * [lineResults] until a null entry (blank line / comment / error) or the start.
+     */
+    private fun computeBlockSum(lineResults: List<Double?>): Double {
+        var sum = 0.0
+        for (i in lineResults.indices.reversed()) {
+            val result = lineResults[i] ?: break
+            sum += result
+        }
+        return sum
     }
 
     /**

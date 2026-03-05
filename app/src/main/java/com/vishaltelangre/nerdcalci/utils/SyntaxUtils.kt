@@ -1,12 +1,16 @@
 package com.vishaltelangre.nerdcalci.utils
 
 enum class TokenType {
-    Number, Variable, Operator, Percent, Comment, Default
+    Number, Variable, Keyword, Operator, Percent, Comment, Default
 }
 
 data class SyntaxToken(val start: Int, val end: Int, val type: TokenType)
 
 object SyntaxUtils {
+
+    /** Identifiers that are highlighted as keywords rather than variables. */
+    private val KEYWORD_NAMES = setOf("sum", "total")
+
     /**
      * Parses the given text and returns a sequence of syntax tokens indicating the type of each
      * segment. This parser can be reused across different rendering systems (Compose, Canvas, etc).
@@ -33,7 +37,9 @@ object SyntaxUtils {
                 char.isLetter() || char == '_' -> {
                     val start = i
                     while (i < text.length && (text[i].isLetterOrDigit() || text[i] == '_')) i++
-                    tokens.add(SyntaxToken(start, i, TokenType.Variable))
+                    val word = text.substring(start, i)
+                    val type = if (word in KEYWORD_NAMES) TokenType.Keyword else TokenType.Variable
+                    tokens.add(SyntaxToken(start, i, type))
                     continue
                 }
 

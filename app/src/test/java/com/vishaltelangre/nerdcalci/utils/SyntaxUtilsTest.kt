@@ -349,4 +349,19 @@ class SyntaxUtilsTest {
         }
         assertEquals("Last token reaches end of string", text.length, expectedStart)
     }
+
+    @Test
+    fun `total keyword tokenizes as Keyword`() {
+        assertSingleToken("total", TokenType.Keyword)
+    }
+
+    @Test
+    fun `sum keyword tokenizes as Keyword`() {
+        assertSingleToken("sum", TokenType.Keyword)
+    }
+
+    @Test
+    fun `non-keyword starting with sum tokenizes as Variable`() {
+        assertSingleToken("summary", TokenType.Variable)
+    }
 }

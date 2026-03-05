@@ -194,3 +194,46 @@ rent = 1200      # Base rent
 utilities = 150
 rent + utilities # Total housing cost
 ```
+
+## 7. Aggregates
+
+### Sum / Total
+
+Use `sum` or `total` to get the sum of all line results above, up to the nearest blank line.
+
+```text
+groceries = 45.50
+utilities = 120
+rent = 950
+total               # evaluates to 1115.50
+```
+
+Blank lines create blocks — `total` only sums within the current block:
+
+```text
+a = 10
+b = 20
+total               # evaluates to 30
+
+c = 5
+total               # evaluates to 5
+```
+
+Use `total` inside expressions:
+
+```text
+item1 = 25
+item2 = 75
+tax = sum * 0.10    # evaluates to 10
+```
+
+Assigning to `total` or `sum` overrides the aggregate meaning from that point onward:
+
+```text
+a = 1
+b = 2
+total               # evaluates to 3
+
+total = 4
+total / 2           # evaluates to 2 (uses assigned value, not aggregate)
+```

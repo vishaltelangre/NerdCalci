@@ -250,6 +250,7 @@ val file = File(exportDir, "$fileNameWithDate.pdf")
 
         val numberColor = SyntaxColors.NumberColorLight.toArgb()
         val variableColor = SyntaxColors.VariableColorLight.toArgb()
+        val keywordColor = SyntaxColors.KeywordColorLight.toArgb()
         val operatorColor = SyntaxColors.OperatorColorLight.toArgb()
         val percentColor = SyntaxColors.PercentColorLight.toArgb()
         val commentColor = SyntaxColors.CommentColorLight.toArgb()
@@ -259,6 +260,10 @@ val file = File(exportDir, "$fileNameWithDate.pdf")
                 TokenType.Number -> spannable.setSpan(ForegroundColorSpan(numberColor), token.start, token.end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
                 TokenType.Variable -> {
                     spannable.setSpan(ForegroundColorSpan(variableColor), token.start, token.end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                    spannable.setSpan(StyleSpan(android.graphics.Typeface.BOLD), token.start, token.end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                }
+                TokenType.Keyword -> {
+                    spannable.setSpan(ForegroundColorSpan(keywordColor), token.start, token.end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
                     spannable.setSpan(StyleSpan(android.graphics.Typeface.BOLD), token.start, token.end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
                 }
                 TokenType.Operator -> spannable.setSpan(ForegroundColorSpan(operatorColor), token.start, token.end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)

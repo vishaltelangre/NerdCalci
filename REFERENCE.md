@@ -235,5 +235,7 @@ b = 2
 total               # evaluates to 3
 
 total = 4
-total / 2           # evaluates to 2 (uses assigned value, not aggregate)
+total / 2           # evaluates to 2
+total               # still evaluates to 2
+# i.e. after assigning, total no longer aggregates
 ```

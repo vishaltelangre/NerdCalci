@@ -945,6 +945,99 @@ class MathEngineTest {
     }
 
     @Test
+    fun `total increment overrides aggregate meaning`() {
+        val lines = listOf(
+            createLine("10", sortOrder = 0),
+            createLine("total++", sortOrder = 1),
+            createLine("total", sortOrder = 2)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("10", result[0].result)
+        assertEquals("11", result[1].result)  // total was 10, incremented and assigned to 11
+        assertEquals("11", result[2].result)  // uses assigned value, not aggregate
+    }
+
+    @Test
+    fun `total decrement overrides aggregate meaning`() {
+        val lines = listOf(
+            createLine("10", sortOrder = 0),
+            createLine("total--", sortOrder = 1),
+            createLine("total", sortOrder = 2)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("10", result[0].result)
+        assertEquals("9", result[1].result)   // total was 10, decremented to 9
+        assertEquals("9", result[2].result)   // uses assigned value, not aggregate
+    }
+
+    @Test
+    fun `total += overrides aggregate meaning`() {
+        val lines = listOf(
+            createLine("10", sortOrder = 0),
+            createLine("total += 5", sortOrder = 1),
+            createLine("total", sortOrder = 2)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("10", result[0].result)
+        assertEquals("15", result[1].result)
+        assertEquals("15", result[2].result)  // uses assigned value, not aggregate
+    }
+
+    @Test
+    fun `total -= overrides aggregate meaning`() {
+        val lines = listOf(
+            createLine("10", sortOrder = 0),
+            createLine("total -= 3", sortOrder = 1),
+            createLine("total", sortOrder = 2)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("10", result[0].result)
+        assertEquals("7", result[1].result)
+        assertEquals("7", result[2].result)
+    }
+
+    @Test
+    fun `total multiply-assign overrides aggregate meaning`() {
+        val lines = listOf(
+            createLine("10", sortOrder = 0),
+            createLine("total *= 2", sortOrder = 1),
+            createLine("total", sortOrder = 2)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("10", result[0].result)
+        assertEquals("20", result[1].result)
+        assertEquals("20", result[2].result)
+    }
+
+    @Test
+    fun `total divide-assign overrides aggregate meaning`() {
+        val lines = listOf(
+            createLine("10", sortOrder = 0),
+            createLine("total /= 2", sortOrder = 1),
+            createLine("total", sortOrder = 2)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("10", result[0].result)
+        assertEquals("5", result[1].result)
+        assertEquals("5", result[2].result)
+    }
+
+    @Test
+    fun `total modulo-assign overrides aggregate meaning`() {
+        val lines = listOf(
+            createLine("10", sortOrder = 0),
+            createLine("20", sortOrder = 1),
+            createLine("total %= 7", sortOrder = 2),
+            createLine("total", sortOrder = 3)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("10", result[0].result)
+        assertEquals("20", result[1].result)
+        assertEquals("2", result[2].result)   // 30 % 7 = 2
+        assertEquals("2", result[3].result)
+    }
+
+    @Test
     fun `total with no preceding results is 0`() {
         val lines = listOf(
             createLine("total", sortOrder = 0)

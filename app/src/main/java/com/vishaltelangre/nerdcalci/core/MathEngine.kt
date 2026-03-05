@@ -165,7 +165,8 @@ object MathEngine {
             if (expr.startsWith(name) && expr.length > name.length) {
                 val rest = expr.substring(name.length).trimStart()
                 if (rest.startsWith("=") || rest.startsWith("+=") || rest.startsWith("-=") ||
-                    rest.startsWith("*=") || rest.startsWith("/=") || rest.startsWith("%=")) {
+                    rest.startsWith("*=") || rest.startsWith("/=") || rest.startsWith("%=") ||
+                    rest.startsWith("++") || rest.startsWith("--")) {
                     userAssigned.add(name)
                 }
             }

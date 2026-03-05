@@ -37,7 +37,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import android.text.method.ScrollingMovementMethod
 import android.util.Log
 import android.widget.TextView
 import io.noties.markwon.Markwon
@@ -110,11 +109,11 @@ private fun HelpScreenContent() {
     AndroidView(
         modifier = Modifier
             .fillMaxSize()
-            .padding(start = 16.dp, end = 16.dp, top = 16.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 16.dp)
+            .verticalScroll(rememberScrollState()),
         factory = { ctx ->
             TextView(ctx).apply {
-                movementMethod = ScrollingMovementMethod.getInstance()
-                isVerticalScrollBarEnabled = true
+                isVerticalScrollBarEnabled = false
             }
         },
         update = { textView ->

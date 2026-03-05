@@ -94,13 +94,9 @@
 
 ## Download/Install
 
-### From F-Droid (Recommended)
+### From F-Droid
 
-_Submission in progress - will be available soon!_
-
-[<img src="https://f-droid.org/badge/get-it-on.png"
-    alt="Get it on F-Droid"
-    height="80">](https://f-droid.org/packages/com.vishaltelangre.nerdcalci/)
+_[Submission in progress](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/33355) - will be available soon!_
 
 ### From IzzyOnDroid
 

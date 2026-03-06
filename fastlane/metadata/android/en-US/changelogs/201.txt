@@ -1,0 +1,3 @@
+- Added a new "Result precision" setting to configure displayed decimal places (0-10)
+- Improved internal result storage to preserve unrounded precision and prevent data loss
+- Ensured full backward compatibility for older, statically formatted backups and data

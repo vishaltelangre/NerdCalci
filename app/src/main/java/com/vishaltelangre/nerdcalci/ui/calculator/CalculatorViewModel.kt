@@ -46,7 +46,8 @@ class CalculatorViewModel(
     val currentTheme: StateFlow<String> = _currentTheme
 
     private val _precision = MutableStateFlow(
-        prefs?.getInt(PREF_PRECISION, Constants.DEFAULT_PRECISION) ?: Constants.DEFAULT_PRECISION
+        (prefs?.getInt(PREF_PRECISION, Constants.DEFAULT_PRECISION) ?: Constants.DEFAULT_PRECISION)
+            .coerceIn(Constants.MIN_PRECISION, Constants.MAX_PRECISION)
     )
     val precision: StateFlow<Int> = _precision
 

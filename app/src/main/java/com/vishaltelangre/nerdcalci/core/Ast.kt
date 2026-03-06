@@ -19,7 +19,7 @@ sealed class Statement {
     /** Decrement: `count--` */
     data class Decrement(val name: String) : Statement()
 
-    /** Local Custom Function Definition: `f(x) = x * 2;` */
+    /** Local custom function definition: `f(x) = x * 2;` */
     data class FunctionDefinition(val name: String, val params: List<String>, val body: List<Statement>) : Statement()
 
     /** Blank line or pure comment — produces no result. */

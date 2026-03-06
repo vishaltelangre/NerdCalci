@@ -67,7 +67,9 @@ class Evaluator(
                 localFunctions = mutableMapOf() // Inner scope cannot define new functions
             )
             for (stmt in localFunc.body) {
-                lastResult = innerEvaluator.evaluateStatement(stmt, localContext) ?: 0.0
+                innerEvaluator.evaluateStatement(stmt, localContext)?.let { result ->
+                    lastResult = result
+                }
             }
             return lastResult
         }

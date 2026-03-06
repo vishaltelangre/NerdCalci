@@ -547,8 +547,6 @@ class MathEngineTest {
         assertEquals("8", result[4].result)
     }
 
-    // Built-in Functions Tests
-
     @Test
     fun `trigonometric functions work`() {
         val lines = listOf(
@@ -860,6 +858,28 @@ class MathEngineTest {
         val result = MathEngine.calculate(lines)
         assertEquals("", result[0].result)
         assertEquals("Err", result[1].result) // Throws recursive exception
+    }
+
+    @Test
+    fun `local function with trailing comment does not return 0`() {
+        val lines =
+                listOf(
+                        createLine("f(x) = x * 2; # comment", sortOrder = 0),
+                        createLine("f(5)", sortOrder = 1)
+                )
+        val result = MathEngine.calculate(lines)
+        assertEquals("10", result[1].result) // Should NOT be "0"
+    }
+
+    @Test
+    fun `nested function definition in a local function body is not allowed`() {
+        val lines =
+                listOf(
+                        createLine("f(x) = g(y) = y; x", sortOrder = 0),
+                        createLine("f(5)", sortOrder = 1)
+                )
+        val result = MathEngine.calculate(lines)
+        assertEquals("Err", result[1].result) // Parser throws error for nested definition
     }
 
     @Test

@@ -1069,4 +1069,214 @@ class MathEngineTest {
         assertEquals(1, result.size)
         assertEquals("40", result[0].result)
     }
+
+    @Test
+    fun `avg averages all results above in same block`() {
+        val lines = listOf(
+            createLine("10", sortOrder = 0),
+            createLine("20", sortOrder = 1),
+            createLine("60", sortOrder = 2),
+            createLine("avg", sortOrder = 3)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("10", result[0].result)
+        assertEquals("20", result[1].result)
+        assertEquals("60", result[2].result)
+        assertEquals("30", result[3].result)
+    }
+
+    @Test
+    fun `average is an alias for avg`() {
+        val lines = listOf(
+            createLine("10", sortOrder = 0),
+            createLine("30", sortOrder = 1),
+            createLine("average", sortOrder = 2)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("10", result[0].result)
+        assertEquals("30", result[1].result)
+        assertEquals("20", result[2].result)
+    }
+
+    @Test
+    fun `avg with no preceding results is 0`() {
+        val lines = listOf(
+            createLine("avg", sortOrder = 0)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("0", result[0].result)
+    }
+
+    @Test
+    fun `blank line resets the block for avg`() {
+        val lines = listOf(
+            createLine("10", sortOrder = 0),
+            createLine("20", sortOrder = 1),
+            createLine("avg", sortOrder = 2),
+            createLine("", sortOrder = 3),
+            createLine("5", sortOrder = 4),
+            createLine("avg", sortOrder = 5)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("15", result[2].result)
+        assertEquals("", result[3].result)
+        assertEquals("5", result[5].result)
+    }
+
+    @Test
+    fun `comment-only lines do not contribute to avg`() {
+        val lines = listOf(
+            createLine("10", sortOrder = 0),
+            createLine("# ignore this", sortOrder = 1), // Should be null in lineResults
+            createLine("20", sortOrder = 2),
+            createLine("avg", sortOrder = 3)
+        )
+        val result = MathEngine.calculate(lines)
+        // Null breaks the block, so avg only sees 20
+        assertEquals("20", result[3].result)
+    }
+
+    @Test
+    fun `avg used in an expression`() {
+        val lines = listOf(
+            createLine("25", sortOrder = 0),
+            createLine("75", sortOrder = 1),
+            createLine("half_avg = avg / 2", sortOrder = 2)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("25", result[2].result) // avg is 50, halved to 25
+    }
+
+    @Test
+    fun `avg assignment overrides aggregate meaning`() {
+        val lines = listOf(
+            createLine("10", sortOrder = 0),
+            createLine("20", sortOrder = 1),
+            createLine("avg = 100", sortOrder = 2),
+            createLine("avg / 2", sortOrder = 3)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("100", result[2].result)
+        assertEquals("50", result[3].result)
+    }
+
+    @Test
+    fun `avg increment overrides aggregate meaning`() {
+        val lines = listOf(
+            createLine("10", sortOrder = 0),
+            createLine("20", sortOrder = 1),
+            createLine("avg++", sortOrder = 2),
+            createLine("avg", sortOrder = 3)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("16", result[2].result) // avg is 15, gets incremented and assigned to 16
+        assertEquals("16", result[3].result)
+    }
+
+    @Test
+    fun `avg decrement overrides aggregate meaning`() {
+        val lines = listOf(
+            createLine("10", sortOrder = 0),
+            createLine("20", sortOrder = 1),
+            createLine("avg--", sortOrder = 2),
+            createLine("avg", sortOrder = 3)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("14", result[2].result) // avg is 15, gets decremented and assigned to 14
+        assertEquals("14", result[3].result)
+    }
+
+    @Test
+    fun `avg += overrides aggregate meaning`() {
+        val lines = listOf(
+            createLine("10", sortOrder = 0),
+            createLine("20", sortOrder = 1),
+            createLine("avg += 5", sortOrder = 2),
+            createLine("avg", sortOrder = 3)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("10", result[0].result)
+        assertEquals("20", result[2].result) // 15 + 5 = 20
+        assertEquals("20", result[3].result)
+    }
+
+    @Test
+    fun `avg -= overrides aggregate meaning`() {
+        val lines = listOf(
+            createLine("10", sortOrder = 0),
+            createLine("20", sortOrder = 1),
+            createLine("avg -= 3", sortOrder = 2),
+            createLine("avg", sortOrder = 3)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("10", result[0].result)
+        assertEquals("12", result[2].result) // 15 - 3 = 12
+        assertEquals("12", result[3].result)
+    }
+
+    @Test
+    fun `avg multiply-assign overrides aggregate meaning`() {
+        val lines = listOf(
+            createLine("10", sortOrder = 0),
+            createLine("20", sortOrder = 1),
+            createLine("avg *= 2", sortOrder = 2),
+            createLine("avg", sortOrder = 3)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("10", result[0].result)
+        assertEquals("30", result[2].result) // 15 * 2 = 30
+        assertEquals("30", result[3].result)
+    }
+
+    @Test
+    fun `avg divide-assign overrides aggregate meaning`() {
+        val lines = listOf(
+            createLine("10", sortOrder = 0),
+            createLine("20", sortOrder = 1),
+            createLine("avg /= 3", sortOrder = 2),
+            createLine("avg", sortOrder = 3)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("10", result[0].result)
+        assertEquals("5", result[2].result) // 15 / 3 = 5
+        assertEquals("5", result[3].result)
+    }
+
+    @Test
+    fun `avg modulo-assign overrides aggregate meaning`() {
+        val lines = listOf(
+            createLine("10", sortOrder = 0),
+            createLine("20", sortOrder = 1),
+            createLine("avg %= 4", sortOrder = 2),
+            createLine("avg", sortOrder = 3)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("10", result[0].result)
+        assertEquals("3", result[2].result) // 15 % 4 = 3
+        assertEquals("3", result[3].result)
+    }
+
+    @Test
+    fun `calculateFrom correctly handles avg in affected lines`() {
+        val lines = listOf(
+            createLine("a = 10", sortOrder = 0),
+            createLine("b = 20", sortOrder = 1),
+            createLine("avg", sortOrder = 2)
+        )
+        val result = MathEngine.calculateFrom(lines, changedIndex = 2)
+        assertEquals(1, result.size)
+        assertEquals("15", result[0].result)
+    }
+
+    @Test
+    fun `avg includes its own block results across calculateFrom boundary`() {
+        val lines = listOf(
+            createLine("5", sortOrder = 0),
+            createLine("35", sortOrder = 1),
+            createLine("avg * 2", sortOrder = 2)
+        )
+        val result = MathEngine.calculateFrom(lines, changedIndex = 2)
+        assertEquals(1, result.size)
+        assertEquals("40", result[0].result)
+    }
 }

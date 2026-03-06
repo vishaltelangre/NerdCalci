@@ -199,7 +199,7 @@ rent + utilities # Total housing cost
 
 ### Sum / Total
 
-Use `sum` or `total` to get the sum of all line results above, up to the nearest blank line.
+Use `sum` or `total` to get the sum of all line results above, up to the nearest blank/comment/error line.
 
 ```text
 groceries = 45.50
@@ -208,7 +208,7 @@ rent = 950
 total               # evaluates to 1115.50
 ```
 
-Blank lines create blocks — `sum`/`total` only sums within the current block:
+Blank/comment/error lines create blocks — `sum`/`total` only sums within the current block:
 
 ```text
 a = 10
@@ -238,4 +238,47 @@ total = 4
 total / 2           # evaluates to 2
 total               # evaluates to 4
 # i.e. after assigning, total no longer aggregates
+```
+
+### Average
+
+Use `avg` or `average` to get the mathematical average of all line results above, up to the nearest blank/comment/error line.
+
+```text
+jan = 100
+feb = 200
+mar = 300
+average             # evaluates to 200
+```
+
+Blank/comment/error lines create blocks — `avg`/`average` only averages within the current block:
+
+```text
+a = 10
+b = 20
+avg                 # evaluates to 15
+
+c = 5
+avg                 # evaluates to 5
+```
+
+Use `avg` or `average` inside expressions:
+
+```text
+item1 = 25
+item2 = 75
+half_avg = avg / 2  # evaluates to 25
+```
+
+Assigning to `avg` or `average` overrides the aggregate meaning from that point onward:
+
+```text
+a = 10
+b = 20
+avg                 # evaluates to 15
+
+avg = 100
+avg / 2             # evaluates to 50
+avg                 # evaluates to 100
+# i.e. after assigning, avg no longer aggregates
 ```

@@ -364,4 +364,14 @@ class SyntaxUtilsTest {
     fun `non-keyword starting with sum tokenizes as Variable`() {
         assertSingleToken("summary", TokenType.Variable)
     }
+
+    @Test
+    fun `avg keyword tokenizes as Keyword`() {
+        assertSingleToken("avg", TokenType.Keyword)
+    }
+
+    @Test
+    fun `average keyword tokenizes as Keyword`() {
+        assertSingleToken("average", TokenType.Keyword)
+    }
 }

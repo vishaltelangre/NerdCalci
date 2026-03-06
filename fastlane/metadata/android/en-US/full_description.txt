@@ -5,6 +5,7 @@ Features:
 - Offline - Works without internet
 - Variable Support - Define variables and reuse them in calculations
 - Percentage Calculations - Natural syntax like "20% of 50000" or "15% off 1000"
+- Aggregates - Quickly compute block sums (`total`) and averages (`avg`)
 - Syntax Highlighting - Color-coded numbers, variables, operators, and comments
 - Auto-completion - Smart suggestions for variable names
 - Comments - Document your calculations with # comments
@@ -28,4 +29,4 @@ Perfect for:
 - Educational purposes and learning
 - Any scenario where you need to document and reuse calculation values
 
-NerdCalci combines the simplicity of a calculator with the power of a text editor, making it ideal for developers, students, accountants, and anyone who frequently works with numbers.
+NerdCalci combines the simplicity of a calculator with the power of a text editor. As a capable alternative to text-based calculators like Numi, Calca, and Soulver, it is ideal for developers, students, accountants, and anyone who frequently works with numbers.

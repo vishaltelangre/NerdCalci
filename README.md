@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <strong>Fully offline Android calculator app for power users with variable support, syntax highlighting, file-based sessions, and more.</strong>
+  <strong>Fully offline Android calculator app for power users with variable support, syntax highlighting, file-based sessions, and more. A free Android alternative to proprietary text-based calculators like Numi, Calca, and Soulver.</strong>
 </p>
 
 ## Screenshots
@@ -28,7 +28,7 @@
 ### Smart Calculations
 
 > [!NOTE]
-> For a complete language reference of all operators, functions, and advanced syntax, please see the [Language Reference Guide](REFERENCE.md).
+> For a complete reference of all supported operators, functions, and advanced syntax is documented in the [reference guide](REFERENCE.md).
 
 - **Variable Support**
 
@@ -54,6 +54,19 @@
   15% off 1000    # 850
   50000 + 10%     # 55000
   50000 - 5%      # 47500
+  ```
+
+- **Aggregates**
+
+  ```text
+  groceries = 45.50
+  utilities = 120
+  rent = 950
+  total           # 1115.50
+
+  feb = 200
+  mar = 300
+  avg             # 250
   ```
 
 - **Comments**

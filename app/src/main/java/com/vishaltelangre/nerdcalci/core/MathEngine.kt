@@ -11,8 +11,10 @@ object MathEngine {
      * the current block's line results.
      */
     private val AGGREGATES: Map<String, (List<Double?>) -> Double> = mapOf(
-        "sum"   to ::computeBlockSum,
-        "total" to ::computeBlockSum
+        "sum"     to ::computeBlockSum,
+        "total"   to ::computeBlockSum,
+        "avg"     to ::computeBlockAverage,
+        "average" to ::computeBlockAverage
     )
 
     /**
@@ -201,6 +203,21 @@ object MathEngine {
             sum += result
         }
         return sum
+    }
+
+    /**
+     * Average the current block's line results, scanning backward from the end of
+     * [lineResults] until a null entry (blank line / comment / error) or the start.
+     */
+    private fun computeBlockAverage(lineResults: List<Double?>): Double {
+        var sum = 0.0
+        var count = 0
+        for (i in lineResults.indices.reversed()) {
+            val result = lineResults[i] ?: break
+            sum += result
+            count++
+        }
+        return if (count > 0) sum / count else 0.0
     }
 
     /**

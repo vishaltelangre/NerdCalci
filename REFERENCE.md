@@ -131,56 +131,56 @@ NerdCalci includes a wide array of built-in math functions.
 
 ### Power & Roots
 
-| Function | Example | Result | Description |
-|----------|---------|--------|-------------|
-| `sqrt(x)` | `sqrt(16)` | 4 | Square root |
-| `cbrt(x)` | `cbrt(27)` | 3 | Cube root |
-| `pow(x, y)`| `pow(2, 8)`| 256 | Power |
+| Function    | Example     | Result | Description |
+| ----------- | ----------- | ------ | ----------- |
+| `sqrt(x)`   | `sqrt(16)`  | 4      | Square root |
+| `cbrt(x)`   | `cbrt(27)`  | 3      | Cube root   |
+| `pow(x, y)` | `pow(2, 8)` | 256    | Power       |
 
 ### Rounding & Signs
 
-| Function | Example | Result | Description |
-|----------|---------|--------|-------------|
-| `abs(x)` | `abs(-42)` | 42 | Absolute value |
-| `floor(x)` | `floor(3.7)` | 3 | Floor |
-| `ceil(x)` | `ceil(3.2)` | 4 | Ceiling |
-| `signum(x)`| `signum(-42)` | -1 | Sign of a number (1, -1, or 0) |
+| Function    | Example       | Result | Description                    |
+| ----------- | ------------- | ------ | ------------------------------ |
+| `abs(x)`    | `abs(-42)`    | 42     | Absolute value                 |
+| `floor(x)`  | `floor(3.7)`  | 3      | Floor                          |
+| `ceil(x)`   | `ceil(3.2)`   | 4      | Ceiling                        |
+| `signum(x)` | `signum(-42)` | -1     | Sign of a number (1, -1, or 0) |
 
 ### Logarithmic & Exponential
 
-| Function | Example | Result | Description |
-|----------|---------|--------|-------------|
-| `log(x)` | `log(E)` | 1 | Natural logarithm |
-| `log10(x)`| `log10(100)` | 2 | Base 10 logarithm |
-| `log2(x)` | `log2(8)` | 3 | Base 2 logarithm |
-| `log1p(x)`| `log1p(x)` | `ln(1 + x)` | Natural logarithm of 1 + x |
-| `exp(x)` | `exp(1)` | 2.72 | Exponential function |
-| `expm1(x)`| `expm1(x)` | `e^x - 1` | Exponential function minus 1 |
+| Function   | Example      | Result      | Description                  |
+| ---------- | ------------ | ----------- | ---------------------------- |
+| `log(x)`   | `log(E)`     | 1           | Natural logarithm            |
+| `log10(x)` | `log10(100)` | 2           | Base 10 logarithm            |
+| `log2(x)`  | `log2(8)`    | 3           | Base 2 logarithm             |
+| `log1p(x)` | `log1p(x)`   | `ln(1 + x)` | Natural logarithm of 1 + x   |
+| `exp(x)`   | `exp(1)`     | 2.72        | Exponential function         |
+| `expm1(x)` | `expm1(x)`   | `e^x - 1`   | Exponential function minus 1 |
 
 ### Trigonometry
 
 Trigonometric functions expect angles in **radians**.
 
-| Function | Example | Result | Description |
-|----------|---------|--------|-------------|
-| `sin(x)` | `sin(PI/2)` | 1 | Sine |
-| `cos(x)` | `cos(0)` | 1 | Cosine |
-| `tan(x)` | `tan(PI/4)` | 1 | Tangent |
-| `asin(x)` | `asin(1)` | 1.57 | Arc sine |
-| `acos(x)` | `acos(1)` | 0 | Arc cosine |
-| `atan(x)` | `atan(1)` | 0.79 | Arc tangent |
-| `sinh(x)` | `sinh(1)` | 1.18 | Hyperbolic sine |
-| `cosh(x)` | `cosh(1)` | 1.54 | Hyperbolic cosine |
-| `tanh(x)` | `tanh(1)` | 0.76 | Hyperbolic tangent |
+| Function  | Example     | Result | Description        |
+| --------- | ----------- | ------ | ------------------ |
+| `sin(x)`  | `sin(PI/2)` | 1      | Sine               |
+| `cos(x)`  | `cos(0)`    | 1      | Cosine             |
+| `tan(x)`  | `tan(PI/4)` | 1      | Tangent            |
+| `asin(x)` | `asin(1)`   | 1.57   | Arc sine           |
+| `acos(x)` | `acos(1)`   | 0      | Arc cosine         |
+| `atan(x)` | `atan(1)`   | 0.79   | Arc tangent        |
+| `sinh(x)` | `sinh(1)`   | 1.18   | Hyperbolic sine    |
+| `cosh(x)` | `cosh(1)`   | 1.54   | Hyperbolic cosine  |
+| `tanh(x)` | `tanh(1)`   | 0.76   | Hyperbolic tangent |
 
 ## 5. Built-in constants
 
 NerdCalci provides common mathematical constants.
 
-| Constant | Value | Description |
-|----------|-------|-------------|
-| `PI` | 3.14 | The ratio of a circle's circumference to its diameter, i.e. `π` |
-| `E` | 2.72 | Euler's number, i.e. `e` |
+| Constant | Value | Description                                                     |
+| -------- | ----- | --------------------------------------------------------------- |
+| `PI`     | 3.14  | The ratio of a circle's circumference to its diameter, i.e. `π` |
+| `E`      | 2.72  | Euler's number, i.e. `e`                                        |
 
 ## 6. Comments
 
@@ -195,7 +195,7 @@ utilities = 150
 rent + utilities # Total housing cost
 ```
 
-## 7. Aggregates
+## 7. Dynamic variables
 
 ### Sum / Total
 
@@ -282,3 +282,38 @@ avg / 2             # evaluates to 50
 avg                 # evaluates to 100
 # i.e. after assigning, avg no longer aggregates
 ```
+
+## 8. User-defined functions
+
+You can define your own functions to reuse complex formulas.
+
+### Basic definition
+
+Define a function using the syntax `name(arg1, arg2, ...) = expression`.
+
+```text
+sq(x) = x ^ 2
+sq(5)               # evaluates to 25
+
+area(r) = PI * r^2
+area(10)            # evaluates to 314.16
+```
+
+### Multiple statements
+
+Functions can contain multiple expressions separated by semicolons (`;`). The result of the **last** expression is automatically returned.
+
+```text
+# Calculate total salary after tax and bonus
+salary(hours) = base = hours * 50; bonus = base * 0.1; tax = base * 0.2; base + bonus - tax
+
+salary(160)         # evaluates to 7200
+```
+
+### Scope isolation
+
+Variables defined inside a function (like `base`, `bonus`, `tax` above) are **local** to that function. They do not exist outside and will not overwrite global variables with the same name.
+
+### Recursion
+
+For safety, NerdCalci prevents functions from calling themselves, either directly or indirectly.

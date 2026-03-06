@@ -64,7 +64,7 @@ class Parser(private val tokens: List<Token>) {
     /** Parse the full token stream into a single [Statement]. */
     fun parse(): Statement {
         if (isAtEnd()) return Statement.Empty
-        val stmt = parseStatement()
+        val stmt = parseStatement(allowFunctionDef = true)
         // Allow trailing EOF; anything else is a parse error
         if (!isAtEnd()) {
             val leftover = peek()
@@ -85,7 +85,7 @@ class Parser(private val tokens: List<Token>) {
      * - `count--`       → sees IDENT then MINUS_MINUS  → Decrement
      * - `2 + 3 * 4`     → none of the above            → ExprStatement
      */
-    private fun parseStatement(): Statement {
+    private fun parseStatement(allowFunctionDef: Boolean = true): Statement {
         if (peekKind() == TokenKind.IDENTIFIER) {
             val name = peek().lexeme
             val position = peek().position
@@ -99,6 +99,21 @@ class Parser(private val tokens: List<Token>) {
                     advance() // skip past "="
                     val expr = parseExpression()
                     Statement.Assignment(name, expr)
+                }
+                // e.g. f(x) = x * 2;
+                TokenKind.LPAREN -> {
+                    // It could be a function definition (if it's `f(x) = ...`)
+                    // or a function call (if it's just `f(x)` without `=`)
+                    if (isFunctionDefinition()) {
+                        if (!allowFunctionDef) {
+                            throw ParseException("Nested function definitions are not allowed", position)
+                        }
+                        requireAssignable(name, position)
+                        advance() // skip past "f" (function name)
+                        return parseFunctionDefinition(name)
+                    } else {
+                        return Statement.ExprStatement(parseExpression())
+                    }
                 }
                 // e.g. total += 5, score -= 3, x *= 2, x /= 4, x %= 3
                 TokenKind.PLUS_EQUALS, TokenKind.MINUS_EQUALS,
@@ -130,6 +145,56 @@ class Parser(private val tokens: List<Token>) {
         }
 
         return Statement.ExprStatement(parseExpression())
+    }
+
+    /**
+     * Look ahead to check if this is a function definition like `f(x, y) = ...`
+     * We are currently *before* the function name, but we know peak() is IDENTIFIER.
+     * We know peekAt(1) is LPAREN.
+     * We need to find the RPAREN and see if the next token is EQUALS.
+     */
+    private fun isFunctionDefinition(): Boolean {
+        var offset = 2
+        while (peekAt(offset) != TokenKind.EOF && peekAt(offset) != TokenKind.RPAREN) {
+            offset++
+        }
+        if (peekAt(offset) == TokenKind.RPAREN) {
+            return peekAt(offset + 1) == TokenKind.EQUALS
+        }
+        return false
+    }
+
+    /**
+     * Parses a function definition. We have already consumed the function name.
+     * The next token is `(`.
+     * e.g. `(x, y) = x + y;`
+     * A function body can contain multiple statements separated by `;`.
+     */
+    private fun parseFunctionDefinition(name: String): Statement.FunctionDefinition {
+        expect(TokenKind.LPAREN)
+        val params = mutableListOf<String>()
+        if (peekKind() == TokenKind.IDENTIFIER) {
+            params.add(advance().lexeme)
+            while (peekKind() == TokenKind.COMMA) {
+                advance() // skip past ","
+                params.add(expect(TokenKind.IDENTIFIER).lexeme)
+            }
+        }
+        expect(TokenKind.RPAREN)
+        expect(TokenKind.EQUALS)
+
+        val body = mutableListOf<Statement>()
+
+        while (!isAtEnd()) {
+            body.add(parseStatement(allowFunctionDef = false)) // Prevent nested defs
+            if (peekKind() == TokenKind.SEMICOLON) {
+                advance() // skip past ";"
+            } else {
+                break
+            }
+        }
+
+        return Statement.FunctionDefinition(name, params, body)
     }
 
     private fun parseExpression(): Expr = parseAddSub()

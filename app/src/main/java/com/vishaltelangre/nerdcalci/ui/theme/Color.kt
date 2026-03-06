@@ -21,6 +21,7 @@ object SyntaxColors {
   val NumberColorDark = Color(0xFFFFD54F) // Bright yellow for numbers
   val VariableColorDark = Color(0xFF64FFDA) // Bright cyan for variables
   val KeywordColorDark = Color(0xFFFF80AB) // Pink for keywords (e.g. sum, total)
+  val FunctionColorDark = Color(0xFFFFB74D) // Bright orange for functions
   val OperatorColorDark = Color.White // White for operators (=, +, -, etc)
   val PercentColorDark = Color(0xFFFFAB40) // Bright amber for percentages
   val CommentColorDark = Color(0xFF607D8B) // Dimmer blue-gray for comments
@@ -29,6 +30,7 @@ object SyntaxColors {
   val NumberColorLight = Color(0xFF09885A) // Bright green for numbers
   val VariableColorLight = Color(0xFF001080) // Bright blue for variables
   val KeywordColorLight = Color(0xFFAF00DB) // Purple for keywords
+  val FunctionColorLight = Color(0xFFD84315) // Deep burnt orange for functions
   val OperatorColorLight = Color(0xFF000000) // Black for operators (=, +, -, etc)
   val PercentColorLight = Color(0xFFA31515) // Bright red for percentages
   val CommentColorLight = Color(0xFF5A7A5A) // Dimmer but readable green

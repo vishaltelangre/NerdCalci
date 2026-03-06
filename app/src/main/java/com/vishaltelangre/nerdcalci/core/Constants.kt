@@ -31,12 +31,12 @@ object Constants {
     const val EXPORT_MIME_TYPE = "application/zip"
     const val DEFAULT_BACKUP_KEEP_COUNT = 30
 
-    // Variable naming
+    // Variable/Function naming
     /**
-     * Regex pattern for valid variable names in calculator expressions.
-     * Variables must start with a letter or underscore, followed by letters, digits, or underscores.
+     * Regex pattern for valid variable and function names in calculator expressions.
+     * Names must start with a letter or underscore, followed by letters, digits, or underscores.
      * Examples: "price", "rate_2", "rate3", "_private", "__internal__"
      * Invalid: "2rate", "rate-disc", "rate with disc"
      */
-    const val VARIABLE_NAME_PATTERN = "^[a-zA-Z_][a-zA-Z0-9_]*$"
+    const val VAR_FUNC_NAME_PATTERN = "^[a-zA-Z_][a-zA-Z0-9_]*$"
 }

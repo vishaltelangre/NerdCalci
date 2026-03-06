@@ -28,7 +28,7 @@
 ### Smart Calculations
 
 > [!NOTE]
-> For a complete reference of all supported operators, functions, and advanced syntax is documented in the [reference guide](REFERENCE.md).
+> All supported operators, functions, and advanced syntax is extensively explained and documented in the [reference guide](REFERENCE.md).
 
 - **Variable Support**
 

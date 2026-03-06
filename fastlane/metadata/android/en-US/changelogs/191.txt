@@ -1,0 +1,3 @@
+- Added `avg` and `average` aggregate keywords to calculate the block average of all line results (up to the nearest blank/comment/error line)
+- `avg` and `average` are aliases; both can be used inline in expressions (e.g. `half_avg = avg / 2`)
+- Explicit reassignment (e.g. `avg = 10`) overrides the aggregate meaning

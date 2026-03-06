@@ -1,5 +1,7 @@
 package com.vishaltelangre.nerdcalci.ui.settings
 
+import kotlin.math.roundToInt
+
 import android.content.Intent
 import android.net.Uri
 import android.text.format.DateUtils
@@ -214,7 +216,7 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "${sliderValue.toInt()} decimal places",
+                            text = "${sliderValue.roundToInt()} decimal places",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -223,9 +225,9 @@ fun SettingsScreen(
                 androidx.compose.material3.Slider(
                     value = sliderValue,
                     onValueChange = { sliderValue = it },
-                    onValueChangeFinished = { onPrecisionChange(sliderValue.toInt()) },
-                    valueRange = 0f..10f,
-                    steps = 9,
+                    onValueChangeFinished = { onPrecisionChange(sliderValue.roundToInt()) },
+                    valueRange = Constants.MIN_PRECISION.toFloat()..Constants.MAX_PRECISION.toFloat(),
+                    steps = Constants.MAX_PRECISION - Constants.MIN_PRECISION - 1,
                     modifier = Modifier.padding(top = 8.dp)
                 )
             }

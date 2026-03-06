@@ -251,6 +251,7 @@ object MathEngine {
     fun formatDisplayResult(rawResult: String, precision: Int): String {
         if (rawResult.isBlank() || rawResult == "Err") return rawResult
         val value = rawResult.toDoubleOrNull() ?: return rawResult
+        val safePrecision = precision.coerceIn(Constants.MIN_PRECISION, Constants.MAX_PRECISION)
 
         return if (value % 1.0 == 0.0) {
             when {
@@ -259,10 +260,10 @@ object MathEngine {
                 value >= Long.MIN_VALUE && value <= Long.MAX_VALUE ->
                     value.toLong().toString()
                 else ->
-                    String.format("%.${precision}e", value)
+                    String.format("%.${safePrecision}e", value)
             }
         } else {
-            String.format("%.${precision}f", value)
+            String.format("%.${safePrecision}f", value)
         }
     }
 }

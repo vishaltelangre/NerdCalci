@@ -1380,6 +1380,14 @@ class MathEngineTest {
     }
 
     @Test
+    fun `formatDisplayResult handles out of bounds precision`() {
+        // Should clamp value below MIN_PRECISION to MIN_PRECISION
+        assertEquals("0", MathEngine.formatDisplayResult("0.333", Constants.MIN_PRECISION - 1))
+        // Should clamp value above MAX_PRECISION to MAX_PRECISION
+        assertEquals("0.3330000000", MathEngine.formatDisplayResult("0.333", Constants.MAX_PRECISION + 5))
+    }
+
+    @Test
     fun `formatDisplayResult handles scientific notation`() {
         assertEquals("1.00e+20", MathEngine.formatDisplayResult("1.0E20", 2))
         assertEquals("1e+20", MathEngine.formatDisplayResult("1.0E20", 0))

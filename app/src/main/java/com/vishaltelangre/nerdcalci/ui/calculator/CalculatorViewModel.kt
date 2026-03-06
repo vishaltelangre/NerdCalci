@@ -94,8 +94,9 @@ class CalculatorViewModel(
     }
 
     fun setPrecision(precision: Int) {
-        _precision.value = precision
-        prefs?.edit()?.putInt(PREF_PRECISION, precision)?.apply()
+        val clampedPrecision = precision.coerceIn(Constants.MIN_PRECISION, Constants.MAX_PRECISION)
+        _precision.value = clampedPrecision
+        prefs?.edit()?.putInt(PREF_PRECISION, clampedPrecision)?.apply()
     }
 
     fun setAutoBackupEnabled(context: Context, enabled: Boolean) {

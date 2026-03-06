@@ -42,4 +42,6 @@ object Constants {
 
     // Calculator settings
     const val DEFAULT_PRECISION = 2
+    const val MIN_PRECISION = 0
+    const val MAX_PRECISION = 10
 }

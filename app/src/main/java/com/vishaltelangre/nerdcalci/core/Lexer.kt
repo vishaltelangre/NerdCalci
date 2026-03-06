@@ -105,6 +105,7 @@ class Lexer(private val source: String) {
             ')' -> Token(TokenKind.RPAREN, ")", position = start)
             ',' -> Token(TokenKind.COMMA, ",", position = start)
             '=' -> Token(TokenKind.EQUALS, "=", position = start)
+            ';' -> Token(TokenKind.SEMICOLON, ";", position = start)
             else -> throw ParseException("Unexpected character '${ch}'", start)
         }
     }

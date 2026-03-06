@@ -1,0 +1,3 @@
+- Added support for user-defined functions with multi-statement bodies (using `;`)
+- Functions have scope isolation and recursion protection for safer evaluation
+- Refined autocomplete suggestions with better syntax highlighting and typography

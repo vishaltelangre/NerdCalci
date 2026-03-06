@@ -547,8 +547,6 @@ class MathEngineTest {
         assertEquals("8", result[4].result)
     }
 
-    // Built-in Functions Tests
-
     @Test
     fun `trigonometric functions work`() {
         val lines = listOf(
@@ -801,6 +799,96 @@ class MathEngineTest {
         val result = MathEngine.calculateFrom(lines, changedIndex = 2)
         assertEquals(1, result.size)
         assertEquals("110", result[0].result)
+    }
+
+    @Test
+    fun `local function basic definition and call`() {
+        val lines = listOf(
+            createLine("f(x) = x * 2", sortOrder = 0),
+            createLine("f(5)", sortOrder = 1)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("", result[0].result) // Function definition produces no output
+        assertEquals("10", result[1].result)
+    }
+
+    @Test
+    fun `local function multiple parameters`() {
+        val lines = listOf(
+            createLine("calc(a, b) = a + b;", sortOrder = 0),
+            createLine("calc(10, 20)", sortOrder = 1)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("", result[0].result)
+        assertEquals("30", result[1].result)
+    }
+
+    @Test
+    fun `local function multiple statements returns last expression`() {
+        val lines = listOf(
+            createLine("salary(workHours) = base = workHours * 1000; bonus = base * 0.20; tax = base * 0.10; base + bonus - tax", sortOrder = 0),
+            createLine("salary(120)", sortOrder = 1)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("", result[0].result)
+        assertEquals("132000", result[1].result)
+    }
+
+    @Test
+    fun `local function strictly isolates scope`() {
+        val lines = listOf(
+            createLine("v = 10", sortOrder = 0),
+            createLine("f(x) = v = x;", sortOrder = 1),
+            createLine("f(5)", sortOrder = 2),
+            createLine("v", sortOrder = 3) // Should still be 10, not overridden by 'v' inside f
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("10", result[0].result)
+        assertEquals("", result[1].result)
+        assertEquals("5", result[2].result)
+        assertEquals("10", result[3].result) // Outer scope unchanged
+    }
+
+    @Test
+    fun `local function prevents infinite recursion`() {
+        val lines = listOf(
+            createLine("calc(a) = calc(a);", sortOrder = 0),
+            createLine("calc(2)", sortOrder = 1)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("", result[0].result)
+        assertEquals("Err", result[1].result) // Throws recursive exception
+    }
+
+    @Test
+    fun `local function with trailing comment does not return 0`() {
+        val lines =
+                listOf(
+                        createLine("f(x) = x * 2; # comment", sortOrder = 0),
+                        createLine("f(5)", sortOrder = 1)
+                )
+        val result = MathEngine.calculate(lines)
+        assertEquals("10", result[1].result) // Should NOT be "0"
+    }
+
+    @Test
+    fun `nested function definition in a local function body is not allowed`() {
+        val lines =
+                listOf(
+                        createLine("f(x) = g(y) = y; x", sortOrder = 0),
+                        createLine("f(5)", sortOrder = 1)
+                )
+        val result = MathEngine.calculate(lines)
+        assertEquals("Err", result[1].result) // Parser throws error for nested definition
+    }
+
+    @Test
+    fun `semicolons outside function bodies fail parsing`() {
+        val lines = listOf(
+            createLine("x = 10; y = 20", sortOrder = 0)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("Err", result[0].result) // ParseException
     }
 
     @Test

@@ -5,7 +5,8 @@ Features:
 - Offline - Works without internet
 - Variable Support - Define variables and reuse them in calculations
 - Percentage Calculations - Natural syntax like "20% of 50000" or "15% off 1000"
-- Aggregates - Quickly compute block sums (`total`) and averages (`avg`)
+- Custom Functions - Define your own functions with multi-statement support and scope isolation
+- Dynamic variables - Quickly compute block sums (`total`) and averages (`avg`)
 - Syntax Highlighting - Color-coded numbers, variables, operators, and comments
 - Auto-completion - Smart suggestions for variable names
 - Comments - Document your calculations with # comments

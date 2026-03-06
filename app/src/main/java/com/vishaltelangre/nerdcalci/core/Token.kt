@@ -18,7 +18,7 @@ enum class TokenKind {
     PLUS_PLUS, MINUS_MINUS,
 
     // Grouping & punctuation
-    LPAREN, RPAREN, COMMA, EQUALS,
+    LPAREN, RPAREN, COMMA, EQUALS, SEMICOLON,
 
     // Keywords — resolved from IDENTIFIER by the Lexer
     KW_OF, KW_OFF,

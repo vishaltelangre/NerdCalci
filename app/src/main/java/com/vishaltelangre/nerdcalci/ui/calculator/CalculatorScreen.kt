@@ -1,5 +1,7 @@
 package com.vishaltelangre.nerdcalci.ui.calculator
 
+import com.vishaltelangre.nerdcalci.core.Builtins
+import com.vishaltelangre.nerdcalci.core.MathEngine
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -108,6 +110,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 import com.vishaltelangre.nerdcalci.ui.theme.SyntaxColors
+import com.vishaltelangre.nerdcalci.ui.calculator.Suggestion
+import com.vishaltelangre.nerdcalci.ui.calculator.SuggestionType
 /**
  * Apply syntax highlighting to calculator expressions.
  *
@@ -118,6 +122,7 @@ private fun applySyntaxHighlighting(
     numberColor: Color,
     variableColor: Color,
     keywordColor: Color,
+    functionColor: Color,
     operatorColor: Color,
     percentColor: Color,
     commentColor: Color,
@@ -131,12 +136,13 @@ private fun applySyntaxHighlighting(
                 TokenType.Number -> numberColor
                 TokenType.Variable -> variableColor
                 TokenType.Keyword -> keywordColor
+                TokenType.Function -> functionColor
                 TokenType.Operator -> operatorColor
                 TokenType.Percent -> percentColor
                 TokenType.Comment -> commentColor
                 TokenType.Default -> defaultColor
             }
-            if (token.type == TokenType.Variable || token.type == TokenType.Keyword) {
+            if (token.type == TokenType.Variable || token.type == TokenType.Keyword || token.type == TokenType.Function) {
                 withStyle(SpanStyle(color = color, fontWeight = FontWeight.Bold)) {
                     append(elementText)
                 }
@@ -154,23 +160,27 @@ private fun applySyntaxHighlighting(
 }
 
 /**
- * Extract variable names from calculator expressions for autocomplete.
+ * Extract suggestions from calculator expressions for autocomplete.
  *
- * Parses assignment statements (e.g., "price = 100") and extracts the variable name.
- * Variable names can contain letters, digits, and underscores (no spaces):
- * - "rate_with_disc = 10" → "rate_with_disc"
- * - "rate2 = 10" → "rate2"
+ * Parses both variable assignments (e.g., "price = 100") and user-defined functions
+ * (e.g., "f(x) = x * 2") and extracts their names and types.
  *
- * Only extracts variables from lines BEFORE the specified sortOrder to prevent
+ * Only extracts variables/functions from lines BEFORE the specified sortOrder to prevent
  * forward references.
  *
  * @param lines All lines in the file
- * @param upToSortOrder Only extract variables from lines with sortOrder < this value
- * @return Set of variable names defined before the specified line
+ * @param upToSortOrder Only extract from lines with sortOrder < this value
+ * @return Set of Suggestions defined before the specified line
  */
 @OptIn(ExperimentalMaterial3Api::class)
-private fun extractVariables(lines: List<LineEntity>, upToSortOrder: Int): Set<String> {
-    val variables = mutableSetOf<String>()
+private fun extractSuggestions(lines: List<LineEntity>, upToSortOrder: Int): Set<Suggestion> {
+    val suggestionMap = mutableMapOf<String, Suggestion>()
+
+    // Defaults (Dynamic variables, constants, global functions)
+    MathEngine.dynamicVariableNames.forEach { suggestionMap[it] = Suggestion(it, SuggestionType.DYNAMIC_VARIABLE) }
+    Builtins.constantNames.forEach { suggestionMap[it] = Suggestion(it, SuggestionType.CONSTANT) }
+    Builtins.functionNames.forEach { suggestionMap[it] = Suggestion(it, SuggestionType.GLOBAL_FUNCTION) }
+
     lines.filter { it.sortOrder < upToSortOrder }.forEach { line ->
         // Strip comments first
         val hashIndex = line.expression.indexOf('#')
@@ -180,13 +190,24 @@ private fun extractVariables(lines: List<LineEntity>, upToSortOrder: Int): Set<S
             line.expression
         }
 
-        val varNamePattern = Constants.VARIABLE_NAME_PATTERN.removePrefix("^").removeSuffix("$")
-        val assignmentRegex = Regex("""^\s*($varNamePattern)\s*=""")
-        assignmentRegex.find(exprWithoutComment)?.groupValues?.get(1)?.let {
-            variables.add(it.trim())
+        val varFuncNamePattern = Constants.VAR_FUNC_NAME_PATTERN.removePrefix("^").removeSuffix("$")
+        // Match both `var =` and `f(...) =`
+        val regex = Regex("""^\s*($varFuncNamePattern)(?:\s*\((.*?)\))?\s*=""")
+        val matchResult = regex.find(exprWithoutComment)
+        if (matchResult != null) {
+            val name = matchResult.groupValues[1].trim()
+
+            // If it matched the (...) part, it's a function
+            val isFunction = exprWithoutComment.substring(matchResult.groupValues[1].length).trimStart().startsWith("(")
+
+            if (isFunction) {
+                suggestionMap[name] = Suggestion(name, SuggestionType.LOCAL_FUNCTION)
+            } else {
+                suggestionMap[name] = Suggestion(name, SuggestionType.VARIABLE)
+            }
         }
     }
-    return variables
+    return suggestionMap.values.toSet()
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -268,6 +289,7 @@ fun CalculatorScreen(
     val operatorColor = if (isDarkTheme) SyntaxColors.OperatorColorDark else SyntaxColors.OperatorColorLight
     val percentColor = if (isDarkTheme) SyntaxColors.PercentColorDark else SyntaxColors.PercentColorLight
     val commentColor = if (isDarkTheme) SyntaxColors.CommentColorDark else SyntaxColors.CommentColorLight
+    val functionColor = if (isDarkTheme) SyntaxColors.FunctionColorDark else SyntaxColors.FunctionColorLight
 
     Scaffold(
         modifier = Modifier
@@ -551,7 +573,7 @@ fun CalculatorScreen(
             ) {
                 itemsIndexed(lines) { index, line ->
                     // Compute available variables for this line (only from previous lines)
-                    val availableVariables = extractVariables(lines, line.sortOrder)
+                    val availableVariables = extractSuggestions(lines, line.sortOrder)
 
                     LineRow(
                         lineNumber = index + 1,
@@ -564,6 +586,7 @@ fun CalculatorScreen(
                         numberColor = numberColor,
                         variableColor = variableColor,
                         keywordColor = keywordColor,
+                        functionColor = functionColor,
                         operatorColor = operatorColor,
                         percentColor = percentColor,
                         commentColor = commentColor,
@@ -732,7 +755,7 @@ fun CalculatorScreen(
 private fun LineRow(
     lineNumber: Int,
     line: LineEntity,
-    availableVariables: Set<String>,
+    availableVariables: Set<Suggestion>,
     shouldFocus: Boolean,
     focusCursorPos: Int?,
     insertTextRequest: String?,
@@ -740,6 +763,7 @@ private fun LineRow(
     numberColor: Color,
     variableColor: Color,
     keywordColor: Color,
+    functionColor: Color,
     operatorColor: Color,
     percentColor: Color,
     commentColor: Color,
@@ -764,6 +788,7 @@ private fun LineRow(
                     numberColor,
                     variableColor,
                     keywordColor,
+                    functionColor,
                     operatorColor,
                     percentColor,
                     commentColor,
@@ -812,8 +837,8 @@ private fun LineRow(
     val suggestions = remember(currentWord, availableVariables) {
         if (currentWord.isNotEmpty() && currentWord.all { it.isLetterOrDigit() || it == '_' }) {
             availableVariables.filter {
-                it.startsWith(currentWord, ignoreCase = true) && it != currentWord
-            }.sorted()
+                it.name.startsWith(currentWord, ignoreCase = true) && it.name != currentWord
+            }.sortedBy { it.name }
         } else emptyList()
     }
 
@@ -826,6 +851,7 @@ private fun LineRow(
                     numberColor,
                     variableColor,
                     keywordColor,
+                    functionColor,
                     operatorColor,
                     percentColor,
                     commentColor,
@@ -877,6 +903,7 @@ private fun LineRow(
                     numberColor,
                     variableColor,
                     keywordColor,
+                    functionColor,
                     operatorColor,
                     percentColor,
                     commentColor,
@@ -982,13 +1009,14 @@ private fun LineRow(
                         textFieldValue = newValue.copy(
                             annotatedString = applySyntaxHighlighting(
                                 displayText,
-                                numberColor,
-                                variableColor,
-                                keywordColor,
-                                operatorColor,
-                                percentColor,
-                                commentColor,
-                                defaultTextColor
+                                        numberColor,
+                                        variableColor,
+                                        keywordColor,
+                                        functionColor,
+                                        operatorColor,
+                                        percentColor,
+                                        commentColor,
+                                        defaultTextColor
                             ),
                             selection = newSelection
                         )
@@ -1071,8 +1099,7 @@ private fun LineRow(
                             .padding(vertical = 4.dp)
                     ) {
                         suggestions.take(5).forEach { suggestion ->
-                            Text(
-                                text = suggestion,
+                            Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
@@ -1082,24 +1109,18 @@ private fun LineRow(
                                         val beforeCursor = text.substring(0, cursorPos)
                                         val wordStart = beforeCursor.lastIndexOfAny(
                                             charArrayOf(
-                                                ' ',
-                                                '+',
-                                                '-',
-                                                '*',
-                                                '/',
-                                                '×',
-                                                '÷',
-                                                '(',
-                                                ')',
-                                                '=',
-                                                ','
+                                                ' ', '+', '-', '*', '/', '×', '÷', '(', ')', '=', ','
                                             )
                                         ) + 1
+                                        val replacementText = when (suggestion.type) {
+                                            SuggestionType.LOCAL_FUNCTION, SuggestionType.GLOBAL_FUNCTION -> "${suggestion.name}()"
+                                            else -> suggestion.name
+                                        }
                                         val newText = text.substring(
                                             0,
                                             wordStart
-                                        ) + suggestion + text.substring(cursorPos)
-                                        val newCursorPos = wordStart + suggestion.length
+                                        ) + replacementText + text.substring(cursorPos)
+                                        val newCursorPos = wordStart + replacementText.length - if (replacementText.endsWith("()")) 1 else 0
 
                                         textFieldValue = TextFieldValue(
                                             annotatedString = applySyntaxHighlighting(
@@ -1107,6 +1128,7 @@ private fun LineRow(
                                                 numberColor,
                                                 variableColor,
                                                 keywordColor,
+                                                functionColor,
                                                 operatorColor,
                                                 percentColor,
                                                 commentColor,
@@ -1117,9 +1139,38 @@ private fun LineRow(
                                         onValueChange(newText)
                                     }
                                     .padding(horizontal = 8.dp, vertical = 6.dp),
-                                style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FiraCodeFamily),
-                                color = variableColor
-                            )
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                val typeIcon = when (suggestion.type) {
+                                    SuggestionType.LOCAL_FUNCTION -> "ƒ"
+                                    SuggestionType.GLOBAL_FUNCTION -> "Gƒ"
+                                    SuggestionType.DYNAMIC_VARIABLE -> "{X}"
+                                    SuggestionType.CONSTANT -> "{C}"
+                                    SuggestionType.VARIABLE -> "{x}"
+                                }
+                                val (itemColor, isItalic) = when (suggestion.type) {
+                                    SuggestionType.DYNAMIC_VARIABLE -> keywordColor to true
+                                    SuggestionType.LOCAL_FUNCTION, SuggestionType.GLOBAL_FUNCTION -> functionColor to true
+                                    SuggestionType.VARIABLE, SuggestionType.CONSTANT -> variableColor to true
+                                }
+                                Text(
+                                    text = typeIcon,
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        fontFamily = FiraCodeFamily,
+                                        fontStyle = if (isItalic) FontStyle.Italic else FontStyle.Normal
+                                    ),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                    modifier = Modifier.width(28.dp)
+                                )
+                                Text(
+                                    text = suggestion.name,
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        fontFamily = FiraCodeFamily,
+                                        fontStyle = if (isItalic) FontStyle.Italic else FontStyle.Normal
+                                    ),
+                                    color = itemColor
+                                )
+                            }
                         }
                     }
                 }

@@ -56,7 +56,7 @@
   50000 - 5%      # 47500
   ```
 
-- **Aggregates**
+- **Dynamic variables**
 
   ```text
   groceries = 45.50
@@ -74,6 +74,17 @@
   ```text
   price = 1000  # base price
   tax = 18% of price  # 180
+  ```
+
+- **User-defined functions**
+
+  ```text
+  sq(x) = x ^ 2
+  sq(5)          # 25
+
+  # Support for multi-statement bodies
+  salary(hours) = base = hours * 50; bonus = base * 0.1; base + bonus
+  salary(160)    # 8800
   ```
 
 - **Mathematical Functions**

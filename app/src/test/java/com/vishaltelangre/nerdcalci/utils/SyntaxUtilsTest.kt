@@ -374,4 +374,32 @@ class SyntaxUtilsTest {
     fun `average keyword tokenizes as Keyword`() {
         assertSingleToken("average", TokenType.Keyword)
     }
+
+    @Test
+    fun `identifier followed by parenthesis tokenizes as Function`() {
+        val result = tokens("f(")
+        assertEquals(TokenType.Function, result[0].type)
+    }
+
+    @Test
+    fun `identifier followed by spaces and parenthesis tokenizes as Function`() {
+        val result = tokens("myFunc   (")
+        assertEquals(TokenType.Function, result[0].type)
+    }
+
+    @Test
+    fun `function token spans only the identifier name`() {
+        val result = tokens("calculate(10)")
+        val funcToken = result[0]
+        assertEquals(TokenType.Function, funcToken.type)
+        assertEquals(0, funcToken.start)
+        assertEquals(9, funcToken.end)
+    }
+
+    @Test
+    fun `keyword has precedence over function parsing`() {
+        // "sum(" should still parse "sum" as a Keyword, not a Function
+        val result = tokens("sum(1, 2)")
+        assertEquals(TokenType.Keyword, result[0].type)
+    }
 }

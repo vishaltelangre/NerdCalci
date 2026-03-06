@@ -1,7 +1,7 @@
 package com.vishaltelangre.nerdcalci.utils
 
 enum class TokenType {
-    Number, Variable, Keyword, Operator, Percent, Comment, Default
+    Number, Variable, Keyword, Operator, Percent, Comment, Function, Default
 }
 
 data class SyntaxToken(val start: Int, val end: Int, val type: TokenType)
@@ -38,7 +38,19 @@ object SyntaxUtils {
                     val start = i
                     while (i < text.length && (text[i].isLetterOrDigit() || text[i] == '_')) i++
                     val word = text.substring(start, i)
-                    val type = if (word in KEYWORD_NAMES) TokenType.Keyword else TokenType.Variable
+
+                    // Peek ahead for Function call parsing
+                    var j = i
+                    while (j < text.length && text[j].isWhitespace()) j++
+                    val isFunction = j < text.length && text[j] == '('
+
+                    val type = if (word in KEYWORD_NAMES) {
+                        TokenType.Keyword
+                    } else if (isFunction) {
+                        TokenType.Function
+                    } else {
+                        TokenType.Variable
+                    }
                     tokens.add(SyntaxToken(start, i, type))
                     continue
                 }

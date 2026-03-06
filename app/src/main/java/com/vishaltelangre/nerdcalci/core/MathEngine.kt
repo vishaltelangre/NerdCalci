@@ -156,8 +156,8 @@ object MathEngine {
                 // Track if user explicitly assigned a dynamic variable name
                 trackDynamicVariableAssignment(line.expression, userAssignedDynamicVariables)
 
-                // Format result for display
-                line.copy(result = formatResult(result))
+                // Store raw numeric result for persistence
+                line.copy(result = result.toString())
             } catch (_: Exception) {
                 lineResults.add(null)
                 line.copy(result = "Err")
@@ -247,8 +247,11 @@ object MathEngine {
             .evaluateStatement(statement, context)
     }
 
-    /** Format a numeric result for display. */
-    private fun formatResult(value: Double): String {
+    /** Format a numeric result for display based on user-defined precision. */
+    fun formatDisplayResult(rawResult: String, precision: Int): String {
+        if (rawResult.isBlank() || rawResult == "Err") return rawResult
+        val value = rawResult.toDoubleOrNull() ?: return rawResult
+
         return if (value % 1.0 == 0.0) {
             when {
                 value >= Int.MIN_VALUE && value <= Int.MAX_VALUE ->
@@ -256,10 +259,10 @@ object MathEngine {
                 value >= Long.MIN_VALUE && value <= Long.MAX_VALUE ->
                     value.toLong().toString()
                 else ->
-                    String.format("%.2e", value)
+                    String.format("%.${precision}e", value)
             }
         } else {
-            String.format("%.2f", value)
+            String.format("%.${precision}f", value)
         }
     }
 }

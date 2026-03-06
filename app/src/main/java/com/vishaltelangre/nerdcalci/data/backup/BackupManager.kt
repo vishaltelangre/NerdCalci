@@ -106,7 +106,7 @@ object BackupManager {
         return withContext(Dispatchers.IO) {
             try {
                 val exportedCount = context.contentResolver.openOutputStream(outputUri)?.use { outputStream ->
-                    writeBackupZip(dao, outputStream)
+                    writeBackupZip(context, dao, outputStream)
                 } ?: return@withContext Result.failure(Exception("Could not open output stream"))
 
                 if (exportedCount == 0) {
@@ -229,7 +229,7 @@ object BackupManager {
             try {
                 val outputFile = File(getBackupDirectory(context), generateBackupFileName())
                 val exportedCount = FileOutputStream(outputFile).use { outputStream ->
-                    writeBackupZip(dao, outputStream)
+                    writeBackupZip(context, dao, outputStream)
                 }
                 if (exportedCount == 0) {
                     outputFile.delete()
@@ -256,7 +256,7 @@ object BackupManager {
                     ?: return@withContext Result.failure(Exception("Could not create backup file"))
 
                 val exportedCount = context.contentResolver.openOutputStream(backupFile.uri)?.use { output ->
-                    writeBackupZip(dao, output)
+                    writeBackupZip(context, dao, output)
                 } ?: return@withContext Result.failure(Exception("Could not open backup output stream"))
 
                 if (exportedCount == 0) {
@@ -336,14 +336,15 @@ object BackupManager {
             }
     }
 
-    private suspend fun writeBackupZip(dao: CalculatorDao, outputStream: OutputStream): Int {
+    private suspend fun writeBackupZip(context: Context, dao: CalculatorDao, outputStream: OutputStream): Int {
         val filesList = dao.getAllFiles().first()
         var exportedCount = 0
 
         ZipOutputStream(outputStream).use { zipOut ->
+            val precision = prefs(context).getInt("precision", Constants.DEFAULT_PRECISION)
             filesList.forEach { file ->
                 val lines = dao.getLinesForFileSync(file.id)
-                val content = formatFileContent(lines)
+                val content = formatFileContent(lines, precision)
 
                 val entry = ZipEntry("${file.name}${Constants.EXPORT_FILE_EXTENSION}")
                 zipOut.putNextEntry(entry)
@@ -426,15 +427,16 @@ object BackupManager {
         return importedCount
     }
 
-    private fun formatFileContent(lines: List<LineEntity>): String {
+    private fun formatFileContent(lines: List<LineEntity>, precision: Int): String {
         return lines.joinToString("\n") { line ->
             val expr = line.expression.trim()
-            val result = line.result.trim()
+            val rawResult = line.result.trim()
+            val displayResult = MathEngine.formatDisplayResult(rawResult, precision)
 
             when {
-                expr.isEmpty() || result.isBlank() || result == "Err" -> expr
+                expr.isEmpty() || rawResult.isBlank() || rawResult == "Err" -> expr
                 expr.trimStart().startsWith("#") -> expr
-                shouldShowResult(expr) -> "$expr # $result"
+                shouldShowResult(expr) -> "$expr # $displayResult"
                 else -> expr
             }
         }

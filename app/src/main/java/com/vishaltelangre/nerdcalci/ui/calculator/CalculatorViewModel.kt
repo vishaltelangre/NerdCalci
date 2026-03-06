@@ -34,6 +34,7 @@ class CalculatorViewModel(
 ) : ViewModel() {
 
     companion object {
+        private const val PREF_PRECISION = "precision"
         private const val PREF_THEME = "theme"
         private const val DEFAULT_THEME = "system"
     }
@@ -43,6 +44,11 @@ class CalculatorViewModel(
         prefs?.getString(PREF_THEME, DEFAULT_THEME) ?: DEFAULT_THEME
     )
     val currentTheme: StateFlow<String> = _currentTheme
+
+    private val _precision = MutableStateFlow(
+        prefs?.getInt(PREF_PRECISION, Constants.DEFAULT_PRECISION) ?: Constants.DEFAULT_PRECISION
+    )
+    val precision: StateFlow<Int> = _precision
 
     private val _autoBackupEnabled = MutableStateFlow(
         prefs?.getBoolean(BackupManager.PREF_AUTO_BACKUP_ENABLED, true) ?: true
@@ -85,6 +91,11 @@ class CalculatorViewModel(
         _currentTheme.value = theme
         // Persist theme preference
         prefs?.edit()?.putString(PREF_THEME, theme)?.apply()
+    }
+
+    fun setPrecision(precision: Int) {
+        _precision.value = precision
+        prefs?.edit()?.putInt(PREF_PRECISION, precision)?.apply()
     }
 
     fun setAutoBackupEnabled(context: Context, enabled: Boolean) {
@@ -269,26 +280,27 @@ class CalculatorViewModel(
     }
 
     // Format lines with intelligent result display
-    private fun formatFileContent(lines: List<LineEntity>): String {
+    private fun formatFileContent(lines: List<LineEntity>, precision: Int): String {
         return lines.joinToString("\n") { line ->
             val expr = line.expression.trim()
-            val result = line.result.trim()
+            val rawResult = line.result.trim()
+            val displayResult = MathEngine.formatDisplayResult(rawResult, precision)
 
             // Don't show result if:
             // - Expression is empty or result is empty/error
             // - It's a comment line (starts with #)
             // - It's a simple assignment like "a = 5" where result is just "5"
             when {
-                expr.isEmpty() || result.isBlank() || result == "Err" -> expr
+                expr.isEmpty() || rawResult.isBlank() || rawResult == "Err" -> expr
                 expr.trimStart().startsWith("#") -> expr // Full comment line
-                shouldShowResult(expr, result) -> "$expr # $result"
+                shouldShowResult(expr) -> "$expr # $displayResult"
                 else -> expr
             }
         }
     }
 
     // Determine if result should be shown based on expression complexity
-    private fun shouldShowResult(expression: String, result: String): Boolean {
+    private fun shouldShowResult(expression: String): Boolean {
         // Check if expression has operators (indicating computation)
         val hasOperators = expression.any { it in "+-*/%^" }
 
@@ -480,7 +492,7 @@ class CalculatorViewModel(
         return withContext(Dispatchers.IO) {
             try {
                 val lines = dao.getLinesForFileSync(fileId)
-                val content = formatFileContent(lines)
+                val content = formatFileContent(lines, precision.value)
 
                 withContext(Dispatchers.Main) {
                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager

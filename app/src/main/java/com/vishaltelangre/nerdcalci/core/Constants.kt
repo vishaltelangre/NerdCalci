@@ -39,4 +39,7 @@ object Constants {
      * Invalid: "2rate", "rate-disc", "rate with disc"
      */
     const val VAR_FUNC_NAME_PATTERN = "^[a-zA-Z_][a-zA-Z0-9_]*$"
+
+    // Calculator settings
+    const val DEFAULT_PRECISION = 2
 }

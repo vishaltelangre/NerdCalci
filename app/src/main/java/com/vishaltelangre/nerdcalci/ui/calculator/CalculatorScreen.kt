@@ -232,6 +232,7 @@ fun CalculatorScreen(
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     val lines by viewModel.getLines(fileId).collectAsState(initial = emptyList())
+    val precision by viewModel.precision.collectAsState()
     val files by viewModel.allFiles.collectAsState(initial = emptyList())
     val canUndoMap by viewModel.canUndo.collectAsState()
     val canRedoMap by viewModel.canRedo.collectAsState()
@@ -578,6 +579,7 @@ fun CalculatorScreen(
                     LineRow(
                         lineNumber = index + 1,
                         line = line,
+                        precision = precision,
                         availableVariables = availableVariables,
                         shouldFocus = focusLineId == line.id,
                         focusCursorPos = if (focusLineId == line.id) focusCursorPosition else null,
@@ -755,6 +757,7 @@ fun CalculatorScreen(
 private fun LineRow(
     lineNumber: Int,
     line: LineEntity,
+    precision: Int,
     availableVariables: Set<Suggestion>,
     shouldFocus: Boolean,
     focusCursorPos: Int?,
@@ -1199,7 +1202,7 @@ private fun LineRow(
                 com.vishaltelangre.nerdcalci.ui.theme.ResultSuccess
             }
             Text(
-                text = line.result,
+                text = MathEngine.formatDisplayResult(line.result, precision),
                 style = MaterialTheme.typography.bodyLarge.copy(
                     fontFamily = FiraCodeFamily,
                     fontWeight = FontWeight.Bold

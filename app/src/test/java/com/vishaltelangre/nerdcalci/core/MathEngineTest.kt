@@ -14,91 +14,91 @@ class MathEngineTest {
     fun `basic addition returns correct result`() {
         val lines = listOf(createLine("2 + 2"))
         val result = MathEngine.calculate(lines)
-        assertEquals("4", result[0].result)
+        assertEquals("4.0", result[0].result)
     }
 
     @Test
     fun `basic subtraction returns correct result`() {
         val lines = listOf(createLine("10 - 3"))
         val result = MathEngine.calculate(lines)
-        assertEquals("7", result[0].result)
+        assertEquals("7.0", result[0].result)
     }
 
     @Test
     fun `basic multiplication returns correct result`() {
         val lines = listOf(createLine("5 * 6"))
         val result = MathEngine.calculate(lines)
-        assertEquals("30", result[0].result)
+        assertEquals("30.0", result[0].result)
     }
 
     @Test
     fun `basic division returns correct result`() {
         val lines = listOf(createLine("20 / 4"))
         val result = MathEngine.calculate(lines)
-        assertEquals("5", result[0].result)
+        assertEquals("5.0", result[0].result)
     }
 
     @Test
     fun `complex expression with multiple operators`() {
         val lines = listOf(createLine("2 + 3 * 4 - 1"))
         val result = MathEngine.calculate(lines)
-        assertEquals("13", result[0].result)
+        assertEquals("13.0", result[0].result)
     }
 
     @Test
     fun `expression with parentheses respects order of operations`() {
         val lines = listOf(createLine("(2 + 3) * 4"))
         val result = MathEngine.calculate(lines)
-        assertEquals("20", result[0].result)
+        assertEquals("20.0", result[0].result)
     }
 
     @Test
     fun `exponentiation works correctly`() {
         val lines = listOf(createLine("2 ^ 3"))
         val result = MathEngine.calculate(lines)
-        assertEquals("8", result[0].result)
+        assertEquals("8.0", result[0].result)
     }
 
     @Test
     fun `multiplication sign × is normalized to asterisk`() {
         val lines = listOf(createLine("5 × 6"))
         val result = MathEngine.calculate(lines)
-        assertEquals("30", result[0].result)
+        assertEquals("30.0", result[0].result)
     }
 
     @Test
     fun `division sign ÷ is normalized to slash`() {
         val lines = listOf(createLine("20 ÷ 4"))
         val result = MathEngine.calculate(lines)
-        assertEquals("5", result[0].result)
+        assertEquals("5.0", result[0].result)
     }
 
     @Test
     fun `mixed unicode and ASCII operators work together`() {
         val lines = listOf(createLine("10 × 2 ÷ 4 + 1"))
         val result = MathEngine.calculate(lines)
-        assertEquals("6", result[0].result)
+        assertEquals("6.0", result[0].result)
     }
 
     @Test
     fun `decimal addition returns formatted result`() {
         val lines = listOf(createLine("1.5 + 2.3"))
         val result = MathEngine.calculate(lines)
-        assertEquals("3.80", result[0].result)
+        assertEquals("3.8", result[0].result)
     }
 
     @Test
-    fun `decimal division returns two decimal places`() {
+    fun `decimal division returns raw double precision`() {
         val lines = listOf(createLine("10 / 3"))
         val result = MathEngine.calculate(lines)
-        assertEquals("3.33", result[0].result)
+        assertEquals("3.3333333333333335", result[0].result)
     }
 
     @Test
-    fun `result with no decimal part shows as integer`() {
+    fun `result with no decimal part shows as double with trailing zero`() {
         val lines = listOf(createLine("5.0 + 5.0"))
         val result = MathEngine.calculate(lines)
-        assertEquals("10", result[0].result)
+        assertEquals("10.0", result[0].result)
     }
 
     @Test
@@ -108,8 +108,8 @@ class MathEngineTest {
             createLine("price", sortOrder = 1)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("100", result[0].result)
-        assertEquals("100", result[1].result)
+        assertEquals("100.0", result[0].result)
+        assertEquals("100.0", result[1].result)
     }
 
     @Test
@@ -119,8 +119,8 @@ class MathEngineTest {
             createLine("price * 2", sortOrder = 1)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("100", result[0].result)
-        assertEquals("200", result[1].result)
+        assertEquals("100.0", result[0].result)
+        assertEquals("200.0", result[1].result)
     }
 
     @Test
@@ -131,9 +131,9 @@ class MathEngineTest {
             createLine("a + b", sortOrder = 2)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("10", result[0].result)
-        assertEquals("20", result[1].result)
-        assertEquals("30", result[2].result)
+        assertEquals("10.0", result[0].result)
+        assertEquals("20.0", result[1].result)
+        assertEquals("30.0", result[2].result)
     }
 
     @Test
@@ -145,10 +145,10 @@ class MathEngineTest {
             createLine("x * 2", sortOrder = 3)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("5", result[0].result)
-        assertEquals("10", result[1].result)
-        assertEquals("10", result[2].result)
-        assertEquals("20", result[3].result)
+        assertEquals("5.0", result[0].result)
+        assertEquals("10.0", result[1].result)
+        assertEquals("10.0", result[2].result)
+        assertEquals("20.0", result[3].result)
     }
 
     @Test
@@ -159,9 +159,9 @@ class MathEngineTest {
             createLine("monthly_salary", sortOrder = 2)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("5000", result[0].result)
-        assertEquals("60000", result[1].result)
-        assertEquals("5000", result[2].result)
+        assertEquals("5000.0", result[0].result)
+        assertEquals("60000.0", result[1].result)
+        assertEquals("5000.0", result[2].result)
     }
 
     @Test
@@ -173,9 +173,9 @@ class MathEngineTest {
                         createLine("rate_with_disc", sortOrder = 2)
                 )
         val result = MathEngine.calculate(lines)
-        assertEquals("10", result[0].result)
-        assertEquals("9", result[1].result)
-        assertEquals("9", result[2].result)
+        assertEquals("10.0", result[0].result)
+        assertEquals("9.0", result[1].result)
+        assertEquals("9.0", result[2].result)
     }
 
     @Test
@@ -186,7 +186,7 @@ class MathEngineTest {
             createLine("rate2", sortOrder = 1)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("10", result[0].result)
+        assertEquals("10.0", result[0].result)
         assertEquals("Err", result[1].result)
     }
 
@@ -197,22 +197,22 @@ class MathEngineTest {
             createLine("total / 3", sortOrder = 1)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("60", result[0].result)
-        assertEquals("20", result[1].result)
+        assertEquals("60.0", result[0].result)
+        assertEquals("20.0", result[1].result)
     }
 
     @Test
     fun `percentage of number works correctly`() {
         val lines = listOf(createLine("20% of 100"))
         val result = MathEngine.calculate(lines)
-        assertEquals("20", result[0].result)
+        assertEquals("20.0", result[0].result)
     }
 
     @Test
     fun `percentage of decimal number`() {
         val lines = listOf(createLine("15.5% of 200"))
         val result = MathEngine.calculate(lines)
-        assertEquals("31", result[0].result) // Result is whole number
+        assertEquals("31.0", result[0].result) // Result is whole number
     }
 
     @Test
@@ -222,22 +222,22 @@ class MathEngineTest {
             createLine("10% of price", sortOrder = 1)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("1000", result[0].result)
-        assertEquals("100", result[1].result)
+        assertEquals("1000.0", result[0].result)
+        assertEquals("100.0", result[1].result)
     }
 
     @Test
     fun `percentage off reduces value`() {
         val lines = listOf(createLine("20% off 100"))
         val result = MathEngine.calculate(lines)
-        assertEquals("80", result[0].result)
+        assertEquals("80.0", result[0].result)
     }
 
     @Test
     fun `percentage off with decimal`() {
         val lines = listOf(createLine("25% off 80"))
         val result = MathEngine.calculate(lines)
-        assertEquals("60", result[0].result)
+        assertEquals("60.0", result[0].result)
     }
 
     @Test
@@ -247,15 +247,15 @@ class MathEngineTest {
             createLine("30% off original", sortOrder = 1)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("500", result[0].result)
-        assertEquals("350", result[1].result)
+        assertEquals("500.0", result[0].result)
+        assertEquals("350.0", result[1].result)
     }
 
     @Test
     fun `add percentage to number`() {
         val lines = listOf(createLine("100 + 20%"))
         val result = MathEngine.calculate(lines)
-        assertEquals("120", result[0].result)
+        assertEquals("120.0", result[0].result)
     }
 
     @Test
@@ -265,15 +265,15 @@ class MathEngineTest {
             createLine("salary + 10%", sortOrder = 1)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("50000", result[0].result)
-        assertEquals("55000.00", result[1].result) // Returns decimal format
+        assertEquals("50000.0", result[0].result)
+        assertEquals("55000.00000000001", result[1].result)
     }
 
     @Test
     fun `subtract percentage from number`() {
         val lines = listOf(createLine("100 - 15%"))
         val result = MathEngine.calculate(lines)
-        assertEquals("85", result[0].result)
+        assertEquals("85.0", result[0].result)
     }
 
     @Test
@@ -283,15 +283,15 @@ class MathEngineTest {
             createLine("budget - 25%", sortOrder = 1)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("1000", result[0].result)
-        assertEquals("750", result[1].result)
+        assertEquals("1000.0", result[0].result)
+        assertEquals("750.0", result[1].result)
     }
 
     @Test
     fun `expression with inline comment returns result`() {
         val lines = listOf(createLine("10 + 5 # adding numbers"))
         val result = MathEngine.calculate(lines)
-        assertEquals("15", result[0].result)
+        assertEquals("15.0", result[0].result)
     }
 
     @Test
@@ -305,14 +305,14 @@ class MathEngineTest {
     fun `comment with special characters is ignored`() {
         val lines = listOf(createLine("20 * 2 # result should be 40!"))
         val result = MathEngine.calculate(lines)
-        assertEquals("40", result[0].result)
+        assertEquals("40.0", result[0].result)
     }
 
     @Test
     fun `hash symbol in middle of expression is treated as comment`() {
         val lines = listOf(createLine("5 + 5 # + 10"))
         val result = MathEngine.calculate(lines)
-        assertEquals("10", result[0].result)
+        assertEquals("10.0", result[0].result)
     }
 
     @Test
@@ -374,11 +374,11 @@ class MathEngineTest {
             createLine("final = discountedPrice + tax", sortOrder = 4)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("1000", result[0].result)
-        assertEquals("150", result[1].result)
-        assertEquals("850", result[2].result)
-        assertEquals("85", result[3].result)
-        assertEquals("935", result[4].result)
+        assertEquals("1000.0", result[0].result)
+        assertEquals("150.0", result[1].result)
+        assertEquals("850.0", result[2].result)
+        assertEquals("85.0", result[3].result)
+        assertEquals("935.0", result[4].result)
     }
 
     @Test
@@ -392,10 +392,10 @@ class MathEngineTest {
         )
         val result = MathEngine.calculate(lines)
         assertEquals("", result[0].result)
-        assertEquals("5000", result[1].result)
-        assertEquals("1200", result[2].result)
-        assertEquals("300", result[3].result)
-        assertEquals("3500", result[4].result)
+        assertEquals("5000.0", result[1].result)
+        assertEquals("1200.0", result[2].result)
+        assertEquals("300.0", result[3].result)
+        assertEquals("3500.0", result[4].result)
     }
 
     @Test
@@ -407,10 +407,10 @@ class MathEngineTest {
             createLine("d = c / a", sortOrder = 3)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("10", result[0].result)
-        assertEquals("20", result[1].result)
-        assertEquals("30", result[2].result)
-        assertEquals("3", result[3].result)
+        assertEquals("10.0", result[0].result)
+        assertEquals("20.0", result[1].result)
+        assertEquals("30.0", result[2].result)
+        assertEquals("3.0", result[3].result)
     }
 
     @Test
@@ -421,16 +421,16 @@ class MathEngineTest {
             createLine("10 * 2", sortOrder = 2)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("10", result[0].result)
+        assertEquals("10.0", result[0].result)
         assertEquals("Err", result[1].result)
-        assertEquals("20", result[2].result)
+        assertEquals("20.0", result[2].result)
     }
 
     @Test
-    fun `large integer within Long range displays correctly`() {
+    fun `large integer within Long range is returned correctly`() {
         val lines = listOf(createLine("1000000000 * 2"))
         val result = MathEngine.calculate(lines)
-        assertEquals("2000000000", result[0].result)
+        assertEquals("2.0E9", result[0].result)
     }
 
     @Test
@@ -445,42 +445,42 @@ class MathEngineTest {
     fun `single number evaluates to itself`() {
         val lines = listOf(createLine("42"))
         val result = MathEngine.calculate(lines)
-        assertEquals("42", result[0].result)
+        assertEquals("42.0", result[0].result)
     }
 
     @Test
     fun `negative numbers work correctly`() {
         val lines = listOf(createLine("-10 + 5"))
         val result = MathEngine.calculate(lines)
-        assertEquals("-5", result[0].result)
+        assertEquals("-5.0", result[0].result)
     }
 
     @Test
     fun `nested parentheses calculate correctly`() {
         val lines = listOf(createLine("((2 + 3) * (4 + 5))"))
         val result = MathEngine.calculate(lines)
-        assertEquals("45", result[0].result)
+        assertEquals("45.0", result[0].result)
     }
 
     @Test
     fun `expression with only whitespace after comment`() {
         val lines = listOf(createLine("10 + 5 #    "))
         val result = MathEngine.calculate(lines)
-        assertEquals("15", result[0].result)
+        assertEquals("15.0", result[0].result)
     }
 
     @Test
     fun `zero as result displays as 0`() {
         val lines = listOf(createLine("5 - 5"))
         val result = MathEngine.calculate(lines)
-        assertEquals("0", result[0].result)
+        assertEquals("0.0", result[0].result)
     }
 
     @Test
-    fun `decimal precision is maintained at 2 places`() {
+    fun `maintains decimal precision correctly`() {
         val lines = listOf(createLine("1 / 3 * 3"))
         val result = MathEngine.calculate(lines)
-        assertEquals("1", result[0].result) // Result is whole number
+        assertEquals("1.0", result[0].result) // Result is whole number
     }
 
     @Test
@@ -490,8 +490,8 @@ class MathEngineTest {
             createLine("my_var * 2", sortOrder = 1)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("100", result[0].result)
-        assertEquals("200", result[1].result)
+        assertEquals("100.0", result[0].result)
+        assertEquals("200.0", result[1].result)
     }
 
     @Test
@@ -499,14 +499,14 @@ class MathEngineTest {
         // 20% of 100 should be 20, not 100% of 20
         val lines = listOf(createLine("20% of 100"))
         val result = MathEngine.calculate(lines)
-        assertEquals("20", result[0].result)
+        assertEquals("20.0", result[0].result)
     }
 
     @Test
     fun `multiple spaces in expression are handled`() {
         val lines = listOf(createLine("10    +    20"))
         val result = MathEngine.calculate(lines)
-        assertEquals("30", result[0].result)
+        assertEquals("30.0", result[0].result)
     }
 
     @Test
@@ -540,11 +540,11 @@ class MathEngineTest {
             createLine("_private2 + __internal__", sortOrder = 4)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("10", result[0].result)
-        assertEquals("11", result[1].result)
-        assertEquals("5", result[2].result)
-        assertEquals("3", result[3].result)
-        assertEquals("8", result[4].result)
+        assertEquals("10.0", result[0].result)
+        assertEquals("11.0", result[1].result)
+        assertEquals("5.0", result[2].result)
+        assertEquals("3.0", result[3].result)
+        assertEquals("8.0", result[4].result)
     }
 
     @Test
@@ -555,9 +555,9 @@ class MathEngineTest {
             createLine("tan(0)", sortOrder = 2)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("0", result[0].result)
-        assertEquals("1", result[1].result)
-        assertEquals("0", result[2].result)
+        assertEquals("0.0", result[0].result)
+        assertEquals("1.0", result[1].result)
+        assertEquals("0.0", result[2].result)
     }
 
     @Test
@@ -568,9 +568,9 @@ class MathEngineTest {
             createLine("atan(0)", sortOrder = 2)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("0", result[0].result)
-        assertEquals("0", result[1].result)
-        assertEquals("0", result[2].result)
+        assertEquals("0.0", result[0].result)
+        assertEquals("0.0", result[1].result)
+        assertEquals("0.0", result[2].result)
     }
 
     @Test
@@ -581,9 +581,9 @@ class MathEngineTest {
             createLine("log(E)", sortOrder = 2)  // Natural log of E should be 1
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("3", result[0].result)
-        assertEquals("3", result[1].result)
-        assertEquals("1", result[2].result)
+        assertEquals("3.0", result[0].result)
+        assertEquals("3.0", result[1].result)
+        assertEquals("1.0", result[2].result)
     }
 
     @Test
@@ -595,10 +595,10 @@ class MathEngineTest {
             createLine("exp(0)", sortOrder = 3)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("4", result[0].result)
-        assertEquals("3", result[1].result)
-        assertEquals("256", result[2].result)
-        assertEquals("1", result[3].result)
+        assertEquals("4.0", result[0].result)
+        assertEquals("3.0", result[1].result)
+        assertEquals("256.0", result[2].result)
+        assertEquals("1.0", result[3].result)
     }
 
     @Test
@@ -612,12 +612,12 @@ class MathEngineTest {
             createLine("signum(5)", sortOrder = 5)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("42", result[0].result)
-        assertEquals("3", result[1].result)
-        assertEquals("4", result[2].result)
-        assertEquals("-1", result[3].result)
-        assertEquals("0", result[4].result)
-        assertEquals("1", result[5].result)
+        assertEquals("42.0", result[0].result)
+        assertEquals("3.0", result[1].result)
+        assertEquals("4.0", result[2].result)
+        assertEquals("-1.0", result[3].result)
+        assertEquals("0.0", result[4].result)
+        assertEquals("1.0", result[5].result)
     }
 
     @Test
@@ -654,7 +654,7 @@ class MathEngineTest {
             createLine("area = PI * pow(radius, 2)", sortOrder = 1)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("5", result[0].result)
+        assertEquals("5.0", result[0].result)
         // Area should be approximately 78.54
         assertTrue(result[1].result.toDouble() > 78 && result[1].result.toDouble() < 79)
     }
@@ -666,8 +666,8 @@ class MathEngineTest {
             createLine("abs(sin(0) - 1)", sortOrder = 1)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("5", result[0].result) // Pythagorean theorem: sqrt(9 + 16) = 5
-        assertEquals("1", result[1].result) // abs(0 - 1) = 1
+        assertEquals("5.0", result[0].result) // Pythagorean theorem: sqrt(9 + 16) = 5
+        assertEquals("1.0", result[1].result) // abs(0 - 1) = 1
     }
 
     @Test
@@ -690,9 +690,9 @@ class MathEngineTest {
             createLine("sqrt 16", sortOrder = 3),
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("3", result[0].result)
+        assertEquals("3.0", result[0].result)
         assertEquals("Err", result[1].result)
-        assertEquals("4", result[2].result)
+        assertEquals("4.0", result[2].result)
         assertEquals("Err", result[3].result)
     }
 
@@ -703,8 +703,8 @@ class MathEngineTest {
             createLine("count++", sortOrder = 1)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("5", result[0].result)
-        assertEquals("6", result[1].result)
+        assertEquals("5.0", result[0].result)
+        assertEquals("6.0", result[1].result)
     }
 
     @Test
@@ -714,8 +714,8 @@ class MathEngineTest {
             createLine("count--", sortOrder = 1)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("5", result[0].result)
-        assertEquals("4", result[1].result)
+        assertEquals("5.0", result[0].result)
+        assertEquals("4.0", result[1].result)
     }
 
     @Test
@@ -725,8 +725,8 @@ class MathEngineTest {
             createLine("total += 5 + 2", sortOrder = 1)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("10", result[0].result)
-        assertEquals("17", result[1].result) // 10 + (5 + 2)
+        assertEquals("10.0", result[0].result)
+        assertEquals("17.0", result[1].result) // 10 + (5 + 2)
     }
 
     @Test
@@ -736,8 +736,8 @@ class MathEngineTest {
             createLine("total -= 5 * 2", sortOrder = 1)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("20", result[0].result)
-        assertEquals("10", result[1].result) // 20 - (5 * 2)
+        assertEquals("20.0", result[0].result)
+        assertEquals("10.0", result[1].result) // 20 - (5 * 2)
     }
 
     @Test
@@ -747,8 +747,8 @@ class MathEngineTest {
             createLine("factor *= 2 + 1", sortOrder = 1)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("3", result[0].result)
-        assertEquals("9", result[1].result) // 3 * (2 + 1)
+        assertEquals("3.0", result[0].result)
+        assertEquals("9.0", result[1].result) // 3 * (2 + 1)
     }
 
     @Test
@@ -758,8 +758,8 @@ class MathEngineTest {
             createLine("value /= 5", sortOrder = 1)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("100", result[0].result)
-        assertEquals("20", result[1].result)
+        assertEquals("100.0", result[0].result)
+        assertEquals("20.0", result[1].result)
     }
 
     @Test
@@ -769,8 +769,8 @@ class MathEngineTest {
             createLine("value %= 3", sortOrder = 1)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("10", result[0].result)
-        assertEquals("1", result[1].result)
+        assertEquals("10.0", result[0].result)
+        assertEquals("1.0", result[1].result)
     }
 
     @Test
@@ -784,8 +784,8 @@ class MathEngineTest {
         val result = MathEngine.calculateFrom(lines, changedIndex = 1)
         // Should return lines[1..2] only (2 lines)
         assertEquals(2, result.size)
-        assertEquals("4", result[0].result)
-        assertEquals("6", result[1].result)
+        assertEquals("4.0", result[0].result)
+        assertEquals("6.0", result[1].result)
     }
 
     @Test
@@ -798,7 +798,7 @@ class MathEngineTest {
                 )
         val result = MathEngine.calculateFrom(lines, changedIndex = 2)
         assertEquals(1, result.size)
-        assertEquals("110", result[0].result)
+        assertEquals("110.0", result[0].result)
     }
 
     @Test
@@ -809,7 +809,7 @@ class MathEngineTest {
         )
         val result = MathEngine.calculate(lines)
         assertEquals("", result[0].result) // Function definition produces no output
-        assertEquals("10", result[1].result)
+        assertEquals("10.0", result[1].result)
     }
 
     @Test
@@ -820,7 +820,7 @@ class MathEngineTest {
         )
         val result = MathEngine.calculate(lines)
         assertEquals("", result[0].result)
-        assertEquals("30", result[1].result)
+        assertEquals("30.0", result[1].result)
     }
 
     @Test
@@ -831,7 +831,7 @@ class MathEngineTest {
         )
         val result = MathEngine.calculate(lines)
         assertEquals("", result[0].result)
-        assertEquals("132000", result[1].result)
+        assertEquals("132000.0", result[1].result)
     }
 
     @Test
@@ -843,10 +843,10 @@ class MathEngineTest {
             createLine("v", sortOrder = 3) // Should still be 10, not overridden by 'v' inside f
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("10", result[0].result)
+        assertEquals("10.0", result[0].result)
         assertEquals("", result[1].result)
-        assertEquals("5", result[2].result)
-        assertEquals("10", result[3].result) // Outer scope unchanged
+        assertEquals("5.0", result[2].result)
+        assertEquals("10.0", result[3].result) // Outer scope unchanged
     }
 
     @Test
@@ -868,7 +868,7 @@ class MathEngineTest {
                         createLine("f(5)", sortOrder = 1)
                 )
         val result = MathEngine.calculate(lines)
-        assertEquals("10", result[1].result) // Should NOT be "0"
+        assertEquals("10.0", result[1].result) // Should NOT be "0"
     }
 
     @Test
@@ -918,8 +918,8 @@ class MathEngineTest {
                 )
         val result = MathEngine.calculateFrom(lines, changedIndex = 1)
         assertEquals(2, result.size)
-        assertEquals("10", result[0].result) // x = 10
-        assertEquals("20", result[1].result) // x * 2 = 20
+        assertEquals("10.0", result[0].result) // x = 10
+        assertEquals("20.0", result[1].result) // x * 2 = 20
     }
 
     @Test
@@ -942,8 +942,8 @@ class MathEngineTest {
         // Negative index should clamp to 0 and recalculate everything
         val result = MathEngine.calculateFrom(lines, changedIndex = -99)
         assertEquals(2, result.size)
-        assertEquals("5", result[0].result)
-        assertEquals("10", result[1].result)
+        assertEquals("5.0", result[0].result)
+        assertEquals("10.0", result[1].result)
     }
 
     @Test
@@ -955,10 +955,10 @@ class MathEngineTest {
             createLine("total", sortOrder = 3)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("2", result[0].result)
-        assertEquals("2", result[1].result)
-        assertEquals("4", result[2].result)
-        assertEquals("8", result[3].result)
+        assertEquals("2.0", result[0].result)
+        assertEquals("2.0", result[1].result)
+        assertEquals("4.0", result[2].result)
+        assertEquals("8.0", result[3].result)
     }
 
     @Test
@@ -969,7 +969,7 @@ class MathEngineTest {
             createLine("sum", sortOrder = 2)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("30", result[2].result)
+        assertEquals("30.0", result[2].result)
     }
 
     @Test
@@ -983,10 +983,10 @@ class MathEngineTest {
             createLine("total", sortOrder = 5)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("30", result[2].result)  // 10 + 20
+        assertEquals("30.0", result[2].result)  // 10 + 20
         assertEquals("", result[3].result)
-        assertEquals("5", result[4].result)
-        assertEquals("5", result[5].result)   // only c = 5 in this block
+        assertEquals("5.0", result[4].result)
+        assertEquals("5.0", result[5].result)   // only c = 5 in this block
     }
 
     @Test
@@ -1001,7 +1001,7 @@ class MathEngineTest {
         val result = MathEngine.calculate(lines)
         // comment-only line produces null → breaks the block
         // so total only sees 20
-        assertEquals("20", result[3].result)
+        assertEquals("20.0", result[3].result)
     }
 
     @Test
@@ -1012,9 +1012,9 @@ class MathEngineTest {
             createLine("tax = total * 0.10", sortOrder = 2)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("25", result[0].result)
-        assertEquals("75", result[1].result)
-        assertEquals("10", result[2].result)
+        assertEquals("25.0", result[0].result)
+        assertEquals("75.0", result[1].result)
+        assertEquals("10.0", result[2].result)
     }
 
     @Test
@@ -1026,10 +1026,10 @@ class MathEngineTest {
             createLine("total / 2", sortOrder = 3)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("10", result[0].result)
-        assertEquals("20", result[1].result)
-        assertEquals("4", result[2].result)
-        assertEquals("2", result[3].result)  // uses assigned value, not aggregate
+        assertEquals("10.0", result[0].result)
+        assertEquals("20.0", result[1].result)
+        assertEquals("4.0", result[2].result)
+        assertEquals("2.0", result[3].result)  // uses assigned value, not aggregate
     }
 
     @Test
@@ -1040,9 +1040,9 @@ class MathEngineTest {
             createLine("total", sortOrder = 2)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("10", result[0].result)
-        assertEquals("11", result[1].result)  // total was 10, incremented and assigned to 11
-        assertEquals("11", result[2].result)  // uses assigned value, not aggregate
+        assertEquals("10.0", result[0].result)
+        assertEquals("11.0", result[1].result)  // total was 10, incremented and assigned to 11
+        assertEquals("11.0", result[2].result)  // uses assigned value, not aggregate
     }
 
     @Test
@@ -1053,9 +1053,9 @@ class MathEngineTest {
             createLine("total", sortOrder = 2)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("10", result[0].result)
-        assertEquals("9", result[1].result)   // total was 10, decremented to 9
-        assertEquals("9", result[2].result)   // uses assigned value, not aggregate
+        assertEquals("10.0", result[0].result)
+        assertEquals("9.0", result[1].result)   // total was 10, decremented to 9
+        assertEquals("9.0", result[2].result)   // uses assigned value, not aggregate
     }
 
     @Test
@@ -1066,9 +1066,9 @@ class MathEngineTest {
             createLine("total", sortOrder = 2)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("10", result[0].result)
-        assertEquals("15", result[1].result)
-        assertEquals("15", result[2].result)  // uses assigned value, not aggregate
+        assertEquals("10.0", result[0].result)
+        assertEquals("15.0", result[1].result)
+        assertEquals("15.0", result[2].result)  // uses assigned value, not aggregate
     }
 
     @Test
@@ -1079,9 +1079,9 @@ class MathEngineTest {
             createLine("total", sortOrder = 2)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("10", result[0].result)
-        assertEquals("7", result[1].result)
-        assertEquals("7", result[2].result)
+        assertEquals("10.0", result[0].result)
+        assertEquals("7.0", result[1].result)
+        assertEquals("7.0", result[2].result)
     }
 
     @Test
@@ -1092,9 +1092,9 @@ class MathEngineTest {
             createLine("total", sortOrder = 2)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("10", result[0].result)
-        assertEquals("20", result[1].result)
-        assertEquals("20", result[2].result)
+        assertEquals("10.0", result[0].result)
+        assertEquals("20.0", result[1].result)
+        assertEquals("20.0", result[2].result)
     }
 
     @Test
@@ -1105,9 +1105,9 @@ class MathEngineTest {
             createLine("total", sortOrder = 2)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("10", result[0].result)
-        assertEquals("5", result[1].result)
-        assertEquals("5", result[2].result)
+        assertEquals("10.0", result[0].result)
+        assertEquals("5.0", result[1].result)
+        assertEquals("5.0", result[2].result)
     }
 
     @Test
@@ -1119,10 +1119,10 @@ class MathEngineTest {
             createLine("total", sortOrder = 3)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("10", result[0].result)
-        assertEquals("20", result[1].result)
-        assertEquals("2", result[2].result)   // 30 % 7 = 2
-        assertEquals("2", result[3].result)
+        assertEquals("10.0", result[0].result)
+        assertEquals("20.0", result[1].result)
+        assertEquals("2.0", result[2].result)   // 30 % 7 = 2
+        assertEquals("2.0", result[3].result)
     }
 
     @Test
@@ -1131,7 +1131,7 @@ class MathEngineTest {
             createLine("total", sortOrder = 0)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("0", result[0].result)
+        assertEquals("0.0", result[0].result)
     }
 
     @Test
@@ -1143,7 +1143,7 @@ class MathEngineTest {
         )
         val result = MathEngine.calculateFrom(lines, changedIndex = 2)
         assertEquals(1, result.size)
-        assertEquals("30", result[0].result)
+        assertEquals("30.0", result[0].result)
     }
 
     @Test
@@ -1155,7 +1155,7 @@ class MathEngineTest {
         )
         val result = MathEngine.calculateFrom(lines, changedIndex = 2)
         assertEquals(1, result.size)
-        assertEquals("40", result[0].result)
+        assertEquals("40.0", result[0].result)
     }
 
     @Test
@@ -1167,10 +1167,10 @@ class MathEngineTest {
             createLine("avg", sortOrder = 3)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("10", result[0].result)
-        assertEquals("20", result[1].result)
-        assertEquals("60", result[2].result)
-        assertEquals("30", result[3].result)
+        assertEquals("10.0", result[0].result)
+        assertEquals("20.0", result[1].result)
+        assertEquals("60.0", result[2].result)
+        assertEquals("30.0", result[3].result)
     }
 
     @Test
@@ -1181,9 +1181,9 @@ class MathEngineTest {
             createLine("average", sortOrder = 2)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("10", result[0].result)
-        assertEquals("30", result[1].result)
-        assertEquals("20", result[2].result)
+        assertEquals("10.0", result[0].result)
+        assertEquals("30.0", result[1].result)
+        assertEquals("20.0", result[2].result)
     }
 
     @Test
@@ -1192,7 +1192,7 @@ class MathEngineTest {
             createLine("avg", sortOrder = 0)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("0", result[0].result)
+        assertEquals("0.0", result[0].result)
     }
 
     @Test
@@ -1206,9 +1206,9 @@ class MathEngineTest {
             createLine("avg", sortOrder = 5)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("15", result[2].result)
+        assertEquals("15.0", result[2].result)
         assertEquals("", result[3].result)
-        assertEquals("5", result[5].result)
+        assertEquals("5.0", result[5].result)
     }
 
     @Test
@@ -1221,7 +1221,7 @@ class MathEngineTest {
         )
         val result = MathEngine.calculate(lines)
         // Null breaks the block, so avg only sees 20
-        assertEquals("20", result[3].result)
+        assertEquals("20.0", result[3].result)
     }
 
     @Test
@@ -1232,7 +1232,7 @@ class MathEngineTest {
             createLine("half_avg = avg / 2", sortOrder = 2)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("25", result[2].result) // avg is 50, halved to 25
+        assertEquals("25.0", result[2].result) // avg is 50, halved to 25
     }
 
     @Test
@@ -1244,8 +1244,8 @@ class MathEngineTest {
             createLine("avg / 2", sortOrder = 3)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("100", result[2].result)
-        assertEquals("50", result[3].result)
+        assertEquals("100.0", result[2].result)
+        assertEquals("50.0", result[3].result)
     }
 
     @Test
@@ -1257,8 +1257,8 @@ class MathEngineTest {
             createLine("avg", sortOrder = 3)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("16", result[2].result) // avg is 15, gets incremented and assigned to 16
-        assertEquals("16", result[3].result)
+        assertEquals("16.0", result[2].result) // avg is 15, gets incremented and assigned to 16
+        assertEquals("16.0", result[3].result)
     }
 
     @Test
@@ -1270,8 +1270,8 @@ class MathEngineTest {
             createLine("avg", sortOrder = 3)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("14", result[2].result) // avg is 15, gets decremented and assigned to 14
-        assertEquals("14", result[3].result)
+        assertEquals("14.0", result[2].result) // avg is 15, gets decremented and assigned to 14
+        assertEquals("14.0", result[3].result)
     }
 
     @Test
@@ -1283,9 +1283,9 @@ class MathEngineTest {
             createLine("avg", sortOrder = 3)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("10", result[0].result)
-        assertEquals("20", result[2].result) // 15 + 5 = 20
-        assertEquals("20", result[3].result)
+        assertEquals("10.0", result[0].result)
+        assertEquals("20.0", result[2].result) // 15 + 5 = 20
+        assertEquals("20.0", result[3].result)
     }
 
     @Test
@@ -1297,9 +1297,9 @@ class MathEngineTest {
             createLine("avg", sortOrder = 3)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("10", result[0].result)
-        assertEquals("12", result[2].result) // 15 - 3 = 12
-        assertEquals("12", result[3].result)
+        assertEquals("10.0", result[0].result)
+        assertEquals("12.0", result[2].result) // 15 - 3 = 12
+        assertEquals("12.0", result[3].result)
     }
 
     @Test
@@ -1311,9 +1311,9 @@ class MathEngineTest {
             createLine("avg", sortOrder = 3)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("10", result[0].result)
-        assertEquals("30", result[2].result) // 15 * 2 = 30
-        assertEquals("30", result[3].result)
+        assertEquals("10.0", result[0].result)
+        assertEquals("30.0", result[2].result) // 15 * 2 = 30
+        assertEquals("30.0", result[3].result)
     }
 
     @Test
@@ -1325,9 +1325,9 @@ class MathEngineTest {
             createLine("avg", sortOrder = 3)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("10", result[0].result)
-        assertEquals("5", result[2].result) // 15 / 3 = 5
-        assertEquals("5", result[3].result)
+        assertEquals("10.0", result[0].result)
+        assertEquals("5.0", result[2].result) // 15 / 3 = 5
+        assertEquals("5.0", result[3].result)
     }
 
     @Test
@@ -1339,9 +1339,9 @@ class MathEngineTest {
             createLine("avg", sortOrder = 3)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("10", result[0].result)
-        assertEquals("3", result[2].result) // 15 % 4 = 3
-        assertEquals("3", result[3].result)
+        assertEquals("10.0", result[0].result)
+        assertEquals("3.0", result[2].result) // 15 % 4 = 3
+        assertEquals("3.0", result[3].result)
     }
 
     @Test
@@ -1353,7 +1353,7 @@ class MathEngineTest {
         )
         val result = MathEngine.calculateFrom(lines, changedIndex = 2)
         assertEquals(1, result.size)
-        assertEquals("15", result[0].result)
+        assertEquals("15.0", result[0].result)
     }
 
     @Test
@@ -1365,6 +1365,23 @@ class MathEngineTest {
         )
         val result = MathEngine.calculateFrom(lines, changedIndex = 2)
         assertEquals(1, result.size)
-        assertEquals("40", result[0].result)
+        assertEquals("40.0", result[0].result)
+    }
+
+    @Test
+    fun `formatDisplayResult formats raw strings correctly`() {
+        assertEquals("0.33", MathEngine.formatDisplayResult("0.3333333333333333", 2))
+        assertEquals("0.3333", MathEngine.formatDisplayResult("0.3333333333333333", 4))
+        assertEquals("10", MathEngine.formatDisplayResult("10.0", 2)) // whole numbers are displayed without decimal points
+        assertEquals("4", MathEngine.formatDisplayResult("4", 6)) // whole numbers are displayed without decimal points
+        assertEquals("Err", MathEngine.formatDisplayResult("Err", 2))
+        assertEquals("1234.57", MathEngine.formatDisplayResult("1234.5678", 2))
+        assertEquals("1234.5678000000", MathEngine.formatDisplayResult("1234.5678", 10))
+    }
+
+    @Test
+    fun `formatDisplayResult handles scientific notation`() {
+        assertEquals("1.00e+20", MathEngine.formatDisplayResult("1.0E20", 2))
+        assertEquals("1e+20", MathEngine.formatDisplayResult("1.0E20", 0))
     }
 }

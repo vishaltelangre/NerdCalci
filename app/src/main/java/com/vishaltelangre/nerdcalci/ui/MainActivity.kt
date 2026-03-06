@@ -239,6 +239,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
             LaunchedEffect(Unit) {
                 viewModel.refreshBackups(context)
             }
+            val precision by viewModel.precision.collectAsState()
             SettingsScreen(
                 currentTheme = currentTheme,
                 onThemeChange = { theme -> viewModel.setTheme(theme) },
@@ -282,6 +283,8 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
                     }
                 },
                 onRestoreFromDifferentLocation = { importLauncher.launch(arrayOf("application/zip")) },
+                precision = precision,
+                onPrecisionChange = { newPrecision -> viewModel.setPrecision(newPrecision) },
                 onHelp = { navController.navigate("help") },
                 onBack = { navController.popBackStack() }
             )

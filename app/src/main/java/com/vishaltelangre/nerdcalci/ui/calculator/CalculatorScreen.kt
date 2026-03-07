@@ -947,7 +947,7 @@ private fun LineRow(
                 textFieldValue.selection.start.coerceIn(0, displayText.length),
                 textFieldValue.selection.end.coerceIn(0, displayText.length)
             )
-            textFieldValue = textFieldValue.copy(
+            textFieldValue = TextFieldValue(
                 text = displayText,
                 selection = selection
             )
@@ -989,7 +989,7 @@ private fun LineRow(
             ) + insertTextRequest + currentText.substring(cursorPosition)
             val newCursorPosition = cursorPosition + insertTextRequest.length
 
-            textFieldValue = textFieldValue.copy(
+            textFieldValue = TextFieldValue(
                 text = newText,
                 selection = TextRange(newCursorPosition)
             )
@@ -1084,7 +1084,7 @@ private fun LineRow(
                         }
 
                         previousSelection = newSelection
-                        textFieldValue = newValue.copy(
+                        textFieldValue = TextFieldValue(
                             text = displayText,
                             selection = newSelection
                         )
@@ -1191,7 +1191,7 @@ private fun LineRow(
                                         ) + replacementText + text.substring(cursorPos)
                                         val newCursorPos = wordStart + replacementText.length - if (replacementText.endsWith("()")) 1 else 0
 
-                                        textFieldValue = textFieldValue.copy(
+                                        textFieldValue = TextFieldValue(
                                             text = newText,
                                             selection = TextRange(newCursorPos)
                                         )

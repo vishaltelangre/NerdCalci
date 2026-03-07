@@ -66,7 +66,7 @@ body:
     validations:
       required: false
   - type: textarea
-    id: logs
+    id: additional_context
     attributes:
       label: Additional context (Optional)
       description: Add any other context about the problem here (e.g., specific mathematical expressions used).

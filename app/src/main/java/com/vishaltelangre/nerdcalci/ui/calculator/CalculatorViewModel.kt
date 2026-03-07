@@ -36,6 +36,7 @@ class CalculatorViewModel(
     companion object {
         private const val PREF_PRECISION = "precision"
         private const val PREF_THEME = "theme"
+        private const val PREF_SHOW_LINE_NUMBERS = "show_line_numbers"
         private const val DEFAULT_THEME = "system"
     }
 
@@ -88,6 +89,11 @@ class CalculatorViewModel(
     )
     val lastBackupAt: StateFlow<Long?> = _lastBackupAt
 
+    private val _showLineNumbers = MutableStateFlow(
+        prefs?.getBoolean(PREF_SHOW_LINE_NUMBERS, true) ?: true
+    )
+    val showLineNumbers: StateFlow<Boolean> = _showLineNumbers
+
     fun setTheme(theme: String) {
         _currentTheme.value = theme
         // Persist theme preference
@@ -98,6 +104,11 @@ class CalculatorViewModel(
         val clampedPrecision = precision.coerceIn(Constants.MIN_PRECISION, Constants.MAX_PRECISION)
         _precision.value = clampedPrecision
         prefs?.edit()?.putInt(PREF_PRECISION, clampedPrecision)?.apply()
+    }
+
+    fun setShowLineNumbers(enabled: Boolean) {
+        _showLineNumbers.value = enabled
+        prefs?.edit()?.putBoolean(PREF_SHOW_LINE_NUMBERS, enabled)?.apply()
     }
 
     fun setAutoBackupEnabled(context: Context, enabled: Boolean) {

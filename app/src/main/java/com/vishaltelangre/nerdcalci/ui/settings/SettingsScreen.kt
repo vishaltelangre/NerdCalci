@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Coffee
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.FormatListNumbered
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LightMode
@@ -92,6 +93,8 @@ fun SettingsScreen(
     onRestoreFromDifferentLocation: () -> Unit,
     precision: Int,
     onPrecisionChange: (Int) -> Unit,
+    showLineNumbers: Boolean,
+    onShowLineNumbersChange: (Boolean) -> Unit,
     onHelp: () -> Unit,
     onBack: () -> Unit
 ) {
@@ -230,7 +233,16 @@ fun SettingsScreen(
                     steps = Constants.MAX_PRECISION - Constants.MIN_PRECISION - 1,
                     modifier = Modifier.padding(top = 8.dp)
                 )
+
             }
+
+            SettingsToggleItem(
+                icon = Icons.Default.FormatListNumbered,
+                title = "Show line numbers",
+                subtitle = "You can also toggle this temporarily for each file from the calculator menu.",
+                checked = showLineNumbers,
+                onCheckedChange = onShowLineNumbersChange
+            )
 
             Spacer(modifier = Modifier.height(8.dp))
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)

@@ -27,8 +27,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
@@ -123,6 +121,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
     val customBackupFolderUri by viewModel.customBackupFolderUri.collectAsState()
     val availableBackups by viewModel.availableBackups.collectAsState()
     val lastBackupAt by viewModel.lastBackupAt.collectAsState()
+    val showLineNumbers by viewModel.showLineNumbers.collectAsState()
     val customBackupFolderSummary = remember(customBackupFolderUri) {
         customBackupFolderUri?.let { uriString ->
             val parsed = Uri.parse(uriString)
@@ -285,6 +284,8 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
                 onRestoreFromDifferentLocation = { importLauncher.launch(arrayOf("application/zip")) },
                 precision = precision,
                 onPrecisionChange = { newPrecision -> viewModel.setPrecision(newPrecision) },
+                showLineNumbers = showLineNumbers,
+                onShowLineNumbersChange = { newShowLineNumbers -> viewModel.setShowLineNumbers(newShowLineNumbers) },
                 onHelp = { navController.navigate("help") },
                 onBack = { navController.popBackStack() }
             )

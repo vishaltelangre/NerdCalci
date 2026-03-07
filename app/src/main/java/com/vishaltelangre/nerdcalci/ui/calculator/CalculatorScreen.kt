@@ -664,8 +664,7 @@ fun CalculatorScreen(
                 state = listState,
                 modifier = Modifier.fillMaxSize()
             ) {
-                items(lines, key = { it.id }) { line ->
-                    val index = lines.indexOf(line)
+                itemsIndexed(lines, key = { _, line -> line.id }) { index, line ->
 
                     // Compute available variables for this line (only from previous lines)
                     val availableVariables = extractSuggestions(lines, line.sortOrder)

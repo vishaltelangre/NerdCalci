@@ -98,6 +98,7 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -576,8 +577,17 @@ fun CalculatorScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+            val textMeasurer = rememberTextMeasurer()
+            val gutterStyle = MaterialTheme.typography.bodySmall.copy(
+                fontFamily = FiraCodeFamily,
+                fontSize = 12.sp
+            )
+            val digitWidthPx = remember(textMeasurer, gutterStyle) {
+                textMeasurer.measure("0", style = gutterStyle).size.width
+            }
+            val digitWidth = with(LocalDensity.current) { digitWidthPx.toDp() }
+
             val maxLineDigits = lines.size.toString().length
-            val digitWidth = 9.dp // Width per digit for FiraCode 12sp
             val numberWidth = (digitWidth * maxLineDigits)
             val gutterOffset = 16.dp + numberWidth // 8dp start + 8dp end padding
 

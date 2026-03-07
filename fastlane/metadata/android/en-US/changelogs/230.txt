@@ -1,0 +1,2 @@
+- Fixed HeliBoard keyboard layout resetting when the cursor is near keywords in the editor.
+- Improved performance and UI stability with stable line keys.

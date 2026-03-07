@@ -105,6 +105,9 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.PathEffect
@@ -125,6 +128,39 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 import com.vishaltelangre.nerdcalci.ui.theme.SyntaxColors
+
+/**
+ * Apply syntax highlighting to calculator expressions.
+ *
+ * Colors adapt to dark/light theme for optimal readability.
+ */
+private class SyntaxHighlightingTransformation(
+    private val numberColor: Color,
+    private val variableColor: Color,
+    private val keywordColor: Color,
+    private val functionColor: Color,
+    private val operatorColor: Color,
+    private val percentColor: Color,
+    private val commentColor: Color,
+    private val defaultColor: Color
+) : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        return TransformedText(
+            applySyntaxHighlighting(
+                text.text,
+                numberColor,
+                variableColor,
+                keywordColor,
+                functionColor,
+                operatorColor,
+                percentColor,
+                commentColor,
+                defaultColor
+            ),
+            OffsetMapping.Identity
+        )
+    }
+}
 
 /**
  * Apply syntax highlighting to calculator expressions.
@@ -628,7 +664,9 @@ fun CalculatorScreen(
                 state = listState,
                 modifier = Modifier.fillMaxSize()
             ) {
-                itemsIndexed(lines) { index, line ->
+                items(lines, key = { it.id }) { line ->
+                    val index = lines.indexOf(line)
+
                     // Compute available variables for this line (only from previous lines)
                     val availableVariables = extractSuggestions(lines, line.sortOrder)
 
@@ -846,20 +884,16 @@ private fun LineRow(
     val defaultTextColor = MaterialTheme.colorScheme.onSurface
 
     var textFieldValue by remember(line.id) {
-        mutableStateOf(
-            TextFieldValue(
-                annotatedString = applySyntaxHighlighting(
-                    displayText,
-                    numberColor,
-                    variableColor,
-                    keywordColor,
-                    functionColor,
-                    operatorColor,
-                    percentColor,
-                    commentColor,
-                    defaultTextColor
-                )
-            )
+        mutableStateOf(TextFieldValue(text = displayText))
+    }
+
+    val syntaxHighlightingTransformation = remember(
+        numberColor, variableColor, keywordColor, functionColor,
+        operatorColor, percentColor, commentColor, defaultTextColor
+    ) {
+        SyntaxHighlightingTransformation(
+            numberColor, variableColor, keywordColor, functionColor,
+            operatorColor, percentColor, commentColor, defaultTextColor
         )
     }
     var previousSelection by remember { mutableStateOf(textFieldValue.selection) }
@@ -910,18 +944,8 @@ private fun LineRow(
     // Sync with database updates
     LaunchedEffect(line.expression) {
         if (textFieldValue.text.trim() != line.expression) {
-            textFieldValue = TextFieldValue(
-                annotatedString = applySyntaxHighlighting(
-                    displayText,
-                    numberColor,
-                    variableColor,
-                    keywordColor,
-                    functionColor,
-                    operatorColor,
-                    percentColor,
-                    commentColor,
-                    defaultTextColor
-                ),
+            textFieldValue = textFieldValue.copy(
+                text = displayText,
                 selection = textFieldValue.selection
             )
         }
@@ -962,18 +986,8 @@ private fun LineRow(
             ) + insertTextRequest + currentText.substring(cursorPosition)
             val newCursorPosition = cursorPosition + insertTextRequest.length
 
-            textFieldValue = TextFieldValue(
-                annotatedString = applySyntaxHighlighting(
-                    newText,
-                    numberColor,
-                    variableColor,
-                    keywordColor,
-                    functionColor,
-                    operatorColor,
-                    percentColor,
-                    commentColor,
-                    defaultTextColor
-                ),
+            textFieldValue = textFieldValue.copy(
+                text = newText,
                 selection = TextRange(newCursorPosition)
             )
 
@@ -1068,17 +1082,7 @@ private fun LineRow(
 
                         previousSelection = newSelection
                         textFieldValue = newValue.copy(
-                            annotatedString = applySyntaxHighlighting(
-                                displayText,
-                                        numberColor,
-                                        variableColor,
-                                        keywordColor,
-                                        functionColor,
-                                        operatorColor,
-                                        percentColor,
-                                        commentColor,
-                                        defaultTextColor
-                            ),
+                            text = displayText,
                             selection = newSelection
                         )
                         onValueChange(actualText)
@@ -1135,6 +1139,7 @@ private fun LineRow(
                         fontFamily = FiraCodeFamily
                     ),
                     cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface),
+                    visualTransformation = syntaxHighlightingTransformation,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = { onEnter() }),
                     decorationBox = { innerTextField ->
@@ -1183,18 +1188,8 @@ private fun LineRow(
                                         ) + replacementText + text.substring(cursorPos)
                                         val newCursorPos = wordStart + replacementText.length - if (replacementText.endsWith("()")) 1 else 0
 
-                                        textFieldValue = TextFieldValue(
-                                            annotatedString = applySyntaxHighlighting(
-                                                newText,
-                                                numberColor,
-                                                variableColor,
-                                                keywordColor,
-                                                functionColor,
-                                                operatorColor,
-                                                percentColor,
-                                                commentColor,
-                                                defaultTextColor
-                                            ),
+                                        textFieldValue = textFieldValue.copy(
+                                            text = newText,
                                             selection = TextRange(newCursorPos)
                                         )
                                         onValueChange(newText)

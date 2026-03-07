@@ -1279,7 +1279,11 @@ private fun LineRow(
                             if (showTooltip) {
                                 errorMessage = null
                                 coroutineScope.launch {
-                                    errorMessage = onGetErrorMessage(line.id) ?: "Unknown error"
+                                    errorMessage = runCatching {
+                                        onGetErrorMessage(line.id)
+                                    }.getOrElse {
+                                        "Couldn't load error details"
+                                    } ?: "Unknown error"
                                 }
                             }
                         }

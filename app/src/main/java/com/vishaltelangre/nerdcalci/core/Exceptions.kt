@@ -5,8 +5,8 @@ package com.vishaltelangre.nerdcalci.core
  */
 open class EvalException(message: String) : Exception(message)
 class ParseException(message: String, val position: Int = -1) : EvalException(message)
-class UndefinedVariableException(val variableName: String) : EvalException("Undefined variable '$variableName'")
-class DivisionByZeroException : EvalException("Division by zero")
+class UndefinedVariableException(val variableName: String) : EvalException("Unknown variable or constant '$variableName'")
+class DivisionByZeroException : EvalException("Cannot divide by zero")
 class UnknownFunctionException(val functionName: String) : EvalException("Unknown function '$functionName'")
 class ArityMismatchException(val functionName: String, val expected: Int, val actual: Int)
-    : EvalException("$functionName expects $expected argument(s), got $actual")
+    : EvalException("Function '$functionName' expects $expected arguments, but got $actual")

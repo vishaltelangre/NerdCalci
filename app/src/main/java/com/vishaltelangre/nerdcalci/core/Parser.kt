@@ -55,7 +55,7 @@ class Parser(private val tokens: List<Token>) {
         val token = peek()
         if (token.kind != kind) {
             throw ParseException(
-                "Expected ${kind}, got ${token.kind} ('${token.lexeme}')", token.position
+                "Expected ${kind.display}, but found ${token.kind.display}", token.position
             )
         }
         return advance()
@@ -69,7 +69,7 @@ class Parser(private val tokens: List<Token>) {
         if (!isAtEnd()) {
             val leftover = peek()
             throw ParseException(
-                "Unexpected token '${leftover.lexeme}'", leftover.position
+                "Unexpected ${leftover.kind.display}", leftover.position
             )
         }
         return stmt
@@ -360,7 +360,7 @@ class Parser(private val tokens: List<Token>) {
             else -> {
                 val token = peek()
                 throw ParseException(
-                    "Unexpected token '${token.lexeme}'", token.position
+                    "Expected a value or '(', but found ${token.kind.display}", token.position
                 )
             }
         }

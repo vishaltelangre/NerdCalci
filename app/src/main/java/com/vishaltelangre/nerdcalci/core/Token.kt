@@ -1,30 +1,30 @@
 package com.vishaltelangre.nerdcalci.core
 
 /** Every distinct lexeme kind produced by [Lexer]. */
-enum class TokenKind {
+enum class TokenKind(val display: String) {
     // Literals
-    NUMBER,
+    NUMBER("number"),
 
     // Identifiers (variables, function names, keywords)
-    IDENTIFIER,
+    IDENTIFIER("identifier"),
 
     // Arithmetic operators
-    PLUS, MINUS, STAR, SLASH, PERCENT, CARET,
+    PLUS("+"), MINUS("-"), STAR("*"), SLASH("/"), PERCENT("%"), CARET("^"),
 
     // Compound assignment operators
-    PLUS_EQUALS, MINUS_EQUALS, STAR_EQUALS, SLASH_EQUALS, PERCENT_EQUALS,
+    PLUS_EQUALS("+="), MINUS_EQUALS("-="), STAR_EQUALS("*="), SLASH_EQUALS("/="), PERCENT_EQUALS("%="),
 
     // Increment / decrement
-    PLUS_PLUS, MINUS_MINUS,
+    PLUS_PLUS("++"), MINUS_MINUS("--"),
 
     // Grouping & punctuation
-    LPAREN, RPAREN, COMMA, EQUALS, SEMICOLON,
+    LPAREN("("), RPAREN(")"), COMMA(","), EQUALS("="), SEMICOLON(";"),
 
     // Keywords — resolved from IDENTIFIER by the Lexer
-    KW_OF, KW_OFF,
+    KW_OF("of"), KW_OFF("off"),
 
     // End-of-input
-    EOF
+    EOF("end of line")
 }
 
 /**

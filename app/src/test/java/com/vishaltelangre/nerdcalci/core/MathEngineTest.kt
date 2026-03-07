@@ -1392,4 +1392,84 @@ class MathEngineTest {
         assertEquals("1.00e+20", MathEngine.formatDisplayResult("1.0E20", 2))
         assertEquals("1e+20", MathEngine.formatDisplayResult("1.0E20", 0))
     }
+
+    @Test
+    fun `getErrorDetails handles undefined variable`() {
+        val lines = listOf(createLine("x + 5"))
+        val err = MathEngine.getErrorDetails(lines, 0)
+        assertEquals("Unknown variable or constant 'x'", err)
+    }
+
+    @Test
+    fun `getErrorDetails handles syntax error`() {
+        val lines = listOf(createLine("1 + (2 * 3"))
+        val err = MathEngine.getErrorDetails(lines, 0)
+        assertEquals("Expected ), but found end of line", err)
+    }
+
+    @Test
+    fun `getErrorDetails returns null for blank line`() {
+        val lines = listOf(createLine(""))
+        val err = MathEngine.getErrorDetails(lines, 0)
+        assertNull(err)
+    }
+
+    @Test
+    fun `getErrorDetails handles division by zero`() {
+        val lines = listOf(createLine("10 / 0"))
+        val err = MathEngine.getErrorDetails(lines, 0)
+        assertEquals("Cannot divide by zero", err)
+    }
+
+    @Test
+    fun `getErrorDetails handles unknown function`() {
+        val lines = listOf(createLine("unknown(5)"))
+        val err = MathEngine.getErrorDetails(lines, 0)
+        assertEquals("Unknown function 'unknown'", err)
+    }
+
+    @Test
+    fun `getErrorDetails handles lexer error`() {
+        val lines = listOf(createLine("1 @ 2"))
+        val err = MathEngine.getErrorDetails(lines, 0)
+        assertEquals("Unexpected character '@'", err)
+    }
+
+    @Test
+    fun `getErrorDetails handles multiple operators`() {
+        val lines = listOf(createLine("1 + * 2"))
+        val err = MathEngine.getErrorDetails(lines, 0)
+        assertEquals("Expected a value or '(', but found *", err)
+    }
+
+    @Test
+    fun `getErrorDetails handles missing operand`() {
+        val lines = listOf(createLine("5 + "))
+        val err = MathEngine.getErrorDetails(lines, 0)
+        assertEquals("Expected a value or '(', but found end of line", err)
+    }
+
+    @Test
+    fun `getErrorDetails handles empty parentheses`() {
+        val lines = listOf(createLine("()"))
+        val err = MathEngine.getErrorDetails(lines, 0)
+        assertEquals("Expected a value or '(', but found )", err)
+    }
+
+    @Test
+    fun `getErrorDetails handles arity mismatch for user-defined function`() {
+        val lines = listOf(
+            createLine("f(x) = x * 2"),
+            createLine("f(1, 2)")
+        )
+        val err = MathEngine.getErrorDetails(lines, 1)
+        assertEquals("Function 'f' expects 1 arguments, but got 2", err)
+    }
+
+    @Test
+    fun `getErrorDetails handles arity mismatch for built in function`() {
+        val lines = listOf(createLine("sinh(2, 5)"))
+        val err = MathEngine.getErrorDetails(lines, 0)
+        assertEquals("Function 'sinh' expects 1 arguments, but got 2", err)
+    }
 }

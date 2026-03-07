@@ -350,6 +350,21 @@ class CalculatorViewModel(
         }
     }
 
+    /**
+     * Get the exact error message for a specific line by re-evaluating it on demand.
+     */
+    suspend fun getLineErrorMessage(fileId: Long, targetLineId: Long): String? {
+        return withContext(Dispatchers.IO) {
+            val allLines = dao.getLinesForFileSync(fileId)
+            val targetIndex = allLines.indexOfFirst { it.id == targetLineId }
+            if (targetIndex != -1) {
+                MathEngine.getErrorDetails(allLines, targetIndex)
+            } else {
+                null
+            }
+        }
+    }
+
     // Create a new file
     fun createNewFile(name: String, onCreated: (Long) -> Unit = {}) {
         viewModelScope.launch(Dispatchers.IO) {

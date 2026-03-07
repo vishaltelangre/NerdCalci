@@ -118,6 +118,29 @@ object MathEngine {
     }
 
     /**
+     * Re-evaluates a specific line to capture the exact exception message.
+     * Used for on-demand error tooltips.
+     */
+    fun getErrorDetails(allLines: List<LineEntity>, targetIndex: Int): String? {
+        if (targetIndex < 0 || targetIndex >= allLines.size) return null
+
+        val precedingLines = allLines.subList(0, targetIndex)
+        val targetLine = allLines[targetIndex]
+
+        if (targetLine.expression.isBlank()) return null
+
+        val context = buildVariableState(precedingLines)
+
+        try {
+            injectDynamicVariables(context)
+            evaluateLine(targetLine.expression, context)
+            return null // No error occurred during this evaluation
+        } catch (e: Exception) {
+            return e.message
+        }
+    }
+
+    /**
      * Core evaluation loop: processes [lines] in order, building variable state from
      * [initialVariables] as assignments are encountered.
      *

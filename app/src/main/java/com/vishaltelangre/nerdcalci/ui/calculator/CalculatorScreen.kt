@@ -942,11 +942,15 @@ private fun LineRow(
     }
 
     // Sync with database updates
-    LaunchedEffect(line.expression) {
-        if (textFieldValue.text.trim() != line.expression) {
+    LaunchedEffect(line.expression, lineNumber) {
+        if (textFieldValue.text != displayText) {
+            val selection = TextRange(
+                textFieldValue.selection.start.coerceIn(0, displayText.length),
+                textFieldValue.selection.end.coerceIn(0, displayText.length)
+            )
             textFieldValue = textFieldValue.copy(
                 text = displayText,
-                selection = textFieldValue.selection
+                selection = selection
             )
         }
     }

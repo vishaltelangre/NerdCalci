@@ -1,0 +1,35 @@
+name: Improvement
+description: Suggest an improvement to an existing feature
+title: "[IMPROVEMENT] "
+labels: ["improvement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement!
+  - type: textarea
+    id: current_state
+    attributes:
+      label: Current state
+      description: Please describe how the feature currently works and why it needs improvement.
+    validations:
+      required: true
+  - type: textarea
+    id: proposed_improvement
+    attributes:
+      label: Proposed improvement
+      description: A clear and concise description of the improvement you are suggesting.
+    validations:
+      required: true
+  - type: textarea
+    id: benefits
+    attributes:
+      label: Benefits
+      description: Why is this improvement necessary? How will it help users?
+    validations:
+      required: false
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional context
+      description: Add any other context or screenshots/screen recordings about the improvement here.

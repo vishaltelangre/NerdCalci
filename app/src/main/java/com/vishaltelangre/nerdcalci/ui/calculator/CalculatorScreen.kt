@@ -75,6 +75,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.navigation.NavHostController
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -243,7 +244,7 @@ fun CalculatorScreen(
     val canUndo = canUndoMap[fileId] ?: false
     val canRedo = canRedoMap[fileId] ?: false
     val globalShowLineNumbers by viewModel.showLineNumbers.collectAsState()
-    var localShowLineNumbers by remember { mutableStateOf<Boolean?>(null) }
+    var localShowLineNumbers by rememberSaveable(fileId) { mutableStateOf<Boolean?>(null) }
     val effectiveShowLineNumbers = localShowLineNumbers ?: globalShowLineNumbers
     var showMenu by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }

@@ -1269,9 +1269,9 @@ private fun LineRow(
                     // Real-time refresh: Re-fetch error details if the expression
                     // changes while the tooltip is already open.
                     errorMessage = null
-                    errorMessage = runCatching {
+                    errorMessage = try {
                         onGetErrorMessage(line.id)
-                    }.getOrElse {
+                    } catch (e: Exception) {
                         "Couldn't load error details"
                     } ?: "Unknown error"
                 }

@@ -1259,13 +1259,21 @@ private fun LineRow(
             var errorMessage by remember(line.id) { mutableStateOf<String?>(null) }
             val coroutineScope = rememberCoroutineScope()
 
-            LaunchedEffect(isError) {
-                // If the line is no longer an error, reset the tooltip state.
-                // This prevents stale state from causing a "double-tap" requirement
-                // to reopen the tooltip if the line results in "Err" again later.
+            LaunchedEffect(line.id, line.expression, isError, showTooltip) {
                 if (!isError) {
+                    // Reset state if line is no longer an error to prevent "double-tap"
+                    // requirement if it becomes an error again later.
                     showTooltip = false
                     errorMessage = null
+                } else if (showTooltip) {
+                    // Real-time refresh: Re-fetch error details if the expression
+                    // changes while the tooltip is already open.
+                    errorMessage = null
+                    errorMessage = runCatching {
+                        onGetErrorMessage(line.id)
+                    }.getOrElse {
+                        "Couldn't load error details"
+                    } ?: "Unknown error"
                 }
             }
 
@@ -1276,15 +1284,8 @@ private fun LineRow(
                     Modifier
                         .clickable {
                             showTooltip = !showTooltip
-                            if (showTooltip) {
+                            if (!showTooltip) {
                                 errorMessage = null
-                                coroutineScope.launch {
-                                    errorMessage = runCatching {
-                                        onGetErrorMessage(line.id)
-                                    }.getOrElse {
-                                        "Couldn't load error details"
-                                    } ?: "Unknown error"
-                                }
                             }
                         }
                         .padding(bottom = 2.dp)

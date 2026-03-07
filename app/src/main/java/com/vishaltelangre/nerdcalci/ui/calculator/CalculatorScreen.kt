@@ -1195,7 +1195,7 @@ private fun LineRow(
                                             text = newText,
                                             selection = TextRange(newCursorPos)
                                         )
-                                        onValueChange(newText)
+                                        onValueChange(newText.trim())
                                     }
                                     .padding(horizontal = 8.dp, vertical = 6.dp),
                                 verticalAlignment = Alignment.CenterVertically

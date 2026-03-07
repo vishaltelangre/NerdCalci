@@ -1259,6 +1259,16 @@ private fun LineRow(
             var errorMessage by remember(line.id) { mutableStateOf<String?>(null) }
             val coroutineScope = rememberCoroutineScope()
 
+            LaunchedEffect(isError) {
+                // If the line is no longer an error, reset the tooltip state.
+                // This prevents stale state from causing a "double-tap" requirement
+                // to reopen the tooltip if the line results in "Err" again later.
+                if (!isError) {
+                    showTooltip = false
+                    errorMessage = null
+                }
+            }
+
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.End,

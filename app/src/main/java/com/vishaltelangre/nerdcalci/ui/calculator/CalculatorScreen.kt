@@ -1257,7 +1257,6 @@ private fun LineRow(
 
             var showTooltip by remember(line.id) { mutableStateOf(false) }
             var errorMessage by remember(line.id) { mutableStateOf<String?>(null) }
-            val coroutineScope = rememberCoroutineScope()
 
             LaunchedEffect(line.id, line.expression, isError, showTooltip) {
                 if (!isError) {

@@ -96,6 +96,7 @@
 
 ### Editor Features
 - **Syntax Highlighting**: Color-coded variables, numbers, operators, and comments
+- **Smart Error Diagnostics**: See human-friendly explanation of math or syntax errors
 - **Auto-completion**: Smart variable suggestions as you type
 - **Line Numbers**: Easy reference and navigation
 

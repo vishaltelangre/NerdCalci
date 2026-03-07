@@ -3,24 +3,25 @@ NerdCalci is a powerful calculator designed for nerds and power users who need m
 Features:
 
 - Offline - Works without internet
-- Variable Support - Define variables and reuse them in calculations
-- Percentage Calculations - Natural syntax like "20% of 50000" or "15% off 1000"
-- Custom Functions - Define your own functions with multi-statement support and scope isolation
+- Variable support - Define variables and reuse them in calculations
+- Percentage calculations - Natural syntax like "20% of 50000" or "15% off 1000"
+- Custom functions - Define your own functions with multi-statement support and scope isolation
 - Dynamic variables - Quickly compute block sums (`total`) and averages (`avg`)
-- Syntax Highlighting - Color-coded numbers, variables, operators, and comments
+- Syntax highlighting - Color-coded numbers, variables, operators, and comments
+- Smart error diagnostics - See human-friendly explanation of math or syntax errors
 - Auto-completion - Smart suggestions for variable names
 - Comments - Document your calculations with # comments
-- Multiple Files - Organize calculations in separate files with auto-save
-- Pin Files - Keep frequently used files at the top
+- Multiple files - Organize calculations in separate files with auto-save
+- Pin files - Keep frequently used files at the top
 - Search - Search your files easily
-- Duplicate Files - Create a copy of a file with a new name
+- Duplicate files - Create a copy of a file with a new name
 - Undo/Redo - Up to 30 steps per file
 - Backups - Automatically or manually backup your files to app storage or a custom folder
 - Restore from backups - Restore your files from backups
-- Copy with Results - Copy calculations with their results
+- Copy with results - Copy calculations with their results
 - Export - Share your calculations as a PNG image or a multi-page PDF
-- Dark/Light Theme - System, dark, or light mode support
-- Line Numbers - Easy reference and navigation
+- Dark/light theme - System, dark, or light mode support
+- Line numbers - Easy reference and navigation
 
 Perfect for:
 

@@ -1,0 +1,1 @@
+Now tapping on "Err" shows a clear explanation of what went wrong!

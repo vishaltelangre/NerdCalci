@@ -687,7 +687,6 @@ fun CalculatorScreen(
                         operatorColor = operatorColor,
                         percentColor = percentColor,
                         commentColor = commentColor,
-                        isDarkTheme = isDarkTheme,
                         onFocused = {
                             currentlyFocusedLineId = line.id
                             focusLineId = null
@@ -868,7 +867,6 @@ private fun LineRow(
     operatorColor: Color,
     percentColor: Color,
     commentColor: Color,
-    isDarkTheme: Boolean,
     onFocused: () -> Unit,
     onBlur: () -> Unit,
     onValueChange: (String) -> Unit,

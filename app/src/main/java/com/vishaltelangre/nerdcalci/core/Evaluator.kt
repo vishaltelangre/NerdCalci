@@ -36,14 +36,13 @@ class Evaluator(
     }
 
     private fun evaluateFunction(name: String, argExprs: List<Expr>): Double {
-        val args = argExprs.map { evaluate(it) }
-
         // Check if it's a user-defined local function
         val localFunc = localFunctions[name]
         if (localFunc != null) {
-            if (args.size != localFunc.params.size) {
-                throw ArityMismatchException(name, localFunc.params.size, args.size)
+            if (argExprs.size != localFunc.params.size) {
+                throw ArityMismatchException(name, localFunc.params.size, argExprs.size)
             }
+            val args = argExprs.map { evaluate(it) }
             if (name in callStack) {
                 throw EvalException("Infinite recursion detected in function '$name'")
             }
@@ -75,6 +74,12 @@ class Evaluator(
         }
 
         // Fallback to built-ins
+        val builtinArity = Builtins.getArity(name)
+        if (builtinArity != null && argExprs.size != builtinArity) {
+            throw ArityMismatchException(name, builtinArity, argExprs.size)
+        }
+
+        val args = argExprs.map { evaluate(it) }
         return Builtins.call(name, args)
     }
 

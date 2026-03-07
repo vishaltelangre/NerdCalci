@@ -72,6 +72,9 @@ object Builtins {
     /** Returns true if [name] is a registered function (any arity). */
     fun isFunction(name: String): Boolean = name in functions
 
+    /** Return the expected arity of a built-in function, or null if it's not a function. */
+    fun getArity(name: String): Int? = functions[name]?.arity
+
     /** Returns true if [name] is a built-in constant usable as a bare identifier. */
     fun isConstant(name: String): Boolean = name in constants
 

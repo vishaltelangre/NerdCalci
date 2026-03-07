@@ -377,7 +377,9 @@ fun CalculatorScreen(
                                 DropdownMenuItem(
                                     text = { Text(if (effectiveShowLineNumbers) "Hide line numbers" else "Show line numbers") },
                                     onClick = {
-                                        localShowLineNumbers = !effectiveShowLineNumbers
+                                        val nextValue = !effectiveShowLineNumbers
+                                        localShowLineNumbers =
+                                            nextValue.takeUnless { it == globalShowLineNumbers }
                                         showMenu = false
                                     },
                                     leadingIcon = {

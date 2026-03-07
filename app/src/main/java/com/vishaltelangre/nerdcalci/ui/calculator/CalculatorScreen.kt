@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.style.TextAlign
@@ -573,10 +574,15 @@ fun CalculatorScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+            val maxLineDigits = lines.size.toString().length
+            val digitWidth = 9.dp // Width per digit for FiraCode 12sp
+            val numberWidth = (digitWidth * maxLineDigits)
+            val gutterOffset = 16.dp + numberWidth // 8dp start + 8dp end padding
+
             // Full-height vertical dividers as background
             Row(modifier = Modifier.fillMaxSize()) {
                 if (effectiveShowLineNumbers) {
-                    Box(modifier = Modifier.width(44.dp)) // Matches Gutter (28) + padding (8+8)
+                    Box(modifier = Modifier.width(gutterOffset))
                     VerticalDivider(
                         modifier = Modifier.fillMaxHeight(),
                         thickness = 1.dp,
@@ -612,6 +618,7 @@ fun CalculatorScreen(
                         lineNumber = index + 1,
                         showLineNumbers = effectiveShowLineNumbers,
                         precision = precision,
+                        numberWidth = numberWidth,
                         availableVariables = availableVariables,
                         shouldFocus = focusLineId == line.id,
                         focusCursorPos = if (focusLineId == line.id) focusCursorPosition else null,
@@ -791,6 +798,7 @@ private fun LineRow(
     lineNumber: Int,
     showLineNumbers: Boolean,
     precision: Int,
+    numberWidth: Dp,
     availableVariables: Set<Suggestion>,
     shouldFocus: Boolean,
     focusCursorPos: Int?,
@@ -973,13 +981,15 @@ private fun LineRow(
                     fontSize = 12.sp
                 ),
                 modifier = Modifier
-                    .width(28.dp)
-                    .padding(top = 10.dp),
-                textAlign = TextAlign.End
+                    .padding(start = 8.dp, top = 10.dp)
+                    .width(numberWidth),
+                textAlign = TextAlign.End,
+                softWrap = false,
+                maxLines = 1
             )
 
             // Spacer for the global vertical divider
-            Spacer(modifier = Modifier.width(17.dp)) // 16.dp padding + 1.dp thickness
+            Spacer(modifier = Modifier.width(9.dp)) // 8.dp right padding + 1.dp divider
         }
 
         // Editor with wrapping and autocomplete

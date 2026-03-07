@@ -7,14 +7,14 @@ assignees: ''
 
 ---
 
-### Current state
+## Current state
 <!-- Please describe how the feature currently works and why it needs improvement. -->
 
-### Proposed improvement
+## Proposed improvement
 <!-- A clear and concise description of the improvement you are suggesting. -->
 
-### Benefits
+## Benefits
 <!-- Why is this improvement necessary? How will it help users? -->
 
-### Additional context
+## Additional context
 <!-- Add any other context or screenshots/screen recordings about the improvement here. -->

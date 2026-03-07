@@ -1,0 +1,74 @@
+name: Bug report
+description: File a bug report to help improve NerdCalci
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug description
+      description: A clear and concise description of what the bug is.
+      placeholder: I encountered an error when...
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Please provide the steps to reproduce the behavior.
+      placeholder: |
+        1. Go to '...'
+        2. Click on '....'
+        3. Scroll down to '....'
+        4. See error
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: A clear and concise description of what you expected to happen.
+      placeholder: I expected the calculation to result in...
+    validations:
+      required: true
+  - type: input
+    id: app_version
+    attributes:
+      label: App version
+      description: You can find this in the app's Settings > About section.
+      placeholder: e.g., v2.2.1 (221)
+    validations:
+      required: true
+  - type: input
+    id: android_version
+    attributes:
+      label: Android version (Optional)
+      description: You can find this in your device's Settings > About device > Version section (e.g., Android 14).
+      placeholder: e.g., Android 14
+    validations:
+      required: false
+  - type: input
+    id: device_model
+    attributes:
+      label: Device model (Optional)
+      description: e.g., Pixel 7, Samsung S23
+      placeholder: Pixel 7 Pro
+    validations:
+      required: false
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots or screen recordings (Optional)
+      description: Please drag and drop or paste your media here. Screenshots are extremely helpful!
+    validations:
+      required: false
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional context (Optional)
+      description: Add any other context about the problem here (e.g., specific mathematical expressions used).
+    validations:
+      required: false

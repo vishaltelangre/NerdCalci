@@ -1,2 +1,2 @@
-- Fixed HeliBoard keyboard layout resetting when the cursor is near keywords in the editor.
-- Improved performance and UI stability with stable line keys.
+-- Fixed an issue where HeliBoard keyboard layout was automatically switching back to the default layout while editing.
+-- Improved editor stability when moving between lines.

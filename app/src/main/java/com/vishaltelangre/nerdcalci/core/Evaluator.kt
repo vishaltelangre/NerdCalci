@@ -42,7 +42,7 @@ class Evaluator(
         val localFunc = localFunctions[name]
         if (localFunc != null) {
             if (args.size != localFunc.params.size) {
-                throw EvalException("Function '$name' expects ${localFunc.params.size} arguments, but got ${args.size}")
+                throw ArityMismatchException(name, localFunc.params.size, args.size)
             }
             if (name in callStack) {
                 throw EvalException("Infinite recursion detected in function '$name'")

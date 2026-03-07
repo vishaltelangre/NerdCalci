@@ -1463,13 +1463,13 @@ class MathEngineTest {
             createLine("f(1, 2)")
         )
         val err = MathEngine.getErrorDetails(lines, 1)
-        assertEquals("Function 'f' expects 1 arguments, but got 2", err)
+        assertEquals("Function 'f' expects 1 argument, but got 2", err)
     }
 
     @Test
     fun `getErrorDetails handles arity mismatch for built in function`() {
         val lines = listOf(createLine("sinh(2, 5)"))
         val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("Function 'sinh' expects 1 arguments, but got 2", err)
+        assertEquals("Function 'sinh' expects 1 argument, but got 2", err)
     }
 }

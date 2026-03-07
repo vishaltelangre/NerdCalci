@@ -9,4 +9,4 @@ class UndefinedVariableException(val variableName: String) : EvalException("Unkn
 class DivisionByZeroException : EvalException("Cannot divide by zero")
 class UnknownFunctionException(val functionName: String) : EvalException("Unknown function '$functionName'")
 class ArityMismatchException(val functionName: String, val expected: Int, val actual: Int)
-    : EvalException("Function '$functionName' expects $expected arguments, but got $actual")
+    : EvalException("Function '$functionName' expects $expected ${if (expected == 1) "argument" else "arguments"}, but got $actual")

@@ -110,7 +110,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.foundation.border
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.unit.IntOffset
 import com.vishaltelangre.nerdcalci.core.Constants
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
 import com.vishaltelangre.nerdcalci.ui.components.DeleteFileDialog
@@ -1254,9 +1255,9 @@ private fun LineRow(
                 com.vishaltelangre.nerdcalci.ui.theme.ResultSuccess
             }
 
-            var showTooltip by androidx.compose.runtime.remember(line.expression) { androidx.compose.runtime.mutableStateOf(false) }
-            var errorMessage by androidx.compose.runtime.remember(line.expression) { androidx.compose.runtime.mutableStateOf<String?>(null) }
-            val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
+            var showTooltip by remember(line.expression) { mutableStateOf(false) }
+            var errorMessage by remember(line.expression) { mutableStateOf<String?>(null) }
+            val coroutineScope = rememberCoroutineScope()
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -1274,7 +1275,7 @@ private fun LineRow(
                         .padding(bottom = 2.dp)
                         .drawWithContent {
                             drawContent()
-                            val stroke = androidx.compose.ui.graphics.drawscope.Stroke(
+                            val stroke = Stroke(
                                 width = 1.dp.toPx(),
                                 pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 4.dp.toPx()), 0f)
                             )
@@ -1291,7 +1292,7 @@ private fun LineRow(
             ) {
                 if (isError) {
                     Icon(
-                        imageVector = androidx.compose.material.icons.Icons.Outlined.Info,
+                        imageVector = Icons.Outlined.Info,
                         contentDescription = "Error Info",
                         tint = resultColor,
                         modifier = Modifier.padding(end = 4.dp).height(16.dp).width(16.dp)
@@ -1308,13 +1309,13 @@ private fun LineRow(
             }
 
             if (showTooltip && isError) {
-                val density = androidx.compose.ui.platform.LocalDensity.current
+                val density = LocalDensity.current
                 val yOffset = with(density) { 32.dp.roundToPx() }
                 val xOffset = with(density) { (-8).dp.roundToPx() }
 
                 Popup(
                     alignment = Alignment.TopEnd,
-                    offset = androidx.compose.ui.unit.IntOffset(xOffset, yOffset),
+                    offset = IntOffset(xOffset, yOffset),
                     onDismissRequest = { showTooltip = false }
                 ) {
                     Box(

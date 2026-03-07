@@ -1255,8 +1255,8 @@ private fun LineRow(
                 com.vishaltelangre.nerdcalci.ui.theme.ResultSuccess
             }
 
-            var showTooltip by remember(line.expression) { mutableStateOf(false) }
-            var errorMessage by remember(line.expression) { mutableStateOf<String?>(null) }
+            var showTooltip by remember(line.id) { mutableStateOf(false) }
+            var errorMessage by remember(line.id) { mutableStateOf<String?>(null) }
             val coroutineScope = rememberCoroutineScope()
 
             Row(
@@ -1266,7 +1266,8 @@ private fun LineRow(
                     Modifier
                         .clickable {
                             showTooltip = !showTooltip
-                            if (showTooltip && errorMessage == null) {
+                            if (showTooltip) {
+                                errorMessage = null
                                 coroutineScope.launch {
                                     errorMessage = onGetErrorMessage(line.id) ?: "Unknown error"
                                 }

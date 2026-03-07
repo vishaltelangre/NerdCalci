@@ -1,0 +1,2 @@
+- Added a global setting to toggle line numbers in the editor.
+- Added a temporary toggle for line numbers in the calculator menu.

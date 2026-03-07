@@ -12,8 +12,8 @@ android {
         applicationId = "com.vishaltelangre.nerdcalci"
         minSdk = 23
         targetSdk = 35
-        versionCode = 201
-        versionName = "2.0.1"
+        versionCode = 210
+        versionName = "2.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

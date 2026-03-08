@@ -13,12 +13,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Help
+import androidx.compose.material.icons.filled.AccessTimeFilled
+import androidx.compose.material.icons.filled.Attribution
+import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.RssFeed
+import androidx.compose.material.icons.filled.LogoDev
+import androidx.compose.material.icons.filled.PrivacyTip
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Coffee
@@ -96,6 +103,7 @@ fun SettingsScreen(
     showLineNumbers: Boolean,
     onShowLineNumbersChange: (Boolean) -> Unit,
     onHelp: () -> Unit,
+    onChangelog: () -> Unit,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -181,7 +189,7 @@ fun SettingsScreen(
                                 Icon(
                                     imageVector = icon,
                                     contentDescription = label,
-                                    modifier = Modifier.padding(4.dp)
+                                    modifier = Modifier.size(28.dp)
                                 )
                             }
                         }
@@ -260,7 +268,7 @@ fun SettingsScreen(
 
             if (autoBackupEnabled) {
                 SettingsDropdownItem(
-                    icon = Icons.Default.Schedule,
+                    icon = Icons.Default.AccessTimeFilled,
                     title = "Backup frequency",
                     value = if (backupFrequency == BackupFrequency.DAILY) "Daily" else "Weekly",
                     onClick = { showFrequencyDialog = true }
@@ -300,12 +308,26 @@ fun SettingsScreen(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Spacer(modifier = Modifier.height(8.dp))
 
-            SettingsSection(title = "Help")
+            SettingsSection(title = "Help & Feedback")
             SettingsItem(
                 icon = Icons.AutoMirrored.Filled.Help,
                 title = "Help",
                 subtitle = "View the calculator usage guide and documentation",
                 onClick = onHelp
+            )
+            SettingsItem(
+                icon = Icons.Default.RssFeed,
+                title = "Changelog",
+                subtitle = "See what's new in this version and past updates",
+                onClick = onChangelog
+            )
+            SettingsItem(
+                icon = Icons.Default.BugReport,
+                title = "Report an Issue",
+                subtitle = Constants.SUPPORT_ISSUES_URL.removePrefix("https://"),
+                onClick = {
+                    openUrl(Constants.SUPPORT_ISSUES_URL)
+                }
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -314,7 +336,7 @@ fun SettingsScreen(
 
             SettingsSection(title = "Legal")
             SettingsItem(
-                icon = Icons.Default.Info,
+                icon = Icons.Default.PrivacyTip,
                 title = "Privacy Policy",
                 subtitle = Constants.PRIVACY_POLICY_URL.removePrefix("https://"),
                 onClick = { openUrl(Constants.PRIVACY_POLICY_URL) }
@@ -327,15 +349,6 @@ fun SettingsScreen(
                 onClick = { openUrl(Constants.TERMS_OF_SERVICE_URL) }
             )
 
-            SettingsItem(
-                icon = Icons.AutoMirrored.Filled.Help,
-                title = "Report an Issue",
-                subtitle = Constants.SUPPORT_ISSUES_URL.removePrefix("https://"),
-                onClick = {
-                    openUrl(Constants.SUPPORT_ISSUES_URL)
-                }
-            )
-
             Spacer(modifier = Modifier.height(8.dp))
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Spacer(modifier = Modifier.height(8.dp))
@@ -345,7 +358,7 @@ fun SettingsScreen(
                 icon = Icons.Default.Info,
                 title = "App Version",
                 subtitle = appVersion,
-                onClick = null
+                onClick = onChangelog
             )
 
             SettingsItem(
@@ -364,7 +377,7 @@ fun SettingsScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = Icons.Default.Info,
+                    imageVector = Icons.Default.LogoDev,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -397,7 +410,7 @@ fun SettingsScreen(
             }
 
             SettingsItem(
-                icon = Icons.Default.Info,
+                icon = Icons.Default.Attribution,
                 title = "License",
                 subtitle = Constants.LICENSE,
                 onClick = null

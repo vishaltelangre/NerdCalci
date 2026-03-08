@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.UploadFile
+import androidx.compose.material.icons.filled.RssFeed
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -71,6 +72,7 @@ fun HomeScreen(
     onFileClick: (Long) -> Unit,
     onSettingsClick: () -> Unit,
     onHelpClick: () -> Unit,
+    onChangelogClick: () -> Unit,
     onRestoreClick: () -> Unit
 ) {
     val context = LocalContext.current
@@ -112,6 +114,11 @@ fun HomeScreen(
             if (!isSearchViewActive) {
                 CenterAlignedTopAppBar(
                     title = { Text(appName, color = MaterialTheme.colorScheme.onSurface) },
+                    navigationIcon = {
+                        IconButton(onClick = onChangelogClick) {
+                            Icon(Icons.Default.RssFeed, "What's New", tint = MaterialTheme.colorScheme.onSurface)
+                        }
+                    },
                     actions = {
                         IconButton(
                             onClick = {
@@ -123,7 +130,7 @@ fun HomeScreen(
                             Icon(
                                 Icons.Default.Search,
                                 "Search",
-                        tint = if (isSearchUiVisible) {
+                                tint = if (isSearchUiVisible) {
                                     MaterialTheme.colorScheme.primary
                                 } else {
                                     MaterialTheme.colorScheme.onSurface
@@ -226,6 +233,14 @@ fun HomeScreen(
                             Icon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("Help")
+                        }
+                        TextButton(
+                            onClick = onChangelogClick,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.RssFeed, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("What's New")
                         }
                     }
                 }

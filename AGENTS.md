@@ -61,9 +61,10 @@ Run what is relevant to the change:
 ## Release and Changelog
 
 - Version source of truth is `app/build.gradle.kts` (`versionCode`, `versionName`).
-- For release work, add/update:
-  - `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`
-- Keep changelog entries concise and user-facing.
+- For release work, you **must** update the changelog in **two** places:
+  1. `CHANGELOG.md` (root): Follows the "Keep a Changelog" standard with detailed categories (Added, Changed, Fixed, etc.).
+  2. `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`: Uses a concise, bulleted style for Google Play Store/F-Droid updates.
+- Keep changelog entries user-facing and informative.
 
 ## Important Paths
 

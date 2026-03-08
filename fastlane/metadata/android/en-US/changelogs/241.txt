@@ -1,0 +1,1 @@
+- Added a new in-app Changelog viewer to easily see recent updates and improvements.

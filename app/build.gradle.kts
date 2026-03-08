@@ -12,8 +12,8 @@ android {
         applicationId = "com.vishaltelangre.nerdcalci"
         minSdk = 23
         targetSdk = 35
-        versionCode = 240
-        versionName = "2.4.0"
+        versionCode = 241
+        versionName = "2.4.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -88,12 +88,16 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }
 
-// Automatically bundled the REFERENCE.md from the project root into APK assets
-// so that the HelpScreen can render it dynamically without network requests
+// Automatically bundle the documentation from the project root into APK assets
+// so that the HelpScreen and ChangelogScreen can render them dynamically
 tasks.register<Copy>("copyReferenceDocsToAssets") {
     from("$rootDir/REFERENCE.md")
     into("$projectDir/src/main/assets")
 }
+tasks.register<Copy>("copyChangelogToAssets") {
+    from("$rootDir/CHANGELOG.md")
+    into("$projectDir/src/main/assets")
+}
 tasks.named("preBuild") {
-    dependsOn("copyReferenceDocsToAssets")
+    dependsOn("copyReferenceDocsToAssets", "copyChangelogToAssets")
 }

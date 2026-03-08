@@ -54,6 +54,7 @@ import com.vishaltelangre.nerdcalci.ui.components.RestoreSourceDialog
 import com.vishaltelangre.nerdcalci.ui.help.HelpScreen
 import com.vishaltelangre.nerdcalci.ui.home.HomeScreen
 import com.vishaltelangre.nerdcalci.ui.settings.SettingsScreen
+import com.vishaltelangre.nerdcalci.ui.changelog.ChangelogScreen
 import com.vishaltelangre.nerdcalci.ui.theme.NerdCalciTheme
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -197,6 +198,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
                 onFileClick = { fileId -> navController.navigate("editor/$fileId") },
                 onSettingsClick = { navController.navigate("settings") },
                 onHelpClick = { navController.navigate("help") },
+                onChangelogClick = { navController.navigate("changelog") },
                 onRestoreClick = {
                     viewModel.refreshBackups(context)
                     showHomeRestoreActionDialog = true
@@ -287,6 +289,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
                 showLineNumbers = showLineNumbers,
                 onShowLineNumbersChange = { newShowLineNumbers -> viewModel.setShowLineNumbers(newShowLineNumbers) },
                 onHelp = { navController.navigate("help") },
+                onChangelog = { navController.navigate("changelog") },
                 onBack = { navController.popBackStack() }
             )
         }
@@ -300,6 +303,17 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
             popExitTransition = { slideOutToRight }
         ) {
             HelpScreen(onBack = { navController.popBackStack() })
+        }
+
+        // Changelog Screen
+        composable(
+            "changelog",
+            enterTransition = { slideInFromRight },
+            exitTransition = { slideOutToLeft },
+            popEnterTransition = { slideInFromLeft },
+            popExitTransition = { slideOutToRight }
+        ) {
+            ChangelogScreen(onBack = { navController.popBackStack() })
         }
     }
 

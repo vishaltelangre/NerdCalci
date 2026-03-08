@@ -1,5 +1,6 @@
 package com.vishaltelangre.nerdcalci.ui.changelog
 
+import android.util.Log
 import android.widget.TextView
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
@@ -55,6 +56,7 @@ fun ChangelogScreen(onBack: () -> Unit) {
                 val text = context.assets.open("CHANGELOG.md").bufferedReader().use { it.readText() }
                 parseChangelog(text)
             } catch (e: Exception) {
+                Log.e("ChangelogScreen", "Failed to load changelog", e)
                 emptyList()
             }
         }
@@ -134,16 +136,21 @@ fun ChangelogVersionHeader(item: ChangelogVersion) {
 }
 
 @Composable
-fun ChangelogSectionItem(section: ChangelogSection) {
-    val categoryColor = when (section.title.lowercase()) {
-        "added" -> Color(0xFF4CAF50)
+private fun getCategoryColor(category: String): Color {
+    return when (category.lowercase()) {
+        "added" -> Color(0xFF4CAF50) // Green
         "changed" -> MaterialTheme.colorScheme.primary
-        "fixed" -> Color(0xFFFF9800)
-        "deprecated" -> Color(0xFFF44336)
-        "removed" -> Color(0xFF757575)
-        "security" -> Color(0xFF9C27B0)
+        "fixed" -> Color(0xFFFF9800) // Orange
+        "deprecated" -> Color(0xFFF44336) // Red
+        "removed" -> Color(0xFF757575) // Gray
+        "security" -> Color(0xFF9C27B0) // Purple
         else -> MaterialTheme.colorScheme.secondary
     }
+}
+
+@Composable
+fun ChangelogSectionItem(section: ChangelogSection) {
+    val categoryColor = getCategoryColor(section.title)
 
     Column(
         modifier = Modifier
@@ -214,16 +221,26 @@ fun MarkdownText(markdown: String, modifier: Modifier = Modifier) {
 
 @Composable
 fun WavyDivider(modifier: Modifier = Modifier) {
+    var isAnimating by remember { mutableStateOf(true) }
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(10000) // Stop animation after 10 seconds to save battery
+        isAnimating = false
+    }
+
     val infiniteTransition = rememberInfiniteTransition(label = "wave")
-    val phase by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "phase"
-    )
+    val phase by if (isAnimating) {
+        infiniteTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(2000, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
+            ),
+            label = "phase"
+        )
+    } else {
+        remember { mutableStateOf(0f) }
+    }
 
     val color = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
     Canvas(modifier = modifier) {
@@ -238,8 +255,8 @@ fun WavyDivider(modifier: Modifier = Modifier) {
         path.moveTo(-waveWidth + offset, height / 2)
         var x = -waveWidth + offset
         while (x < width + waveWidth) {
-            path.relativeQuadraticBezierTo(waveWidth / 4, -waveHeight, waveWidth / 2, 0f)
-            path.relativeQuadraticBezierTo(waveWidth / 4, waveHeight, waveWidth / 2, 0f)
+            path.relativeQuadraticTo(waveWidth / 4, -waveHeight, waveWidth / 2, 0f)
+            path.relativeQuadraticTo(waveWidth / 4, waveHeight, waveWidth / 2, 0f)
             x += waveWidth
         }
 

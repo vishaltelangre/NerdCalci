@@ -56,7 +56,7 @@ jobs:
 
   androidTest:
     needs: build
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     timeout-minutes: 45
 
     steps:

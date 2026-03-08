@@ -10,6 +10,7 @@ import com.vishaltelangre.nerdcalci.core.MathEngine
 import com.vishaltelangre.nerdcalci.data.local.CalculatorDao
 import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
+import com.vishaltelangre.nerdcalci.utils.FilenameUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -359,8 +360,9 @@ object BackupManager {
     }
 
     private suspend fun importFromZip(dao: CalculatorDao, inputStream: InputStream): Int {
+        val existingFiles = dao.getAllFiles().first()
+        val existingNames = existingFiles.map { it.name }.toMutableSet()
         var importedCount = 0
-        val existingFilesByName = dao.getAllFiles().first().associateBy { it.name }.toMutableMap()
 
         ZipInputStream(inputStream).use { zipIn ->
             var entry: ZipEntry? = zipIn.nextEntry
@@ -382,25 +384,21 @@ object BackupManager {
                         }
                         .filter { it.isNotEmpty() }
 
-                    val existingFile = existingFilesByName[fileName]
-                    val fileId = if (existingFile != null) {
-                        val oldLines = dao.getLinesForFileSync(existingFile.id)
-                        oldLines.forEach { dao.deleteLine(it) }
-                        existingFile.id
+                    val finalFileName = if (existingNames.contains(fileName)) {
+                        FilenameUtils.generateUniqueFileName(fileName) { name ->
+                            existingNames.contains(name)
+                        }
                     } else {
-                        val newFileId = dao.insertFile(
-                            FileEntity(
-                                name = fileName,
-                                lastModified = System.currentTimeMillis()
-                            )
-                        )
-                        existingFilesByName[fileName] = FileEntity(
-                            id = newFileId,
-                            name = fileName,
+                        fileName
+                    }
+
+                    val fileId = dao.insertFile(
+                        FileEntity(
+                            name = finalFileName,
                             lastModified = System.currentTimeMillis()
                         )
-                        newFileId
-                    }
+                    )
+                    existingNames.add(finalFileName)
 
                     expressions.forEachIndexed { index, expr ->
                         dao.insertLine(

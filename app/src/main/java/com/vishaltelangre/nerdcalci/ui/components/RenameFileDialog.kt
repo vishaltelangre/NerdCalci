@@ -18,9 +18,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+
 import com.vishaltelangre.nerdcalci.core.Constants
+import com.vishaltelangre.nerdcalci.ui.calculator.CalculatorViewModel
 
 /**
  * Reusable dialog for renaming a file.
@@ -31,16 +35,35 @@ import com.vishaltelangre.nerdcalci.core.Constants
  */
 @Composable
 fun RenameFileDialog(
+    viewModel: CalculatorViewModel,
+    fileId: Long,
     currentName: String,
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit
 ) {
-    var renameText by remember { mutableStateOf(currentName) }
+    var textFieldValue by remember {
+        mutableStateOf(
+            TextFieldValue(
+                text = currentName,
+                selection = TextRange(currentName.length)
+            )
+        )
+    }
+    var isNameTaken by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
 
+    LaunchedEffect(textFieldValue.text) {
+        val trimmedText = textFieldValue.text.trim()
+        if (trimmedText.isNotEmpty() && trimmedText != currentName) {
+            isNameTaken = viewModel.doesFileExist(trimmedText, fileId)
+        } else {
+            isNameTaken = false
+        }
+    }
+
     fun confirmRename() {
-        if (renameText.isNotBlank()) {
-            onConfirm(renameText.trim())
+        if (textFieldValue.text.isNotBlank()) {
+            onConfirm(textFieldValue.text.trim())
         }
     }
 
@@ -50,15 +73,13 @@ fun RenameFileDialog(
         text = {
             Column {
                 TextField(
-                    value = renameText,
+                    value = textFieldValue,
                     onValueChange = { newValue ->
-                        // Filter out newlines and limit length
-                        val filtered = newValue.replace("\n", "")
-                        renameText = if (filtered.length <= Constants.MAX_FILE_NAME_LENGTH) {
-                            filtered
-                        } else {
-                            filtered.take(Constants.MAX_FILE_NAME_LENGTH)
-                        }
+                        val finalText = newValue.text.replace("\n", "").take(Constants.MAX_FILE_NAME_LENGTH)
+                        textFieldValue = newValue.copy(
+                            text = finalText,
+                            selection = TextRange(newValue.selection.start.coerceAtMost(finalText.length))
+                        )
                     },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
@@ -67,10 +88,18 @@ fun RenameFileDialog(
                     ),
                     modifier = Modifier.focusRequester(focusRequester)
                 )
+                if (isNameTaken) {
+                    Text(
+                        text = "File name already exists",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
                 Text(
-                    text = "${renameText.length}/${Constants.MAX_FILE_NAME_LENGTH}",
+                    text = "${textFieldValue.text.length}/${Constants.MAX_FILE_NAME_LENGTH}",
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (isNameTaken) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp)
                 )
             }
@@ -78,7 +107,7 @@ fun RenameFileDialog(
         confirmButton = {
             TextButton(
                 onClick = { confirmRename() },
-                enabled = renameText.isNotBlank()
+                enabled = textFieldValue.text.isNotBlank() && !isNameTaken
             ) {
                 Text("Rename")
             }

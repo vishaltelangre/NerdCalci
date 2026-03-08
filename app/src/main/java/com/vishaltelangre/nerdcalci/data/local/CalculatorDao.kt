@@ -20,6 +20,12 @@ interface CalculatorDao {
     @Query("SELECT COUNT(*) FROM files WHERE isPinned = 1")
     suspend fun getPinnedFilesCount(): Int
 
+    @Query("SELECT EXISTS(SELECT 1 FROM files WHERE name = :name)")
+    suspend fun doesFileExist(name: String): Boolean
+
+    @Query("SELECT EXISTS(SELECT 1 FROM files WHERE name = :name AND id != :excludeId)")
+    suspend fun doesFileExist(name: String, excludeId: Long): Boolean
+
     // Returns lines ordered by sortOrder (determines display order in UI)
     @Query("SELECT * FROM lines WHERE fileId = :fileId ORDER BY sortOrder ASC")
     fun getLinesForFile(fileId: Long): Flow<List<LineEntity>>

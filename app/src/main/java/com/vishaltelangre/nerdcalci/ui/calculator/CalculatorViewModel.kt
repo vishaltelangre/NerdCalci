@@ -5,6 +5,9 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.SharedPreferences
 import android.net.Uri
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vishaltelangre.nerdcalci.core.Constants
@@ -17,6 +20,7 @@ import com.vishaltelangre.nerdcalci.data.backup.BackupManager
 import com.vishaltelangre.nerdcalci.data.local.CalculatorDao
 import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
+import com.vishaltelangre.nerdcalci.utils.FilenameUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,6 +36,8 @@ class CalculatorViewModel(
     private val dao: CalculatorDao,
     private val prefs: SharedPreferences? = null
 ) : ViewModel() {
+
+    private val dateTimeFormatter = SimpleDateFormat("EEE, MMM d, yyyy HH:mm:ss", Locale.getDefault())
 
     companion object {
         private const val PREF_PRECISION = "precision"
@@ -365,10 +371,18 @@ class CalculatorViewModel(
         }
     }
 
-    // Create a new file
-    fun createNewFile(name: String, onCreated: (Long) -> Unit = {}) {
+    private suspend fun generateUniqueFileName(baseName: String): String {
+        return FilenameUtils.generateUniqueFileName(baseName) { name ->
+            dao.doesFileExist(name)
+        }
+    }
+
+    // Create a new file with a default timestamp name
+    fun createNewFile(onCreated: (Long) -> Unit = {}) {
         viewModelScope.launch(Dispatchers.IO) {
-            val fileId = dao.insertFile(FileEntity(name = name, lastModified = System.currentTimeMillis()))
+            val timestampName = dateTimeFormatter.format(Date())
+            val uniqueName = generateUniqueFileName(timestampName)
+            val fileId = dao.insertFile(FileEntity(name = uniqueName, lastModified = System.currentTimeMillis()))
             // Start with one empty line
             dao.insertLine(LineEntity(fileId = fileId, sortOrder = 0, expression = "", result = ""))
             // Notify callback with new file ID on main thread
@@ -379,14 +393,17 @@ class CalculatorViewModel(
     }
 
     // Duplicate an existing file with all its lines
-    fun duplicateFile(sourceFileId: Long, newName: String, onCreated: (Long) -> Unit = {}) {
+    fun duplicateFile(sourceFileId: Long, onCreated: (Long) -> Unit = {}) {
         viewModelScope.launch(Dispatchers.IO) {
             val sourceFile = dao.getFileById(sourceFileId)
             if (sourceFile != null) {
+                val baseName = "Copy of ${sourceFile.name}"
+                val uniqueName = generateUniqueFileName(baseName.take(Constants.MAX_FILE_NAME_LENGTH))
+
                 // Create new file
                 val newFileId = dao.insertFile(
                     FileEntity(
-                        name = newName,
+                        name = uniqueName,
                         lastModified = System.currentTimeMillis(),
                         isPinned = false
                     )
@@ -481,6 +498,16 @@ class CalculatorViewModel(
             val file = dao.getFileById(fileId)
             if (file != null) {
                 dao.updateFile(file.copy(name = newName, lastModified = System.currentTimeMillis()))
+            }
+        }
+    }
+
+    suspend fun doesFileExist(name: String, excludeId: Long? = null): Boolean {
+        return withContext(Dispatchers.IO) {
+            if (excludeId == null) {
+                dao.doesFileExist(name)
+            } else {
+                dao.doesFileExist(name, excludeId)
             }
         }
     }

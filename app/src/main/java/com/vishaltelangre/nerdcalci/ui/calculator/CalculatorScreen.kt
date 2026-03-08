@@ -118,7 +118,6 @@ import androidx.compose.ui.unit.IntOffset
 import com.vishaltelangre.nerdcalci.core.Constants
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
 import com.vishaltelangre.nerdcalci.ui.components.DeleteFileDialog
-import com.vishaltelangre.nerdcalci.ui.components.DuplicateFileDialog
 import com.vishaltelangre.nerdcalci.ui.components.RenameFileDialog
 import com.vishaltelangre.nerdcalci.ui.theme.FiraCodeFamily
 import com.vishaltelangre.nerdcalci.utils.ExportUtils
@@ -293,7 +292,6 @@ fun CalculatorScreen(
     val effectiveShowLineNumbers = localShowLineNumbers ?: globalShowLineNumbers
     var showMenu by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
-    var showDuplicateDialog by remember { mutableStateOf(false) }
     var showClearConfirmDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     val fileName = files.find { it.id == fileId }?.name ?: "Editor"
@@ -356,6 +354,7 @@ fun CalculatorScreen(
                         Text(
                             text = fileName,
                             color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.clickable { showRenameDialog = true },
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -457,7 +456,9 @@ fun CalculatorScreen(
                                     },
                                     onClick = {
                                         showMenu = false
-                                        showDuplicateDialog = true
+                                        viewModel.duplicateFile(fileId) { newFileId ->
+                                            onNavigateToFile(newFileId)
+                                        }
                                     }
                                 )
                                 HorizontalDivider()
@@ -784,6 +785,8 @@ fun CalculatorScreen(
     // Rename File dialog
     if (showRenameDialog) {
         RenameFileDialog(
+            viewModel = viewModel,
+            fileId = fileId,
             currentName = fileName,
             onDismiss = { showRenameDialog = false },
             onConfirm = { newName ->
@@ -793,22 +796,6 @@ fun CalculatorScreen(
         )
     }
 
-    // Duplicate File dialog
-    if (showDuplicateDialog) {
-        DuplicateFileDialog(
-            originalName = fileName,
-            onDismiss = { showDuplicateDialog = false },
-            onConfirm = { newName ->
-                viewModel.duplicateFile(
-                    fileId,
-                    newName.take(Constants.MAX_FILE_NAME_LENGTH)
-                ) { newFileId ->
-                    onNavigateToFile(newFileId)
-                }
-                showDuplicateDialog = false
-            }
-        )
-    }
 
     // Clear All confirmation dialog
     if (showClearConfirmDialog) {

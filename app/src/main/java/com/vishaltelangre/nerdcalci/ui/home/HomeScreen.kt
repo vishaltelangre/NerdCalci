@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -74,8 +75,6 @@ fun HomeScreen(
 ) {
     val context = LocalContext.current
     val files by viewModel.allFiles.collectAsState(initial = emptyList())
-    var showDialog by remember { mutableStateOf(false) }
-    var newFileName by remember { mutableStateOf("") }
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var searchBarVisible by rememberSaveable { mutableStateOf(false) }
     var searchBarActive by rememberSaveable { mutableStateOf(false) }
@@ -86,13 +85,8 @@ fun HomeScreen(
     val appName = context.getString(R.string.app_name)
 
     fun createFile() {
-        if (newFileName.isNotBlank()) {
-            val trimmedName = newFileName.trim().take(Constants.MAX_FILE_NAME_LENGTH)
-            viewModel.createNewFile(trimmedName) { fileId ->
-                onFileClick(fileId)
-            }
-            newFileName = ""
-            showDialog = false
+        viewModel.createNewFile { fileId ->
+            onFileClick(fileId)
         }
     }
 
@@ -149,7 +143,7 @@ fun HomeScreen(
         floatingActionButton = {
             if (!isSearchViewActive) {
                 FloatingActionButton(
-                    onClick = { showDialog = true },
+                    onClick = { createFile() },
                     containerColor = MaterialTheme.colorScheme.primary
                 ) {
                     Icon(Icons.Default.Add, contentDescription = "New Calculation")
@@ -208,7 +202,7 @@ fun HomeScreen(
                             modifier = Modifier.padding(bottom = 20.dp)
                         )
                         Button(
-                            onClick = { showDialog = true },
+                            onClick = { createFile() },
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Icon(Icons.Default.Add, contentDescription = null)
@@ -271,17 +265,17 @@ fun HomeScreen(
                         item { SectionHeader(title = "Pinned") }
                         addFileItems(
                             files = visiblePinnedFiles,
-                            onFileClick = onFileClick,
-                            onRename = { fileId, newName ->
+                            onItemClick = { fileId: Long -> onFileClick(fileId) },
+                            onItemRename = { fileId: Long, newName: String ->
                                 viewModel.renameFile(fileId, newName.take(Constants.MAX_FILE_NAME_LENGTH))
                             },
-                            onDuplicate = { fileId, newName ->
-                                viewModel.duplicateFile(fileId, newName.take(Constants.MAX_FILE_NAME_LENGTH)) { newFileId ->
+                            onItemDuplicate = { fileId: Long ->
+                                viewModel.duplicateFile(fileId) { newFileId ->
                                     onFileClick(newFileId)
                                 }
                             },
-                            onDelete = viewModel::deleteFile,
-                            onTogglePin = { fileId ->
+                            onItemDelete = { fileId: Long -> viewModel.deleteFile(fileId) },
+                            onItemTogglePin = { fileId: Long ->
                                 viewModel.togglePinFile(fileId) {
                                     coroutineScope.launch {
                                         snackbarHostState.showSnackbar(
@@ -289,7 +283,8 @@ fun HomeScreen(
                                         )
                                     }
                                 }
-                            }
+                            },
+                            viewModel = viewModel
                         )
                     }
 
@@ -301,17 +296,17 @@ fun HomeScreen(
                         }
                         addFileItems(
                             files = visibleUnpinnedFiles,
-                            onFileClick = onFileClick,
-                            onRename = { fileId, newName ->
+                            onItemClick = { fileId: Long -> onFileClick(fileId) },
+                            onItemRename = { fileId: Long, newName: String ->
                                 viewModel.renameFile(fileId, newName.take(Constants.MAX_FILE_NAME_LENGTH))
                             },
-                            onDuplicate = { fileId, newName ->
-                                viewModel.duplicateFile(fileId, newName.take(Constants.MAX_FILE_NAME_LENGTH)) { newFileId ->
+                            onItemDuplicate = { fileId: Long ->
+                                viewModel.duplicateFile(fileId) { newFileId ->
                                     onFileClick(newFileId)
                                 }
                             },
-                            onDelete = viewModel::deleteFile,
-                            onTogglePin = { fileId ->
+                            onItemDelete = { fileId: Long -> viewModel.deleteFile(fileId) },
+                            onItemTogglePin = { fileId: Long ->
                                 viewModel.togglePinFile(fileId) {
                                     coroutineScope.launch {
                                         snackbarHostState.showSnackbar(
@@ -319,61 +314,13 @@ fun HomeScreen(
                                         )
                                     }
                                 }
-                            }
+                            },
+                            viewModel = viewModel
                         )
                     }
                 }
             }
         }
-    }
-
-    // Dialog to name the new file
-    if (showDialog) {
-        AlertDialog(
-            onDismissRequest = { showDialog = false },
-            title = { Text("New File") },
-            text = {
-                Column {
-                    TextField(
-                        value = newFileName,
-                        onValueChange = { newValue ->
-                            // Filter out newlines and limit length
-                            val filtered = newValue.replace("\n", "")
-                            newFileName = if (filtered.length <= Constants.MAX_FILE_NAME_LENGTH) {
-                                filtered
-                            } else {
-                                filtered.take(Constants.MAX_FILE_NAME_LENGTH)
-                            }
-                        },
-                        placeholder = { Text("Enter a file name") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                        keyboardActions = KeyboardActions(
-                            onDone = { createFile() }
-                        )
-                    )
-                    Text(
-                        text = "${newFileName.length}/${Constants.MAX_FILE_NAME_LENGTH}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { createFile() }) {
-                    Text("Create")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    showDialog = false
-                    newFileName = ""
-                }) {
-                    Text("Cancel")
-                }
-            }
-        )
     }
 }
 

@@ -90,6 +90,7 @@ abstract class CalculatorDao {
 
     @Transaction
     open suspend fun updateLines(fileId: Long, lines: List<LineEntity>) {
+        if (lines.isEmpty()) return
         internalUpdateLines(lines)
         touchFile(fileId)
     }

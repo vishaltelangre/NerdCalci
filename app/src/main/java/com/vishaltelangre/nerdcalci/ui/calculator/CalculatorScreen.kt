@@ -284,8 +284,10 @@ fun CalculatorScreen(
     val listState = rememberLazyListState()
 
     val handleBack = {
-        viewModel.deleteFileIfEmptyAndRecent(fileId)
-        onBack()
+        coroutineScope.launch {
+            viewModel.deleteFileIfEmptyAndRecent(fileId)
+            onBack()
+        }
     }
 
     BackHandler(onBack = handleBack)

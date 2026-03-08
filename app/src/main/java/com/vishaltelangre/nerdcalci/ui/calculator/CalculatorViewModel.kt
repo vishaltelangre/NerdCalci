@@ -467,9 +467,9 @@ class CalculatorViewModel(
      * This is used when navigating back from the calculator screen to prevent cluttering
      * the home screen with accidentally created empty files.
      */
-    fun deleteFileIfEmptyAndRecent(fileId: Long) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val file = dao.getFileById(fileId) ?: return@launch
+    suspend fun deleteFileIfEmptyAndRecent(fileId: Long) {
+        withContext(Dispatchers.IO) {
+            val file = dao.getFileById(fileId) ?: return@withContext
             val lines = dao.getLinesForFileSync(fileId)
 
             val isEmpty = lines.all { it.expression.isBlank() }

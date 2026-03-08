@@ -200,6 +200,12 @@ After running tests, view the HTML report:
 open app/build/reports/tests/testDebugUnitTest/index.html
 ```
 
+To run instrumentation tests:
+
+```bash
+./gradlew :app:connectedDebugAndroidTest
+```
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.

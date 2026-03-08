@@ -186,6 +186,10 @@ class CalculatorViewModel(
 
     fun getLines(fileId: Long): Flow<List<LineEntity>> = dao.getLinesForFile(fileId)
 
+    suspend fun getLineCount(fileId: Long): Int = withContext(Dispatchers.IO) {
+        dao.getLineCountForFile(fileId)
+    }
+
     // Update undo/redo availability for a file
     private fun updateUndoRedoState(fileId: Long) {
         _canUndo.value = _canUndo.value + (fileId to (undoStacks[fileId]?.isNotEmpty() == true))

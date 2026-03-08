@@ -34,8 +34,14 @@ abstract class CalculatorDao {
     @Query("SELECT * FROM lines WHERE fileId = :fileId ORDER BY sortOrder ASC")
     abstract suspend fun getLinesForFileSync(fileId: Long): List<LineEntity>
 
+    @Query("SELECT COUNT(*) FROM lines WHERE fileId = :fileId")
+    abstract suspend fun getLineCountForFile(fileId: Long): Int
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun insertFile(file: FileEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    protected abstract suspend fun internalInsertLines(lines: List<LineEntity>)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     protected abstract suspend fun internalInsertLine(line: LineEntity): Long
@@ -67,6 +73,11 @@ abstract class CalculatorDao {
         val id = internalInsertLine(line)
         touchFile(line.fileId)
         return id
+    }
+
+    @Transaction
+    open suspend fun insertLinesWithoutTouch(lines: List<LineEntity>) {
+        internalInsertLines(lines)
     }
 
     @Transaction

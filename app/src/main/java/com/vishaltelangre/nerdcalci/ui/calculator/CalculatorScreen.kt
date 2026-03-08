@@ -120,6 +120,7 @@ import com.vishaltelangre.nerdcalci.core.Constants
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
 import com.vishaltelangre.nerdcalci.ui.components.DeleteFileDialog
 import com.vishaltelangre.nerdcalci.ui.components.RenameFileDialog
+import com.vishaltelangre.nerdcalci.ui.components.FileInfoDialog
 import com.vishaltelangre.nerdcalci.ui.theme.FiraCodeFamily
 import com.vishaltelangre.nerdcalci.utils.ExportUtils
 import com.vishaltelangre.nerdcalci.utils.SyntaxUtils
@@ -302,7 +303,9 @@ fun CalculatorScreen(
     var showRenameDialog by remember { mutableStateOf(false) }
     var showClearConfirmDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
-    val fileName = files.find { it.id == fileId }?.name ?: "Editor"
+    var showInfoDialog by remember { mutableStateOf(false) }
+    val currentFile = files.find { it.id == fileId }
+    val fileName = currentFile?.name ?: "Editor"
 
     // Track which line should be focused and cursor position
     var focusLineId by remember { mutableStateOf<Long?>(null) }
@@ -452,6 +455,19 @@ fun CalculatorScreen(
                                     onClick = {
                                         showMenu = false
                                         showRenameDialog = true
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("File info") },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Outlined.Info,
+                                            contentDescription = null
+                                        )
+                                    },
+                                    onClick = {
+                                        showMenu = false
+                                        showInfoDialog = true
                                     }
                                 )
                                 DropdownMenuItem(
@@ -804,6 +820,13 @@ fun CalculatorScreen(
         )
     }
 
+    if (showInfoDialog && currentFile != null) {
+        FileInfoDialog(
+            viewModel = viewModel,
+            file = currentFile,
+            onDismiss = { showInfoDialog = false }
+        )
+    }
 
     // Clear All confirmation dialog
     if (showClearConfirmDialog) {

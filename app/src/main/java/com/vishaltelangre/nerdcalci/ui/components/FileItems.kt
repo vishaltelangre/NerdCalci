@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FileCopy
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -81,6 +82,7 @@ internal fun FileItem(
     var showMenu by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showInfoDialog by remember { mutableStateOf(false) }
 
     FileRowCard(
         file = file,
@@ -137,8 +139,24 @@ internal fun FileItem(
                         showDeleteDialog = true
                     }
                 )
+                DropdownMenuItem(
+                    text = { Text("File info") },
+                    leadingIcon = { Icon(Icons.Outlined.Info, contentDescription = null) },
+                    onClick = {
+                        showMenu = false
+                        showInfoDialog = true
+                    }
+                )
             }
         }
+    }
+
+    if (showInfoDialog) {
+        FileInfoDialog(
+            viewModel = viewModel,
+            file = file,
+            onDismiss = { showInfoDialog = false }
+        )
     }
 
     if (showRenameDialog) {

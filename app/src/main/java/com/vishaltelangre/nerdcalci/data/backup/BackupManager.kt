@@ -411,6 +411,8 @@ object BackupManager {
                         modifiedTime
                     }
 
+                    // ZipEntry.time defaults to -1 if no time info is present.
+                    // We only use System.currentTimeMillis() as a final fallback.
                     val finalModifiedTime = if (modifiedTime != -1L) modifiedTime else System.currentTimeMillis()
                     val finalCreateTime = if (createTime != -1L) createTime else finalModifiedTime
 
@@ -423,20 +425,22 @@ object BackupManager {
                     )
                     existingNames.add(finalFileName)
 
-                    expressions.forEachIndexed { index, expr ->
-                        dao.insertLine(
-                            LineEntity(
-                                fileId = fileId,
-                                sortOrder = index,
-                                expression = expr,
-                                result = ""
-                            )
+                    val lineEntities = expressions.mapIndexed { index, expr ->
+                        LineEntity(
+                            fileId = fileId,
+                            sortOrder = index,
+                            expression = expr,
+                            result = ""
                         )
                     }
+                    dao.insertLinesWithoutTouch(lineEntities)
 
                     val allLines = dao.getLinesForFileSync(fileId)
                     val calculatedLines = MathEngine.calculate(allLines)
                     dao.updateLines(fileId, calculatedLines)
+
+                    // Final touch to ensure the timestamp is exactly as intended,
+                    // even after updateLines might have moved it to "now".
                     dao.touchFile(fileId, finalModifiedTime)
                     importedCount++
                 }

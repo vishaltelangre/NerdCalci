@@ -29,10 +29,26 @@ object DatabaseMigrations {
     }
 
     /**
+     * Migration from version 2 to 3.
+     *
+     * Changes:
+     * - Added createdAt column to files table
+     */
+    val MIGRATION_2_3 = object : Migration(2, 3) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Add createdAt column to files table
+            db.execSQL("ALTER TABLE files ADD COLUMN createdAt INTEGER NOT NULL DEFAULT 0")
+            // Initialize createdAt with lastModified for existing files
+            db.execSQL("UPDATE files SET createdAt = lastModified WHERE createdAt = 0")
+        }
+    }
+
+    /**
      * All migrations in order.
      * Add new migrations to this array as the database evolves.
      */
     val ALL_MIGRATIONS = arrayOf(
-        MIGRATION_1_2
+        MIGRATION_1_2,
+        MIGRATION_2_3
     )
 }

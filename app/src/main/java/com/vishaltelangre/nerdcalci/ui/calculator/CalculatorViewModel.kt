@@ -37,8 +37,6 @@ class CalculatorViewModel(
     private val prefs: SharedPreferences? = null
 ) : ViewModel() {
 
-    private val dateTimeFormatter = SimpleDateFormat("EEE, MMM d, yyyy HH:mm:ss", Locale.getDefault())
-
     companion object {
         private const val PREF_PRECISION = "precision"
         private const val PREF_THEME = "theme"
@@ -288,7 +286,7 @@ class CalculatorViewModel(
         // Recalculate everything and batch-write results in one transaction
         val allLines = dao.getLinesForFileSync(fileId)
         val calculatedLines = MathEngine.calculate(allLines)
-        dao.updateLines(calculatedLines)
+        dao.updateLines(fileId, calculatedLines)
     }
 
     // Clear undo/redo history for a file
@@ -352,7 +350,7 @@ class CalculatorViewModel(
             val affectedLines = MathEngine.calculateFrom(allLines, changedIndex)
 
             // Batch-write all updated results in one DB transaction
-            dao.updateLines(affectedLines)
+            dao.updateLines(updatedLine.fileId, affectedLines)
         }
     }
 
@@ -377,12 +375,13 @@ class CalculatorViewModel(
         }
     }
 
-    // Create a new file with a default timestamp name
+    // Create a new file with a default "Untitled" name
     fun createNewFile(onCreated: (Long) -> Unit = {}) {
         viewModelScope.launch(Dispatchers.IO) {
-            val timestampName = dateTimeFormatter.format(Date())
-            val uniqueName = generateUniqueFileName(timestampName)
-            val fileId = dao.insertFile(FileEntity(name = uniqueName, lastModified = System.currentTimeMillis()))
+            val defaultName = "Untitled"
+            val uniqueName = generateUniqueFileName(defaultName)
+            val now = System.currentTimeMillis()
+            val fileId = dao.insertFile(FileEntity(name = uniqueName, lastModified = now, createdAt = now))
             // Start with one empty line
             dao.insertLine(LineEntity(fileId = fileId, sortOrder = 0, expression = "", result = ""))
             // Notify callback with new file ID on main thread
@@ -401,10 +400,12 @@ class CalculatorViewModel(
                 val uniqueName = generateUniqueFileName(baseName.take(Constants.MAX_FILE_NAME_LENGTH))
 
                 // Create new file
-                val newFileId = dao.insertFile(
+                val now = System.currentTimeMillis()
+                val fileId = dao.insertFile(
                     FileEntity(
                         name = uniqueName,
-                        lastModified = System.currentTimeMillis(),
+                        lastModified = now,
+                        createdAt = now,
                         isPinned = false
                     )
                 )
@@ -414,7 +415,7 @@ class CalculatorViewModel(
                 sourceLines.forEach { sourceLine ->
                     dao.insertLine(
                         LineEntity(
-                            fileId = newFileId,
+                            fileId = fileId,
                             sortOrder = sourceLine.sortOrder,
                             expression = sourceLine.expression,
                             result = sourceLine.result
@@ -424,7 +425,7 @@ class CalculatorViewModel(
 
                 // Notify callback with new file ID on main thread
                 withContext(Dispatchers.Main) {
-                    onCreated(newFileId)
+                    onCreated(fileId)
                 }
             }
         }
@@ -446,6 +447,11 @@ class CalculatorViewModel(
 
             // Insert new line at the specified position
             dao.insertLine(LineEntity(fileId = fileId, sortOrder = sortOrder, expression = "", result = ""))
+
+            // Recalculate everything from the new line downward
+            val updatedAllLines = dao.getLinesForFileSync(fileId)
+            val affectedLines = MathEngine.calculateFrom(updatedAllLines, sortOrder)
+            dao.updateLines(fileId, affectedLines)
         }
     }
 
@@ -464,12 +470,20 @@ class CalculatorViewModel(
                 .forEach { lineToShift ->
                     dao.updateLine(lineToShift.copy(sortOrder = lineToShift.sortOrder - 1))
                 }
+
+            // Recalculate everything from the deleted line's position downward
+            val updatedAllLines = dao.getLinesForFileSync(line.fileId)
+            val affectedLines = MathEngine.calculateFrom(updatedAllLines, line.sortOrder)
+            dao.updateLines(line.fileId, affectedLines)
         }
     }
 
     // Clear all lines in a file
     fun clearAllLines(fileId: Long) {
         viewModelScope.launch(Dispatchers.IO) {
+            // Save state for undo
+            saveStateForUndo(fileId)
+
             val allLines = dao.getLinesForFileSync(fileId)
             allLines.forEach { line ->
                 dao.deleteLine(line)
@@ -484,12 +498,32 @@ class CalculatorViewModel(
 
     fun deleteFile(fileId: Long) {
         viewModelScope.launch(Dispatchers.IO) {
-            val allLines = dao.getLinesForFileSync(fileId)
-            allLines.forEach { line ->
-                dao.deleteLine(line)
+            val file = dao.getFileById(fileId)
+            if (file != null) {
+                dao.deleteFile(file)
             }
-            val file = FileEntity(id = fileId, name = "", lastModified = 0)
-            dao.deleteFile(file)
+        }
+    }
+
+    /**
+     * Deletes a file if it is empty and was created a while ago.
+     * This is used when navigating back from the calculator screen to prevent cluttering
+     * the home screen with accidentally created empty files.
+     */
+    fun deleteFileIfEmptyAndRecent(fileId: Long) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val file = dao.getFileById(fileId) ?: return@launch
+            val lines = dao.getLinesForFileSync(fileId)
+
+            val isEmpty = lines.all { it.expression.isBlank() }
+            val now = System.currentTimeMillis()
+            val isRecent = now - file.createdAt < Constants.EMPTY_FILE_CLEANUP_THRESHOLD_MS
+            val untitledRegex = Regex("""^Untitled(\s\(\d+\))?$""") // Matches "Untitled", "Untitled (1)", "Untitled (2)", etc.
+            val isUntitled = untitledRegex.matches(file.name)
+
+            if (isEmpty && isRecent && isUntitled) {
+                deleteFile(fileId)
+            }
         }
     }
 
@@ -497,7 +531,7 @@ class CalculatorViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             val file = dao.getFileById(fileId)
             if (file != null) {
-                dao.updateFile(file.copy(name = newName, lastModified = System.currentTimeMillis()))
+                dao.updateFile(file.copy(name = newName))
             }
         }
     }

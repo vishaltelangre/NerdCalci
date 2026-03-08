@@ -90,7 +90,7 @@ fun RenameFileDialog(
                 )
                 if (isNameTaken) {
                     Text(
-                        text = "File name already exists",
+                        text = "A file with this name already exists",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.padding(top = 4.dp)

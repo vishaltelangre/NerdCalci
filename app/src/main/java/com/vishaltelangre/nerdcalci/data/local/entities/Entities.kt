@@ -10,6 +10,7 @@ data class FileEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
     val lastModified: Long = System.currentTimeMillis(),
+    val createdAt: Long = System.currentTimeMillis(),
     val isPinned: Boolean = false
 )
 

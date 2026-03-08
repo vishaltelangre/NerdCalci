@@ -22,6 +22,7 @@ object Constants {
     // File management
     const val MAX_FILE_NAME_LENGTH = 50
     const val MAX_PINNED_FILES = 10
+    const val EMPTY_FILE_CLEANUP_THRESHOLD_MS = 5 * 60 * 1000L // 5 minutes
 
     // Undo/Redo
     const val MAX_HISTORY_SIZE = 30

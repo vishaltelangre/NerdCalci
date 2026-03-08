@@ -3,6 +3,7 @@ package com.vishaltelangre.nerdcalci.ui.calculator
 import com.vishaltelangre.nerdcalci.core.Builtins
 import com.vishaltelangre.nerdcalci.core.MathEngine
 import androidx.compose.foundation.background
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -280,6 +281,13 @@ fun CalculatorScreen(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
+
+    val handleBack = {
+        viewModel.deleteFileIfEmptyAndRecent(fileId)
+        onBack()
+    }
+
+    BackHandler(onBack = handleBack)
     val lines by viewModel.getLines(fileId).collectAsState(initial = emptyList())
     val precision by viewModel.precision.collectAsState()
     val files by viewModel.allFiles.collectAsState(initial = emptyList())
@@ -360,7 +368,7 @@ fun CalculatorScreen(
                         )
                     },
                     navigationIcon = {
-                        IconButton(onClick = onBack) {
+                        IconButton(onClick = handleBack) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
                                 "Back",

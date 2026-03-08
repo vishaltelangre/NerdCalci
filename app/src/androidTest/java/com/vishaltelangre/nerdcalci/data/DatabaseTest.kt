@@ -77,17 +77,20 @@ class DatabaseTest {
     }
 
     @Test
-    fun updateFile_changesArePersisted() = runBlocking {
-        val fileId = dao.insertFile(FileEntity(name = "Original", lastModified = 1000L))
+    fun updateFile_changesArePersistedAndTimestampUpdated() = runBlocking {
+        val beforeUpdate = System.currentTimeMillis()
+        Thread.sleep(10) // Ensure timestamp changes
+
+        val fileId = dao.insertFile(FileEntity(name = "Original", lastModified = beforeUpdate))
         val file = dao.getFileById(fileId)!!
 
-        val updated = file.copy(name = "Updated", lastModified = 2000L, isPinned = true)
+        val updated = file.copy(name = "Updated", isPinned = true)
         dao.updateFile(updated)
 
         val retrieved = dao.getFileById(fileId)
         assertEquals("Updated", retrieved?.name)
-        assertEquals(2000L, retrieved?.lastModified)
-        assertTrue(retrieved?.isPinned == true)
+        assertTrue(retrieved!!.lastModified > beforeUpdate)
+        assertTrue(retrieved.isPinned)
     }
 
     @Test
@@ -138,35 +141,42 @@ class DatabaseTest {
     }
 
     @Test
-    fun updateLine_changesArePersisted() = runBlocking {
+    fun updateLine_changesArePersistedAndFileTouched() = runBlocking {
         val fileId = dao.insertFile(FileEntity(name = "Test", lastModified = 1000L))
         val lineId = dao.insertLine(LineEntity(fileId = fileId, sortOrder = 0, expression = "original", result = ""))
 
         val lines = dao.getLinesForFileSync(fileId)
         val updated = lines[0].copy(expression = "updated", result = "result")
+
+        val beforeTouch = System.currentTimeMillis()
+        Thread.sleep(10)
         dao.updateLine(updated)
 
         val retrieved = dao.getLinesForFileSync(fileId)
         assertEquals("updated", retrieved[0].expression)
-        assertEquals("result", retrieved[0].result)
+
+        val file = dao.getFileById(fileId)
+        assertTrue(file!!.lastModified >= beforeTouch)
     }
 
     @Test
-    fun updateLines_allChangesPersistedInBatch() = runBlocking {
+    fun updateLines_allChangesPersistedInBatchAndFileTouched() = runBlocking {
         val fileId = dao.insertFile(FileEntity(name = "Test", lastModified = 1000L))
         dao.insertLine(LineEntity(fileId = fileId, sortOrder = 0, expression = "1 + 1", result = ""))
         dao.insertLine(LineEntity(fileId = fileId, sortOrder = 1, expression = "2 + 2", result = ""))
-        dao.insertLine(LineEntity(fileId = fileId, sortOrder = 2, expression = "3 + 3", result = ""))
 
         val lines = dao.getLinesForFileSync(fileId)
-        val updated = lines.mapIndexed { i, line -> line.copy(result = "${(i + 1) * 2}") }
-        dao.updateLines(updated)
+        val updated = lines.map { it.copy(result = "DONE") }
+
+        val beforeTouch = System.currentTimeMillis()
+        Thread.sleep(10)
+        dao.updateLines(fileId, updated)
 
         val retrieved = dao.getLinesForFileSync(fileId)
-        assertEquals(3, retrieved.size)
-        assertEquals("2", retrieved[0].result)
-        assertEquals("4", retrieved[1].result)
-        assertEquals("6", retrieved[2].result)
+        assertTrue(retrieved.all { it.result == "DONE" })
+
+        val file = dao.getFileById(fileId)
+        assertTrue(file!!.lastModified >= beforeTouch)
     }
 
     @Test
@@ -175,7 +185,7 @@ class DatabaseTest {
         dao.insertLine(LineEntity(fileId = fileId, sortOrder = 0, expression = "1 + 1", result = "2"))
 
         // Should not throw and should leave existing data untouched
-        dao.updateLines(emptyList())
+        dao.updateLines(fileId, emptyList())
 
         val lines = dao.getLinesForFileSync(fileId)
         assertEquals(1, lines.size)

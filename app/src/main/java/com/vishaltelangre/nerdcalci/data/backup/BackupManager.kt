@@ -413,7 +413,7 @@ object BackupManager {
 
                     val allLines = dao.getLinesForFileSync(fileId)
                     val calculatedLines = MathEngine.calculate(allLines)
-                    calculatedLines.forEach { dao.updateLine(it) }
+                    dao.updateLines(fileId, calculatedLines)
                     importedCount++
                 }
 

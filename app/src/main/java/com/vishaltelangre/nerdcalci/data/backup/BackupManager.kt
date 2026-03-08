@@ -27,6 +27,8 @@ import java.util.Locale
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
+import java.nio.file.attribute.FileTime
+import android.os.Build
 
 private const val TAG = "BackupManager"
 
@@ -348,6 +350,12 @@ object BackupManager {
                 val content = formatFileContent(lines, precision)
 
                 val entry = ZipEntry("${file.name}${Constants.EXPORT_FILE_EXTENSION}")
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    entry.setLastModifiedTime(FileTime.fromMillis(file.lastModified))
+                    entry.setCreationTime(FileTime.fromMillis(file.createdAt))
+                } else {
+                    entry.time = file.lastModified
+                }
                 zipOut.putNextEntry(entry)
                 zipOut.write(content.toByteArray())
                 zipOut.closeEntry()
@@ -392,10 +400,25 @@ object BackupManager {
                         fileName
                     }
 
+                    val modifiedTime = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        entry.lastModifiedTime?.toMillis() ?: entry.time
+                    } else {
+                        entry.time
+                    }
+                    val createTime = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        entry.creationTime?.toMillis() ?: modifiedTime
+                    } else {
+                        modifiedTime
+                    }
+
+                    val finalModifiedTime = if (modifiedTime != -1L) modifiedTime else System.currentTimeMillis()
+                    val finalCreateTime = if (createTime != -1L) createTime else finalModifiedTime
+
                     val fileId = dao.insertFile(
                         FileEntity(
                             name = finalFileName,
-                            lastModified = System.currentTimeMillis()
+                            lastModified = finalModifiedTime,
+                            createdAt = finalCreateTime
                         )
                     )
                     existingNames.add(finalFileName)
@@ -414,6 +437,7 @@ object BackupManager {
                     val allLines = dao.getLinesForFileSync(fileId)
                     val calculatedLines = MathEngine.calculate(allLines)
                     dao.updateLines(fileId, calculatedLines)
+                    dao.touchFile(fileId, finalModifiedTime)
                     importedCount++
                 }
 

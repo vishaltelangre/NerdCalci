@@ -13,7 +13,7 @@ import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
 @Database(
     entities = [FileEntity::class, LineEntity::class],
     version = 3,
-    exportSchema = false
+    exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun calculatorDao(): CalculatorDao

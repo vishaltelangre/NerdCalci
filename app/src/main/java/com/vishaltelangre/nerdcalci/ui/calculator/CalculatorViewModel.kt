@@ -526,7 +526,7 @@ class CalculatorViewModel(
             val isUntitled = untitledRegex.matches(file.name)
 
             if (isEmpty && isRecent && isUntitled) {
-                deleteFile(fileId)
+                dao.deleteFile(file)
             }
         }
     }

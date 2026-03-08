@@ -17,9 +17,11 @@ object FilenameUtils {
     ): String {
         var name = baseName
         var counter = 1
-        while (isNameTaken(name)) {
+        val maxAttempts = 1000
+        while (isNameTaken(name) && counter <= maxAttempts) {
             val suffix = " ($counter)"
             val maxBaseLength = Constants.MAX_FILE_NAME_LENGTH - suffix.length
+            if (maxBaseLength <= 0) break // Suffix alone exceeds max length
             val truncatedBase = if (baseName.length > maxBaseLength) {
                 baseName.take(maxBaseLength)
             } else {

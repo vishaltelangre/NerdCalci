@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -50,11 +51,11 @@ data class ChangelogVersion(
 @Composable
 fun ChangelogScreen(onBack: () -> Unit) {
     val context = LocalContext.current
-    val changelogData by produceState<List<ChangelogVersion>>(initialValue = emptyList()) {
+    val changelogData by produceState<List<ChangelogVersion>?>(initialValue = null) {
         value = withContext(Dispatchers.IO) {
             try {
                 val text = context.assets.open("CHANGELOG.md").bufferedReader().use { it.readText() }
-                parseChangelog(text)
+                ChangelogParser.parse(text)
             } catch (e: Exception) {
                 Log.e("ChangelogScreen", "Failed to load changelog", e)
                 emptyList()
@@ -78,28 +79,57 @@ fun ChangelogScreen(onBack: () -> Unit) {
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            item {
-                WavyDivider(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(24.dp)
-                        .padding(vertical = 8.dp)
+        if (changelogData == null) {
+            // Loading state
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else if (changelogData!!.isEmpty()) {
+            // Empty state
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = null,
+                    modifier = Modifier.size(64.dp),
+                    tint = MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "No changelog found",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-
-            items(changelogData) { item ->
-                ChangelogVersionHeader(item)
-                item.sections.forEach { section ->
-                    ChangelogSectionItem(section)
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentPadding = PaddingValues(bottom = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                item {
+                    WavyDivider(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(24.dp)
+                            .padding(vertical = 8.dp)
+                    )
                 }
-                Spacer(modifier = Modifier.height(16.dp))
+
+                items(changelogData!!) { item ->
+                    ChangelogVersionHeader(item)
+                    item.sections.forEach { section ->
+                        ChangelogSectionItem(section)
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
             }
         }
     }
@@ -188,12 +218,13 @@ fun MarkdownText(markdown: String, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val markwon = remember {
         val firaCodeTypeface = ResourcesCompat.getFont(context, R.font.fira_code_regular)
-        val defaultTextSize = android.widget.TextView(context).textSize
+        // Retrieve default body text size from MaterialTheme instead of creating a View
+        val defaultTextSizeSp = 16f
 
         Markwon.builder(context)
             .usePlugin(object : CorePlugin() {
                 override fun configureTheme(builder: MarkwonTheme.Builder) {
-                    builder.codeTextSize((defaultTextSize * 0.85f).toInt())
+                    builder.codeTextSize((defaultTextSizeSp * 0.85f).toInt())
                     firaCodeTypeface?.let {
                         builder.codeTypeface(it)
                         builder.codeBlockTypeface(it)
@@ -268,34 +299,37 @@ fun WavyDivider(modifier: Modifier = Modifier) {
     }
 }
 
-private fun parseChangelog(text: String): List<ChangelogVersion> {
-    val versions = mutableListOf<ChangelogVersion>()
-    val versionPattern = Pattern.compile("## \\[(.*?)\\] - (.*?)\\n(.*?)(?=\\n## |$)", Pattern.DOTALL)
-    val versionMatcher = versionPattern.matcher(text)
+private object ChangelogParser {
+    private val VERSION_PATTERN = Pattern.compile("## \\[(.*?)\\] - (.*?)\\n(.*?)(?=\\n## |$)", Pattern.DOTALL)
+    private val SECTION_PATTERN = Pattern.compile("### (.*?)\\n(.*?)(?=\\n### |$)", Pattern.DOTALL)
 
-    while (versionMatcher.find()) {
-        val vname = versionMatcher.group(1) ?: ""
-        val vdate = versionMatcher.group(2) ?: ""
-        val vcontent = versionMatcher.group(3) ?: ""
+    fun parse(text: String): List<ChangelogVersion> {
+        val versions = mutableListOf<ChangelogVersion>()
+        val versionMatcher = VERSION_PATTERN.matcher(text)
 
-        val sections = mutableListOf<ChangelogSection>()
-        val sectionPattern = Pattern.compile("### (.*?)\\n(.*?)(?=\\n### |$)", Pattern.DOTALL)
-        val sectionMatcher = sectionPattern.matcher(vcontent)
+        while (versionMatcher.find()) {
+            val vname = versionMatcher.group(1) ?: ""
+            val vdate = versionMatcher.group(2) ?: ""
+            val vcontent = versionMatcher.group(3) ?: ""
 
-        var foundSection = false
-        while (sectionMatcher.find()) {
-            val sname = sectionMatcher.group(1) ?: ""
-            val scontent = sectionMatcher.group(2)?.trim() ?: ""
-            sections.add(ChangelogSection(sname, scontent))
-            foundSection = true
+            val sections = mutableListOf<ChangelogSection>()
+            val sectionMatcher = SECTION_PATTERN.matcher(vcontent)
+
+            var foundSection = false
+            while (sectionMatcher.find()) {
+                val sname = sectionMatcher.group(1) ?: ""
+                val scontent = sectionMatcher.group(2)?.trim() ?: ""
+                sections.add(ChangelogSection(sname, scontent))
+                foundSection = true
+            }
+
+            if (!foundSection) {
+                // For older entries that don't have ### headers
+                sections.add(ChangelogSection("", vcontent.trim()))
+            }
+
+            versions.add(ChangelogVersion(vname, vdate, sections))
         }
-
-        if (!foundSection) {
-            // For older entries that don't have ### headers
-            sections.add(ChangelogSection("", vcontent.trim()))
-        }
-
-        versions.add(ChangelogVersion(vname, vdate, sections))
+        return versions
     }
-    return versions
 }

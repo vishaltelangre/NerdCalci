@@ -1,0 +1,4 @@
+- New files are now created instantly with a default name for a faster workflow.
+- Added a "File info" dialog to view detailed file metadata and statistics.
+- Improved file import process to preserve original creation and modification dates.
+- Enhanced editor stability and performance.

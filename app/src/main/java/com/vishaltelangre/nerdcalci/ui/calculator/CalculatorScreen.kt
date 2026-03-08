@@ -288,6 +288,7 @@ fun CalculatorScreen(
             viewModel.deleteFileIfEmptyAndRecent(fileId)
             onBack()
         }
+        Unit
     }
 
     BackHandler(onBack = handleBack)

@@ -62,7 +62,7 @@ fun RenameFileDialog(
     }
 
     fun confirmRename() {
-        if (textFieldValue.text.isNotBlank()) {
+        if (textFieldValue.text.isNotBlank() && !isNameTaken) {
             onConfirm(textFieldValue.text.trim())
         }
     }

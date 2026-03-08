@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -35,6 +36,7 @@ import io.noties.markwon.core.MarkwonTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.regex.Pattern
+import kotlin.math.roundToInt
 
 data class ChangelogSection(
     val title: String,
@@ -216,15 +218,15 @@ fun ChangelogSectionItem(section: ChangelogSection) {
 @Composable
 fun MarkdownText(markdown: String, modifier: Modifier = Modifier) {
     val context = LocalContext.current
+    val density = LocalDensity.current
     val markwon = remember {
         val firaCodeTypeface = ResourcesCompat.getFont(context, R.font.fira_code_regular)
-        // Retrieve default body text size from MaterialTheme instead of creating a View
-        val defaultTextSizeSp = 16f
+        val defaultTextSizePx = with(density) { 16.sp.toPx() }
 
         Markwon.builder(context)
             .usePlugin(object : CorePlugin() {
                 override fun configureTheme(builder: MarkwonTheme.Builder) {
-                    builder.codeTextSize((defaultTextSizeSp * 0.85f).toInt())
+                    builder.codeTextSize((defaultTextSizePx * 0.85f).roundToInt())
                     firaCodeTypeface?.let {
                         builder.codeTypeface(it)
                         builder.codeBlockTypeface(it)

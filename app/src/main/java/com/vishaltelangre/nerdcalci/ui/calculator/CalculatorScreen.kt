@@ -814,7 +814,9 @@ fun CalculatorScreen(
             currentName = fileName,
             onDismiss = { showRenameDialog = false },
             onConfirm = { newName ->
-                viewModel.renameFile(fileId, newName.take(Constants.MAX_FILE_NAME_LENGTH))
+                coroutineScope.launch {
+                    viewModel.renameFile(fileId, newName)
+                }
                 showRenameDialog = false
             }
         )

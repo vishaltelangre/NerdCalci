@@ -267,7 +267,9 @@ fun HomeScreen(
                             files = visiblePinnedFiles,
                             onItemClick = { fileId: Long -> onFileClick(fileId) },
                             onItemRename = { fileId: Long, newName: String ->
-                                viewModel.renameFile(fileId, newName.take(Constants.MAX_FILE_NAME_LENGTH))
+                                coroutineScope.launch {
+                                    viewModel.renameFile(fileId, newName)
+                                }
                             },
                             onItemDuplicate = { fileId: Long ->
                                 viewModel.duplicateFile(fileId) { newFileId ->
@@ -298,7 +300,9 @@ fun HomeScreen(
                             files = visibleUnpinnedFiles,
                             onItemClick = { fileId: Long -> onFileClick(fileId) },
                             onItemRename = { fileId: Long, newName: String ->
-                                viewModel.renameFile(fileId, newName.take(Constants.MAX_FILE_NAME_LENGTH))
+                                coroutineScope.launch {
+                                    viewModel.renameFile(fileId, newName)
+                                }
                             },
                             onItemDuplicate = { fileId: Long ->
                                 viewModel.duplicateFile(fileId) { newFileId ->

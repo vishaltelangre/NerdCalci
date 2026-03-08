@@ -1,8 +1,10 @@
 package com.vishaltelangre.nerdcalci.data.local
 
 import androidx.room.*
+import com.vishaltelangre.nerdcalci.core.Constants
 import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
+import com.vishaltelangre.nerdcalci.utils.FilenameUtils
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -101,5 +103,52 @@ abstract class CalculatorDao {
     @Transaction
     open suspend fun updateFile(file: FileEntity) {
         internalUpdateFile(file.copy(lastModified = System.currentTimeMillis()))
+    }
+
+    @Transaction
+    open suspend fun createNewFile(baseName: String, createdAt: Long): Long {
+        val uniqueName = FilenameUtils.generateUniqueFileName(baseName) { name ->
+            doesFileExist(name)
+        }
+        val fileId = insertFile(FileEntity(name = uniqueName, lastModified = createdAt, createdAt = createdAt))
+        // Insert a default empty line
+        internalInsertLine(LineEntity(fileId = fileId, sortOrder = 0, expression = "", result = ""))
+        return fileId
+    }
+
+    @Transaction
+    open suspend fun duplicateFile(sourceFileId: Long, createdAt: Long): Long? {
+        val sourceFile = getFileById(sourceFileId) ?: return null
+        val sourceLines = getLinesForFileSync(sourceFileId)
+
+        val baseName = "Copy of ${sourceFile.name}"
+        val uniqueName = FilenameUtils.generateUniqueFileName(baseName.take(Constants.MAX_FILE_NAME_LENGTH)) { name ->
+            doesFileExist(name)
+        }
+
+        val newFileId = insertFile(
+            FileEntity(
+                name = uniqueName,
+                lastModified = createdAt,
+                createdAt = createdAt,
+                isPinned = false
+            )
+        )
+
+        val newLines = sourceLines.map { it.copy(id = 0, fileId = newFileId) }
+        internalInsertLines(newLines)
+
+        return newFileId
+    }
+
+    @Transaction
+    open suspend fun clearAllLines(fileId: Long) {
+        val allLines = getLinesForFileSync(fileId)
+        allLines.forEach { line ->
+            internalDeleteLine(line)
+        }
+        // Create one empty line to start fresh
+        internalInsertLine(LineEntity(fileId = fileId, sortOrder = 0, expression = "", result = ""))
+        touchFile(fileId)
     }
 }

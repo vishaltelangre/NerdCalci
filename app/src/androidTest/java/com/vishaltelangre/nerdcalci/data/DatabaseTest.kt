@@ -379,4 +379,53 @@ class DatabaseTest {
         assertEquals("line 0", lines[0].expression)
         assertEquals("line 99", lines[99].expression)
     }
+
+    @Test
+    fun createNewFile_isAtomicAndGeneratesUniqueName() = runBlocking {
+        val now = System.currentTimeMillis()
+        val id1 = dao.createNewFile("Untitled", now)
+        val id2 = dao.createNewFile("Untitled", now)
+
+        val file1 = dao.getFileById(id1)
+        val file2 = dao.getFileById(id2)
+
+        assertEquals("Untitled", file1?.name)
+        assertEquals("Untitled (1)", file2?.name)
+
+        // Verify initial line
+        val lines1 = dao.getLinesForFileSync(id1)
+        assertEquals(1, lines1.size)
+        assertEquals("", lines1[0].expression)
+    }
+
+    @Test
+    fun duplicateFile_isAtomicAndCopiesAllLines() = runBlocking {
+        val file1Id = dao.insertFile(FileEntity(name = "Source", lastModified = 1000L))
+        dao.insertLine(LineEntity(fileId = file1Id, sortOrder = 0, expression = "1+1", result = "2"))
+        dao.insertLine(LineEntity(fileId = file1Id, sortOrder = 1, expression = "2+2", result = "4"))
+
+        val now = System.currentTimeMillis()
+        val copyId = dao.duplicateFile(file1Id, now)!!
+
+        val copyFile = dao.getFileById(copyId)
+        assertEquals("Copy of Source", copyFile?.name)
+
+        val copyLines = dao.getLinesForFileSync(copyId)
+        assertEquals(2, copyLines.size)
+        assertEquals("1+1", copyLines[0].expression)
+        assertEquals("2+2", copyLines[1].expression)
+    }
+
+    @Test
+    fun clearAllLines_removesEverythingAndAddsOneEmptyLine() = runBlocking {
+        val fileId = dao.insertFile(FileEntity(name = "To Clear", lastModified = 1000L))
+        dao.insertLine(LineEntity(fileId = fileId, sortOrder = 0, expression = "1+1"))
+        dao.insertLine(LineEntity(fileId = fileId, sortOrder = 1, expression = "2+2"))
+
+        dao.clearAllLines(fileId)
+
+        val lines = dao.getLinesForFileSync(fileId)
+        assertEquals(1, lines.size)
+        assertEquals("", lines[0].expression)
+    }
 }

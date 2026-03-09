@@ -796,6 +796,9 @@ fun CalculatorScreen(
                                 }
                             }
                         },
+                        onCopyResult = { result ->
+                            viewModel.copyToClipboard(context, result)
+                        },
                         onGetErrorMessage = { lineId -> viewModel.getLineErrorMessage(fileId, lineId) }
                     )
                     if (index < lines.size - 1) {
@@ -897,6 +900,7 @@ private fun LineRow(
     onDelete: () -> Unit,
     onNavigateUp: () -> Unit,
     onNavigateDown: () -> Unit,
+    onCopyResult: (String) -> Unit,
     onGetErrorMessage: suspend (Long) -> String? = { null }
 ) {
     // Add leading space for backspace detection trick (but not for first line)
@@ -1275,7 +1279,15 @@ private fun LineRow(
             }
 
             var showTooltip by remember(line.id) { mutableStateOf(false) }
+            var showCopiedTooltip by remember(line.id) { mutableStateOf(false) }
             var errorMessage by remember(line.id) { mutableStateOf<String?>(null) }
+
+            LaunchedEffect(showCopiedTooltip) {
+                if (showCopiedTooltip) {
+                    kotlinx.coroutines.delay(1000)
+                    showCopiedTooltip = false
+                }
+            }
 
             LaunchedEffect(line.id, line.expression, isError, showTooltip) {
                 if (!isError) {
@@ -1298,7 +1310,7 @@ private fun LineRow(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.End,
-                modifier = if (isError) {
+                modifier = (if (isError) {
                     Modifier
                         .clickable {
                             showTooltip = !showTooltip
@@ -1306,40 +1318,50 @@ private fun LineRow(
                                 errorMessage = null
                             }
                         }
-                        .padding(bottom = 2.dp)
-                        .drawWithContent {
-                            drawContent()
-                            val stroke = Stroke(
-                                width = 1.dp.toPx(),
-                                pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 4.dp.toPx()), 0f)
-                            )
-                            val y = size.height
-                            drawLine(
-                                color = resultColor,
-                                start = Offset(0f, y),
-                                end = Offset(size.width, y),
-                                strokeWidth = 1.dp.toPx(),
-                                pathEffect = stroke.pathEffect
-                            )
+                } else {
+                    Modifier.clickable {
+                        if (line.result != "Err" && line.result.isNotEmpty()) {
+                            onCopyResult(MathEngine.formatDisplayResult(line.result, precision))
+                            showCopiedTooltip = true
                         }
-                } else Modifier
+                    }
+                }).fillMaxSize()
             ) {
-                if (isError) {
-                    Icon(
-                        imageVector = Icons.Outlined.Info,
-                        contentDescription = "Error Info",
-                        tint = resultColor,
-                        modifier = Modifier.padding(end = 4.dp).height(16.dp).width(16.dp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = if (isError) Modifier.drawWithContent {
+                        drawContent()
+                        val stroke = Stroke(
+                            width = 1.dp.toPx(),
+                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 4.dp.toPx()), 0f)
+                        )
+                        val y = size.height
+                        drawLine(
+                            color = resultColor,
+                            start = Offset(0f, y),
+                            end = Offset(size.width, y),
+                            strokeWidth = 1.dp.toPx(),
+                            pathEffect = stroke.pathEffect
+                        )
+                    } else Modifier
+                ) {
+                    if (isError) {
+                        Icon(
+                            imageVector = Icons.Outlined.Info,
+                            contentDescription = "Error Info",
+                            tint = resultColor,
+                            modifier = Modifier.padding(end = 4.dp).height(16.dp).width(16.dp)
+                        )
+                    }
+                    Text(
+                        text = MathEngine.formatDisplayResult(line.result, precision),
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            fontFamily = FiraCodeFamily,
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = resultColor
                     )
                 }
-                Text(
-                    text = MathEngine.formatDisplayResult(line.result, precision),
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        fontFamily = FiraCodeFamily,
-                        fontWeight = FontWeight.Bold
-                    ),
-                    color = resultColor
-                )
             }
 
             if (showTooltip && isError) {
@@ -1372,6 +1394,31 @@ private fun LineRow(
                                 fontFamily = FiraCodeFamily
                             ),
                             color = MaterialTheme.colorScheme.onError
+                        )
+                    }
+                }
+            }
+
+            if (showCopiedTooltip && !isError) {
+                val density = LocalDensity.current
+                val yOffset = with(density) { (-56).dp.roundToPx() }
+
+                Popup(
+                    alignment = Alignment.TopCenter,
+                    offset = IntOffset(0, yOffset)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                color = MaterialTheme.colorScheme.inverseSurface,
+                                shape = MaterialTheme.shapes.medium
+                            )
+                            .padding(12.dp)
+                    ) {
+                        Text(
+                            text = "Copied!",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.inverseOnSurface
                         )
                     }
                 }

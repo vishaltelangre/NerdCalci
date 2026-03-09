@@ -560,9 +560,7 @@ class CalculatorViewModel(
                 val content = formatFileContent(lines, precision.value)
 
                 withContext(Dispatchers.Main) {
-                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    val clip = ClipData.newPlainText("NerdCalci File", content)
-                    clipboard.setPrimaryClip(clip)
+                    copyToClipboard(context, content, "NerdCalci File")
                 }
 
                 Result.success("Copied to clipboard")
@@ -570,5 +568,11 @@ class CalculatorViewModel(
                 Result.failure(e)
             }
         }
+    }
+
+    fun copyToClipboard(context: Context, text: String, label: String = "NerdCalci Result") {
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clip = ClipData.newPlainText(label, text)
+        clipboard.setPrimaryClip(clip)
     }
 }

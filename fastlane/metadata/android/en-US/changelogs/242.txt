@@ -1,0 +1,1 @@
+- Added support to copy calculation results on tap.

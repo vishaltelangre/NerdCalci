@@ -1284,7 +1284,7 @@ private fun LineRow(
 
             LaunchedEffect(showCopiedTooltip) {
                 if (showCopiedTooltip) {
-                    kotlinx.coroutines.delay(1000)
+                    delay(1000)
                     showCopiedTooltip = false
                 }
             }
@@ -1320,7 +1320,7 @@ private fun LineRow(
                         }
                 } else {
                     Modifier.clickable {
-                        if (line.result != "Err" && line.result.isNotEmpty()) {
+                        if (line.result.isNotEmpty()) {
                             onCopyResult(MathEngine.formatDisplayResult(line.result, precision))
                             showCopiedTooltip = true
                         }

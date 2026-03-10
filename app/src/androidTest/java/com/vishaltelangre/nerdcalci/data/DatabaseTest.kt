@@ -141,6 +141,21 @@ class DatabaseTest {
     }
 
     @Test
+    fun insertMultipleLines_withDuplicateSortOrder_orderedById() = runBlocking {
+        val fileId = dao.insertFile(FileEntity(name = "Test", lastModified = 1000L))
+        // Lines with same sortOrder but different IDs (IDs assigned sequentially by autoGenerate)
+        dao.insertLine(LineEntity(fileId = fileId, sortOrder = 5, expression = "line 1"))
+        dao.insertLine(LineEntity(fileId = fileId, sortOrder = 5, expression = "line 2"))
+
+        val lines = dao.getLinesForFileSync(fileId)
+        assertEquals(2, lines.size)
+        // Since sortOrder is both 5, the sorting should fallback to id ASC
+        assertEquals("line 1", lines[0].expression)
+        assertEquals("line 2", lines[1].expression)
+        assertTrue(lines[0].id < lines[1].id)
+    }
+
+    @Test
     fun updateLine_changesArePersistedAndFileTouched() = runBlocking {
         val fileId = dao.insertFile(FileEntity(name = "Test", lastModified = 1000L))
         val lineId = dao.insertLine(LineEntity(fileId = fileId, sortOrder = 0, expression = "original", result = ""))
@@ -422,10 +437,122 @@ class DatabaseTest {
         dao.insertLine(LineEntity(fileId = fileId, sortOrder = 0, expression = "1+1"))
         dao.insertLine(LineEntity(fileId = fileId, sortOrder = 1, expression = "2+2"))
 
+        val beforeTouch = System.currentTimeMillis()
+        Thread.sleep(10)
         dao.clearAllLines(fileId)
 
         val lines = dao.getLinesForFileSync(fileId)
         assertEquals(1, lines.size)
         assertEquals("", lines[0].expression)
+        assertEquals(0, lines[0].sortOrder)
+
+        val file = dao.getFileById(fileId)
+        assertTrue(file!!.lastModified >= beforeTouch)
+    }
+
+    @Test
+    fun moveAndInsertLine_repairsDuplicateSortOrders() = runBlocking {
+        val fileId = dao.insertFile(FileEntity(name = "Repair", lastModified = 1000L))
+        // Seed with duplicates and non-sequential sortOrder
+        dao.insertLine(LineEntity(fileId = fileId, sortOrder = 1, expression = "A"))
+        dao.insertLine(LineEntity(fileId = fileId, sortOrder = 1, expression = "B"))
+        dao.insertLine(LineEntity(fileId = fileId, sortOrder = 5, expression = "C"))
+
+        val anchorLine = dao.getLinesForFileSync(fileId)[1] // "B"
+        val newLine = LineEntity(fileId = fileId, sortOrder = 0, expression = "NEW")
+
+        val beforeTouch = System.currentTimeMillis()
+        Thread.sleep(10)
+        dao.moveAndInsertLine(fileId, anchorLine.id, newLine)
+
+        val finalLines = dao.getLinesForFileSync(fileId)
+        assertEquals(4, finalLines.size)
+        // Should be: A(0), B(1), NEW(2), C(3)
+        assertEquals("A", finalLines[0].expression)
+        assertEquals(0, finalLines[0].sortOrder)
+        assertEquals("B", finalLines[1].expression)
+        assertEquals(1, finalLines[1].sortOrder)
+        assertEquals("NEW", finalLines[2].expression)
+        assertEquals(2, finalLines[2].sortOrder)
+        assertEquals("C", finalLines[3].expression)
+        assertEquals(3, finalLines[3].sortOrder)
+
+        val file = dao.getFileById(fileId)
+        assertTrue(file!!.lastModified >= beforeTouch)
+    }
+
+    @Test
+    fun moveAndInsertLine_positioningSemantics() = runBlocking {
+        val fileId = dao.insertFile(FileEntity(name = "Position", lastModified = 1000L))
+        dao.insertLine(LineEntity(fileId = fileId, sortOrder = 0, expression = "1"))
+        dao.insertLine(LineEntity(fileId = fileId, sortOrder = 1, expression = "2"))
+
+        // afterLineId == null -> insert at top
+        dao.moveAndInsertLine(fileId, null, LineEntity(fileId = fileId, sortOrder = 0, expression = "TOP"))
+        var lines = dao.getLinesForFileSync(fileId)
+        assertEquals("TOP", lines[0].expression)
+        assertEquals(0, lines[0].sortOrder)
+
+        // afterLineId matching existing line -> insert below it
+        val anchorId = lines[1].id // "1"
+        dao.moveAndInsertLine(fileId, anchorId, LineEntity(fileId = fileId, sortOrder = 0, expression = "MIDDLE"))
+        lines = dao.getLinesForFileSync(fileId)
+        // Expected: TOP, 1, MIDDLE, 2
+        assertEquals("MIDDLE", lines[2].expression)
+
+        // afterLineId missing -> append at end
+        dao.moveAndInsertLine(fileId, 999L, LineEntity(fileId = fileId, sortOrder = 0, expression = "END"))
+        lines = dao.getLinesForFileSync(fileId)
+        assertEquals("END", lines.last().expression)
+        assertEquals(lines.size - 1, lines.last().sortOrder)
+    }
+
+    @Test
+    fun deleteAndNormalize_repairsSortOrders() = runBlocking {
+        val fileId = dao.insertFile(FileEntity(name = "Delete", lastModified = 1000L))
+        dao.insertLine(LineEntity(fileId = fileId, sortOrder = 0, expression = "0"))
+        dao.insertLine(LineEntity(fileId = fileId, sortOrder = 1, expression = "1"))
+        dao.insertLine(LineEntity(fileId = fileId, sortOrder = 2, expression = "2"))
+
+        val lineToDelete = dao.getLinesForFileSync(fileId)[1] // "1"
+
+        val beforeTouch = System.currentTimeMillis()
+        Thread.sleep(10)
+        dao.deleteAndNormalize(lineToDelete)
+
+        val remaining = dao.getLinesForFileSync(fileId)
+        assertEquals(2, remaining.size)
+        assertEquals(0, remaining[0].sortOrder)
+        assertEquals(1, remaining[1].sortOrder)
+        assertEquals("0", remaining[0].expression)
+        assertEquals("2", remaining[1].expression)
+
+        val file = dao.getFileById(fileId)
+        assertTrue(file!!.lastModified >= beforeTouch)
+    }
+
+    @Test
+    fun restoreLines_isAtomicAndNormalized() = runBlocking {
+        val fileId = dao.insertFile(FileEntity(name = "Restore", lastModified = 1000L))
+        dao.insertLine(LineEntity(fileId = fileId, sortOrder = 0, expression = "OLD"))
+
+        val snapshots = listOf(
+            LineEntity(fileId = fileId, sortOrder = 99, expression = "NEW 1"),
+            LineEntity(fileId = fileId, sortOrder = 100, expression = "NEW 2")
+        )
+
+        val beforeTouch = System.currentTimeMillis()
+        Thread.sleep(10)
+        dao.restoreLines(fileId, snapshots)
+
+        val current = dao.getLinesForFileSync(fileId)
+        assertEquals(2, current.size)
+        assertEquals("NEW 1", current[0].expression)
+        assertEquals(0, current[0].sortOrder) // Should be normalized to 0
+        assertEquals("NEW 2", current[1].expression)
+        assertEquals(1, current[1].sortOrder) // Should be normalized to 1
+
+        val file = dao.getFileById(fileId)
+        assertTrue(file!!.lastModified >= beforeTouch)
     }
 }

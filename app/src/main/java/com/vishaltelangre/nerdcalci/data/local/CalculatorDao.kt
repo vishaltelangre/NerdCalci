@@ -29,11 +29,11 @@ abstract class CalculatorDao {
     abstract suspend fun doesFileExist(name: String, excludeId: Long): Boolean
 
     // Returns lines ordered by sortOrder (determines display order in UI)
-    @Query("SELECT * FROM lines WHERE fileId = :fileId ORDER BY sortOrder ASC")
+    @Query("SELECT * FROM lines WHERE fileId = :fileId ORDER BY sortOrder ASC, id ASC")
     abstract fun getLinesForFile(fileId: Long): Flow<List<LineEntity>>
 
     // Synchronous version for operations that need immediate results
-    @Query("SELECT * FROM lines WHERE fileId = :fileId ORDER BY sortOrder ASC")
+    @Query("SELECT * FROM lines WHERE fileId = :fileId ORDER BY sortOrder ASC, id ASC")
     abstract suspend fun getLinesForFileSync(fileId: Long): List<LineEntity>
 
     @Query("SELECT COUNT(*) FROM lines WHERE fileId = :fileId")
@@ -144,12 +144,91 @@ abstract class CalculatorDao {
 
     @Transaction
     open suspend fun clearAllLines(fileId: Long) {
-        val allLines = getLinesForFileSync(fileId)
-        allLines.forEach { line ->
-            internalDeleteLine(line)
-        }
+        internalDeleteLinesForFile(fileId)
         // Create one empty line to start fresh
         internalInsertLine(LineEntity(fileId = fileId, sortOrder = 0, expression = "", result = ""))
         touchFile(fileId)
+    }
+
+    /**
+     * Atomically replaces all lines in a file with the given list of lines.
+     * Ensures all lines are correctly attributed to the file and IDs are reset for insertion.
+     */
+    @Transaction
+    open suspend fun restoreLines(fileId: Long, lines: List<LineEntity>) {
+        internalDeleteLinesForFile(fileId)
+        val toInsert = lines.mapIndexed { index, line ->
+            line.copy(id = 0, fileId = fileId, sortOrder = index)
+        }
+        if (toInsert.isNotEmpty()) {
+            internalInsertLines(toInsert)
+        } else {
+            // Ensure at least one empty line if the list was empty
+            internalInsertLine(LineEntity(fileId = fileId, sortOrder = 0, expression = "", result = ""))
+        }
+        touchFile(fileId)
+    }
+
+    @Query("DELETE FROM lines WHERE fileId = :fileId")
+    protected abstract suspend fun internalDeleteLinesForFile(fileId: Long)
+
+    /**
+     * Atomically shifts existing lines and inserts a new line.
+     * Then re-normalizes all sortOrder values to 0, 1, 2... to ensure consistency.
+     */
+    @Transaction
+    open suspend fun moveAndInsertLine(fileId: Long, afterLineId: Long?, newLine: LineEntity): Long {
+        val currentLines = getLinesForFileSync(fileId).toMutableList()
+
+        // Use the ID of the line the user is on to find exactly where to insert.
+        // If we don't have an ID (null), we're at the very top.
+        val insertIndex = if (afterLineId == null) {
+            0
+        } else {
+            val idx = currentLines.indexOfFirst { it.id == afterLineId }
+            // If we found the line, we go just below it (idx + 1).
+            // If not found, we fallback to the very end.
+            if (idx == -1) currentLines.size else idx + 1
+        }
+
+        // "Slip" the new line into our list at that specific spot.
+        currentLines.add(insertIndex, newLine)
+
+        // Since we've inserted a line, all lines below it need their sortOrder updated.
+        // We re-assign them 0, 1, 2, 3... so they are sequential and clean.
+        val normalizedLines = currentLines.mapIndexed { index, line ->
+            line.copy(sortOrder = index)
+        }
+
+        // Save everything back to the database in one go.
+        // We separate existing lines (which just need a number update) from the brand new line.
+        val existingToUpdate = normalizedLines.filter { it.id != 0L }
+        val lineToInsert = normalizedLines.first { it.id == 0L }
+
+        if (existingToUpdate.isNotEmpty()) internalUpdateLines(existingToUpdate)
+
+        val newId = internalInsertLine(lineToInsert)
+
+        touchFile(fileId)
+
+        return newId
+    }
+
+    /**
+     * Atomically deletes a line and re-normalizes all remaining sortOrder values.
+     */
+    @Transaction
+    open suspend fun deleteAndNormalize(line: LineEntity) {
+        internalDeleteLine(line)
+
+        val remainingLines = getLinesForFileSync(line.fileId)
+        val normalizedLines = remainingLines.mapIndexed { index, l ->
+            l.copy(sortOrder = index)
+        }
+        if (normalizedLines.isNotEmpty()) {
+            internalUpdateLines(normalizedLines)
+        }
+
+        touchFile(line.fileId)
     }
 }

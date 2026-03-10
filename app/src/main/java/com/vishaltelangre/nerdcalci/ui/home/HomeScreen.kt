@@ -1,8 +1,15 @@
 package com.vishaltelangre.nerdcalci.ui.home
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.clickable
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,54 +22,44 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.RssFeed
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.UploadFile
-import androidx.compose.material.icons.filled.RssFeed
-import androidx.compose.material.icons.automirrored.filled.HelpOutline
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewModelScope
 import com.vishaltelangre.nerdcalci.R
 import com.vishaltelangre.nerdcalci.core.Constants
+import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
 import com.vishaltelangre.nerdcalci.ui.calculator.CalculatorViewModel
-import com.vishaltelangre.nerdcalci.ui.components.addFileItems
+import com.vishaltelangre.nerdcalci.ui.calculator.HomeUiEvent
+import com.vishaltelangre.nerdcalci.ui.components.SectionHeader
+import com.vishaltelangre.nerdcalci.ui.components.addDismissibleFileItems
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -89,6 +86,29 @@ fun HomeScreen(
     fun createFile() {
         viewModel.createNewFile { fileId ->
             onFileClick(fileId)
+        }
+    }
+
+    // Handle UI events like Undo Snackbars and other messages
+    val excludedFileIds by viewModel.excludedFileIds.collectAsState(initial = emptySet())
+
+    // Cleanup "Deleted" items when the user interact with the list or navigates away
+    DisposableEffect(Unit) {
+        onDispose {
+            viewModel.permanentDeleteExclusions()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.uiEvents.collect { event ->
+            when (event) {
+                is HomeUiEvent.ShowUndoSnackbar -> {
+                    // No longer showing Snackbar for undo - handled inline
+                }
+                is HomeUiEvent.ShowMessage -> {
+                    snackbarHostState.showSnackbar(event.message)
+                }
+            }
         }
     }
 
@@ -278,29 +298,16 @@ fun HomeScreen(
                 ) {
                     if (visiblePinnedFiles.isNotEmpty()) {
                         item { SectionHeader(title = "Pinned") }
-                        addFileItems(
+                        addDismissibleFileItems(
                             files = visiblePinnedFiles,
-                            onItemClick = { fileId: Long -> onFileClick(fileId) },
-                            onItemRename = { fileId: Long, newName: String ->
-                                coroutineScope.launch {
-                                    viewModel.renameFile(fileId, newName)
-                                }
-                            },
-                            onItemDuplicate = { fileId: Long ->
-                                viewModel.duplicateFile(fileId) { newFileId ->
-                                    onFileClick(newFileId)
-                                }
-                            },
-                            onItemDelete = { fileId: Long -> viewModel.deleteFile(fileId) },
-                            onItemTogglePin = { fileId: Long ->
-                                viewModel.togglePinFile(fileId) {
-                                    coroutineScope.launch {
-                                        snackbarHostState.showSnackbar(
-                                            "Maximum ${Constants.MAX_PINNED_FILES} files can be pinned"
-                                        )
-                                    }
-                                }
-                            },
+                            excludedIds = excludedFileIds,
+                            onFileClick = onFileClick,
+                            onRename = { id, name -> viewModel.viewModelScope.launch { viewModel.renameFile(id, name) } },
+                            onDuplicate = { id -> viewModel.duplicateFile(id) { onFileClick(it) } },
+                            onDelete = { id -> viewModel.deleteFile(id) },
+                            onTogglePin = { id -> viewModel.togglePinFile(id) },
+                            onUndo = { viewModel.undoHideFile(it) },
+                            onDismiss = { viewModel.hideFile(it) },
                             viewModel = viewModel
                         )
                     }
@@ -311,29 +318,16 @@ fun HomeScreen(
                                 title = if (visiblePinnedFiles.isNotEmpty()) "All files" else "Files"
                             )
                         }
-                        addFileItems(
+                        addDismissibleFileItems(
                             files = visibleUnpinnedFiles,
-                            onItemClick = { fileId: Long -> onFileClick(fileId) },
-                            onItemRename = { fileId: Long, newName: String ->
-                                coroutineScope.launch {
-                                    viewModel.renameFile(fileId, newName)
-                                }
-                            },
-                            onItemDuplicate = { fileId: Long ->
-                                viewModel.duplicateFile(fileId) { newFileId ->
-                                    onFileClick(newFileId)
-                                }
-                            },
-                            onItemDelete = { fileId: Long -> viewModel.deleteFile(fileId) },
-                            onItemTogglePin = { fileId: Long ->
-                                viewModel.togglePinFile(fileId) {
-                                    coroutineScope.launch {
-                                        snackbarHostState.showSnackbar(
-                                            "Maximum ${Constants.MAX_PINNED_FILES} files can be pinned"
-                                        )
-                                    }
-                                }
-                            },
+                            excludedIds = excludedFileIds,
+                            onFileClick = onFileClick,
+                            onRename = { id, name -> viewModel.viewModelScope.launch { viewModel.renameFile(id, name) } },
+                            onDuplicate = { id -> viewModel.duplicateFile(id) { onFileClick(it) } },
+                            onDelete = { id -> viewModel.deleteFile(id) },
+                            onTogglePin = { id -> viewModel.togglePinFile(id) },
+                            onUndo = { viewModel.undoHideFile(it) },
+                            onDismiss = { viewModel.hideFile(it) },
                             viewModel = viewModel
                         )
                     }
@@ -341,14 +335,4 @@ fun HomeScreen(
             }
         }
     }
-}
-
-@Composable
-private fun SectionHeader(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-    )
 }

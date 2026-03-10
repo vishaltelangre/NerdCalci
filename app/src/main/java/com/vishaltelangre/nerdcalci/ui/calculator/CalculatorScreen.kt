@@ -118,7 +118,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.IntOffset
 import com.vishaltelangre.nerdcalci.core.Constants
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
-import com.vishaltelangre.nerdcalci.ui.components.DeleteFileDialog
 import com.vishaltelangre.nerdcalci.ui.components.RenameFileDialog
 import com.vishaltelangre.nerdcalci.ui.components.FileInfoDialog
 import com.vishaltelangre.nerdcalci.ui.theme.FiraCodeFamily
@@ -305,7 +304,6 @@ fun CalculatorScreen(
     var showMenu by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var showClearConfirmDialog by remember { mutableStateOf(false) }
-    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var showInfoDialog by remember { mutableStateOf(false) }
     val currentFile = files.find { it.id == fileId }
     val fileName = currentFile?.name ?: "Editor"
@@ -313,33 +311,66 @@ fun CalculatorScreen(
     // Track which line should be focused and cursor position
     var focusLineId by remember { mutableStateOf<Long?>(null) }
     var focusCursorPosition by remember { mutableStateOf<Int?>(null) }
+    var pendingScrollLineId by remember { mutableStateOf<Long?>(null) }
 
     // Track which line is currently focused by the user
     var currentlyFocusedLineId by remember { mutableStateOf<Long?>(null) }
 
     // Track when a new line is requested to be added (for auto-focus)
-    var requestNewLineAfterSortOrder by remember { mutableStateOf<Int?>(null) }
 
     // Track toolbar text insertion requests (used for inserting symbols using custom keyboard shortcuts)
     var insertTextRequest by remember { mutableStateOf<Pair<Long, String>?>(null) }
+    // Check if keyboard is visible
+    val density = LocalDensity.current
+    val imeInsets = WindowInsets.ime
 
-    // Auto-focus newly created lines
-    LaunchedEffect(lines.size, requestNewLineAfterSortOrder) {
-        requestNewLineAfterSortOrder?.let { sortOrder ->
-            // Find the line that was just created (empty line with sortOrder = sortOrder + 1)
-            val newLine = lines.find { it.sortOrder == sortOrder + 1 && it.expression.isEmpty() }
-            newLine?.let {
-                focusLineId = it.id
-                focusCursorPosition =
-                    if (lines.indexOf(it) == 0) 0 else 1 // Line 1 has no leading space
-                requestNewLineAfterSortOrder = null
+    // Auto-focus and scroll to newly created lines
+    LaunchedEffect(lines, pendingScrollLineId) {
+        val targetId = pendingScrollLineId ?: return@LaunchedEffect
+
+        // Wait a bit for the keyboard/toolbar to settle before calculating scroll
+        delay(50)
+
+        val targetIndex = lines.indexOfFirst { it.id == targetId }
+        if (targetIndex >= 0) {
+            val layoutInfo = listState.layoutInfo
+            val visibleItems = layoutInfo.visibleItemsInfo
+            val targetVisibleItem = visibleItems.find { it.index == targetIndex }
+
+            // If the item is below the viewport or at the bottom edge,
+            // scroll so it stays at the bottom (pushing previous lines up).
+            // We include a 48dp margin at the bottom for breathing room and to clear the toolbar.
+            val viewportHeight = layoutInfo.viewportSize.height
+            val bottomMarginPx = (48 * density.density).toInt()
+
+            if (targetVisibleItem == null) {
+                // Not visible at all
+                val lastVisibleIndex = visibleItems.lastOrNull()?.index ?: -1
+                if (targetIndex > lastVisibleIndex) {
+                    // It's below. Scroll so it's at the bottom + margin.
+                    // Since we don't know the exact height yet, we use a reasonable default (48dp).
+                    val estimatedItemHeight = (48 * density.density).toInt()
+                    listState.animateScrollToItem(targetIndex, -(viewportHeight - estimatedItemHeight - bottomMarginPx))
+                } else {
+                    // It's above. Scroll to top.
+                    listState.animateScrollToItem(targetIndex)
+                }
+            } else {
+                // Item is partially or fully visible.
+                val isFullyVisible = targetVisibleItem.offset >= layoutInfo.viewportStartOffset &&
+                    (targetVisibleItem.offset + targetVisibleItem.size) <= viewportHeight - bottomMarginPx
+
+                if (!isFullyVisible || targetVisibleItem.offset + targetVisibleItem.size > viewportHeight - bottomMarginPx - 10) {
+                    // If it's near or past the bottom margin, dock it at the bottom margin.
+                    val offset = viewportHeight - targetVisibleItem.size - bottomMarginPx
+                    listState.animateScrollToItem(targetIndex, -offset)
+                }
             }
+            pendingScrollLineId = null
         }
     }
 
     // Check if keyboard is visible
-    val density = LocalDensity.current
-    val imeInsets = WindowInsets.ime
     val isKeyboardVisible = imeInsets.getBottom(density) > 0
 
     // Theme-aware colors - respect app theme setting, not system
@@ -571,7 +602,8 @@ fun CalculatorScreen(
                                     },
                                     onClick = {
                                         showMenu = false
-                                        showDeleteConfirmDialog = true
+                                        viewModel.hideFile(fileId)
+                                        onBack()
                                     }
                                 )
                             }
@@ -739,15 +771,12 @@ fun CalculatorScreen(
                             }
                         },
                         onEnter = {
-                            requestNewLineAfterSortOrder = line.sortOrder
-                            viewModel.addLine(fileId, line.sortOrder + 1)
-                            // Scroll to the newly created line
                             coroutineScope.launch {
-                                delay(100)
-                                val newLineIndex = index + 1
-                                if (newLineIndex < lines.size + 1) {
-                                    listState.animateScrollToItem(newLineIndex)
-                                }
+                                val newId = viewModel.addLine(fileId, line.sortOrder + 1, afterLineId = line.id)
+                                focusLineId = newId
+                                // New lines created via Enter always have a leading space, start cursor at pos 1
+                                focusCursorPosition = 1
+                                pendingScrollLineId = newId
                             }
                         },
                         onDelete = {
@@ -856,19 +885,6 @@ fun CalculatorScreen(
                 TextButton(onClick = { showClearConfirmDialog = false }) {
                     Text("Cancel")
                 }
-            }
-        )
-    }
-
-    // Delete File confirmation dialog
-    if (showDeleteConfirmDialog) {
-        DeleteFileDialog(
-            fileName = fileName,
-            onDismiss = { showDeleteConfirmDialog = false },
-            onConfirm = {
-                showDeleteConfirmDialog = false
-                viewModel.deleteFile(fileId)
-                onBack()
             }
         )
     }

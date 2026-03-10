@@ -1,0 +1,1 @@
+Added a fix for an issue where `sum`/`total` values would not update automatically after inserting or deleting lines.

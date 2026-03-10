@@ -275,9 +275,13 @@ class CalculatorViewModel(
 
     // Clear undo/redo history for a file
     fun clearHistory(fileId: Long) {
-        undoStacks[fileId]?.clear()
-        redoStacks[fileId]?.clear()
-        updateUndoRedoState(fileId)
+        viewModelScope.launch(Dispatchers.IO) {
+            calculationMutex.withLock {
+                undoStacks[fileId]?.clear()
+                redoStacks[fileId]?.clear()
+                updateUndoRedoState(fileId)
+            }
+        }
     }
 
     // Format lines with intelligent result display
@@ -444,9 +448,15 @@ class CalculatorViewModel(
 
     fun deleteFile(fileId: Long) {
         viewModelScope.launch(Dispatchers.IO) {
-            val file = dao.getFileById(fileId)
-            if (file != null) {
-                dao.deleteFile(file)
+            calculationMutex.withLock {
+                val file = dao.getFileById(fileId)
+                if (file != null) {
+                    dao.deleteFile(file)
+                    // Purge history for this file
+                    undoStacks.remove(fileId)
+                    redoStacks.remove(fileId)
+                    updateUndoRedoState(fileId)
+                }
             }
         }
     }
@@ -458,17 +468,23 @@ class CalculatorViewModel(
      */
     suspend fun deleteFileIfEmptyAndRecent(fileId: Long) {
         withContext(Dispatchers.IO) {
-            val file = dao.getFileById(fileId) ?: return@withContext
-            val lines = dao.getLinesForFileSync(fileId)
+            calculationMutex.withLock {
+                val file = dao.getFileById(fileId) ?: return@withLock
+                val lines = dao.getLinesForFileSync(fileId)
 
-            val isEmpty = lines.all { it.expression.isBlank() }
-            val now = System.currentTimeMillis()
-            val isRecent = now - file.createdAt < Constants.EMPTY_FILE_CLEANUP_THRESHOLD_MS
-            val untitledRegex = Regex("""^Untitled(\s\(\d+\))?$""") // Matches "Untitled", "Untitled (1)", "Untitled (2)", etc.
-            val isUntitled = untitledRegex.matches(file.name)
+                val isEmpty = lines.all { it.expression.isBlank() }
+                val now = System.currentTimeMillis()
+                val isRecent = now - file.createdAt < Constants.EMPTY_FILE_CLEANUP_THRESHOLD_MS
+                val untitledRegex = Regex("""^Untitled(\s\(\d+\))?$""") // Matches "Untitled", "Untitled (1)", "Untitled (2)", etc.
+                val isUntitled = untitledRegex.matches(file.name)
 
-            if (isEmpty && isRecent && isUntitled) {
-                dao.deleteFile(file)
+                if (isEmpty && isRecent && isUntitled) {
+                    dao.deleteFile(file)
+                    // Purge history for this file
+                    undoStacks.remove(fileId)
+                    redoStacks.remove(fileId)
+                    updateUndoRedoState(fileId)
+                }
             }
         }
     }

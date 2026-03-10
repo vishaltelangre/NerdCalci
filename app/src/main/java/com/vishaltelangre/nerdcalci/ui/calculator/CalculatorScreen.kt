@@ -98,6 +98,8 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.font.FontStyle
@@ -322,20 +324,57 @@ fun CalculatorScreen(
 
     // Track toolbar text insertion requests (used for inserting symbols using custom keyboard shortcuts)
     var insertTextRequest by remember { mutableStateOf<Pair<Long, String>?>(null) }
+    // Check if keyboard is visible
+    val density = LocalDensity.current
+    val imeInsets = WindowInsets.ime
 
-    // Auto-focus newly created lines
+    // Auto-focus and scroll to newly created lines
     LaunchedEffect(lines, pendingScrollLineId) {
         val targetId = pendingScrollLineId ?: return@LaunchedEffect
+
+        // Wait a bit for the keyboard/toolbar to settle before calculating scroll
+        delay(50)
+
         val targetIndex = lines.indexOfFirst { it.id == targetId }
         if (targetIndex >= 0) {
-            listState.animateScrollToItem(targetIndex)
+            val layoutInfo = listState.layoutInfo
+            val visibleItems = layoutInfo.visibleItemsInfo
+            val targetVisibleItem = visibleItems.find { it.index == targetIndex }
+
+            // If the item is below the viewport or at the bottom edge,
+            // scroll so it stays at the bottom (pushing previous lines up).
+            // We include a 48dp margin at the bottom for breathing room and to clear the toolbar.
+            val viewportHeight = layoutInfo.viewportSize.height
+            val bottomMarginPx = (48 * density.density).toInt()
+
+            if (targetVisibleItem == null) {
+                // Not visible at all
+                val lastVisibleIndex = visibleItems.lastOrNull()?.index ?: -1
+                if (targetIndex > lastVisibleIndex) {
+                    // It's below. Scroll so it's at the bottom + margin.
+                    // Since we don't know the exact height yet, we use a reasonable default (48dp).
+                    val estimatedItemHeight = (48 * density.density).toInt()
+                    listState.animateScrollToItem(targetIndex, -(viewportHeight - estimatedItemHeight - bottomMarginPx))
+                } else {
+                    // It's above. Scroll to top.
+                    listState.animateScrollToItem(targetIndex)
+                }
+            } else {
+                // Item is partially or fully visible.
+                val isFullyVisible = targetVisibleItem.offset >= layoutInfo.viewportStartOffset &&
+                    (targetVisibleItem.offset + targetVisibleItem.size) <= viewportHeight - bottomMarginPx
+
+                if (!isFullyVisible || targetVisibleItem.offset + targetVisibleItem.size > viewportHeight - bottomMarginPx - 10) {
+                    // If it's near or past the bottom margin, dock it at the bottom margin.
+                    val offset = viewportHeight - targetVisibleItem.size - bottomMarginPx
+                    listState.animateScrollToItem(targetIndex, -offset)
+                }
+            }
             pendingScrollLineId = null
         }
     }
 
     // Check if keyboard is visible
-    val density = LocalDensity.current
-    val imeInsets = WindowInsets.ime
     val isKeyboardVisible = imeInsets.getBottom(density) > 0
 
     // Theme-aware colors - respect app theme setting, not system

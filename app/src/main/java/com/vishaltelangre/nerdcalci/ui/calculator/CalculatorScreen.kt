@@ -318,21 +318,21 @@ fun CalculatorScreen(
     var currentlyFocusedLineId by remember { mutableStateOf<Long?>(null) }
 
     // Track when a new line is requested to be added (for auto-focus)
-    var requestNewLineAfterSortOrder by remember { mutableStateOf<Int?>(null) }
+    var requestNewLineAfterLineId by remember { mutableStateOf<Long?>(null) }
 
     // Track toolbar text insertion requests (used for inserting symbols using custom keyboard shortcuts)
     var insertTextRequest by remember { mutableStateOf<Pair<Long, String>?>(null) }
 
     // Auto-focus newly created lines
-    LaunchedEffect(lines.size, requestNewLineAfterSortOrder) {
-        requestNewLineAfterSortOrder?.let { sortOrder ->
-            // Find the line that was just created (empty line with sortOrder = sortOrder + 1)
-            val newLine = lines.find { it.sortOrder == sortOrder + 1 && it.expression.isEmpty() }
-            newLine?.let {
-                focusLineId = it.id
-                focusCursorPosition =
-                    if (lines.indexOf(it) == 0) 0 else 1 // Line 1 has no leading space
-                requestNewLineAfterSortOrder = null
+    LaunchedEffect(lines.size, requestNewLineAfterLineId) {
+        requestNewLineAfterLineId?.let { anchorId ->
+            // Find the line that follows the anchor line
+            val anchorIndex = lines.indexOfFirst { it.id == anchorId }
+            if (anchorIndex != -1 && anchorIndex + 1 < lines.size) {
+                val newLine = lines[anchorIndex + 1]
+                focusLineId = newLine.id
+                focusCursorPosition = 1 // New lines (except index 0) have leading space, cursor starts at 1
+                requestNewLineAfterLineId = null
             }
         }
     }
@@ -739,8 +739,10 @@ fun CalculatorScreen(
                             }
                         },
                         onEnter = {
-                            requestNewLineAfterSortOrder = line.sortOrder
-                            viewModel.addLine(fileId, line.sortOrder + 1, afterLineId = line.id)
+                            requestNewLineAfterLineId = line.id
+                            coroutineScope.launch {
+                                viewModel.addLine(fileId, line.sortOrder + 1, afterLineId = line.id)
+                            }
                             // Scroll to the newly created line
                             coroutineScope.launch {
                                 delay(100)

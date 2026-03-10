@@ -405,8 +405,8 @@ class CalculatorViewModel(
         }
     }
 
-    fun addLine(fileId: Long, sortOrder: Int, afterLineId: Long? = null) {
-        viewModelScope.launch(Dispatchers.IO) {
+    suspend fun addLine(fileId: Long, sortOrder: Int, afterLineId: Long? = null): Long {
+        return withContext(Dispatchers.IO) {
             calculationMutex.withLock {
                 // Save state for undo
                 saveStateForUndo(fileId)
@@ -423,6 +423,8 @@ class CalculatorViewModel(
                 // Recalculate everything from the new line downward
                 val affectedLines = MathEngine.calculateFrom(updatedAllLines, insertIndex)
                 dao.updateLines(fileId, affectedLines)
+
+                newId
             }
         }
     }

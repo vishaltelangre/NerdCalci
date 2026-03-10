@@ -318,24 +318,11 @@ fun CalculatorScreen(
     var currentlyFocusedLineId by remember { mutableStateOf<Long?>(null) }
 
     // Track when a new line is requested to be added (for auto-focus)
-    var requestNewLineAfterLineId by remember { mutableStateOf<Long?>(null) }
 
     // Track toolbar text insertion requests (used for inserting symbols using custom keyboard shortcuts)
     var insertTextRequest by remember { mutableStateOf<Pair<Long, String>?>(null) }
 
     // Auto-focus newly created lines
-    LaunchedEffect(lines.size, requestNewLineAfterLineId) {
-        requestNewLineAfterLineId?.let { anchorId ->
-            // Find the line that follows the anchor line
-            val anchorIndex = lines.indexOfFirst { it.id == anchorId }
-            if (anchorIndex != -1 && anchorIndex + 1 < lines.size) {
-                val newLine = lines[anchorIndex + 1]
-                focusLineId = newLine.id
-                focusCursorPosition = 1 // New lines (except index 0) have leading space, cursor starts at 1
-                requestNewLineAfterLineId = null
-            }
-        }
-    }
 
     // Check if keyboard is visible
     val density = LocalDensity.current
@@ -739,12 +726,13 @@ fun CalculatorScreen(
                             }
                         },
                         onEnter = {
-                            requestNewLineAfterLineId = line.id
                             coroutineScope.launch {
-                                viewModel.addLine(fileId, line.sortOrder + 1, afterLineId = line.id)
-                            }
-                            // Scroll to the newly created line
-                            coroutineScope.launch {
+                                val newId = viewModel.addLine(fileId, line.sortOrder + 1, afterLineId = line.id)
+                                focusLineId = newId
+                                // New lines created via Enter always have a leading space, start cursor at pos 1
+                                focusCursorPosition = 1
+
+                                // Scroll to the newly created line
                                 delay(100)
                                 val newLineIndex = index + 1
                                 if (newLineIndex < lines.size + 1) {

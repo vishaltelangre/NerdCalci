@@ -141,6 +141,21 @@ class DatabaseTest {
     }
 
     @Test
+    fun insertMultipleLines_withDuplicateSortOrder_orderedById() = runBlocking {
+        val fileId = dao.insertFile(FileEntity(name = "Test", lastModified = 1000L))
+        // Lines with same sortOrder but different IDs (IDs assigned sequentially by autoGenerate)
+        dao.insertLine(LineEntity(fileId = fileId, sortOrder = 5, expression = "line 1"))
+        dao.insertLine(LineEntity(fileId = fileId, sortOrder = 5, expression = "line 2"))
+
+        val lines = dao.getLinesForFileSync(fileId)
+        assertEquals(2, lines.size)
+        // Since sortOrder is both 5, the sorting should fallback to id ASC
+        assertEquals("line 1", lines[0].expression)
+        assertEquals("line 2", lines[1].expression)
+        assertTrue(lines[0].id < lines[1].id)
+    }
+
+    @Test
     fun updateLine_changesArePersistedAndFileTouched() = runBlocking {
         val fileId = dao.insertFile(FileEntity(name = "Test", lastModified = 1000L))
         val lineId = dao.insertLine(LineEntity(fileId = fileId, sortOrder = 0, expression = "original", result = ""))

@@ -29,11 +29,11 @@ abstract class CalculatorDao {
     abstract suspend fun doesFileExist(name: String, excludeId: Long): Boolean
 
     // Returns lines ordered by sortOrder (determines display order in UI)
-    @Query("SELECT * FROM lines WHERE fileId = :fileId ORDER BY sortOrder ASC")
+    @Query("SELECT * FROM lines WHERE fileId = :fileId ORDER BY sortOrder ASC, id ASC")
     abstract fun getLinesForFile(fileId: Long): Flow<List<LineEntity>>
 
     // Synchronous version for operations that need immediate results
-    @Query("SELECT * FROM lines WHERE fileId = :fileId ORDER BY sortOrder ASC")
+    @Query("SELECT * FROM lines WHERE fileId = :fileId ORDER BY sortOrder ASC, id ASC")
     abstract suspend fun getLinesForFileSync(fileId: Long): List<LineEntity>
 
     @Query("SELECT COUNT(*) FROM lines WHERE fileId = :fileId")

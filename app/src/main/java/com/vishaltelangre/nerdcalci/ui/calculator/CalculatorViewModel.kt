@@ -222,74 +222,50 @@ class CalculatorViewModel(
     // Undo last action
     fun undo(fileId: Long) {
         viewModelScope.launch(Dispatchers.IO) {
-            val undoStack = undoStacks[fileId] ?: return@launch
-            if (undoStack.isEmpty()) return@launch
+            calculationMutex.withLock {
+                val undoStack = undoStacks[fileId] ?: return@withLock
+                if (undoStack.isEmpty()) return@withLock
 
-            // Save current state to redo stack
-            val currentLines = dao.getLinesForFileSync(fileId)
-            val currentSnapshot = FileSnapshot(currentLines.map { it.copy() })
-            val redoStack = redoStacks.getOrPut(fileId) { mutableListOf() }
-            redoStack.add(currentSnapshot)
+                // Save current state to redo stack
+                val currentLines = dao.getLinesForFileSync(fileId)
+                val currentSnapshot = FileSnapshot(currentLines.map { it.copy() })
+                val redoStack = redoStacks.getOrPut(fileId) { mutableListOf() }
+                redoStack.add(currentSnapshot)
 
-            // Restore previous state
-            val previousSnapshot = undoStack.removeAt(undoStack.size - 1)
-            restoreSnapshot(fileId, previousSnapshot)
+                // Restore previous state
+                val previousSnapshot = undoStack.removeAt(undoStack.size - 1)
+                restoreSnapshot(fileId, previousSnapshot)
 
-            updateUndoRedoState(fileId)
+                updateUndoRedoState(fileId)
+            }
         }
     }
 
     // Redo last undone action
     fun redo(fileId: Long) {
         viewModelScope.launch(Dispatchers.IO) {
-            val redoStack = redoStacks[fileId] ?: return@launch
-            if (redoStack.isEmpty()) return@launch
+            calculationMutex.withLock {
+                val redoStack = redoStacks[fileId] ?: return@withLock
+                if (redoStack.isEmpty()) return@withLock
 
-            // Save current state to undo stack
-            val currentLines = dao.getLinesForFileSync(fileId)
-            val currentSnapshot = FileSnapshot(currentLines.map { it.copy() })
-            val undoStack = undoStacks.getOrPut(fileId) { mutableListOf() }
-            undoStack.add(currentSnapshot)
+                // Save current state to undo stack
+                val currentLines = dao.getLinesForFileSync(fileId)
+                val currentSnapshot = FileSnapshot(currentLines.map { it.copy() })
+                val undoStack = undoStacks.getOrPut(fileId) { mutableListOf() }
+                undoStack.add(currentSnapshot)
 
-            // Restore redo state
-            val redoSnapshot = redoStack.removeAt(redoStack.size - 1)
-            restoreSnapshot(fileId, redoSnapshot)
+                // Restore redo state
+                val redoSnapshot = redoStack.removeAt(redoStack.size - 1)
+                restoreSnapshot(fileId, redoSnapshot)
 
-            updateUndoRedoState(fileId)
+                updateUndoRedoState(fileId)
+            }
         }
     }
 
     // Restore a snapshot with minimal UI flashing
     private suspend fun restoreSnapshot(fileId: Long, snapshot: FileSnapshot) {
-        val currentLines = dao.getLinesForFileSync(fileId)
-        val snapshotLines = snapshot.lines
-
-        // Update existing lines in-place, then handle extras
-        val minSize = minOf(currentLines.size, snapshotLines.size)
-
-        // Update existing lines
-        for (i in 0 until minSize) {
-            val updatedLine = currentLines[i].copy(
-                expression = snapshotLines[i].expression,
-                result = snapshotLines[i].result,
-                sortOrder = snapshotLines[i].sortOrder
-            )
-            dao.updateLine(updatedLine)
-        }
-
-        // If snapshot has more lines, insert the extras
-        if (snapshotLines.size > currentLines.size) {
-            for (i in minSize until snapshotLines.size) {
-                dao.insertLine(snapshotLines[i].copy(id = 0))
-            }
-        }
-
-        // If current has more lines, delete the extras
-        if (currentLines.size > snapshotLines.size) {
-            for (i in minSize until currentLines.size) {
-                dao.deleteLine(currentLines[i])
-            }
-        }
+        dao.restoreLines(fileId, snapshot.lines)
 
         // Recalculate everything and batch-write results in one transaction
         val allLines = dao.getLinesForFileSync(fileId)
@@ -453,8 +429,10 @@ class CalculatorViewModel(
     // Clear all lines in a file
     fun clearAllLines(fileId: Long) {
         viewModelScope.launch(Dispatchers.IO) {
-            saveStateForUndo(fileId)
-            dao.clearAllLines(fileId)
+            calculationMutex.withLock {
+                saveStateForUndo(fileId)
+                dao.clearAllLines(fileId)
+            }
         }
     }
 

@@ -150,6 +150,25 @@ abstract class CalculatorDao {
         touchFile(fileId)
     }
 
+    /**
+     * Atomically replaces all lines in a file with the given list of lines.
+     * Ensures all lines are correctly attributed to the file and IDs are reset for insertion.
+     */
+    @Transaction
+    open suspend fun restoreLines(fileId: Long, lines: List<LineEntity>) {
+        internalDeleteLinesForFile(fileId)
+        val toInsert = lines.mapIndexed { index, line ->
+            line.copy(id = 0, fileId = fileId, sortOrder = index)
+        }
+        if (toInsert.isNotEmpty()) {
+            internalInsertLines(toInsert)
+        } else {
+            // Ensure at least one empty line if the list was empty
+            internalInsertLine(LineEntity(fileId = fileId, sortOrder = 0, expression = "", result = ""))
+        }
+        touchFile(fileId)
+    }
+
     @Query("DELETE FROM lines WHERE fileId = :fileId")
     protected abstract suspend fun internalDeleteLinesForFile(fileId: Long)
 

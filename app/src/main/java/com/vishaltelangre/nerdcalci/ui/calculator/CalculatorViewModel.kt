@@ -411,6 +411,11 @@ class CalculatorViewModel(
                 // Save state for undo
                 saveStateForUndo(line.fileId)
 
+                // Get current lines to find the actual index before deletion
+                val currentLines = dao.getLinesForFileSync(line.fileId)
+                val deletedIndex = currentLines.indexOfFirst { it.id == line.id }
+                    .let { if (it >= 0) it else line.sortOrder }
+
                 // Atomically delete line and fix order numbers
                 dao.deleteAndNormalize(line)
 
@@ -418,10 +423,11 @@ class CalculatorViewModel(
 
                 // Recalculate from the spot where we deleted.
                 // Because we normalized (0, 1, 2...), the line that was below
-                // the deleted one now sits at the deleted line's old sortOrder.
-                val affectedLines = MathEngine.calculateFrom(updatedLines, line.sortOrder)
-
-                dao.updateLines(line.fileId, affectedLines)
+                // the deleted one now sits at the deleted line's old position.
+                if (deletedIndex in updatedLines.indices) {
+                    val affectedLines = MathEngine.calculateFrom(updatedLines, deletedIndex)
+                    dao.updateLines(line.fileId, affectedLines)
+                }
             }
         }
     }

@@ -25,6 +25,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 data class FileSnapshot(
@@ -35,6 +37,9 @@ class CalculatorViewModel(
     private val dao: CalculatorDao,
     private val prefs: SharedPreferences? = null
 ) : ViewModel() {
+
+    // Mutex to ensure atomic recalculation cycles per fileId
+    private val calculationMutex = Mutex()
 
     companion object {
         private const val PREF_PRECISION = "precision"
@@ -338,22 +343,24 @@ class CalculatorViewModel(
     // Update a line and recalculate everything from it downward
     fun updateLine(updatedLine: LineEntity) {
         viewModelScope.launch(Dispatchers.IO) {
-            // Save the user's current typing
-            dao.updateLine(updatedLine)
+            calculationMutex.withLock {
+                // Save the user's current typing
+                dao.updateLine(updatedLine)
 
-            // Fetch all lines for this file to ensure context is correct
-            val allLines = dao.getLinesForFileSync(updatedLine.fileId)
+                // Fetch all lines for this file to ensure context is correct
+                val allLines = dao.getLinesForFileSync(updatedLine.fileId)
 
-            // Find where the changed line sits. Preceding lines are not re-evaluated;
-            // their variable state is inherited. If not found, fall back to 0 (recalculate all).
-            val changedIndex = allLines.indexOfFirst { it.id == updatedLine.id }.coerceAtLeast(0)
+                // Find where the changed line sits. Preceding lines are not re-evaluated;
+                // their variable state is inherited. If not found, fall back to 0 (recalculate all).
+                val changedIndex = allLines.indexOfFirst { it.id == updatedLine.id }.coerceAtLeast(0)
 
-            // Recalculate only affected lines (from changedIndex onward), inheriting variable
-            // state from the preceding lines without re-evaluating them.
-            val affectedLines = MathEngine.calculateFrom(allLines, changedIndex)
+                // Recalculate only affected lines (from changedIndex onward), inheriting variable
+                // state from the preceding lines without re-evaluating them.
+                val affectedLines = MathEngine.calculateFrom(allLines, changedIndex)
 
-            // Batch-write all updated results in one DB transaction
-            dao.updateLines(updatedLine.fileId, affectedLines)
+                // Batch-write all updated results in one DB transaction
+                dao.updateLines(updatedLine.fileId, affectedLines)
+            }
         }
     }
 
@@ -398,50 +405,46 @@ class CalculatorViewModel(
         }
     }
 
-    fun addLine(fileId: Long, sortOrder: Int) {
+    fun addLine(fileId: Long, sortOrder: Int, afterLineId: Long? = null) {
         viewModelScope.launch(Dispatchers.IO) {
-            // Save state for undo
-            saveStateForUndo(fileId)
+            calculationMutex.withLock {
+                // Save state for undo
+                saveStateForUndo(fileId)
 
-            val allLines = dao.getLinesForFileSync(fileId)
+                val newLine = LineEntity(fileId = fileId, sortOrder = sortOrder, expression = "", result = "")
+                val newId = dao.moveAndInsertLine(fileId, afterLineId, newLine)
 
-            // Shift all lines after this position down by 1
-            allLines.filter { it.sortOrder >= sortOrder }
-                .sortedByDescending { it.sortOrder }
-                .forEach { line ->
-                    dao.updateLine(line.copy(sortOrder = line.sortOrder + 1))
-                }
+                // Fetch the now-normalized lines
+                val updatedAllLines = dao.getLinesForFileSync(fileId)
 
-            // Insert new line at the specified position
-            dao.insertLine(LineEntity(fileId = fileId, sortOrder = sortOrder, expression = "", result = ""))
+                // Find the actual index of the new line (normalization ensures it matches current index)
+                val insertIndex = updatedAllLines.indexOfFirst { it.id == newId }.coerceAtLeast(0)
 
-            // Recalculate everything from the new line downward
-            val updatedAllLines = dao.getLinesForFileSync(fileId)
-            val affectedLines = MathEngine.calculateFrom(updatedAllLines, sortOrder)
-            dao.updateLines(fileId, affectedLines)
+                // Recalculate everything from the new line downward
+                val affectedLines = MathEngine.calculateFrom(updatedAllLines, insertIndex)
+                dao.updateLines(fileId, affectedLines)
+            }
         }
     }
 
     fun deleteLine(line: LineEntity) {
         viewModelScope.launch(Dispatchers.IO) {
-            // Save state for undo
-            saveStateForUndo(line.fileId)
+            calculationMutex.withLock {
+                // Save state for undo
+                saveStateForUndo(line.fileId)
 
-            // Delete the line
-            dao.deleteLine(line)
+                // Atomically delete line and fix order numbers
+                dao.deleteAndNormalize(line)
 
-            // Shift all lines after this position up by 1
-            val allLines = dao.getLinesForFileSync(line.fileId)
-            allLines.filter { it.sortOrder > line.sortOrder }
-                .sortedBy { it.sortOrder }
-                .forEach { lineToShift ->
-                    dao.updateLine(lineToShift.copy(sortOrder = lineToShift.sortOrder - 1))
-                }
+                val updatedLines = dao.getLinesForFileSync(line.fileId)
 
-            // Recalculate everything from the deleted line's position downward
-            val updatedAllLines = dao.getLinesForFileSync(line.fileId)
-            val affectedLines = MathEngine.calculateFrom(updatedAllLines, line.sortOrder)
-            dao.updateLines(line.fileId, affectedLines)
+                // Recalculate from the spot where we deleted.
+                // Because we normalized (0, 1, 2...), the line that was below
+                // the deleted one now sits at the deleted line's old sortOrder.
+                val affectedLines = MathEngine.calculateFrom(updatedLines, line.sortOrder)
+
+                dao.updateLines(line.fileId, affectedLines)
+            }
         }
     }
 

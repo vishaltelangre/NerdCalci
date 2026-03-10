@@ -740,7 +740,7 @@ fun CalculatorScreen(
                         },
                         onEnter = {
                             requestNewLineAfterSortOrder = line.sortOrder
-                            viewModel.addLine(fileId, line.sortOrder + 1)
+                            viewModel.addLine(fileId, line.sortOrder + 1, afterLineId = line.id)
                             // Scroll to the newly created line
                             coroutineScope.launch {
                                 delay(100)

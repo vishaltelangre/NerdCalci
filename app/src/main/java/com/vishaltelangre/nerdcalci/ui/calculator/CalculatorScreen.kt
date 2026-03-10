@@ -313,6 +313,7 @@ fun CalculatorScreen(
     // Track which line should be focused and cursor position
     var focusLineId by remember { mutableStateOf<Long?>(null) }
     var focusCursorPosition by remember { mutableStateOf<Int?>(null) }
+    var pendingScrollLineId by remember { mutableStateOf<Long?>(null) }
 
     // Track which line is currently focused by the user
     var currentlyFocusedLineId by remember { mutableStateOf<Long?>(null) }
@@ -323,6 +324,14 @@ fun CalculatorScreen(
     var insertTextRequest by remember { mutableStateOf<Pair<Long, String>?>(null) }
 
     // Auto-focus newly created lines
+    LaunchedEffect(lines, pendingScrollLineId) {
+        val targetId = pendingScrollLineId ?: return@LaunchedEffect
+        val targetIndex = lines.indexOfFirst { it.id == targetId }
+        if (targetIndex >= 0) {
+            listState.animateScrollToItem(targetIndex)
+            pendingScrollLineId = null
+        }
+    }
 
     // Check if keyboard is visible
     val density = LocalDensity.current
@@ -731,13 +740,7 @@ fun CalculatorScreen(
                                 focusLineId = newId
                                 // New lines created via Enter always have a leading space, start cursor at pos 1
                                 focusCursorPosition = 1
-
-                                // Scroll to the newly created line
-                                delay(100)
-                                val newLineIndex = index + 1
-                                if (newLineIndex < lines.size + 1) {
-                                    listState.animateScrollToItem(newLineIndex)
-                                }
+                                pendingScrollLineId = newId
                             }
                         },
                         onDelete = {

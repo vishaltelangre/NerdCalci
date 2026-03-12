@@ -29,8 +29,16 @@ enum class TokenKind(val display: String) {
     EOF("end of line");
 
     val isPreviousLineAlias: Boolean
-        get() = this in setOf(KW_LAST, KW_PREV, KW_PREVIOUS, KW_ABOVE, KW_UNDERSCORE)
+        get() = this in PREVIOUS_LINE_ALIAS_KINDS
 }
+
+private val PREVIOUS_LINE_ALIAS_KINDS = setOf(
+    TokenKind.KW_LAST,
+    TokenKind.KW_PREV,
+    TokenKind.KW_PREVIOUS,
+    TokenKind.KW_ABOVE,
+    TokenKind.KW_UNDERSCORE
+)
 
 /**
  * A single token produced by the [Lexer].

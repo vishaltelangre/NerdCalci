@@ -26,7 +26,10 @@ enum class TokenKind(val display: String) {
     KW_UNDERSCORE("_"),
 
     // End-of-input
-    EOF("end of line")
+    EOF("end of line");
+
+    val isPreviousLineAlias: Boolean
+        get() = this in setOf(KW_LAST, KW_PREV, KW_PREVIOUS, KW_ABOVE, KW_UNDERSCORE)
 }
 
 /**

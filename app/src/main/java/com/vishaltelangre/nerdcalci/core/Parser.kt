@@ -87,11 +87,7 @@ class Parser(private val tokens: List<Token>) {
      */
     private fun parseStatement(allowFunctionDef: Boolean = true): Statement {
         val kind = peekKind()
-        if (kind == TokenKind.IDENTIFIER ||
-            kind == TokenKind.KW_LAST || kind == TokenKind.KW_PREV ||
-            kind == TokenKind.KW_PREVIOUS || kind == TokenKind.KW_ABOVE ||
-            kind == TokenKind.KW_UNDERSCORE
-        ) {
+        if (kind == TokenKind.IDENTIFIER || kind.isPreviousLineAlias) {
             val name = peek().lexeme
             val position = peek().position
             val nextKind = peekAt(1)
@@ -313,7 +309,8 @@ class Parser(private val tokens: List<Token>) {
      * 3. **Parenthesized groups** — `(2 + 3)` → parse the inner expression
      */
     private fun parsePrimary(): Expr {
-        return when (peekKind()) {
+        val kind = peekKind()
+        return when (kind) {
             TokenKind.NUMBER -> {
                 val numToken = advance()
                 // Check for percentage syntax: 20% of X, 15% off X, or bare 20%
@@ -354,25 +351,22 @@ class Parser(private val tokens: List<Token>) {
                 }
             }
 
-            TokenKind.KW_LAST, TokenKind.KW_PREV, TokenKind.KW_PREVIOUS,
-            TokenKind.KW_ABOVE, TokenKind.KW_UNDERSCORE -> {
-                val token = advance()
-                Expr.Variable(token.lexeme)
-            }
-
-            // e.g. (2 + 3), (price * 1.1)
-            TokenKind.LPAREN -> {
-                advance() // skip past "("
-                val expr = parseExpression()
-                expect(TokenKind.RPAREN) // expect closing ")"
-                expr
-            }
-
             else -> {
-                val token = peek()
-                throw ParseException(
-                    "Expected a value or '(', but found ${token.kind.display}", token.position
-                )
+                if (kind.isPreviousLineAlias) {
+                    val token = advance()
+                    Expr.Variable(token.lexeme)
+                } else if (kind == TokenKind.LPAREN) {
+                    // e.g. (2 + 3), (price * 1.1)
+                    advance() // skip past "("
+                    val expr = parseExpression()
+                    expect(TokenKind.RPAREN) // expect closing ")"
+                    expr
+                } else {
+                    val token = peek()
+                    throw ParseException(
+                        "Expected a value or '(', but found ${token.kind.display}", token.position
+                    )
+                }
             }
         }
     }
@@ -407,9 +401,7 @@ class Parser(private val tokens: List<Token>) {
     }
 
     /** Check whether a token kind can start an expression (used for % disambiguation). */
-    private fun canStartExpression(kind: TokenKind): Boolean = kind in setOf(
-        TokenKind.MINUS, TokenKind.NUMBER, TokenKind.LPAREN, TokenKind.IDENTIFIER,
-        TokenKind.KW_LAST, TokenKind.KW_PREV, TokenKind.KW_PREVIOUS,
-        TokenKind.KW_ABOVE, TokenKind.KW_UNDERSCORE
-    )
+    private fun canStartExpression(kind: TokenKind): Boolean =
+        kind == TokenKind.MINUS || kind == TokenKind.NUMBER || kind == TokenKind.LPAREN ||
+                kind == TokenKind.IDENTIFIER || kind.isPreviousLineAlias
 }

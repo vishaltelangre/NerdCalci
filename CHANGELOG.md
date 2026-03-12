@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.4.5] - 2026-03-12
 ### Added
-- Introduced new keywords (`last`, `prev`, `previous`, `above`, and `_`) that reference the result of the preceding non-empty line.
+Introduced new keywords (`last`, `prev`, `previous`, `above`, and `_`) to reference the result of the line directly above, or `0` if that line is blank, a comment, or an error.
 
 ## [2.4.4] - 2026-03-11
 ### Added

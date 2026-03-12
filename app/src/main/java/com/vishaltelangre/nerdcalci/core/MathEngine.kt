@@ -35,7 +35,10 @@ object MathEngine {
         "_"        to ::computePreviousLineResult
     )
 
-    private val RESERVED_DYNAMIC_VARIABLES = setOf("last", "prev", "previous", "above", "_")
+    private val RESERVED_DYNAMIC_VARIABLES = TokenKind.entries
+        .filter { it.isPreviousLineAlias }
+        .map { it.display }
+        .toSet()
 
     val dynamicVariableNames: Set<String> get() = DYNAMIC_VARIABLES.keys
     val reservedVariableNames: Set<String> get() = RESERVED_DYNAMIC_VARIABLES
@@ -261,7 +264,8 @@ object MathEngine {
     }
 
     /**
-     * Returns the result of the most recently evaluated line that produced a value.
+     * Returns the result of the immediately preceding line, or 0.0 if that line
+     * was blank, a comment, or an error.
      */
     private fun computePreviousLineResult(lineResults: List<Double?>): Double {
         return lineResults.lastOrNull() ?: 0.0

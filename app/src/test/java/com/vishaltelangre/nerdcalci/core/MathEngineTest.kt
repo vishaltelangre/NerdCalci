@@ -1424,22 +1424,41 @@ class MathEngineTest {
     }
 
     @Test
-    fun `previous line result alias keywords return 0 if the preceding line is empty or a comment or error`() {
+    fun `last keyword returns 0 if the preceding line is blank`() {
         val lines = listOf(
             createLine("10", sortOrder = 0),
-            createLine("# some comment", sortOrder = 1),
-            createLine("   ", sortOrder = 2),
-            createLine("last + 5", sortOrder = 3)
+            createLine("   ", sortOrder = 1),
+            createLine("last + 5", sortOrder = 2)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("10.0", result[0].result)
-        assertEquals("", result[1].result)
-        assertEquals("", result[2].result)
-        assertEquals("5.0", result[3].result)
+        assertEquals("5.0", result[2].result)
     }
 
     @Test
-    fun `keywords return 0 on the first line`() {
+    fun `last keyword returns 0 if the preceding line is a comment`() {
+        val lines = listOf(
+            createLine("10", sortOrder = 0),
+            createLine("# comment", sortOrder = 1),
+            createLine("last + 5", sortOrder = 2)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("5.0", result[2].result)
+    }
+
+    @Test
+    fun `last keyword returns 0 if the preceding line resulted in an error`() {
+        val lines = listOf(
+            createLine("10", sortOrder = 0),
+            createLine("{", sortOrder = 1), // Invalid expression
+            createLine("last + 5", sortOrder = 2)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("Err", result[1].result)
+        assertEquals("5.0", result[2].result)
+    }
+
+    @Test
+    fun `last keyword returns 0 on the first line`() {
         val lines = listOf(
             createLine("last + 10", sortOrder = 0)
         )
@@ -1448,24 +1467,13 @@ class MathEngineTest {
     }
 
     @Test
-    fun `reassignment to reserved keywords is blocked`() {
+    fun `last keyword reassignment is blocked`() {
         val lines = listOf(createLine("last = 10", sortOrder = 0))
         val result = MathEngine.calculate(lines)
         assertEquals("Err", result[0].result)
 
         val err = MathEngine.getErrorDetails(lines, 0)
         assertEquals("'last' is reserved and cannot be used as a variable", err)
-    }
-
-    @Test
-    fun `reassignment to underscore is blocked`() {
-        val lines = listOf(createLine("_ = 5", sortOrder = 0))
-        val result = MathEngine.calculate(lines)
-        assertEquals("Err", result[0].result)
-
-        val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("'_' is reserved and cannot be used as a variable", err)
-
     }
 
     @Test

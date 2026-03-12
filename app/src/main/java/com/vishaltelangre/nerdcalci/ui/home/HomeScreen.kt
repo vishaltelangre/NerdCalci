@@ -102,9 +102,6 @@ fun HomeScreen(
     LaunchedEffect(Unit) {
         viewModel.uiEvents.collect { event ->
             when (event) {
-                is HomeUiEvent.ShowUndoSnackbar -> {
-                    // No longer showing Snackbar for undo - handled inline
-                }
                 is HomeUiEvent.ShowMessage -> {
                     snackbarHostState.showSnackbar(event.message)
                 }

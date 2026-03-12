@@ -31,7 +31,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 
 sealed class HomeUiEvent {
-    data class ShowUndoSnackbar(val file: FileEntity) : HomeUiEvent()
     data class ShowMessage(val message: String) : HomeUiEvent()
 }
 
@@ -280,14 +279,20 @@ class CalculatorViewModel(
         }
     }
 
+    // Format lines with intelligent result display
     private fun formatFileContent(lines: List<LineEntity>, precision: Int): String {
         return lines.joinToString("\n") { line ->
             val expr = line.expression.trim()
             val rawResult = line.result.trim()
             val displayResult = MathEngine.formatDisplayResult(rawResult, precision)
+
+            // Don't show result if:
+            // - Expression is empty or result is empty/error
+            // - It's a comment line (starts with #)
+            // - It's a simple assignment like "a = 5" where result is just "5"
             when {
                 expr.isEmpty() || rawResult.isBlank() || rawResult == "Err" -> expr
-                expr.trimStart().startsWith("#") -> expr
+                expr.trimStart().startsWith("#") -> expr // Full comment line
                 shouldShowResult(expr) -> "$expr # $displayResult"
                 else -> expr
             }
@@ -301,6 +306,7 @@ class CalculatorViewModel(
         return hasOperators || !expression.contains("=")
     }
 
+    // Update a line and recalculate everything from it downward
     fun updateLine(updatedLine: LineEntity) {
         viewModelScope.launch(Dispatchers.IO) {
             calculationMutex.withLock {
@@ -451,6 +457,11 @@ class CalculatorViewModel(
         }
     }
 
+    /**
+     * Deletes a file if it is empty and was created a while ago.
+     * This is used when navigating back from the calculator screen to prevent cluttering
+     * the home screen with accidentally created empty files.
+     */
     suspend fun deleteFileIfEmptyAndRecent(fileId: Long) {
         withContext(Dispatchers.IO) {
             calculationMutex.withLock {
@@ -478,12 +489,16 @@ class CalculatorViewModel(
         return withContext(Dispatchers.IO) {
             val trimmedName = newName.trim()
             if (trimmedName.isBlank()) return@withContext false
+
             val finalName = if (trimmedName.length > Constants.MAX_FILE_NAME_LENGTH) {
                 trimmedName.substring(0, Constants.MAX_FILE_NAME_LENGTH).trim()
             } else {
                 trimmedName
             }
+
             if (finalName.isBlank()) return@withContext false
+
+            // Check if name is taken by another file
             if (dao.doesFileExist(finalName, fileId)) return@withContext false
             val file = dao.getFileById(fileId)
             if (file != null) {

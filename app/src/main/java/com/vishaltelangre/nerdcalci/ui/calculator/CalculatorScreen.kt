@@ -118,6 +118,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.IntOffset
 import com.vishaltelangre.nerdcalci.core.Constants
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
+import com.vishaltelangre.nerdcalci.ui.components.DeleteFileDialog
 import com.vishaltelangre.nerdcalci.ui.components.RenameFileDialog
 import com.vishaltelangre.nerdcalci.ui.components.FileInfoDialog
 import com.vishaltelangre.nerdcalci.ui.theme.FiraCodeFamily
@@ -304,6 +305,7 @@ fun CalculatorScreen(
     var showMenu by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var showClearConfirmDialog by remember { mutableStateOf(false) }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var showInfoDialog by remember { mutableStateOf(false) }
     val currentFile = files.find { it.id == fileId }
     val fileName = currentFile?.name ?: "Editor"
@@ -602,8 +604,7 @@ fun CalculatorScreen(
                                     },
                                     onClick = {
                                         showMenu = false
-                                        viewModel.hideFile(fileId)
-                                        onBack()
+                                        showDeleteConfirmDialog = true
                                     }
                                 )
                             }
@@ -885,6 +886,19 @@ fun CalculatorScreen(
                 TextButton(onClick = { showClearConfirmDialog = false }) {
                     Text("Cancel")
                 }
+            }
+        )
+    }
+
+    // Delete File confirmation dialog
+    if (showDeleteConfirmDialog) {
+        DeleteFileDialog(
+            fileName = fileName,
+            onDismiss = { showDeleteConfirmDialog = false },
+            onConfirm = {
+                showDeleteConfirmDialog = false
+                viewModel.deleteFile(fileId)
+                onBack()
             }
         )
     }

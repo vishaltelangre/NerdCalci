@@ -1,0 +1,1 @@
+Introduced new keywords (`last`, `prev`, `previous`, `above`, and `_`) to easily reference results of preceding non-empty lines.

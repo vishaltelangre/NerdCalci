@@ -1424,7 +1424,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `keywords skip comments and blank lines`() {
+    fun `previous line result alias keywords return 0 if the preceding line is empty or a comment or error`() {
         val lines = listOf(
             createLine("10", sortOrder = 0),
             createLine("# some comment", sortOrder = 1),

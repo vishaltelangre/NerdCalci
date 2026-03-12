@@ -283,6 +283,31 @@ avg                 # evaluates to 100
 # i.e. after assigning, avg no longer aggregates
 ```
 
+### Reference to previous line result
+
+Use `last`, `prev`, `previous`, `above`, or `_` to reference the result of the immediately preceding line.
+
+```text
+10 + 5
+last * 2            # evaluates to 30
+_ / 3               # evaluates to 10
+```
+
+If the immediately preceding line is empty, a comment, or resulted in an error, these keywords evaluate to `0`.
+
+```text
+100
+# some notes
+
+prev + 5            # evaluates to 5
+
+10
+{                   # evaluates to Err
+last                # evaluates to 0
+```
+
+Unlike dynamic variables like `sum` or `avg`, these keywords are **strictly reserved** and cannot be reassigned.
+
 ## 8. User-defined functions
 
 You can define your own functions to reuse complex formulas.

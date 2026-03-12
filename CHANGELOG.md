@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.4.4] - 2026-03-11
 ### Added
-- Added support to swipe left on any file to quickly remove it.
+- Added support to swipe left on any file to quickly delete it, with an undo option.
 
 ## [2.4.3] - 2026-03-10
 ### Fixed

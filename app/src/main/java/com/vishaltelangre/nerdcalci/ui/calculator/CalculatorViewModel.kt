@@ -431,19 +431,28 @@ class CalculatorViewModel(
     }
 
     fun hideFile(fileId: Long) {
-        if (_excludedFileIds.value.contains(fileId)) return
-        _excludedFileIds.value = _excludedFileIds.value + fileId
+        viewModelScope.launch(Dispatchers.IO) {
+            calculationMutex.withLock {
+                if (!_excludedFileIds.value.contains(fileId)) {
+                    _excludedFileIds.value = _excludedFileIds.value + fileId
+                }
+            }
+        }
     }
 
     fun undoHideFile(fileId: Long) {
-        _excludedFileIds.value = _excludedFileIds.value - fileId
+        viewModelScope.launch(Dispatchers.IO) {
+            calculationMutex.withLock {
+                _excludedFileIds.value = _excludedFileIds.value - fileId
+            }
+        }
     }
 
     fun permanentDeleteExclusions() {
-        val idsToDelete = _excludedFileIds.value
-        if (idsToDelete.isEmpty()) return
         viewModelScope.launch(Dispatchers.IO) {
             calculationMutex.withLock {
+                val idsToDelete = _excludedFileIds.value
+                if (idsToDelete.isEmpty()) return@withLock
                 idsToDelete.forEach { fileId ->
                     val file = dao.getFileById(fileId)
                     if (file != null) {

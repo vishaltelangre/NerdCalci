@@ -21,6 +21,11 @@ class Lexer(private val source: String) {
     private val keywords = mapOf(
         "of" to TokenKind.KW_OF,
         "off" to TokenKind.KW_OFF,
+        "last" to TokenKind.KW_LAST,
+        "prev" to TokenKind.KW_PREV,
+        "previous" to TokenKind.KW_PREVIOUS,
+        "above" to TokenKind.KW_ABOVE,
+        "_" to TokenKind.KW_UNDERSCORE,
     )
 
     fun tokenize(): List<Token> {

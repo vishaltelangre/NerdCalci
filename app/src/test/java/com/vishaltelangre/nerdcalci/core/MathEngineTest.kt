@@ -1369,6 +1369,116 @@ class MathEngineTest {
     }
 
     @Test
+    fun `last keyword refers to the previous line result`() {
+        val lines = listOf(
+            createLine("10 * 5", sortOrder = 0),
+            createLine("last + 10", sortOrder = 1)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("50.0", result[0].result)
+        assertEquals("60.0", result[1].result)
+    }
+
+    @Test
+    fun `prev keyword refers to the previous line result`() {
+        val lines = listOf(
+            createLine("100 / 4", sortOrder = 0),
+            createLine("prev * 2", sortOrder = 1)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("25.0", result[0].result)
+        assertEquals("50.0", result[1].result)
+    }
+
+    @Test
+    fun `previous keyword refers to the previous line result`() {
+        val lines = listOf(
+            createLine("20 + 30", sortOrder = 0),
+            createLine("previous - 10", sortOrder = 1)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("50.0", result[0].result)
+        assertEquals("40.0", result[1].result)
+    }
+
+    @Test
+    fun `above keyword refers to the previous line result`() {
+        val lines = listOf(
+            createLine("5 ^ 2", sortOrder = 0),
+            createLine("above / 5", sortOrder = 1)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("25.0", result[0].result)
+        assertEquals("5.0", result[1].result)
+    }
+
+    @Test
+    fun `underscore keyword refers to the previous line result`() {
+        val lines = listOf(
+            createLine("42", sortOrder = 0),
+            createLine("_ + 8", sortOrder = 1)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("42.0", result[0].result)
+        assertEquals("50.0", result[1].result)
+    }
+
+    @Test
+    fun `keywords skip comments and blank lines`() {
+        val lines = listOf(
+            createLine("10", sortOrder = 0),
+            createLine("# some comment", sortOrder = 1),
+            createLine("   ", sortOrder = 2),
+            createLine("last + 5", sortOrder = 3)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("10.0", result[0].result)
+        assertEquals("", result[1].result)
+        assertEquals("", result[2].result)
+        assertEquals("5.0", result[3].result)
+    }
+
+    @Test
+    fun `keywords return 0 on the first line`() {
+        val lines = listOf(
+            createLine("last + 10", sortOrder = 0)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("10.0", result[0].result)
+    }
+
+    @Test
+    fun `reassignment to reserved keywords is blocked`() {
+        val lines = listOf(createLine("last = 10", sortOrder = 0))
+        val result = MathEngine.calculate(lines)
+        assertEquals("Err", result[0].result)
+
+        val err = MathEngine.getErrorDetails(lines, 0)
+        assertEquals("'last' is reserved and cannot be used as a variable", err)
+    }
+
+    @Test
+    fun `reassignment to underscore is blocked`() {
+        val lines = listOf(createLine("_ = 5", sortOrder = 0))
+        val result = MathEngine.calculate(lines)
+        assertEquals("Err", result[0].result)
+
+        val err = MathEngine.getErrorDetails(lines, 0)
+        assertEquals("'_' is reserved and cannot be used as a variable", err)
+
+    }
+
+    @Test
+    fun `compound assignment to underscore is blocked`() {
+        val lines = listOf(createLine("_ += 5", sortOrder = 0))
+        val result = MathEngine.calculate(lines)
+        assertEquals("Err", result[0].result)
+
+        val err = MathEngine.getErrorDetails(lines, 0)
+        assertEquals("'_' is reserved and cannot be used as a variable", err)
+    }
+
+    @Test
     fun `formatDisplayResult formats raw strings correctly`() {
         assertEquals("0.33", MathEngine.formatDisplayResult("0.3333333333333333", 2))
         assertEquals("0.3333", MathEngine.formatDisplayResult("0.3333333333333333", 4))

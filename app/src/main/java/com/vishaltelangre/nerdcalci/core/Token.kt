@@ -22,6 +22,8 @@ enum class TokenKind(val display: String) {
 
     // Keywords — resolved from IDENTIFIER by the Lexer
     KW_OF("of"), KW_OFF("off"),
+    KW_LAST("last"), KW_PREV("prev"), KW_PREVIOUS("previous"), KW_ABOVE("above"),
+    KW_UNDERSCORE("_"),
 
     // End-of-input
     EOF("end of line")

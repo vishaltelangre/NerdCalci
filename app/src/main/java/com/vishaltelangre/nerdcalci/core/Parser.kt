@@ -86,7 +86,12 @@ class Parser(private val tokens: List<Token>) {
      * - `2 + 3 * 4`     → none of the above            → ExprStatement
      */
     private fun parseStatement(allowFunctionDef: Boolean = true): Statement {
-        if (peekKind() == TokenKind.IDENTIFIER) {
+        val kind = peekKind()
+        if (kind == TokenKind.IDENTIFIER ||
+            kind == TokenKind.KW_LAST || kind == TokenKind.KW_PREV ||
+            kind == TokenKind.KW_PREVIOUS || kind == TokenKind.KW_ABOVE ||
+            kind == TokenKind.KW_UNDERSCORE
+        ) {
             val name = peek().lexeme
             val position = peek().position
             val nextKind = peekAt(1)
@@ -349,6 +354,12 @@ class Parser(private val tokens: List<Token>) {
                 }
             }
 
+            TokenKind.KW_LAST, TokenKind.KW_PREV, TokenKind.KW_PREVIOUS,
+            TokenKind.KW_ABOVE, TokenKind.KW_UNDERSCORE -> {
+                val token = advance()
+                Expr.Variable(token.lexeme)
+            }
+
             // e.g. (2 + 3), (price * 1.1)
             TokenKind.LPAREN -> {
                 advance() // skip past "("
@@ -384,7 +395,7 @@ class Parser(private val tokens: List<Token>) {
      * used as variable names. For example, `sin = 5` is an error.
      */
     private fun requireAssignable(name: String, position: Int) {
-        if (Builtins.isBuiltin(name)) {
+        if (Builtins.isBuiltin(name) || MathEngine.reservedVariableNames.contains(name)) {
             throw ParseException("'$name' is reserved and cannot be used as a variable", position)
         }
     }
@@ -397,6 +408,8 @@ class Parser(private val tokens: List<Token>) {
 
     /** Check whether a token kind can start an expression (used for % disambiguation). */
     private fun canStartExpression(kind: TokenKind): Boolean = kind in setOf(
-        TokenKind.MINUS, TokenKind.NUMBER, TokenKind.LPAREN, TokenKind.IDENTIFIER
+        TokenKind.MINUS, TokenKind.NUMBER, TokenKind.LPAREN, TokenKind.IDENTIFIER,
+        TokenKind.KW_LAST, TokenKind.KW_PREV, TokenKind.KW_PREVIOUS,
+        TokenKind.KW_ABOVE, TokenKind.KW_UNDERSCORE
     )
 }

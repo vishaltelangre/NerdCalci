@@ -87,7 +87,7 @@ class Parser(private val tokens: List<Token>) {
      */
     private fun parseStatement(allowFunctionDef: Boolean = true): Statement {
         val kind = peekKind()
-        if (kind == TokenKind.IDENTIFIER || kind.isPreviousLineAlias) {
+        if (kind == TokenKind.IDENTIFIER || kind.isPreviousLineAlias || kind.isLineNumberAlias) {
             val name = peek().lexeme
             val position = peek().position
             val nextKind = peekAt(1)
@@ -352,7 +352,7 @@ class Parser(private val tokens: List<Token>) {
             }
 
             else -> {
-                if (kind.isPreviousLineAlias) {
+                if (kind.isPreviousLineAlias || kind.isLineNumberAlias) {
                     val token = advance()
                     Expr.Variable(token.lexeme)
                 } else if (kind == TokenKind.LPAREN) {
@@ -390,7 +390,7 @@ class Parser(private val tokens: List<Token>) {
      */
     private fun requireAssignable(name: String, position: Int) {
         if (Builtins.isBuiltin(name) || MathEngine.reservedVariableNames.contains(name)) {
-            throw ParseException("'$name' is reserved and cannot be used as a variable", position)
+            throw ParseException("'$name' is reserved and cannot be reassigned", position)
         }
     }
 
@@ -403,5 +403,5 @@ class Parser(private val tokens: List<Token>) {
     /** Check whether a token kind can start an expression (used for % disambiguation). */
     private fun canStartExpression(kind: TokenKind): Boolean =
         kind == TokenKind.MINUS || kind == TokenKind.NUMBER || kind == TokenKind.LPAREN ||
-                kind == TokenKind.IDENTIFIER || kind.isPreviousLineAlias
+                kind == TokenKind.IDENTIFIER || kind.isPreviousLineAlias || kind.isLineNumberAlias
 }

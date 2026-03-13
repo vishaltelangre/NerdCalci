@@ -6,7 +6,7 @@ package com.vishaltelangre.nerdcalci.core
  *
  * Handles:
  * - Decimal number literals (`42`, `3.14`, `.5`)
- * - Identifiers and keyword resolution (`price`, `of`, `off`)
+ * - Identifiers and keyword resolution (`price`, `of`, `off`, `last`, `lineno`, etc.)
  * - Single-char operators (`+`, `-`, `*`, `/`, `%`, `^`, `(`, `)`, `,`, `=`)
  * - Multi-char operators (`+=`, `-=`, `*=`, `/=`, `%=`, `++`, `--`)
  * - Unicode normalization (`×` → STAR, `÷` → SLASH)
@@ -26,6 +26,9 @@ class Lexer(private val source: String) {
         "previous" to TokenKind.KW_PREVIOUS,
         "above" to TokenKind.KW_ABOVE,
         "_" to TokenKind.KW_UNDERSCORE,
+        "lineno" to TokenKind.KW_LINENO,
+        "linenumber" to TokenKind.KW_LINENUMBER,
+        "currentLineNumber" to TokenKind.KW_CURRENTLINENUMBER,
     )
 
     fun tokenize(): List<Token> {

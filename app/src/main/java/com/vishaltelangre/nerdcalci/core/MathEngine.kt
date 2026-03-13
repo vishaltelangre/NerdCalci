@@ -22,21 +22,25 @@ object MathEngine {
      * the current block's line results.
      */
     private val DYNAMIC_VARIABLES: Map<String, (List<Double?>) -> Double> = mapOf(
-        "sum"      to ::computeBlockSum,
-        "total"    to ::computeBlockSum,
+        "sum"               to ::computeBlockSum,
+        "total"             to ::computeBlockSum,
 
-        "avg"      to ::computeBlockAverage,
-        "average"  to ::computeBlockAverage,
+        "avg"               to ::computeBlockAverage,
+        "average"           to ::computeBlockAverage,
 
-        "last"     to ::computePreviousLineResult,
-        "prev"     to ::computePreviousLineResult,
-        "previous" to ::computePreviousLineResult,
-        "above"    to ::computePreviousLineResult,
-        "_"        to ::computePreviousLineResult
+        "last"              to ::computePreviousLineResult,
+        "prev"              to ::computePreviousLineResult,
+        "previous"          to ::computePreviousLineResult,
+        "above"             to ::computePreviousLineResult,
+        "_"                 to ::computePreviousLineResult,
+
+        "lineno"            to ::computeCurrentLineNumber,
+        "linenumber"        to ::computeCurrentLineNumber,
+        "currentLineNumber" to ::computeCurrentLineNumber
     )
 
     private val RESERVED_DYNAMIC_VARIABLES = TokenKind.entries
-        .filter { it.isPreviousLineAlias }
+        .filter { it.isPreviousLineAlias || it.isLineNumberAlias }
         .map { it.display }
         .toSet()
 
@@ -269,6 +273,13 @@ object MathEngine {
      */
     private fun computePreviousLineResult(lineResults: List<Double?>): Double {
         return lineResults.lastOrNull() ?: 0.0
+    }
+
+    /**
+     * Returns the 1-based index of the line currently being evaluated.
+     */
+    private fun computeCurrentLineNumber(lineResults: List<Double?>): Double {
+        return (lineResults.size + 1).toDouble()
     }
 
     /**

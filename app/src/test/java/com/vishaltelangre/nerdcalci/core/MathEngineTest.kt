@@ -1473,7 +1473,7 @@ class MathEngineTest {
         assertEquals("Err", result[0].result)
 
         val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("'last' is reserved and cannot be used as a variable", err)
+        assertEquals("'last' is reserved and cannot be reassigned", err)
     }
 
     @Test
@@ -1483,7 +1483,7 @@ class MathEngineTest {
         assertEquals("Err", result[0].result)
 
         val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("'_' is reserved and cannot be used as a variable", err)
+        assertEquals("'_' is reserved and cannot be reassigned", err)
     }
 
     @Test
@@ -1606,5 +1606,118 @@ class MathEngineTest {
         val lines = listOf(createLine("sinh(1, unknown_var)"))
         val err = MathEngine.getErrorDetails(lines, 0)
         assertEquals("Function 'sinh' expects 1 argument, but got 2", err)
+    }
+
+    @Test
+    fun `lineno, linenumber, and currentLineNumber returns correct current line number`() {
+        val lines = listOf(
+            createLine("lineno", sortOrder = 0),
+            createLine("linenumber", sortOrder = 1),
+            createLine("currentLineNumber", sortOrder = 2)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("1.0", result[0].result)
+        assertEquals("2.0", result[1].result)
+        assertEquals("3.0", result[2].result)
+    }
+
+    @Test
+    fun `lineno works in expressions`() {
+        val lines = listOf(
+            createLine("10 + lineno"), // 10 + 1 = 11
+            createLine("lineno * 5")   // 2 * 5 = 10
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("11.0", result[0].result)
+        assertEquals("10.0", result[1].result)
+    }
+
+    @Test
+    fun `lineno is reserved and cannot be reassigned`() {
+        val lines = listOf(
+            createLine("lineno = 10")
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("Err", result[0].result)
+        var err = MathEngine.getErrorDetails(lines, 0)
+        assertEquals("'lineno' is reserved and cannot be reassigned", err)
+    }
+
+    @Test
+    fun `compound assignment to lineno is not allowed`() {
+        val lines = listOf(
+            createLine("lineno += 5")
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("Err", result[0].result)
+        var err = MathEngine.getErrorDetails(lines, 0)
+        assertEquals("'lineno' is reserved and cannot be reassigned", err)
+    }
+
+    @Test
+    fun `increment on lineno is not allowed`() {
+        val lines = listOf(
+            createLine("lineno++")
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("Err", result[0].result)
+        var err = MathEngine.getErrorDetails(lines, 0)
+        assertEquals("'lineno' is reserved and cannot be reassigned", err)
+    }
+
+    @Test
+    fun `lineno updates correctly after line insertion`() {
+        // Initial state
+        val lines = mutableListOf(
+            createLine("x = 10", sortOrder = 0),
+            createLine("lineno", sortOrder = 1) // Should be 2
+        )
+        val result1 = MathEngine.calculate(lines)
+        assertEquals("2.0", result1[1].result)
+
+        // Insert line at index 1
+        lines.add(1, createLine("y = 20", sortOrder = 1))
+        // Update sort orders
+        val updatedLines = lines.mapIndexed { index, line -> line.copy(sortOrder = index) }
+
+        val result2 = MathEngine.calculate(updatedLines)
+        assertEquals("10.0", result2[0].result) // L1: x=10
+        assertEquals("20.0", result2[1].result) // L2: y=20
+        assertEquals("3.0", result2[2].result)  // L3: lineno (was 2, now 3)
+    }
+
+    @Test
+    fun `lineno updates correctly after line deletion`() {
+        val lines = listOf(
+            createLine("10", sortOrder = 0),
+            createLine("20", sortOrder = 1),
+            createLine("lineno", sortOrder = 2) // Should be 3
+        )
+        val result1 = MathEngine.calculate(lines)
+        assertEquals("3.0", result1[2].result)
+
+        // Delete line at index 1
+        val remainingLines = listOf(lines[0], lines[2]).mapIndexed { index, line -> line.copy(sortOrder = index) }
+        val result2 = MathEngine.calculate(remainingLines)
+        assertEquals("10.0", result2[0].result)
+        assertEquals("2.0", result2[1].result) // lineno (was 3, now 2)
+    }
+
+    @Test
+    fun `calculateFrom handles lineno correctly for partial recalculation`() {
+        val lines = listOf(
+            createLine("a = 5", sortOrder = 0),   // L1
+            createLine("b = 10", sortOrder = 1),  // L2
+            createLine("lineno + a", sortOrder = 2) // L3: 3 + 5 = 8
+        )
+
+        // Initial full calculation
+        val fullResult = MathEngine.calculate(lines)
+        assertEquals("8.0", fullResult[2].result)
+
+        // Partial recalculation from line 2 (index 2)
+        val partialResult = MathEngine.calculateFrom(lines, changedIndex = 2)
+        assertEquals(1, partialResult.size)
+        assertEquals("8.0", partialResult[0].result)
     }
 }

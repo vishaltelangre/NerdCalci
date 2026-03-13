@@ -122,10 +122,10 @@ class SyntaxUtilsTest {
     }
 
     @Test
-    fun `single underscore tokenizes as Variable`() {
+    fun `single underscore tokenizes as Keyword`() {
         val result = tokens("_")
         assertEquals(1, result.size)
-        assertEquals(TokenType.Variable, result[0].type)
+        assertEquals(TokenType.Keyword, result[0].type)
     }
 
     @Test
@@ -373,6 +373,41 @@ class SyntaxUtilsTest {
     @Test
     fun `average keyword tokenizes as Keyword`() {
         assertSingleToken("average", TokenType.Keyword)
+    }
+
+    @Test
+    fun `last keyword tokenizes as Keyword`() {
+        assertSingleToken("last", TokenType.Keyword)
+    }
+
+    @Test
+    fun `prev keyword tokenizes as Keyword`() {
+        assertSingleToken("prev", TokenType.Keyword)
+    }
+
+    @Test
+    fun `previous keyword tokenizes as Keyword`() {
+        assertSingleToken("previous", TokenType.Keyword)
+    }
+
+    @Test
+    fun `above keyword tokenizes as Keyword`() {
+        assertSingleToken("above", TokenType.Keyword)
+    }
+
+    @Test
+    fun `lineno keyword tokenizes as Keyword`() {
+        assertSingleToken("lineno", TokenType.Keyword)
+    }
+
+    @Test
+    fun `linenumber keyword tokenizes as Keyword`() {
+        assertSingleToken("linenumber", TokenType.Keyword)
+    }
+
+    @Test
+    fun `currentLineNumber keyword tokenizes as Keyword`() {
+        assertSingleToken("currentLineNumber", TokenType.Keyword)
     }
 
     @Test

@@ -9,7 +9,10 @@ data class SyntaxToken(val start: Int, val end: Int, val type: TokenType)
 object SyntaxUtils {
 
     /** Identifiers that are highlighted as keywords rather than variables. */
-    private val KEYWORD_NAMES = setOf("sum", "total", "avg", "average")
+    private val KEYWORD_NAMES = setOf(
+        "sum", "total", "avg", "average", "last", "prev", "previous", "above", "_",
+        "lineno", "linenumber", "currentLineNumber"
+    )
 
     /**
      * Parses the given text and returns a sequence of syntax tokens indicating the type of each

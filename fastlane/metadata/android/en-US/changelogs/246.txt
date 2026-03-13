@@ -1,0 +1,3 @@
+- Introduced new keywords (`lineno`, `linenumber`, and `currentLineNumber`) to reference the current line number.
+- Refined the shortcut bar with the `^` symbol and improved symbol order.
+- Fixed syntax highlighting for reserved keywords.

@@ -306,7 +306,19 @@ prev + 5            # evaluates to 5
 last                # evaluates to 0
 ```
 
-Unlike dynamic variables like `sum` or `avg`, these keywords are **strictly reserved** and cannot be reassigned.
+These keywords are **strictly reserved** and cannot be reassigned.
+
+### Reference to current line number
+
+Use `lineno`, `linenumber`, or `currentLineNumber` to reference the current line number.
+
+```text
+lineno              # evaluates to 1 on the first line
+linenumber          # evaluates to 2 on the second line
+currentLineNumber   # evaluates to 3 on the third line
+```
+
+These keywords are **strictly reserved** and cannot be reassigned.
 
 ## 8. User-defined functions
 

@@ -73,3 +73,36 @@ object SyntaxUtils {
         return tokens
     }
 }
+/**
+ * Returns the range of the identifier at the given index.
+ * Matches the definition of an identifier in [com.vishaltelangre.nerdcalci.core.Lexer].
+ */
+fun String.getIdentifierRangeAt(index: Int): IntRange {
+    var start = index
+    // Walk back until we hit a non-identifier character
+    while (start > 0 && (this[start - 1].isLetterOrDigit() || this[start - 1] == '_')) {
+        start--
+    }
+
+    var end = index
+    // Walk forward until we hit a non-identifier character
+    while (end < this.length && (this[end].isLetterOrDigit() || this[end] == '_')) {
+        end++
+    }
+    return start until end
+}
+
+/**
+ * If the character at [index] is '(', find the matching ')'.
+ * Returns the index of ')' or the last character index if no match is found.
+ */
+fun String.findClosingParenthesis(index: Int): Int {
+    if (index >= length || this[index] != '(') return index
+    var balance = 0
+    for (i in index until length) {
+        if (this[i] == '(') balance++
+        else if (this[i] == ')') balance--
+        if (balance == 0) return i
+    }
+    return length - 1
+}

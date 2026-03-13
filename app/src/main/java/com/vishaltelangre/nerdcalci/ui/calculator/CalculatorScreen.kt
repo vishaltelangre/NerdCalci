@@ -127,6 +127,9 @@ import com.vishaltelangre.nerdcalci.utils.SyntaxUtils
 import com.vishaltelangre.nerdcalci.utils.TokenType
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CoroutineScope
+import com.vishaltelangre.nerdcalci.utils.getIdentifierRangeAt
+import com.vishaltelangre.nerdcalci.utils.findClosingParenthesis
 
 import com.vishaltelangre.nerdcalci.ui.theme.SyntaxColors
 
@@ -966,23 +969,11 @@ private fun LineRow(
                 // Cursor is inside a comment, don't suggest
                 ""
             } else {
-                // Find the word before cursor
-                val wordStart = beforeCursor.lastIndexOfAny(
-                    charArrayOf(
-                        ' ',
-                        '+',
-                        '-',
-                        '*',
-                        '/',
-                        '×',
-                        '÷',
-                        '(',
-                        ')',
-                        '=',
-                        ','
-                    )
-                ) + 1
-                beforeCursor.substring(wordStart)
+                val range = text.getIdentifierRangeAt(cursorPos - 1)
+
+                if (cursorPos <= range.last + 1) {
+                    text.substring(range.first, cursorPos)
+                } else ""
             }
         } else ""
     }
@@ -1225,26 +1216,39 @@ private fun LineRow(
                         suggestions.take(5).forEach { suggestion ->
                             Row(
                                 modifier = Modifier
-                                    .fillMaxWidth()
                                     .clickable {
-                                        // Replace current word with suggestion
-                                        val cursorPos = textFieldValue.selection.start
+                                        // Replace current word with the selected suggestion
                                         val text = textFieldValue.text
-                                        val beforeCursor = text.substring(0, cursorPos)
-                                        val wordStart = beforeCursor.lastIndexOfAny(
-                                            charArrayOf(
-                                                ' ', '+', '-', '*', '/', '×', '÷', '(', ')', '=', ','
-                                            )
-                                        ) + 1
-                                        val replacementText = when (suggestion.type) {
-                                            SuggestionType.LOCAL_FUNCTION, SuggestionType.GLOBAL_FUNCTION -> "${suggestion.name}()"
-                                            else -> suggestion.name
+                                        val cursorPos = textFieldValue.selection.start
+
+                                        // If cursorPos is at 0, we're likely replacing at the start.
+                                        // getIdentifierRangeAt handles both backward and forward expansion.
+                                        val range = text.getIdentifierRangeAt(if (cursorPos > 0) cursorPos - 1 else 0)
+                                        val wordStart = range.first
+                                        var wordEnd = range.last + 1
+
+                                        val hasParens = wordEnd < text.length && text[wordEnd] == '('
+                                        val isFunctionSuggestion = suggestion.type == SuggestionType.LOCAL_FUNCTION ||
+                                                                  suggestion.type == SuggestionType.GLOBAL_FUNCTION
+
+                                        if (!isFunctionSuggestion && hasParens) {
+                                            // Non-function suggestion replacing a function call: consume parentheses
+                                            wordEnd = text.findClosingParenthesis(wordEnd) + 1
                                         }
-                                        val newText = text.substring(
-                                            0,
-                                            wordStart
-                                        ) + replacementText + text.substring(cursorPos)
-                                        val newCursorPos = wordStart + replacementText.length - if (replacementText.endsWith("()")) 1 else 0
+
+                                        val replacementText = if (isFunctionSuggestion) {
+                                            // Keep existing parentheses if they exist
+                                            if (hasParens) suggestion.name else "${suggestion.name}()"
+                                        } else {
+                                            suggestion.name
+                                        }
+
+                                        val newText = text.substring(0, wordStart) + replacementText + text.substring(wordEnd)
+                                        val newCursorPos = if (isFunctionSuggestion && !hasParens) {
+                                            wordStart + replacementText.length - 1
+                                        } else {
+                                            wordStart + replacementText.length
+                                        }
 
                                         textFieldValue = textFieldValue.copy(
                                             text = newText,

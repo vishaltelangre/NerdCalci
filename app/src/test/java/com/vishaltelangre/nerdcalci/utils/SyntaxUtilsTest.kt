@@ -437,4 +437,54 @@ class SyntaxUtilsTest {
         val result = tokens("sum(1, 2)")
         assertEquals(TokenType.Keyword, result[0].type)
     }
+
+    @Test
+    fun `getIdentifierRangeAt finds full word from middle`() {
+        val text = "  log(10)  "
+        // Cursor at 'o' (index 3)
+        val range = text.getIdentifierRangeAt(3)
+        assertEquals(2 until 5, range)
+        assertEquals("log", text.substring(range))
+    }
+
+    @Test
+    fun `getIdentifierRangeAt finds word from start`() {
+        val text = "log(10)"
+        val range = text.getIdentifierRangeAt(0)
+        assertEquals(0 until 3, range)
+    }
+
+    @Test
+    fun `getIdentifierRangeAt finds word from end bound`() {
+        val text = "log(10)"
+        // index 3 is '(', which is not part of identifier but we should find 'log' if index is 3
+        val range = text.getIdentifierRangeAt(3)
+        assertEquals(0 until 3, range)
+    }
+
+    @Test
+    fun `getIdentifierRangeAt handles empty or non-word correctly`() {
+        val text = " + "
+        val range = text.getIdentifierRangeAt(1)
+        assertEquals(1 until 1, range)
+    }
+
+    @Test
+    fun `findClosingParenthesis matches simple parens`() {
+        val text = "log(10)"
+        assertEquals(6, text.findClosingParenthesis(3))
+    }
+
+    @Test
+    fun `findClosingParenthesis handles nested parens`() {
+        val text = "pow(2, log(100))"
+        assertEquals(15, text.findClosingParenthesis(3))
+        assertEquals(14, text.findClosingParenthesis(10))
+    }
+
+    @Test
+    fun `findClosingParenthesis handles unclosed parens`() {
+        val text = "log(10"
+        assertEquals(5, text.findClosingParenthesis(3))
+    }
 }

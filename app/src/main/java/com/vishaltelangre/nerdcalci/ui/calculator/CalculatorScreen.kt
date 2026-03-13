@@ -633,7 +633,7 @@ fun CalculatorScreen(
                             .padding(horizontal = 8.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        val symbols = listOf(".", "+", "-", "×", "÷", "=", "%", "(", ")", "_", "#")
+                        val symbols = listOf(".", "_", "(", ")", "#", "=", "+", "-", "×", "÷", "%", "^")
                         symbols.forEach { symbol ->
                             Surface(
                                 onClick = {

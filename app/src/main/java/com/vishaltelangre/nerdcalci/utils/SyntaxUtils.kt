@@ -124,10 +124,11 @@ data class FuzzyMatch(
  * - Consecutive characters get exponentially increasing bonuses (20 + 10 * consecutiveCount)
  * - Matches on word boundaries (snake_case, camelCase) get a bonus (+50).
  * - Shorter overall strings are prioritized.
+ * - Type-based bonuses are applied to favor local variables/functions.
  *
  * Returns null if the query is not a subsequence of the target.
  */
-fun String.calculateFuzzyMatch(query: String): FuzzyMatch? {
+fun String.calculateFuzzyMatch(query: String, type: SuggestionType? = null): FuzzyMatch? {
     if (query.isEmpty()) return FuzzyMatch(0, emptyList())
 
     val queryLower = query.lowercase()
@@ -184,6 +185,15 @@ fun String.calculateFuzzyMatch(query: String): FuzzyMatch? {
 
     // Shorter targets are better when multiple targets have the same match quality
     score -= this.length
+
+    // Apply prioritization bonus based on type
+    if (type != null) {
+        score += when (type) {
+            SuggestionType.VARIABLE, SuggestionType.LOCAL_FUNCTION -> 200
+            SuggestionType.DYNAMIC_VARIABLE -> 100
+            else -> 0
+        }
+    }
 
     return FuzzyMatch(score, matchIndices)
 }

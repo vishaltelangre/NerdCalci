@@ -34,6 +34,8 @@ import androidx.compose.ui.window.PopupProperties
 import com.vishaltelangre.nerdcalci.ui.theme.FiraCodeFamily
 import com.vishaltelangre.nerdcalci.utils.findClosingParenthesis
 import com.vishaltelangre.nerdcalci.utils.getIdentifierRangeAt
+import com.vishaltelangre.nerdcalci.utils.Suggestion
+import com.vishaltelangre.nerdcalci.utils.SuggestionType
 import android.content.res.Configuration
 
 /**

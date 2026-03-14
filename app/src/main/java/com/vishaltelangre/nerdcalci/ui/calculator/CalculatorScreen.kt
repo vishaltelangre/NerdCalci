@@ -142,6 +142,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CoroutineScope
 import com.vishaltelangre.nerdcalci.utils.calculateFuzzyMatch
+import com.vishaltelangre.nerdcalci.utils.Suggestion
+import com.vishaltelangre.nerdcalci.utils.SuggestionType
 import com.vishaltelangre.nerdcalci.utils.getIdentifierRangeAt
 import android.content.res.Configuration
 
@@ -1030,7 +1032,7 @@ private fun LineRow(
             currentWord.any { char -> char.isLetter() || char == '_' } &&
             currentWord.all { char -> char.isLetterOrDigit() || char == '_' }) {
             availableVariables.mapNotNull {
-                val match = it.name.calculateFuzzyMatch(currentWord)
+                val match = it.name.calculateFuzzyMatch(currentWord, it.type)
                 if (match != null && it.name != currentWord) {
                     it.copy(matchIndices = match.matchIndices, score = match.score)
                 } else null

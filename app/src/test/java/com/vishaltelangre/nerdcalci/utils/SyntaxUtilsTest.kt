@@ -515,4 +515,23 @@ class SyntaxUtilsTest {
         val result = "abc".calculateFuzzyMatch("xyz")
         assertTrue(result == null)
     }
+
+    @Test
+    fun `calculateFuzzyMatch applies type-based bonuses`() {
+        val query = "s"
+        
+        // Local variable score
+        val varScore = "split".calculateFuzzyMatch(query, SuggestionType.VARIABLE)?.score ?: 0
+        // Global function score
+        val funcScore = "sin".calculateFuzzyMatch(query, SuggestionType.GLOBAL_FUNCTION)?.score ?: 0
+        
+        // "split" is longer than "sin", so without bonus "sin" would win.
+        // But with +200 bonus, "split" should win.
+        assertTrue("Variable 'split' ($varScore) should outrank Function 'sin' ($funcScore)", varScore > funcScore)
+        
+        // Dynamic variable vs Global function
+        val dynamicScore = "sum".calculateFuzzyMatch(query, SuggestionType.DYNAMIC_VARIABLE)?.score ?: 0
+        assertTrue("Dynamic 'sum' ($dynamicScore) should outrank Global 'sin' ($funcScore)", dynamicScore > funcScore)
+        assertTrue("Variable 'split' ($varScore) should outrank Dynamic 'sum' ($dynamicScore)", varScore > dynamicScore)
+    }
 }

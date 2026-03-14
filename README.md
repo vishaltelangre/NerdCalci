@@ -19,8 +19,8 @@
   <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.png" alt="Screenshot 4" width="300">
 </p>
 <p align="center">
-  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/5.png" alt="Screenshot 5" width="300">
-  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/6.png" alt="Screenshot 6" width="300">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/6.png" alt="Screenshot 5" width="300">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/7.png" alt="Screenshot 6" width="300">
 </p>
 
 ## Features

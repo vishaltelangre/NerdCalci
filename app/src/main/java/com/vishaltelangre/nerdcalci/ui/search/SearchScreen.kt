@@ -43,10 +43,13 @@ fun SearchScreen(
     }
 
     val suggestions = remember(trimmedQuery, files) {
-        if (trimmedQuery.isEmpty()) {
-            files.take(10)
+        val query = trimmedQuery
+        if (query.isEmpty()) {
+            files.take(10).map { it to FuzzyMatchResult(0, emptyList()) }
         } else {
-            files.filter { it.name.contains(trimmedQuery, ignoreCase = true) }
+            files.mapNotNull { file ->
+                fuzzyMatch(file.name, query)?.let { file to it }
+            }.sortedByDescending { it.second.score }
         }
     }
 
@@ -106,10 +109,10 @@ fun SearchScreen(
                     state = searchResultsListState,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    items(items = suggestions, key = { it.id }) { file ->
+                    items(items = suggestions, key = { it.first.id }) { (file, match) ->
                         val highlightedName = buildHighlightedFileName(
                             fileName = file.name,
-                            searchQuery = trimmedQuery,
+                            matchedIndices = match.matchedIndices,
                             highlightColor = MaterialTheme.colorScheme.primary
                         )
                         FileRowCard(
@@ -131,32 +134,88 @@ fun SearchScreen(
     BackHandler(onBack = onBack)
 }
 
+private data class FuzzyMatchResult(
+    val score: Int,
+    val matchedIndices: List<Int>
+)
+
+private fun fuzzyMatch(text: String, query: String): FuzzyMatchResult? {
+    if (query.isEmpty()) return FuzzyMatchResult(0, emptyList())
+    
+    val matchedIndices = mutableListOf<Int>()
+    var queryIdx = 0
+    var textIdx = 0
+    
+    while (queryIdx < query.length && textIdx < text.length) {
+        if (text[textIdx].equals(query[queryIdx], ignoreCase = true)) {
+            matchedIndices.add(textIdx)
+            queryIdx++
+        }
+        textIdx++
+    }
+    
+    if (queryIdx < query.length) return null
+    
+    // Calculate score
+    var score = 0
+    
+    // 1. Exact match (ignore case)
+    if (text.equals(query, ignoreCase = true)) {
+        score += 1000
+    }
+    
+    // 2. Starts with
+    if (text.startsWith(query, ignoreCase = true)) {
+        score += 500
+    }
+    
+    // 3. Substring match
+    if (text.contains(query, ignoreCase = true)) {
+        score += 250
+    }
+    
+    // 4. Bonus for consecutive matches
+    var consecutiveCount = 0
+    for (i in 1 until matchedIndices.size) {
+        if (matchedIndices[i] == matchedIndices[i-1] + 1) {
+            consecutiveCount++
+        }
+    }
+    score += consecutiveCount * 10
+    
+    // 5. Penalty for distance
+    if (matchedIndices.isNotEmpty()) {
+        val distance = matchedIndices.last() - matchedIndices.first() + 1
+        score -= distance
+    }
+    
+    return FuzzyMatchResult(score, matchedIndices)
+}
+
 private fun buildHighlightedFileName(
     fileName: String,
-    searchQuery: String,
+    matchedIndices: List<Int>,
     highlightColor: Color
 ): AnnotatedString {
-    val query = searchQuery.trim()
-    if (query.isEmpty()) {
+    if (matchedIndices.isEmpty()) {
         return AnnotatedString(fileName)
     }
 
-    val matchStart = fileName.indexOf(query, ignoreCase = true)
-    if (matchStart == -1) {
-        return AnnotatedString(fileName)
-    }
-
-    val matchEnd = matchStart + query.length
     return buildAnnotatedString {
-        append(fileName.substring(0, matchStart))
-        withStyle(
-            style = SpanStyle(
-                color = highlightColor,
-                fontWeight = FontWeight.SemiBold
-            )
-        ) {
-            append(fileName.substring(matchStart, matchEnd))
+        val indicesSet = matchedIndices.toSet()
+        fileName.forEachIndexed { index, char ->
+            if (index in indicesSet) {
+                withStyle(
+                    style = SpanStyle(
+                        color = highlightColor,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                ) {
+                    append(char)
+                }
+            } else {
+                append(char)
+            }
         }
-        append(fileName.substring(matchEnd))
     }
 }

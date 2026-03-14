@@ -391,5 +391,5 @@ private fun handleSuggestionClick(
             selection = TextRange(newCursorPos)
         )
     )
-    onValueChange(newText.trim())
+    onValueChange(newText)
 }

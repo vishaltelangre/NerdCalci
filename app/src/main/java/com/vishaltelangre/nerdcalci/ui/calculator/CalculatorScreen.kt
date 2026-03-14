@@ -18,11 +18,14 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -94,28 +97,36 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.window.Popup
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.unit.IntOffset
 import com.vishaltelangre.nerdcalci.core.Constants
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
 import com.vishaltelangre.nerdcalci.ui.components.DeleteFileDialog
@@ -128,8 +139,9 @@ import com.vishaltelangre.nerdcalci.utils.TokenType
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CoroutineScope
+import com.vishaltelangre.nerdcalci.utils.calculateFuzzyMatch
 import com.vishaltelangre.nerdcalci.utils.getIdentifierRangeAt
-import com.vishaltelangre.nerdcalci.utils.findClosingParenthesis
+import android.content.res.Configuration
 
 import com.vishaltelangre.nerdcalci.ui.theme.SyntaxColors
 
@@ -958,6 +970,18 @@ private fun LineRow(
     val focusRequester = remember { FocusRequester() }
 
     // Autocomplete suggestions
+    val density = LocalDensity.current
+    val imeInsets = WindowInsets.ime
+    val isKeyboardVisible = imeInsets.getBottom(density) > 0
+    var forceDismissSuggestions by remember(textFieldValue.text, textFieldValue.selection) { mutableStateOf(false) }
+
+    // Auto-dismiss suggestions when keyboard is closed
+    LaunchedEffect(isKeyboardVisible) {
+        if (!isKeyboardVisible && isFocused) {
+            forceDismissSuggestions = true
+        }
+    }
+
     val currentWord = remember(textFieldValue.text, textFieldValue.selection) {
         val cursorPos = textFieldValue.selection.start
         val text = textFieldValue.text
@@ -978,12 +1002,24 @@ private fun LineRow(
         } else ""
     }
 
-    val suggestions = remember(currentWord, availableVariables) {
-        if (currentWord.isNotEmpty() && currentWord.all { it.isLetterOrDigit() || it == '_' }) {
-            availableVariables.filter {
-                it.name.startsWith(currentWord, ignoreCase = true) && it.name != currentWord
-            }.sortedBy { it.name }
+    val suggestions = remember(currentWord, availableVariables, forceDismissSuggestions) {
+        if (!forceDismissSuggestions &&
+            currentWord.isNotEmpty() &&
+            // Don't suggest for purely numeric inputs (allows variables like 'a1' but not '1')
+            currentWord.any { char -> char.isLetter() || char == '_' } &&
+            currentWord.all { char -> char.isLetterOrDigit() || char == '_' }) {
+            availableVariables.mapNotNull {
+                val match = it.name.calculateFuzzyMatch(currentWord)
+                if (match != null && it.name != currentWord) {
+                    it.copy(matchIndices = match.matchIndices, score = match.score)
+                } else null
+            }.sortedByDescending { it.score }
         } else emptyList()
+    }
+
+    // Handle back button to close suggestions first if they are open
+    BackHandler(enabled = suggestions.isNotEmpty() && isFocused && !forceDismissSuggestions) {
+        forceDismissSuggestions = true
     }
 
     // Sync with database updates
@@ -1077,9 +1113,17 @@ private fun LineRow(
         }
 
         // Editor with wrapping and autocomplete
+        var boxPosition by remember { mutableStateOf(Offset.Zero) }
+        var boxSize by remember { mutableStateOf(IntSize.Zero) }
+        var textLayoutResult by remember { mutableStateOf<androidx.compose.ui.text.TextLayoutResult?>(null) }
+
         Box(
             modifier = Modifier
                 .weight(1f)
+                .onGloballyPositioned { coordinates ->
+                    boxPosition = coordinates.positionInWindow()
+                    boxSize = coordinates.size
+                }
                 .padding(horizontal = 10.dp, vertical = 10.dp)
         ) {
             Column {
@@ -1191,6 +1235,7 @@ private fun LineRow(
                     visualTransformation = syntaxHighlightingTransformation,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = { onEnter() }),
+                    onTextLayout = { textLayoutResult = it },
                     decorationBox = { innerTextField ->
                         if (textFieldValue.text.trim().isEmpty() && lineNumber == 1) {
                             Text(
@@ -1206,92 +1251,21 @@ private fun LineRow(
                 )
 
                 // Autocomplete suggestions dropdown
-                if (suggestions.isNotEmpty() && isFocused) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .padding(vertical = 4.dp)
-                    ) {
-                        suggestions.take(5).forEach { suggestion ->
-                            Row(
-                                modifier = Modifier
-                                    .clickable {
-                                        // Replace current word with the selected suggestion
-                                        val text = textFieldValue.text
-                                        val cursorPos = textFieldValue.selection.start
-
-                                        // If cursorPos is at 0, we're likely replacing at the start.
-                                        // getIdentifierRangeAt handles both backward and forward expansion.
-                                        val range = text.getIdentifierRangeAt(if (cursorPos > 0) cursorPos - 1 else 0)
-                                        val wordStart = range.first
-                                        var wordEnd = range.last + 1
-
-                                        val hasParens = wordEnd < text.length && text[wordEnd] == '('
-                                        val isFunctionSuggestion = suggestion.type == SuggestionType.LOCAL_FUNCTION ||
-                                                                  suggestion.type == SuggestionType.GLOBAL_FUNCTION
-
-                                        if (!isFunctionSuggestion && hasParens) {
-                                            // Non-function suggestion replacing a function call: consume parentheses
-                                            wordEnd = text.findClosingParenthesis(wordEnd) + 1
-                                        }
-
-                                        val replacementText = if (isFunctionSuggestion) {
-                                            // Keep existing parentheses if they exist
-                                            if (hasParens) suggestion.name else "${suggestion.name}()"
-                                        } else {
-                                            suggestion.name
-                                        }
-
-                                        val newText = text.substring(0, wordStart) + replacementText + text.substring(wordEnd)
-                                        val newCursorPos = if (isFunctionSuggestion && !hasParens) {
-                                            wordStart + replacementText.length - 1
-                                        } else {
-                                            wordStart + replacementText.length
-                                        }
-
-                                        textFieldValue = textFieldValue.copy(
-                                            text = newText,
-                                            selection = TextRange(newCursorPos)
-                                        )
-                                        onValueChange(newText.trim())
-                                    }
-                                    .padding(horizontal = 8.dp, vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                val typeIcon = when (suggestion.type) {
-                                    SuggestionType.LOCAL_FUNCTION -> "ƒ"
-                                    SuggestionType.GLOBAL_FUNCTION -> "Gƒ"
-                                    SuggestionType.DYNAMIC_VARIABLE -> "{X}"
-                                    SuggestionType.CONSTANT -> "{C}"
-                                    SuggestionType.VARIABLE -> "{x}"
-                                }
-                                val (itemColor, isItalic) = when (suggestion.type) {
-                                    SuggestionType.DYNAMIC_VARIABLE -> keywordColor to true
-                                    SuggestionType.LOCAL_FUNCTION, SuggestionType.GLOBAL_FUNCTION -> functionColor to true
-                                    SuggestionType.VARIABLE, SuggestionType.CONSTANT -> variableColor to true
-                                }
-                                Text(
-                                    text = typeIcon,
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        fontFamily = FiraCodeFamily,
-                                        fontStyle = if (isItalic) FontStyle.Italic else FontStyle.Normal
-                                    ),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                    modifier = Modifier.width(28.dp)
-                                )
-                                Text(
-                                    text = suggestion.name,
-                                    style = MaterialTheme.typography.bodyMedium.copy(
-                                        fontFamily = FiraCodeFamily,
-                                        fontStyle = if (isItalic) FontStyle.Italic else FontStyle.Normal
-                                    ),
-                                    color = itemColor
-                                )
-                            }
-                        }
-                    }
-                }
+                SuggestionPopup(
+                    suggestions = suggestions,
+                    isFocused = isFocused,
+                    forceDismissSuggestions = forceDismissSuggestions,
+                    onDismissSuggestions = { forceDismissSuggestions = true },
+                    textFieldValue = textFieldValue,
+                    onTextFieldValueChange = { textFieldValue = it },
+                    onValueChange = onValueChange,
+                    textLayoutResult = textLayoutResult,
+                    boxPosition = boxPosition,
+                    boxSize = boxSize,
+                    keywordColor = keywordColor,
+                    functionColor = functionColor,
+                    variableColor = variableColor
+                )
             }
         }
 

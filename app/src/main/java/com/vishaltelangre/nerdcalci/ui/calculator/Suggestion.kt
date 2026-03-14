@@ -6,5 +6,7 @@ enum class SuggestionType {
 
 data class Suggestion(
     val name: String,
-    val type: SuggestionType
+    val type: SuggestionType,
+    val matchIndices: List<Int> = emptyList(),
+    val score: Int = 0
 )

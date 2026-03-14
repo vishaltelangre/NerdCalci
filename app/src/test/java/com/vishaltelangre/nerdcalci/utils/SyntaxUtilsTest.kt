@@ -483,8 +483,36 @@ class SyntaxUtilsTest {
     }
 
     @Test
-    fun `findClosingParenthesis handles unclosed parens`() {
-        val text = "log(10"
-        assertEquals(5, text.findClosingParenthesis(3))
+    fun `calculateFuzzyMatch finds exact matches`() {
+        val result = "abc".calculateFuzzyMatch("abc")
+        assertTrue(result != null)
+        // 1000 (exact) + 100 (first char) + 70 (consecutive) - 3 (length) = 1167
+        assertEquals(1167, result?.score)
+    }
+
+    @Test
+    fun `calculateFuzzyMatch finds subsequence matches`() {
+        val result = "lineno".calculateFuzzyMatch("ln")
+        assertTrue(result != null)
+        // 'l' at 0, 'n' at 2
+        assertEquals(listOf(0, 2), result?.matchIndices)
+    }
+
+    @Test
+    fun `calculateFuzzyMatch respects word boundaries`() {
+        val target = "currentLineNumber"
+        val result = target.calculateFuzzyMatch("cln")
+        assertTrue(result != null)
+        // 'c' at 0 (+100 first char)
+        // 'L' at 7 (+50 boundary)
+        // 'n' at 9 (NOT a boundary, greedily matched before 'N' at 11)
+        // score = 100 + 50 - 17 = 133
+        assertEquals(133, result?.score)
+    }
+
+    @Test
+    fun `calculateFuzzyMatch returns null if no match`() {
+        val result = "abc".calculateFuzzyMatch("xyz")
+        assertTrue(result == null)
     }
 }

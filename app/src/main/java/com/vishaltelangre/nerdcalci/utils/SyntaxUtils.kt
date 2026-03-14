@@ -106,3 +106,74 @@ fun String.findClosingParenthesis(index: Int): Int {
     }
     return length - 1
 }
+
+/**
+ * Result of a fuzzy match calculation.
+ */
+data class FuzzyMatch(
+    val score: Int,
+    val matchIndices: List<Int>
+)
+
+/**
+ * Calculates a fuzzy match score and matched indices for a given query.
+ * Returns null if the query is not a subsequence of the target.
+ */
+fun String.calculateFuzzyMatch(query: String): FuzzyMatch? {
+    if (query.isEmpty()) return FuzzyMatch(0, emptyList())
+
+    val queryLower = query.lowercase()
+    val targetLower = this.lowercase()
+
+    val matchIndices = mutableListOf<Int>()
+    var queryIdx = 0
+    var targetIdx = 0
+
+    while (queryIdx < queryLower.length && targetIdx < targetLower.length) {
+        if (queryLower[queryIdx] == targetLower[targetIdx]) {
+            matchIndices.add(targetIdx)
+            queryIdx++
+        }
+        targetIdx++
+    }
+
+    if (queryIdx != queryLower.length) return null
+
+    // Scoring logic
+    var score = 0
+
+    // Exact match bonus
+    if (queryLower == targetLower) score += 1000
+    // Prefix match bonus
+    else if (targetLower.startsWith(queryLower)) score += 500
+
+    // First character match bonus
+    if (matchIndices.isNotEmpty() && matchIndices.first() == 0) score += 100
+
+    // Consecutive characters bonus
+    var consecutiveCount = 0
+    for (i in 1 until matchIndices.size) {
+        if (matchIndices[i] == matchIndices[i - 1] + 1) {
+            consecutiveCount++
+            score += 20 + (consecutiveCount * 10)
+        } else {
+            consecutiveCount = 0
+        }
+    }
+
+    // Word boundary bonuses (camelCase, snake_case, etc)
+    for (idx in matchIndices) {
+        if (idx > 0) {
+            val prevChar = this[idx - 1]
+            val currChar = this[idx]
+            if (prevChar == '_' || prevChar == ' ' || (prevChar.isLowerCase() && currChar.isUpperCase())) {
+                score += 50
+            }
+        }
+    }
+
+    // Shorter targets are better if everything else is equal
+    score -= this.length
+
+    return FuzzyMatch(score, matchIndices)
+}

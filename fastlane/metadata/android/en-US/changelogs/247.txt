@@ -1,4 +1,5 @@
-- Added global and per-file toggles for autocompletion suggestions.
-- Improved autocompletion with advanced fuzzy matching.
+- Fixed autocomplete suggestion selection not replacing keywords under cursor correctly.
+- Improved autocomplete suggestions with advanced fuzzy matching.
+- Refined autocomplete popup UI with a better badge design.
 - Function suggestions now show a `()` suffix.
-- Refined autocompletion popup UI with a better badge design.
+- Added global and per-file toggles for autocomplete suggestions.

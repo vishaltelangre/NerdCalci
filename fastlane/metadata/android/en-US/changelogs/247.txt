@@ -1,0 +1,4 @@
+- Added global and per-file toggles for autocompletion suggestions.
+- Improved autocompletion with advanced fuzzy matching.
+- Function suggestions now show a `()` suffix.
+- Refined autocompletion popup UI with a better badge design.

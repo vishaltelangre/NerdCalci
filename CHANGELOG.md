@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.7] - 2026-03-14
+### Added
+- Added a global setting to toggle autocompletion suggestions in Settings.
+- Added a per-file toggle for autocompletion suggestions in the calculator menu for quick overrides.
+- Improved autocompletion with advanced fuzzy matching for more relevant suggestions.
+- Function suggestions now include a `()` suffix for clearer visual distinction from variables.
+
+### Changed
+- Refined autocompletion popup UI with a better badge design and consistent layouts.
+- Enhanced identifier detection and parenthesis matching logic for more reliable editing.
+
 ## [2.4.6] - 2026-03-13
 ### Added
 - Introduced new keywords (`lineno`, `linenumber`, and `currentLineNumber`) to reference the current line number in calculations.

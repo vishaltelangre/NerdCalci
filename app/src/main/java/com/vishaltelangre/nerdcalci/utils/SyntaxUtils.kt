@@ -15,8 +15,7 @@ object SyntaxUtils {
     )
 
     /**
-     * Parses the given text and returns a sequence of syntax tokens indicating the type of each
-     * segment. This parser can be reused across different rendering systems (Compose, Canvas, etc).
+     * Parses the text into syntax tokens.
      */
     fun parseSyntaxTokens(text: String): List<SyntaxToken> {
         val tokens = mutableListOf<SyntaxToken>()
@@ -116,7 +115,16 @@ data class FuzzyMatch(
 )
 
 /**
- * Calculates a fuzzy match score and matched indices for a given query.
+ * Calculates a fuzzy match score and matched indices using common heuristics.
+ *
+ * Scoring Rules:
+ * - Exact matches get the highest bonus (+1000).
+ * - Prefix matches get a significant bonus (+500).
+ * - Starting character match bonus (+100).
+ * - Consecutive characters get exponentially increasing bonuses (20 + 10 * consecutiveCount)
+ * - Matches on word boundaries (snake_case, camelCase) get a bonus (+50).
+ * - Shorter overall strings are prioritized.
+ *
  * Returns null if the query is not a subsequence of the target.
  */
 fun String.calculateFuzzyMatch(query: String): FuzzyMatch? {
@@ -125,6 +133,7 @@ fun String.calculateFuzzyMatch(query: String): FuzzyMatch? {
     val queryLower = query.lowercase()
     val targetLower = this.lowercase()
 
+    // Find all characters of the query in the target string in order
     val matchIndices = mutableListOf<Int>()
     var queryIdx = 0
     var targetIdx = 0
@@ -137,17 +146,17 @@ fun String.calculateFuzzyMatch(query: String): FuzzyMatch? {
         targetIdx++
     }
 
+    // If we didn't find all characters, it's not a match
     if (queryIdx != queryLower.length) return null
 
-    // Scoring logic
     var score = 0
 
-    // Exact match bonus
+    // Exact matches are top priority
     if (queryLower == targetLower) score += 1000
-    // Prefix match bonus
+    // Prefix matches are high priority
     else if (targetLower.startsWith(queryLower)) score += 500
 
-    // First character match bonus
+    // Bonus for matching the very first character of the target
     if (matchIndices.isNotEmpty() && matchIndices.first() == 0) score += 100
 
     // Consecutive characters bonus
@@ -161,18 +170,19 @@ fun String.calculateFuzzyMatch(query: String): FuzzyMatch? {
         }
     }
 
-    // Word boundary bonuses (camelCase, snake_case, etc)
+    // Word boundary bonuses. Helps matching snake_case or camelCase variables
     for (idx in matchIndices) {
         if (idx > 0) {
             val prevChar = this[idx - 1]
             val currChar = this[idx]
+            // Boundary if preceded by underscore, space, or if it transitions from lower to upper case
             if (prevChar == '_' || prevChar == ' ' || (prevChar.isLowerCase() && currChar.isUpperCase())) {
                 score += 50
             }
         }
     }
 
-    // Shorter targets are better if everything else is equal
+    // Shorter targets are better when multiple targets have the same match quality
     score -= this.length
 
     return FuzzyMatch(score, matchIndices)

@@ -1282,7 +1282,6 @@ private fun LineRow(
                     onValueChange = onValueChange,
                     textLayoutResult = textLayoutResult,
                     boxPosition = boxPosition,
-                    boxSize = boxSize,
                     keywordColor = keywordColor,
                     functionColor = functionColor,
                     variableColor = variableColor

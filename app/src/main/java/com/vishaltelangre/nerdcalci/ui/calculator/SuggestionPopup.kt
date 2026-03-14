@@ -43,19 +43,19 @@ private object SuggestionPopupConstants {
     // Maximum width as a fraction of the screen width
     const val MaxWidthPortraitFraction = 0.75f
     const val MaxWidthLandscapeFraction = 0.35f
-    
+
     // Limits for popup dimensions
     val MinStableWidth = 100.dp
     val MaxPopupHeight = 125.dp
     val EstimatedItemHeight = 44.dp
-    
+
     // Buffers and offsets
     val SafetyWidthBuffer = 8.dp
     val LabelWidth = 44.dp
     val BadgeHeight = 24.dp
     val StaticElementsWidth = LabelWidth + 24.dp // Label (48dp) + Row horizontal padding (12dp * 2)
     val VerticalGap = 4.dp
-    
+
     // Thresholds for deciding if popup should be shown above or below the cursor
     val SpaceBelowThreshold = 150.dp
     val CurrentLineTopThreshold = 200.dp
@@ -88,13 +88,13 @@ fun SuggestionPopup(
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
     val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
-    
+
     // Calculate the maximum allowed width based on orientation.
-    val maxWidthFraction = if (isPortrait) 
-        SuggestionPopupConstants.MaxWidthPortraitFraction 
-    else 
+    val maxWidthFraction = if (isPortrait)
+        SuggestionPopupConstants.MaxWidthPortraitFraction
+    else
         SuggestionPopupConstants.MaxWidthLandscapeFraction
-        
+
     val screenWidth = configuration.screenWidthDp.dp
     val screenHeight = configuration.screenHeightDp.dp
     val maxPopupWidth = screenWidth * maxWidthFraction
@@ -109,7 +109,7 @@ fun SuggestionPopup(
     val widestSuggestionWidth = remember(suggestions, density) {
         val maxTextWidthPx = suggestions.maxOfOrNull { suggestion ->
             val isItalic = isItalicType(suggestion.type)
-            
+
             // Build the same AnnotatedString used in the UI to get an accurate measurement.
             val annotatedString = buildSuggestionText(suggestion)
 
@@ -122,9 +122,9 @@ fun SuggestionPopup(
                 overflow = TextOverflow.Ellipsis
             ).size.width
         } ?: 0
-        
-        with(density) { maxTextWidthPx.toDp() } + 
-                SuggestionPopupConstants.StaticElementsWidth + 
+
+        with(density) { maxTextWidthPx.toDp() } +
+                SuggestionPopupConstants.StaticElementsWidth +
                 SuggestionPopupConstants.SafetyWidthBuffer
     }
 
@@ -141,7 +141,7 @@ fun SuggestionPopup(
 
     // Determine where the cursor is currently located on the screen.
     val cursorIndex = textFieldValue.selection.start
-    
+
     // Safety check: sometimes the layout result is one frame behind the text field value
     // during extremely rapid typing, which can cause an "index out of bounds" crash.
     val cursorRect = if (textLayoutResult != null && cursorIndex <= textLayoutResult.layoutInput.text.length) {
@@ -166,11 +166,11 @@ fun SuggestionPopup(
     // Decide whether to show the popup above or below the line.
     // We prefer below, but shift above if there isn't enough space (e.g. keyboard is up).
     val spaceBelow = screenHeight - currentLineBottomDp - imeHeightDp
-    val showAbove = spaceBelow < SuggestionPopupConstants.SpaceBelowThreshold && 
+    val showAbove = spaceBelow < SuggestionPopupConstants.SpaceBelowThreshold &&
                     currentLineTopDp > SuggestionPopupConstants.CurrentLineTopThreshold
 
     val gapPx = with(density) { SuggestionPopupConstants.VerticalGap.roundToPx() }
-    
+
     // Ensure the popup doesn't bleed off the right edge of the screen.
     val xOffset = if (with(density) { (cursorLeft.toDp() + stableWidth) } > screenWidth) {
         with(density) { (screenWidth - stableWidth).roundToPx() }
@@ -195,9 +195,9 @@ fun SuggestionPopup(
         Surface(
             modifier = Modifier
                 .width(stableWidth)
-                .heightIn(max = if (showAbove) 
-                    minOf(SuggestionPopupConstants.MaxPopupHeight, boxTopDp - SuggestionPopupConstants.TopOffsetMargin) 
-                else 
+                .heightIn(max = if (showAbove)
+                    minOf(SuggestionPopupConstants.MaxPopupHeight, boxTopDp - SuggestionPopupConstants.TopOffsetMargin)
+                else
                     SuggestionPopupConstants.MaxPopupHeight
                 ),
             color = MaterialTheme.colorScheme.surface,
@@ -245,11 +245,11 @@ private fun SuggestionItem(
         val typeLabel = when (suggestion.type) {
             SuggestionType.LOCAL_FUNCTION -> "FUNC"
             SuggestionType.GLOBAL_FUNCTION -> "GLOBAL\nFUNC"
-            SuggestionType.DYNAMIC_VARIABLE -> "GLOBAL\nVAR"
+            SuggestionType.DYNAMIC_VARIABLE -> "DYNAMIC\nVAR"
             SuggestionType.CONSTANT -> "CONST"
             SuggestionType.VARIABLE -> "VAR"
         }
-        
+
         val (itemColor, isItalic) = when (suggestion.type) {
             SuggestionType.DYNAMIC_VARIABLE -> keywordColor to true
             SuggestionType.LOCAL_FUNCTION, SuggestionType.GLOBAL_FUNCTION -> functionColor to true
@@ -258,7 +258,7 @@ private fun SuggestionItem(
 
         val isMultiline = typeLabel.contains("\n")
         val baseFontSize = MaterialTheme.typography.labelSmall.fontSize
-        
+
         // Font size scales: multiline labels are smaller to fit, single-line are larger to fill the badge.
         val currentFontSize = if (isMultiline) baseFontSize * 0.62f else baseFontSize * 0.82f
         val currentLineHeight = if (isMultiline) baseFontSize * 0.75f else baseFontSize * 1.0f
@@ -325,6 +325,12 @@ private fun buildSuggestionText(suggestion: Suggestion): AnnotatedString {
                 append(name[i])
             }
         }
+
+        // Add () suffix for functions to distinguish them from variables
+        if (suggestion.type == SuggestionType.LOCAL_FUNCTION ||
+            suggestion.type == SuggestionType.GLOBAL_FUNCTION) {
+            append("()")
+        }
     }
 }
 
@@ -372,7 +378,7 @@ private fun handleSuggestionClick(
     }
 
     val newText = text.substring(0, wordStart) + replacementText + text.substring(wordEnd)
-    
+
     // Position the cursor: inside parentheses for functions, or at the end for variables.
     val newCursorPos = if (isFunctionSuggestion && !hasParens) {
         wordStart + replacementText.length - 1

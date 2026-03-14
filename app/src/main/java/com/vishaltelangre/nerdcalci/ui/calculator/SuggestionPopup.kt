@@ -154,7 +154,7 @@ fun SuggestionPopup(
     val cursorBottom = cursorRect.bottom
 
     // Screen positions in Dp for boundary checking
-    val boxTopDp = with(density) { boxPosition.y.toDp() }
+    val parentLeftPx = boxPosition.x.toInt()
     val currentLineTopDp = with(density) { (boxPosition.y + cursorTop).toDp() }
     val currentLineBottomDp = with(density) { (boxPosition.y + cursorBottom).toDp() }
     val imeHeightDp = with(density) { WindowInsets.ime.getBottom(density).toDp() }
@@ -167,11 +167,8 @@ fun SuggestionPopup(
     val gapPx = with(density) { SuggestionPopupConstants.VerticalGap.roundToPx() }
 
     // Ensure the popup doesn't bleed off the right edge of the screen.
-    val xOffset = if (with(density) { (cursorLeft.toDp() + stableWidth) } > screenWidth) {
-        with(density) { (screenWidth - stableWidth).roundToPx() }
-    } else {
-        cursorLeft.toInt()
-    }
+    val maxXOffset = with(density) { (screenWidth - stableWidth).roundToPx() } - parentLeftPx
+    val xOffset = cursorLeft.toInt().coerceAtMost(maxXOffset.coerceAtLeast(0))
 
     Popup(
         alignment = Alignment.TopStart,
@@ -191,7 +188,10 @@ fun SuggestionPopup(
             modifier = Modifier
                 .width(stableWidth)
                 .heightIn(max = if (showAbove)
-                    minOf(SuggestionPopupConstants.MaxPopupHeight, boxTopDp - SuggestionPopupConstants.TopOffsetMargin)
+                    minOf(
+                        SuggestionPopupConstants.MaxPopupHeight,
+                        currentLineTopDp - SuggestionPopupConstants.TopOffsetMargin
+                    )
                 else
                     SuggestionPopupConstants.MaxPopupHeight
                 ),

@@ -303,8 +303,9 @@ internal fun FileRowCard(
         modifier = modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        shape = androidx.compose.ui.graphics.RectangleShape,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
     ) {
         Row(
             modifier = Modifier

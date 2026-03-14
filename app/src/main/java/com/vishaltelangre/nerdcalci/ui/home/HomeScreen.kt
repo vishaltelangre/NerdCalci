@@ -61,6 +61,23 @@ import com.vishaltelangre.nerdcalci.ui.components.SectionHeader
 import com.vishaltelangre.nerdcalci.ui.components.addDismissibleFileItems
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,13 +87,11 @@ fun HomeScreen(
     onSettingsClick: () -> Unit,
     onHelpClick: () -> Unit,
     onChangelogClick: () -> Unit,
-    onRestoreClick: () -> Unit
+    onRestoreClick: () -> Unit,
+    onSearchClick: () -> Unit
 ) {
     val context = LocalContext.current
     val files by viewModel.allFiles.collectAsState(initial = emptyList())
-    var searchQuery by rememberSaveable { mutableStateOf("") }
-    var searchBarVisible by rememberSaveable { mutableStateOf(false) }
-    var searchBarActive by rememberSaveable { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
@@ -109,69 +124,52 @@ fun HomeScreen(
         }
     }
 
-    val hasQuery = searchQuery.trim().isNotEmpty()
-    val isSearchViewActive = searchBarActive || hasQuery
-    val isSearchUiVisible = searchBarVisible || isSearchViewActive
-    val visibleFiles = files
-    val visiblePinnedFiles = visibleFiles.filter { it.isPinned }
-    val visibleUnpinnedFiles = visibleFiles.filterNot { it.isPinned }
-
-    fun dismissSearch(clearQuery: Boolean = true) {
-        if (clearQuery) searchQuery = ""
-        searchBarActive = false
-        searchBarVisible = false
-    }
-
-    BackHandler(enabled = isSearchUiVisible) {
-        dismissSearch(clearQuery = true)
-    }
+    val visiblePinnedFiles = files.filter { it.isPinned }
+    val visibleUnpinnedFiles = files.filterNot { it.isPinned }
 
     Scaffold(
         topBar = {
-            if (!isSearchViewActive) {
-                CenterAlignedTopAppBar(
-                    title = { Text(appName, color = MaterialTheme.colorScheme.onSurface) },
-                    navigationIcon = {
-                        IconButton(onClick = onChangelogClick) {
-                            Icon(Icons.Default.RssFeed, "What's New", tint = MaterialTheme.colorScheme.onSurface)
-                        }
-                    },
-                    actions = {
-                        IconButton(
-                            onClick = {
-                                searchBarVisible = true
-                                searchBarActive = true
-                            },
-                            enabled = files.isNotEmpty()
-                        ) {
-                            Icon(
-                                Icons.Default.Search,
-                                "Search",
-                                tint = if (isSearchUiVisible) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurface
-                                }
-                            )
-                        }
-                        IconButton(onClick = onSettingsClick) {
-                            Icon(Icons.Default.Settings, "Settings", tint = MaterialTheme.colorScheme.onSurface)
-                        }
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.background
-                    )
+            CenterAlignedTopAppBar(
+                title = { Text(appName, color = MaterialTheme.colorScheme.onSurface) },
+                navigationIcon = {
+                    IconButton(onClick = onChangelogClick) {
+                        Icon(
+                            Icons.Default.RssFeed,
+                            "What's New",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(
+                        onClick = onSearchClick,
+                        enabled = files.isNotEmpty()
+                    ) {
+                        Icon(
+                            Icons.Default.Search,
+                            "Search",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    IconButton(onClick = onSettingsClick) {
+                        Icon(
+                            Icons.Default.Settings,
+                            "Settings",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
                 )
-            }
+            )
         },
         floatingActionButton = {
-            if (!isSearchViewActive) {
-                FloatingActionButton(
-                    onClick = { createFile() },
-                    containerColor = MaterialTheme.colorScheme.primary
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "New Calculation")
-                }
+            FloatingActionButton(
+                onClick = { createFile() },
+                containerColor = MaterialTheme.colorScheme.primary
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "New Calculation")
             }
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
@@ -251,6 +249,7 @@ fun HomeScreen(
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("Help")
                         }
+                        Spacer(modifier = Modifier.height(8.dp))
                         TextButton(
                             onClick = onChangelogClick,
                             modifier = Modifier.fillMaxWidth()
@@ -268,30 +267,9 @@ fun HomeScreen(
                     .fillMaxSize()
                     .padding(padding)
             ) {
-                if (isSearchUiVisible) {
-                    HomeSearchBar(
-                        query = searchQuery,
-                        files = files,
-                        active = isSearchViewActive,
-                        onQueryChange = { searchQuery = it.replace("\n", "") },
-                        onActiveChange = { active ->
-                            searchBarActive = active
-                            if (!active && searchQuery.isBlank()) {
-                                searchBarVisible = false
-                            }
-                        },
-                        onClearQuery = { searchQuery = "" },
-                        onDismissSearch = { dismissSearch(clearQuery = true) },
-                        onFileClick = onFileClick
-                    )
-                }
-
-                if (isSearchViewActive) {
-                    return@Column
-                }
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 96.dp)
+                    contentPadding = PaddingValues(bottom = 96.dp)
                 ) {
                     if (visiblePinnedFiles.isNotEmpty()) {
                         item { SectionHeader(title = "Pinned") }
@@ -299,7 +277,7 @@ fun HomeScreen(
                             files = visiblePinnedFiles,
                             excludedIds = excludedFileIds,
                             onFileClick = onFileClick,
-                            onRename = { id, name -> viewModel.viewModelScope.launch { viewModel.renameFile(id, name) } },
+                            onRename = { id, name -> coroutineScope.launch { viewModel.renameFile(id, name) } },
                             onDuplicate = { id -> viewModel.duplicateFile(id) { onFileClick(it) } },
                             onDelete = { id -> viewModel.deleteFile(id) },
                             onTogglePin = { id -> viewModel.togglePinFile(id) },
@@ -319,7 +297,7 @@ fun HomeScreen(
                             files = visibleUnpinnedFiles,
                             excludedIds = excludedFileIds,
                             onFileClick = onFileClick,
-                            onRename = { id, name -> viewModel.viewModelScope.launch { viewModel.renameFile(id, name) } },
+                            onRename = { id, name -> coroutineScope.launch { viewModel.renameFile(id, name) } },
                             onDuplicate = { id -> viewModel.duplicateFile(id) { onFileClick(it) } },
                             onDelete = { id -> viewModel.deleteFile(id) },
                             onTogglePin = { id -> viewModel.togglePinFile(id) },

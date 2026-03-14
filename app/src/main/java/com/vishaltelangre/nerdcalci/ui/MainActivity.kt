@@ -55,6 +55,7 @@ import com.vishaltelangre.nerdcalci.ui.help.HelpScreen
 import com.vishaltelangre.nerdcalci.ui.home.HomeScreen
 import com.vishaltelangre.nerdcalci.ui.settings.SettingsScreen
 import com.vishaltelangre.nerdcalci.ui.changelog.ChangelogScreen
+import com.vishaltelangre.nerdcalci.ui.search.SearchScreen
 import com.vishaltelangre.nerdcalci.ui.theme.NerdCalciTheme
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -186,10 +187,10 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
     }
 
     // Reusable slide animations for detail screens
-    val slideInFromRight = slideInHorizontally(animationSpec = tween(300), initialOffsetX = { it })
-    val slideOutToLeft = slideOutHorizontally(animationSpec = tween(300), targetOffsetX = { -it / 3 })
-    val slideInFromLeft = slideInHorizontally(animationSpec = tween(300), initialOffsetX = { -it / 3 })
-    val slideOutToRight = slideOutHorizontally(animationSpec = tween(300), targetOffsetX = { it })
+    val slideInFromRight = slideInHorizontally(animationSpec = tween(300), initialOffsetX = { fullWidth: Int -> fullWidth })
+    val slideOutToLeft = slideOutHorizontally(animationSpec = tween(300), targetOffsetX = { fullWidth: Int -> -fullWidth / 3 })
+    val slideInFromLeft = slideInHorizontally(animationSpec = tween(300), initialOffsetX = { fullWidth: Int -> -fullWidth / 3 })
+    val slideOutToRight = slideOutHorizontally(animationSpec = tween(300), targetOffsetX = { fullWidth: Int -> fullWidth })
 
     NavHost(navController = navController, startDestination = "home") {
         // Home Screen
@@ -203,7 +204,8 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
                 onRestoreClick = {
                     viewModel.refreshBackups(context)
                     showHomeRestoreActionDialog = true
-                }
+                },
+                onSearchClick = { navController.navigate("search") }
             )
         }
 
@@ -317,6 +319,23 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
             popExitTransition = { slideOutToRight }
         ) {
             ChangelogScreen(onBack = { navController.popBackStack() })
+        }
+
+        // Search Screen
+        composable(
+            "search",
+            enterTransition = { slideInFromRight },
+            exitTransition = { slideOutToLeft },
+            popEnterTransition = { slideInFromLeft },
+            popExitTransition = { slideOutToRight }
+        ) {
+            SearchScreen(
+                viewModel = viewModel,
+                onFileClick = { fileId ->
+                    navController.navigate("editor/$fileId")
+                },
+                onBack = { navController.popBackStack() }
+            )
         }
     }
 

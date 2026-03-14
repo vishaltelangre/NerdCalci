@@ -46,6 +46,8 @@ import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.FileCopy
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FormatListNumbered
 import androidx.compose.material.icons.filled.Image
@@ -317,6 +319,9 @@ fun CalculatorScreen(
     val globalShowLineNumbers by viewModel.showLineNumbers.collectAsState()
     var localShowLineNumbers by rememberSaveable(fileId) { mutableStateOf<Boolean?>(null) }
     val effectiveShowLineNumbers = localShowLineNumbers ?: globalShowLineNumbers
+    val globalShowSuggestions by viewModel.showSuggestions.collectAsState()
+    var localShowSuggestions by rememberSaveable(fileId) { mutableStateOf<Boolean?>(null) }
+    val effectiveShowSuggestions = localShowSuggestions ?: globalShowSuggestions
     var showMenu by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var showClearConfirmDialog by remember { mutableStateOf(false) }
@@ -332,8 +337,6 @@ fun CalculatorScreen(
 
     // Track which line is currently focused by the user
     var currentlyFocusedLineId by remember { mutableStateOf<Long?>(null) }
-
-    // Track when a new line is requested to be added (for auto-focus)
 
     // Track toolbar text insertion requests (used for inserting symbols using custom keyboard shortcuts)
     var insertTextRequest by remember { mutableStateOf<Pair<Long, String>?>(null) }
@@ -490,6 +493,21 @@ fun CalculatorScreen(
                                     leadingIcon = {
                                         Icon(
                                             leadIcon,
+                                            contentDescription = null
+                                        )
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(if (effectiveShowSuggestions) "Hide suggestions" else "Show suggestions") },
+                                    onClick = {
+                                        val nextValue = !effectiveShowSuggestions
+                                        localShowSuggestions =
+                                            nextValue.takeUnless { it == globalShowSuggestions }
+                                        showMenu = false
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            if (effectiveShowSuggestions) Icons.Default.ChatBubbleOutline else Icons.Default.Chat,
                                             contentDescription = null
                                         )
                                     }
@@ -749,6 +767,7 @@ fun CalculatorScreen(
                         line = line,
                         lineNumber = index + 1,
                         showLineNumbers = effectiveShowLineNumbers,
+                        showSuggestions = effectiveShowSuggestions,
                         precision = precision,
                         numberWidth = numberWidth,
                         availableVariables = availableVariables,
@@ -924,6 +943,7 @@ private fun LineRow(
     line: LineEntity,
     lineNumber: Int,
     showLineNumbers: Boolean,
+    showSuggestions: Boolean,
     precision: Int,
     numberWidth: Dp,
     availableVariables: Set<Suggestion>,
@@ -1002,8 +1022,9 @@ private fun LineRow(
         } else ""
     }
 
-    val suggestions = remember(currentWord, availableVariables, forceDismissSuggestions) {
+    val suggestions = remember(currentWord, availableVariables, forceDismissSuggestions, showSuggestions) {
         if (!forceDismissSuggestions &&
+            showSuggestions &&
             currentWord.isNotEmpty() &&
             // Don't suggest for purely numeric inputs (allows variables like 'a1' but not '1')
             currentWord.any { char -> char.isLetter() || char == '_' } &&

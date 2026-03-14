@@ -50,6 +50,7 @@ class CalculatorViewModel(
         private const val PREF_PRECISION = "precision"
         private const val PREF_THEME = "theme"
         private const val PREF_SHOW_LINE_NUMBERS = "show_line_numbers"
+        private const val PREF_SHOW_SUGGESTIONS = "show_suggestions"
         private const val DEFAULT_THEME = "system"
     }
 
@@ -106,6 +107,11 @@ class CalculatorViewModel(
     )
     val showLineNumbers: StateFlow<Boolean> = _showLineNumbers
 
+    private val _showSuggestions = MutableStateFlow(
+        prefs?.getBoolean(PREF_SHOW_SUGGESTIONS, true) ?: true
+    )
+    val showSuggestions: StateFlow<Boolean> = _showSuggestions
+
     fun setTheme(theme: String) {
         _currentTheme.value = theme
         prefs?.edit()?.putString(PREF_THEME, theme)?.apply()
@@ -120,6 +126,11 @@ class CalculatorViewModel(
     fun setShowLineNumbers(enabled: Boolean) {
         _showLineNumbers.value = enabled
         prefs?.edit()?.putBoolean(PREF_SHOW_LINE_NUMBERS, enabled)?.apply()
+    }
+
+    fun setShowSuggestions(enabled: Boolean) {
+        _showSuggestions.value = enabled
+        prefs?.edit()?.putBoolean(PREF_SHOW_SUGGESTIONS, enabled)?.apply()
     }
 
     fun setAutoBackupEnabled(context: Context, enabled: Boolean) {

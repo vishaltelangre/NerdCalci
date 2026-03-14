@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.RssFeed
 import androidx.compose.material.icons.filled.LogoDev
 import androidx.compose.material.icons.filled.PrivacyTip
 import androidx.compose.material.icons.filled.Backup
+import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Coffee
 import androidx.compose.material.icons.filled.DarkMode
@@ -102,6 +103,8 @@ fun SettingsScreen(
     onPrecisionChange: (Int) -> Unit,
     showLineNumbers: Boolean,
     onShowLineNumbersChange: (Boolean) -> Unit,
+    showSuggestions: Boolean,
+    onShowSuggestionsChange: (Boolean) -> Unit,
     onHelp: () -> Unit,
     onChangelog: () -> Unit,
     onBack: () -> Unit
@@ -250,6 +253,14 @@ fun SettingsScreen(
                 subtitle = "You can also toggle this temporarily for each file from the calculator menu.",
                 checked = showLineNumbers,
                 onCheckedChange = onShowLineNumbersChange
+            )
+
+            SettingsToggleItem(
+                icon = Icons.Default.Chat,
+                title = "Show suggestions",
+                subtitle = "You can also toggle this temporarily for each file from the calculator menu.",
+                checked = showSuggestions,
+                onCheckedChange = onShowSuggestionsChange
             )
 
             Spacer(modifier = Modifier.height(8.dp))

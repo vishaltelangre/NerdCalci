@@ -268,7 +268,7 @@ private fun extractSuggestions(lines: List<LineEntity>, upToSortOrder: Int): Set
             val name = matchResult.groupValues[1].trim()
 
             // If it matched the (...) part, it's a function
-            val isFunction = exprWithoutComment.substring(matchResult.groupValues[1].length).trimStart().startsWith("(")
+            val isFunction = exprWithoutComment.substring(matchResult.groups[1]!!.range.last + 1).trimStart().startsWith("(")
 
             if (isFunction) {
                 suggestionMap[name] = Suggestion(name, SuggestionType.LOCAL_FUNCTION)

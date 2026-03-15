@@ -25,6 +25,8 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
 import com.vishaltelangre.nerdcalci.ui.calculator.CalculatorViewModel
+import com.vishaltelangre.nerdcalci.utils.FileFuzzyMatcher
+import com.vishaltelangre.nerdcalci.utils.FileFuzzyMatchResult
 import com.vishaltelangre.nerdcalci.ui.components.FileRowCard
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -37,7 +39,7 @@ fun SearchScreen(
     val files by viewModel.allFiles.collectAsState(initial = emptyList())
     var searchQuery by rememberSaveable { mutableStateOf("") }
     val trimmedQuery = searchQuery.trim()
-    
+
     val searchResultsListState = rememberSaveable(saver = LazyListState.Saver) {
         LazyListState()
     }
@@ -45,10 +47,10 @@ fun SearchScreen(
     val suggestions = remember(trimmedQuery, files) {
         val query = trimmedQuery
         if (query.isEmpty()) {
-            files.take(10).map { it to FuzzyMatchResult(0, emptyList()) }
+            files.take(10).map { it to FileFuzzyMatchResult(0, emptyList()) }
         } else {
             files.mapNotNull { file ->
-                fuzzyMatch(file.name, query)?.let { file to it }
+                FileFuzzyMatcher.fuzzyMatch(file.name, query)?.let { file to it }
             }.sortedByDescending { it.second.score }
         }
     }
@@ -132,64 +134,6 @@ fun SearchScreen(
     }
 
     BackHandler(onBack = onBack)
-}
-
-private data class FuzzyMatchResult(
-    val score: Int,
-    val matchedIndices: List<Int>
-)
-
-private fun fuzzyMatch(text: String, query: String): FuzzyMatchResult? {
-    if (query.isEmpty()) return FuzzyMatchResult(0, emptyList())
-    
-    val matchedIndices = mutableListOf<Int>()
-    var queryIdx = 0
-    var textIdx = 0
-    
-    while (queryIdx < query.length && textIdx < text.length) {
-        if (text[textIdx].equals(query[queryIdx], ignoreCase = true)) {
-            matchedIndices.add(textIdx)
-            queryIdx++
-        }
-        textIdx++
-    }
-    
-    if (queryIdx < query.length) return null
-    
-    // Calculate score
-    var score = 0
-    
-    // 1. Exact match (ignore case)
-    if (text.equals(query, ignoreCase = true)) {
-        score += 1000
-    }
-    
-    // 2. Starts with
-    if (text.startsWith(query, ignoreCase = true)) {
-        score += 500
-    }
-    
-    // 3. Substring match
-    if (text.contains(query, ignoreCase = true)) {
-        score += 250
-    }
-    
-    // 4. Bonus for consecutive matches
-    var consecutiveCount = 0
-    for (i in 1 until matchedIndices.size) {
-        if (matchedIndices[i] == matchedIndices[i-1] + 1) {
-            consecutiveCount++
-        }
-    }
-    score += consecutiveCount * 10
-    
-    // 5. Penalty for distance
-    if (matchedIndices.isNotEmpty()) {
-        val distance = matchedIndices.last() - matchedIndices.first() + 1
-        score -= distance
-    }
-    
-    return FuzzyMatchResult(score, matchedIndices)
 }
 
 private fun buildHighlightedFileName(

@@ -15,7 +15,12 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -37,8 +42,18 @@ fun SearchScreen(
     onBack: () -> Unit
 ) {
     val files by viewModel.allFiles.collectAsState(initial = emptyList())
-    var searchQuery by rememberSaveable { mutableStateOf("") }
-    val trimmedQuery = searchQuery.trim()
+    var textFieldValue by rememberSaveable(saver = TextFieldValueStateSaver) {
+        mutableStateOf(TextFieldValue(""))
+    }
+    val focusRequester = remember { FocusRequester() }
+
+    // Fixes cursor position to the end of the text instead of the beginning
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+        textFieldValue = textFieldValue.copy(selection = TextRange(textFieldValue.text.length))
+    }
+
+    val trimmedQuery = textFieldValue.text.trim()
 
     val searchResultsListState = rememberSaveable(saver = LazyListState.Saver) {
         LazyListState()
@@ -59,13 +74,16 @@ fun SearchScreen(
         topBar = {
             SearchBar(
                 inputField = {
-                    SearchBarDefaults.InputField(
-                        query = searchQuery,
-                        onQueryChange = { searchQuery = it.replace("\n", "") },
-                        onSearch = { },
-                        expanded = true,
-                        onExpandedChange = { if (!it) onBack() },
+                    TextField(
+                        value = textFieldValue,
+                        onValueChange = { newValue: TextFieldValue ->
+                            textFieldValue = newValue.copy(text = newValue.text.replace("\n", ""))
+                        },
                         placeholder = { Text("Search files") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(focusRequester),
+                        singleLine = true,
                         leadingIcon = {
                             IconButton(onClick = onBack) {
                                 Icon(
@@ -75,15 +93,26 @@ fun SearchScreen(
                             }
                         },
                         trailingIcon = {
-                            if (searchQuery.isNotBlank()) {
-                                IconButton(onClick = { searchQuery = "" }) {
+                            if (textFieldValue.text.isNotBlank()) {
+                                IconButton(onClick = {
+                                    textFieldValue = TextFieldValue("", TextRange.Zero)
+                                }) {
                                     Icon(
                                         imageVector = Icons.Default.Close,
                                         contentDescription = "Clear search text"
                                     )
                                 }
                             }
-                        }
+                        },
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                            disabledContainerColor = Color.Transparent,
+                            errorContainerColor = Color.Transparent,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            disabledIndicatorColor = Color.Transparent
+                        )
                     )
                 },
                 expanded = true,
@@ -164,3 +193,21 @@ private fun buildHighlightedFileName(
         }
     }
 }
+
+// Saves search text and the exact cursor position whenever user navigates away
+// so it won't crash restating it.
+val TextFieldValueStateSaver = Saver<MutableState<TextFieldValue>, Any>(
+    save = { state ->
+        val tfv = state.value
+        listOf(tfv.text, tfv.selection.start, tfv.selection.end)
+    },
+    restore = { value ->
+        val list = value as List<Any>
+        mutableStateOf(
+            TextFieldValue(
+                text = list[0] as String,
+                selection = TextRange(list[1] as Int, list[2] as Int)
+            )
+        )
+    }
+)

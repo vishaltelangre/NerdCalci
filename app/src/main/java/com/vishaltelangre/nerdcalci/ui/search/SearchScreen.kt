@@ -89,7 +89,8 @@ fun SearchScreen(
                 expanded = true,
                 onExpandedChange = { if (!it) onBack() },
                 colors = SearchBarDefaults.colors(
-                    containerColor = MaterialTheme.colorScheme.background
+                    containerColor = MaterialTheme.colorScheme.background,
+                    dividerColor = MaterialTheme.colorScheme.outlineVariant
                 ),
                 modifier = Modifier.fillMaxWidth()
             ) {

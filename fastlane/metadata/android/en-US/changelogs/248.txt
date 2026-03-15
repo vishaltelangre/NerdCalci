@@ -1,0 +1,3 @@
+- Added support for smart fuzzy matching highlights in file searches.
+- Updated UI of the search screen to match with the overall app theme.
+- Autofocus search field and retain the search term on navigating back to search screen from file screen.

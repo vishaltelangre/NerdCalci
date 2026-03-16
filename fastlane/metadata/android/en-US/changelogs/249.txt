@@ -1,0 +1,1 @@
+Fixed cursor visual offset on empty lines.

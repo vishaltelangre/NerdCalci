@@ -165,7 +165,12 @@ private class SyntaxHighlightingTransformation(
     private val defaultColor: Color
 ) : VisualTransformation {
     override fun filter(text: AnnotatedString): TransformedText {
-        return TransformedText(
+        // We use a single space " " for empty lines so that backspace can delete them.
+        val isDummySpace = text.text == " "
+        
+        val transformedText = if (isDummySpace) {
+            AnnotatedString("") // Hide the space visually
+        } else {
             applySyntaxHighlighting(
                 text.text,
                 numberColor,
@@ -176,9 +181,24 @@ private class SyntaxHighlightingTransformation(
                 percentColor,
                 commentColor,
                 defaultColor
-            ),
-            OffsetMapping.Identity
-        )
+            )
+        }
+
+        val offsetMapping = object : OffsetMapping {
+            override fun originalToTransformed(offset: Int): Int {
+                // Force cursor to index 0 visually so it looks like the line is empty.
+                if (isDummySpace && offset == 1) return 0
+                return offset
+            }
+
+            override fun transformedToOriginal(offset: Int): Int {
+                // Map visual position 0 back to original index 1 so backspace still hits the space.
+                if (isDummySpace && offset == 0) return 1
+                return offset
+            }
+        }
+
+        return TransformedText(transformedText, offsetMapping)
     }
 }
 

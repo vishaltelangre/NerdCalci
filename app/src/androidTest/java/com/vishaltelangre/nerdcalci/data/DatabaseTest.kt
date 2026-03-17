@@ -114,6 +114,42 @@ class DatabaseTest {
         assertEquals(2, count)
     }
 
+    @Test
+    fun togglePinFileIfAllowed_underLimit_pinsFile() = runBlocking {
+        val fileId = dao.insertFile(FileEntity(name = "Unpinned", lastModified = 1000L, isPinned = false))
+
+        val result = dao.togglePinFileIfAllowed(fileId, maxPinned = 2)
+        assertTrue(result)
+
+        val file = dao.getFileById(fileId)
+        assertTrue(file!!.isPinned)
+    }
+
+    @Test
+    fun togglePinFileIfAllowed_atLimit_unpinsFile() = runBlocking {
+        val fileId = dao.insertFile(FileEntity(name = "Pinned", lastModified = 1000L, isPinned = true))
+
+        // Unpinning should be allowed regardless of max pinned constraint
+        val result = dao.togglePinFileIfAllowed(fileId, maxPinned = 1)
+        assertTrue(result)
+
+        val file = dao.getFileById(fileId)
+        assertFalse(file!!.isPinned)
+    }
+
+    @Test
+    fun togglePinFileIfAllowed_overLimit_rejectsPinning() = runBlocking {
+        dao.insertFile(FileEntity(name = "Pinned 1", lastModified = 1000L, isPinned = true))
+        dao.insertFile(FileEntity(name = "Pinned 2", lastModified = 2000L, isPinned = true))
+        val unpinnedId = dao.insertFile(FileEntity(name = "Unpinned", lastModified = 3000L, isPinned = false))
+
+        val result = dao.togglePinFileIfAllowed(unpinnedId, maxPinned = 2)
+        assertFalse(result)
+
+        val file = dao.getFileById(unpinnedId)
+        assertFalse(file!!.isPinned)
+    }
+
     // ==================== Line Operations ====================
 
     @Test

@@ -231,4 +231,16 @@ abstract class CalculatorDao {
 
         touchFile(line.fileId)
     }
+    @Transaction
+    open suspend fun togglePinFileIfAllowed(fileId: Long, maxPinned: Int): Boolean {
+        val file = getFileById(fileId) ?: return true // no-op
+        if (!file.isPinned) {
+            val pinnedCount = getPinnedFilesCount()
+            if (pinnedCount >= maxPinned) {
+                return false
+            }
+        }
+        updateFile(file.copy(isPinned = !file.isPinned))
+        return true
+    }
 }

@@ -125,6 +125,8 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
     val lastBackupAt by viewModel.lastBackupAt.collectAsState()
     val showLineNumbers by viewModel.showLineNumbers.collectAsState()
     val showSuggestions by viewModel.showSuggestions.collectAsState()
+    val showSymbolsShortcuts by viewModel.showSymbolsShortcuts.collectAsState()
+    val showNumbersShortcuts by viewModel.showNumbersShortcuts.collectAsState()
     val customBackupFolderSummary = remember(customBackupFolderUri) {
         customBackupFolderUri?.let { uriString ->
             val parsed = Uri.parse(uriString)
@@ -293,6 +295,10 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
                 onShowLineNumbersChange = { newShowLineNumbers -> viewModel.setShowLineNumbers(newShowLineNumbers) },
                 showSuggestions = showSuggestions,
                 onShowSuggestionsChange = { newShowSuggestions -> viewModel.setShowSuggestions(newShowSuggestions) },
+                showSymbolsShortcuts = showSymbolsShortcuts,
+                onShowSymbolsShortcutsChange = { viewModel.setShowSymbolsShortcuts(it) },
+                showNumbersShortcuts = showNumbersShortcuts,
+                onShowNumbersShortcutsChange = { viewModel.setShowNumbersShortcuts(it) },
                 onHelp = { navController.navigate("help") },
                 onChangelog = { navController.navigate("changelog") },
                 onBack = { navController.popBackStack() }

@@ -51,6 +51,8 @@ class CalculatorViewModel(
         private const val PREF_THEME = "theme"
         private const val PREF_SHOW_LINE_NUMBERS = "show_line_numbers"
         private const val PREF_SHOW_SUGGESTIONS = "show_suggestions"
+        private const val PREF_SHOW_SYMBOLS_SHORTCUTS = "show_symbols_shortcuts"
+        private const val PREF_SHOW_NUMBERS_SHORTCUTS = "show_numbers_shortcuts"
         private const val DEFAULT_THEME = "system"
     }
 
@@ -112,6 +114,16 @@ class CalculatorViewModel(
     )
     val showSuggestions: StateFlow<Boolean> = _showSuggestions
 
+    private val _showSymbolsShortcuts = MutableStateFlow(
+        prefs?.getBoolean(PREF_SHOW_SYMBOLS_SHORTCUTS, true) ?: true
+    )
+    val showSymbolsShortcuts: StateFlow<Boolean> = _showSymbolsShortcuts
+
+    private val _showNumbersShortcuts = MutableStateFlow(
+        prefs?.getBoolean(PREF_SHOW_NUMBERS_SHORTCUTS, true) ?: true
+    )
+    val showNumbersShortcuts: StateFlow<Boolean> = _showNumbersShortcuts
+
     fun setTheme(theme: String) {
         _currentTheme.value = theme
         prefs?.edit()?.putString(PREF_THEME, theme)?.apply()
@@ -131,6 +143,16 @@ class CalculatorViewModel(
     fun setShowSuggestions(enabled: Boolean) {
         _showSuggestions.value = enabled
         prefs?.edit()?.putBoolean(PREF_SHOW_SUGGESTIONS, enabled)?.apply()
+    }
+
+    fun setShowSymbolsShortcuts(enabled: Boolean) {
+        _showSymbolsShortcuts.value = enabled
+        prefs?.edit()?.putBoolean(PREF_SHOW_SYMBOLS_SHORTCUTS, enabled)?.apply()
+    }
+
+    fun setShowNumbersShortcuts(enabled: Boolean) {
+        _showNumbersShortcuts.value = enabled
+        prefs?.edit()?.putBoolean(PREF_SHOW_NUMBERS_SHORTCUTS, enabled)?.apply()
     }
 
     fun setAutoBackupEnabled(context: Context, enabled: Boolean) {

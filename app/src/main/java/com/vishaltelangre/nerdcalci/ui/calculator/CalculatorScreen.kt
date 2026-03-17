@@ -49,6 +49,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Calculate
+import androidx.compose.material.icons.filled.Pin
 import androidx.compose.material.icons.filled.FormatListNumbered
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MoreVert
@@ -344,6 +346,14 @@ fun CalculatorScreen(
     val globalShowSuggestions by viewModel.showSuggestions.collectAsState()
     var localShowSuggestions by rememberSaveable(fileId) { mutableStateOf<Boolean?>(null) }
     val effectiveShowSuggestions = localShowSuggestions ?: globalShowSuggestions
+
+    val globalShowSymbolsShortcuts by viewModel.showSymbolsShortcuts.collectAsState()
+    var localShowSymbolsShortcuts by rememberSaveable(fileId) { mutableStateOf<Boolean?>(null) }
+    val effectiveShowSymbolsShortcuts = localShowSymbolsShortcuts ?: globalShowSymbolsShortcuts
+
+    val globalShowNumbersShortcuts by viewModel.showNumbersShortcuts.collectAsState()
+    var localShowNumbersShortcuts by rememberSaveable(fileId) { mutableStateOf<Boolean?>(null) }
+    val effectiveShowNumbersShortcuts = localShowNumbersShortcuts ?: globalShowNumbersShortcuts
     var showMenu by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var showClearConfirmDialog by remember { mutableStateOf(false) }
@@ -536,6 +546,38 @@ fun CalculatorScreen(
                                 )
 
                                 DropdownMenuItem(
+                                    text = { Text(if (effectiveShowSymbolsShortcuts) "Hide symbols shortcuts" else "Show symbols shortcuts") },
+                                    onClick = {
+                                        val nextValue = !effectiveShowSymbolsShortcuts
+                                        localShowSymbolsShortcuts =
+                                            nextValue.takeUnless { it == globalShowSymbolsShortcuts }
+                                        showMenu = false
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Default.Calculate,
+                                            contentDescription = null
+                                        )
+                                    }
+                                )
+
+                                DropdownMenuItem(
+                                    text = { Text(if (effectiveShowNumbersShortcuts) "Hide numbers shortcuts" else "Show numbers shortcuts") },
+                                    onClick = {
+                                        val nextValue = !effectiveShowNumbersShortcuts
+                                        localShowNumbersShortcuts =
+                                            nextValue.takeUnless { it == globalShowNumbersShortcuts }
+                                        showMenu = false
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Default.Pin,
+                                            contentDescription = null
+                                        )
+                                    }
+                                )
+
+                                DropdownMenuItem(
                                     text = { Text("Rename File") },
                                     leadingIcon = {
                                         Icon(
@@ -674,45 +716,50 @@ fun CalculatorScreen(
             }
         },
         bottomBar = {
-            if (isKeyboardVisible) {
+            if (isKeyboardVisible && (effectiveShowSymbolsShortcuts || effectiveShowNumbersShortcuts)) {
                 Column {
                     HorizontalDivider(
                         thickness = 1.dp,
                         color = MaterialTheme.colorScheme.outlineVariant
                     )
-                    // Symbols shortcuts bar
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState())
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        val symbols = listOf(".", "_", "(", ")", "#", "=", "+", "-", "×", "÷", "%", "^")
-                        symbols.forEach { symbol ->
-                            ShortcutButton(text = symbol) {
-                                currentlyFocusedLineId?.let { lineId ->
-                                    insertTextRequest = Pair(lineId, symbol)
+
+                    if (effectiveShowSymbolsShortcuts) {
+                        // Symbols shortcuts bar
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState())
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            val symbols = listOf(".", "_", "(", ")", "#", "=", "+", "-", "×", "÷", "%", "^")
+                            symbols.forEach { symbol ->
+                                ShortcutButton(text = symbol) {
+                                    currentlyFocusedLineId?.let { lineId ->
+                                        insertTextRequest = Pair(lineId, symbol)
+                                    }
                                 }
                             }
                         }
                     }
 
-                    // Numbers shortcuts bar
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState())
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        val numbers = listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0")
-                        numbers.forEach { number ->
-                            ShortcutButton(text = number) {
-                                currentlyFocusedLineId?.let { lineId ->
-                                    insertTextRequest = Pair(lineId, number)
+                    if (effectiveShowNumbersShortcuts) {
+                        // Numbers shortcuts bar
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState())
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            val numbers = listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0")
+                            numbers.forEach { number ->
+                                ShortcutButton(text = number) {
+                                    currentlyFocusedLineId?.let { lineId ->
+                                        insertTextRequest = Pair(lineId, number)
+                                    }
                                 }
                             }
                         }

@@ -40,6 +40,8 @@ import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Calculate
+import androidx.compose.material.icons.filled.Pin
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -105,6 +107,10 @@ fun SettingsScreen(
     onShowLineNumbersChange: (Boolean) -> Unit,
     showSuggestions: Boolean,
     onShowSuggestionsChange: (Boolean) -> Unit,
+    showSymbolsShortcuts: Boolean,
+    onShowSymbolsShortcutsChange: (Boolean) -> Unit,
+    showNumbersShortcuts: Boolean,
+    onShowNumbersShortcutsChange: (Boolean) -> Unit,
     onHelp: () -> Unit,
     onChangelog: () -> Unit,
     onBack: () -> Unit
@@ -261,6 +267,22 @@ fun SettingsScreen(
                 subtitle = "You can also toggle this temporarily for each file from the calculator menu.",
                 checked = showSuggestions,
                 onCheckedChange = onShowSuggestionsChange
+            )
+
+            SettingsToggleItem(
+                icon = Icons.Default.Calculate,
+                title = "Show symbols shortcuts",
+                subtitle = "You can also toggle this temporarily for each file from the calculator menu.",
+                checked = showSymbolsShortcuts,
+                onCheckedChange = onShowSymbolsShortcutsChange
+            )
+
+            SettingsToggleItem(
+                icon = Icons.Default.Pin,
+                title = "Show numbers shortcuts (Numpad)",
+                subtitle = "You can also toggle this temporarily for each file from the calculator menu.",
+                checked = showNumbersShortcuts,
+                onCheckedChange = onShowNumbersShortcutsChange
             )
 
             Spacer(modifier = Modifier.height(8.dp))

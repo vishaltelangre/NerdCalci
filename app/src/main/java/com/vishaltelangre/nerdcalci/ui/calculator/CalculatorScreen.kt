@@ -167,7 +167,7 @@ private class SyntaxHighlightingTransformation(
     override fun filter(text: AnnotatedString): TransformedText {
         // We use a single space " " for empty lines so that backspace can delete them.
         val isDummySpace = text.text == " "
-        
+
         val transformedText = if (isDummySpace) {
             AnnotatedString("") // Hide the space visually
         } else {
@@ -680,48 +680,39 @@ fun CalculatorScreen(
                         thickness = 1.dp,
                         color = MaterialTheme.colorScheme.outlineVariant
                     )
+                    // Symbols shortcuts bar
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .horizontalScroll(rememberScrollState())
                             .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .padding(horizontal = 8.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            .padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         val symbols = listOf(".", "_", "(", ")", "#", "=", "+", "-", "×", "÷", "%", "^")
                         symbols.forEach { symbol ->
-                            Surface(
-                                onClick = {
-                                    currentlyFocusedLineId?.let { lineId ->
-                                        insertTextRequest = Pair(lineId, symbol)
-                                    }
-                                },
-                                modifier = Modifier
-                                    .width(44.dp)
-                                    .height(40.dp),
-                                shape = RoundedCornerShape(8.dp),
-                                color = MaterialTheme.colorScheme.surface,
-                                tonalElevation = 1.dp,
-                                shadowElevation = 2.dp
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .border(
-                                            width = 0.5.dp,
-                                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                                            shape = RoundedCornerShape(8.dp)
-                                        ),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = symbol,
-                                        style = MaterialTheme.typography.bodyLarge.copy(
-                                            fontFamily = FiraCodeFamily,
-                                            fontWeight = FontWeight.Medium
-                                        ),
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
+                            ShortcutButton(text = symbol) {
+                                currentlyFocusedLineId?.let { lineId ->
+                                    insertTextRequest = Pair(lineId, symbol)
+                                }
+                            }
+                        }
+                    }
+
+                    // Numbers shortcuts bar
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        val numbers = listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0")
+                        numbers.forEach { number ->
+                            ShortcutButton(text = number) {
+                                currentlyFocusedLineId?.let { lineId ->
+                                    insertTextRequest = Pair(lineId, number)
                                 }
                             }
                         }
@@ -957,6 +948,43 @@ fun CalculatorScreen(
                 onBack()
             }
         )
+    }
+}
+
+@Composable
+private fun ShortcutButton(
+    text: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        modifier = Modifier
+            .width(37.dp)
+            .height(37.dp),
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 1.dp,
+        shadowElevation = 2.dp
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .border(
+                    width = 0.5.dp,
+                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                    shape = RoundedCornerShape(8.dp)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontFamily = FiraCodeFamily,
+                    fontWeight = FontWeight.Medium
+                ),
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
     }
 }
 

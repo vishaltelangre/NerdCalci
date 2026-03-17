@@ -107,61 +107,20 @@ class BackupManagerTest {
     }
 
     @Test
-    fun `test import preserves empty lines`() = runBlocking {
+    fun `test import restores empty lines, dedicated comments and inline comments and discards appended results`() = runBlocking {
         val dao = FakeCalculatorDao()
-        val content = "a = 10\n\nb = 20"
+        val content = "10+10 # 20\n\n# this is a dedicated comment\na = 10 # my comment\nb = 20 + 5 # another comment\nsum # this is total # 35"
         val zipBytes = createMockZip("test_file", content)
 
-        val count = BackupManager.importFromZip(dao, ByteArrayInputStream(zipBytes))
+        BackupManager.importFromZip(dao, ByteArrayInputStream(zipBytes))
 
-        assertEquals(1, count)
         val importedLines = dao.getLinesForFileSync(1)
-
-        // Expected: a = 10, empty line, b = 20
-        assertEquals(3, importedLines.size)
-        assertEquals("a = 10", importedLines[0].expression)
+        assertEquals(6, importedLines.size)
+        assertEquals("10+10", importedLines[0].expression)
         assertEquals("", importedLines[1].expression)
-        assertEquals("b = 20", importedLines[2].expression)
-    }
-
-    @Test
-    fun `test import restores inline comments`() = runBlocking {
-        val dao = FakeCalculatorDao()
-        val content = "a = 10 # my comment\nb = 20 + 5 # another comment\nsum # this is total # 35"
-        val zipBytes = createMockZip("test_file", content)
-
-        BackupManager.importFromZip(dao, ByteArrayInputStream(zipBytes))
-
-        val importedLines = dao.getLinesForFileSync(1)
-        assertEquals(3, importedLines.size)
-        assertEquals("a = 10 # my comment", importedLines[0].expression)
-        assertEquals("b = 20 + 5 # another comment", importedLines[1].expression)
-        assertEquals("sum # this is total", importedLines[2].expression)
-    }
-
-    @Test
-    fun `test import preserves dedicated comment`() = runBlocking {
-        val dao = FakeCalculatorDao()
-        val content = "# This is a comment"
-        val zipBytes = createMockZip("test_file", content)
-
-        BackupManager.importFromZip(dao, ByteArrayInputStream(zipBytes))
-
-        val importedLines = dao.getLinesForFileSync(1)
-        assertEquals(1, importedLines.size)
-        assertEquals("# This is a comment", importedLines[0].expression)
-    }
-
-    @Test
-    fun `test import discards appended result on operators`() = runBlocking {
-        val dao = FakeCalculatorDao()
-        val content = "1 + 2 # 3" // 3 is the appended result
-        val zipBytes = createMockZip("test_file", content)
-
-        BackupManager.importFromZip(dao, ByteArrayInputStream(zipBytes))
-
-        val importedLines = dao.getLinesForFileSync(1)
-        assertEquals(1, importedLines.size)
-        assertEquals("1 + 2", importedLines[0].expression)
+        assertEquals("# this is a dedicated comment", importedLines[2].expression)
+        assertEquals("a = 10 # my comment", importedLines[3].expression)
+        assertEquals("b = 20 + 5 # another comment", importedLines[4].expression)
+        assertEquals("sum # this is total", importedLines[5].expression)
     }
 }

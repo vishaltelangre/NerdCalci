@@ -367,7 +367,7 @@ object BackupManager {
         return exportedCount
     }
 
-    private suspend fun importFromZip(dao: CalculatorDao, inputStream: InputStream): Int {
+    internal suspend fun importFromZip(dao: CalculatorDao, inputStream: InputStream): Int {
         val existingFiles = dao.getAllFiles().first()
         val existingNames = existingFiles.map { it.name }.toMutableSet()
         var importedCount = 0
@@ -381,16 +381,22 @@ object BackupManager {
                     val content = BufferedReader(InputStreamReader(zipIn)).readText()
 
                     val expressions = content.lines()
-                        .filter { it.isNotBlank() }
                         .map { line ->
-                            val hashIndex = line.indexOf('#')
-                            if (hashIndex > 0) {
-                                line.substring(0, hashIndex).trim()
+                            val lastHashIndex = line.lastIndexOf('#')
+                            if (lastHashIndex > 0) {
+                                val exprCandidate = line.substring(0, lastHashIndex).trim()
+                                val potentialResult = line.substring(lastHashIndex + 1).trim()
+                                val isResult = potentialResult == "Err" || potentialResult.toDoubleOrNull() != null
+
+                                if (isResult && shouldShowResult(exprCandidate)) {
+                                    exprCandidate
+                                } else {
+                                    line.trim()
+                                }
                             } else {
                                 line.trim()
                             }
                         }
-                        .filter { it.isNotEmpty() }
 
                     val finalFileName = if (existingNames.contains(fileName)) {
                         FilenameUtils.generateUniqueFileName(fileName) { name ->

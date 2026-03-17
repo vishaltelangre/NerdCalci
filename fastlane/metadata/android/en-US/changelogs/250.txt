@@ -1,0 +1,2 @@
+- Fixed an issue where empty lines were lost during file export/import cycles.
+- Improved inline comment restoration on calculations and simple assignments to prevent them from being discarded on import.

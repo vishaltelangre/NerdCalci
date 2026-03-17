@@ -1,1 +1,1 @@
-Fixed an issue where the modulo operator (e.g. `10%3`) was parsed as a percentage literal, causing calculation errors.
+Fixed modulo calculations like 10%3 showing an error.

@@ -407,6 +407,6 @@ class Parser(private val tokens: List<Token>) {
 
     /** Check whether a token kind can start an expression (used for % disambiguation). */
     private fun canStartExpression(kind: TokenKind): Boolean =
-        kind == TokenKind.MINUS || kind == TokenKind.NUMBER || kind == TokenKind.LPAREN ||
+        kind == TokenKind.NUMBER || kind == TokenKind.LPAREN ||
                 kind == TokenKind.IDENTIFIER || kind.isPreviousLineAlias || kind.isLineNumberAlias
 }

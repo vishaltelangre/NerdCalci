@@ -315,24 +315,29 @@ class Parser(private val tokens: List<Token>) {
                 val numToken = advance()
                 // Check for percentage syntax: 20% of X, 15% off X, or bare 20%
                 if (peekKind() == TokenKind.PERCENT) {
-                    advance() // skip past "%"
-                    return when (peekKind()) {
-                        // e.g. 20% of price
-                        TokenKind.KW_OF -> {
-                            advance() // skip past "of"
-                            val base = parseExpression()
-                            Expr.PercentOf(numToken.value, base)
-                        }
-                        // e.g. 15% off price
-                        TokenKind.KW_OFF -> {
-                            advance() // skip past "off"
-                            val base = parseExpression()
-                            Expr.PercentOff(numToken.value, base)
-                        }
-                        // e.g. bare 20% (used in "price + 20%")
-                        else -> Expr.PercentLiteral(numToken.value)
+                    val nextKind = peekAt(1)
+                    // e.g. 20% of price
+                    if (nextKind == TokenKind.KW_OF) {
+                        advance() // skip past "%"
+                        advance() // skip past "of"
+                        val base = parseExpression()
+                        return Expr.PercentOf(numToken.value, base)
+                    // e.g. 15% off price
+                    } else if (nextKind == TokenKind.KW_OFF) {
+                        advance() // skip past "%"
+                        advance() // skip past "off"
+                        val base = parseExpression()
+                        return Expr.PercentOff(numToken.value, base)
+                    } else if (canStartExpression(nextKind)) {
+                        // % is followed by expression, so it's a MODULO operator.
+                        // Do not consume % here; let parseMulDivMod handle it.
+                    // e.g. bare 20% (used in "price + 20%")
+                    } else {
+                        advance() // skip past "%"
+                        return Expr.PercentLiteral(numToken.value)
                     }
                 }
+
                 Expr.NumberLiteral(numToken.value)
             }
 
@@ -402,6 +407,6 @@ class Parser(private val tokens: List<Token>) {
 
     /** Check whether a token kind can start an expression (used for % disambiguation). */
     private fun canStartExpression(kind: TokenKind): Boolean =
-        kind == TokenKind.MINUS || kind == TokenKind.NUMBER || kind == TokenKind.LPAREN ||
+        kind == TokenKind.NUMBER || kind == TokenKind.LPAREN ||
                 kind == TokenKind.IDENTIFIER || kind.isPreviousLineAlias || kind.isLineNumberAlias
 }

@@ -39,6 +39,20 @@ class MathEngineTest {
     }
 
     @Test
+    fun `basic modulo returns correct result`() {
+        val lines = listOf(createLine("10 % 3"))
+        val result = MathEngine.calculate(lines)
+        assertEquals("1.0", result[0].result)
+    }
+
+    @Test
+    fun `modulo without spaces returns correct result`() {
+        val lines = listOf(createLine("10%3"))
+        val result = MathEngine.calculate(lines)
+        assertEquals("1.0", result[0].result)
+    }
+
+    @Test
     fun `complex expression with multiple operators`() {
         val lines = listOf(createLine("2 + 3 * 4 - 1"))
         val result = MathEngine.calculate(lines)

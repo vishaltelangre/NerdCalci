@@ -8,6 +8,8 @@ import com.vishaltelangre.nerdcalci.data.local.AppDatabase
 import com.vishaltelangre.nerdcalci.data.local.CalculatorDao
 import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -112,6 +114,77 @@ class DatabaseTest {
 
         val count = dao.getPinnedFilesCount()
         assertEquals(2, count)
+    }
+
+    @Test
+    fun togglePinFileIfAllowed_underLimit_pinsFile() = runBlocking {
+        val fileId = dao.insertFile(FileEntity(name = "Unpinned", lastModified = 1000L, isPinned = false))
+
+        val result = dao.togglePinFileIfAllowed(fileId, maxPinned = 2)
+        assertTrue(result)
+
+        val file = dao.getFileById(fileId)
+        assertTrue(file!!.isPinned)
+    }
+
+    @Test
+    fun togglePinFileIfAllowed_atLimit_unpinsFile() = runBlocking {
+        val fileId = dao.insertFile(FileEntity(name = "Pinned", lastModified = 1000L, isPinned = true))
+
+        // Unpinning should be allowed regardless of max pinned constraint
+        val result = dao.togglePinFileIfAllowed(fileId, maxPinned = 1)
+        assertTrue(result)
+
+        val file = dao.getFileById(fileId)
+        assertFalse(file!!.isPinned)
+    }
+
+    @Test
+    fun togglePinFileIfAllowed_overLimit_rejectsPinning() = runBlocking {
+        dao.insertFile(FileEntity(name = "Pinned 1", lastModified = 1000L, isPinned = true))
+        dao.insertFile(FileEntity(name = "Pinned 2", lastModified = 2000L, isPinned = true))
+        val unpinnedId = dao.insertFile(FileEntity(name = "Unpinned", lastModified = 3000L, isPinned = false))
+
+        val result = dao.togglePinFileIfAllowed(unpinnedId, maxPinned = 2)
+        assertFalse(result)
+
+        val file = dao.getFileById(unpinnedId)
+        assertFalse(file!!.isPinned)
+    }
+
+    @Test
+    fun togglePinFileIfAllowed_concurrentPin_onlyOneSucceeds() = runBlocking {
+        dao.insertFile(FileEntity(name = "Pinned 1", lastModified = 1000L, isPinned = true))
+
+        val fileIdA = dao.insertFile(FileEntity(name = "File A", lastModified = 2000L, isPinned = false))
+        val fileIdB = dao.insertFile(FileEntity(name = "File B", lastModified = 3000L, isPinned = false))
+
+        val maxPinned = 2
+
+        // Concurrently launch two coroutines on Dispatchers.IO to ensure multi-threaded execution
+        val defA = async(Dispatchers.IO) { dao.togglePinFileIfAllowed(fileIdA, maxPinned) }
+        val defB = async(Dispatchers.IO) { dao.togglePinFileIfAllowed(fileIdB, maxPinned) }
+
+        val resultA = defA.await()
+        val resultB = defB.await()
+
+        // Exactly one should return true (since we only had room for 1 more pinned file)
+        assertTrue(resultA || resultB)
+        assertFalse(resultA && resultB)
+
+        val finalPinnedCount = dao.getPinnedFilesCount()
+        assertEquals(maxPinned, finalPinnedCount)
+
+        val fileA = dao.getFileById(fileIdA)!!
+        val fileB = dao.getFileById(fileIdB)!!
+
+        if (resultA) {
+            assertTrue(fileA.isPinned)
+            assertFalse(fileB.isPinned)
+        } else {
+            assertFalse(fileA.isPinned)
+            assertTrue(fileB.isPinned)
+        }
     }
 
     // ==================== Line Operations ====================

@@ -560,18 +560,11 @@ class CalculatorViewModel(
 
     fun togglePinFile(fileId: Long) {
         viewModelScope.launch {
-            val file = withContext(Dispatchers.IO) { dao.getFileById(fileId) }
-            if (file != null) {
-                if (!file.isPinned) {
-                    val pinnedCount = withContext(Dispatchers.IO) { dao.getPinnedFilesCount() }
-                    if (pinnedCount >= Constants.MAX_PINNED_FILES) {
-                        _uiEvents.emit(HomeUiEvent.ShowMessage("Maximum ${Constants.MAX_PINNED_FILES} files can be pinned"))
-                        return@launch
-                    }
-                }
-                withContext(Dispatchers.IO) {
-                    dao.updateFile(file.copy(isPinned = !file.isPinned))
-                }
+            val success = withContext(Dispatchers.IO) {
+                dao.togglePinFileIfAllowed(fileId, Constants.MAX_PINNED_FILES)
+            }
+            if (!success) {
+                _uiEvents.emit(HomeUiEvent.ShowMessage("Maximum ${Constants.MAX_PINNED_FILES} files can be pinned"))
             }
         }
     }

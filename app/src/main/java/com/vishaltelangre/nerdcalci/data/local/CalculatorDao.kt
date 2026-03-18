@@ -19,6 +19,9 @@ abstract class CalculatorDao {
     @Query("SELECT * FROM files WHERE id = :fileId")
     abstract suspend fun getFileById(fileId: Long): FileEntity?
 
+    @Query("SELECT * FROM files WHERE name = :name")
+    abstract suspend fun getFileByName(name: String): FileEntity?
+
     @Query("SELECT COUNT(*) FROM files WHERE isPinned = 1")
     abstract suspend fun getPinnedFilesCount(): Int
 

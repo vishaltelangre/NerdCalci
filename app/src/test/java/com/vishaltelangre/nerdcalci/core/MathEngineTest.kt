@@ -3,6 +3,7 @@ package com.vishaltelangre.nerdcalci.core
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
 import org.junit.Assert.*
 import org.junit.Test
+import kotlinx.coroutines.runBlocking
 
 class MathEngineTest {
 
@@ -11,119 +12,119 @@ class MathEngineTest {
     }
 
     @Test
-    fun `basic addition returns correct result`() {
+    fun `basic addition returns correct result`() = runBlocking {
         val lines = listOf(createLine("2 + 2"))
         val result = MathEngine.calculate(lines)
         assertEquals("4.0", result[0].result)
     }
 
     @Test
-    fun `basic subtraction returns correct result`() {
+    fun `basic subtraction returns correct result`() = runBlocking {
         val lines = listOf(createLine("10 - 3"))
         val result = MathEngine.calculate(lines)
         assertEquals("7.0", result[0].result)
     }
 
     @Test
-    fun `basic multiplication returns correct result`() {
+    fun `basic multiplication returns correct result`() = runBlocking {
         val lines = listOf(createLine("5 * 6"))
         val result = MathEngine.calculate(lines)
         assertEquals("30.0", result[0].result)
     }
 
     @Test
-    fun `basic division returns correct result`() {
+    fun `basic division returns correct result`() = runBlocking {
         val lines = listOf(createLine("20 / 4"))
         val result = MathEngine.calculate(lines)
         assertEquals("5.0", result[0].result)
     }
 
     @Test
-    fun `basic modulo returns correct result`() {
+    fun `basic modulo returns correct result`() = runBlocking {
         val lines = listOf(createLine("10 % 3"))
         val result = MathEngine.calculate(lines)
         assertEquals("1.0", result[0].result)
     }
 
     @Test
-    fun `modulo without spaces returns correct result`() {
+    fun `modulo without spaces returns correct result`() = runBlocking {
         val lines = listOf(createLine("10%3"))
         val result = MathEngine.calculate(lines)
         assertEquals("1.0", result[0].result)
     }
 
     @Test
-    fun `chained percentage expression works correctly`() {
+    fun `chained percentage expression works correctly`() = runBlocking {
         val lines = listOf(createLine("100 + 20% - 5"))
         val result = MathEngine.calculate(lines)
         assertEquals("115.0", result[0].result)
     }
 
     @Test
-    fun `complex expression with multiple operators`() {
+    fun `complex expression with multiple operators`() = runBlocking {
         val lines = listOf(createLine("2 + 3 * 4 - 1"))
         val result = MathEngine.calculate(lines)
         assertEquals("13.0", result[0].result)
     }
 
     @Test
-    fun `expression with parentheses respects order of operations`() {
+    fun `expression with parentheses respects order of operations`() = runBlocking {
         val lines = listOf(createLine("(2 + 3) * 4"))
         val result = MathEngine.calculate(lines)
         assertEquals("20.0", result[0].result)
     }
 
     @Test
-    fun `exponentiation works correctly`() {
+    fun `exponentiation works correctly`() = runBlocking {
         val lines = listOf(createLine("2 ^ 3"))
         val result = MathEngine.calculate(lines)
         assertEquals("8.0", result[0].result)
     }
 
     @Test
-    fun `multiplication sign × is normalized to asterisk`() {
+    fun `multiplication sign × is normalized to asterisk`() = runBlocking {
         val lines = listOf(createLine("5 × 6"))
         val result = MathEngine.calculate(lines)
         assertEquals("30.0", result[0].result)
     }
 
     @Test
-    fun `division sign ÷ is normalized to slash`() {
+    fun `division sign ÷ is normalized to slash`() = runBlocking {
         val lines = listOf(createLine("20 ÷ 4"))
         val result = MathEngine.calculate(lines)
         assertEquals("5.0", result[0].result)
     }
 
     @Test
-    fun `mixed unicode and ASCII operators work together`() {
+    fun `mixed unicode and ASCII operators work together`() = runBlocking {
         val lines = listOf(createLine("10 × 2 ÷ 4 + 1"))
         val result = MathEngine.calculate(lines)
         assertEquals("6.0", result[0].result)
     }
 
     @Test
-    fun `decimal addition returns formatted result`() {
+    fun `decimal addition returns formatted result`() = runBlocking {
         val lines = listOf(createLine("1.5 + 2.3"))
         val result = MathEngine.calculate(lines)
         assertEquals("3.8", result[0].result)
     }
 
     @Test
-    fun `decimal division returns raw double precision`() {
+    fun `decimal division returns raw double precision`() = runBlocking {
         val lines = listOf(createLine("10 / 3"))
         val result = MathEngine.calculate(lines)
         assertEquals("3.3333333333333335", result[0].result)
     }
 
     @Test
-    fun `result with no decimal part shows as double with trailing zero`() {
+    fun `result with no decimal part shows as double with trailing zero`() = runBlocking {
         val lines = listOf(createLine("5.0 + 5.0"))
         val result = MathEngine.calculate(lines)
         assertEquals("10.0", result[0].result)
     }
 
     @Test
-    fun `simple variable assignment stores value`() {
+    fun `simple variable assignment stores value`() = runBlocking {
         val lines = listOf(
             createLine("price = 100", sortOrder = 0),
             createLine("price", sortOrder = 1)
@@ -134,7 +135,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `variable can be used in calculations`() {
+    fun `variable can be used in calculations`() = runBlocking {
         val lines = listOf(
             createLine("price = 100", sortOrder = 0),
             createLine("price * 2", sortOrder = 1)
@@ -145,7 +146,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `multiple variables work together`() {
+    fun `multiple variables work together`() = runBlocking {
         val lines = listOf(
             createLine("a = 10", sortOrder = 0),
             createLine("b = 20", sortOrder = 1),
@@ -158,7 +159,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `variable reassignment updates value`() {
+    fun `variable reassignment updates value`() = runBlocking {
         val lines = listOf(
             createLine("x = 5", sortOrder = 0),
             createLine("x * 2", sortOrder = 1),
@@ -173,7 +174,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `variable with underscores in name`() {
+    fun `variable with underscores in name`() = runBlocking {
         val lines = listOf(
             createLine("monthly_salary = 5000", sortOrder = 0),
             createLine("monthly_salary * 12", sortOrder = 1),
@@ -186,7 +187,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `variable with underscores in percentage expressions`() {
+    fun `variable with underscores in percentage expressions`() = runBlocking {
         val lines =
                 listOf(
                         createLine("rate = 10", sortOrder = 0),
@@ -200,7 +201,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `undefined variable returns error not implicit multiplication`() {
+    fun `undefined variable returns error not implicit multiplication`() = runBlocking {
         // rate2 (without underscore) is not defined, should error out instead of being parsed as rate * 2
         val lines = listOf(
             createLine("rate = 10", sortOrder = 0),
@@ -212,7 +213,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `variable assignment with expression`() {
+    fun `variable assignment with expression`() = runBlocking {
         val lines = listOf(
             createLine("total = 10 + 20 + 30", sortOrder = 0),
             createLine("total / 3", sortOrder = 1)
@@ -223,21 +224,21 @@ class MathEngineTest {
     }
 
     @Test
-    fun `percentage of number works correctly`() {
+    fun `percentage of number works correctly`() = runBlocking {
         val lines = listOf(createLine("20% of 100"))
         val result = MathEngine.calculate(lines)
         assertEquals("20.0", result[0].result)
     }
 
     @Test
-    fun `percentage of decimal number`() {
+    fun `percentage of decimal number`() = runBlocking {
         val lines = listOf(createLine("15.5% of 200"))
         val result = MathEngine.calculate(lines)
         assertEquals("31.0", result[0].result) // Result is whole number
     }
 
     @Test
-    fun `percentage of variable`() {
+    fun `percentage of variable`() = runBlocking {
         val lines = listOf(
             createLine("price = 1000", sortOrder = 0),
             createLine("10% of price", sortOrder = 1)
@@ -248,21 +249,21 @@ class MathEngineTest {
     }
 
     @Test
-    fun `percentage off reduces value`() {
+    fun `percentage off reduces value`() = runBlocking {
         val lines = listOf(createLine("20% off 100"))
         val result = MathEngine.calculate(lines)
         assertEquals("80.0", result[0].result)
     }
 
     @Test
-    fun `percentage off with decimal`() {
+    fun `percentage off with decimal`() = runBlocking {
         val lines = listOf(createLine("25% off 80"))
         val result = MathEngine.calculate(lines)
         assertEquals("60.0", result[0].result)
     }
 
     @Test
-    fun `percentage off variable`() {
+    fun `percentage off variable`() = runBlocking {
         val lines = listOf(
             createLine("original = 500", sortOrder = 0),
             createLine("30% off original", sortOrder = 1)
@@ -273,14 +274,14 @@ class MathEngineTest {
     }
 
     @Test
-    fun `add percentage to number`() {
+    fun `add percentage to number`() = runBlocking {
         val lines = listOf(createLine("100 + 20%"))
         val result = MathEngine.calculate(lines)
         assertEquals("120.0", result[0].result)
     }
 
     @Test
-    fun `add percentage to variable`() {
+    fun `add percentage to variable`() = runBlocking {
         val lines = listOf(
             createLine("salary = 50000", sortOrder = 0),
             createLine("salary + 10%", sortOrder = 1)
@@ -291,14 +292,14 @@ class MathEngineTest {
     }
 
     @Test
-    fun `subtract percentage from number`() {
+    fun `subtract percentage from number`() = runBlocking {
         val lines = listOf(createLine("100 - 15%"))
         val result = MathEngine.calculate(lines)
         assertEquals("85.0", result[0].result)
     }
 
     @Test
-    fun `subtract percentage from variable`() {
+    fun `subtract percentage from variable`() = runBlocking {
         val lines = listOf(
             createLine("budget = 1000", sortOrder = 0),
             createLine("budget - 25%", sortOrder = 1)
@@ -309,84 +310,84 @@ class MathEngineTest {
     }
 
     @Test
-    fun `expression with inline comment returns result`() {
+    fun `expression with inline comment returns result`() = runBlocking {
         val lines = listOf(createLine("10 + 5 # adding numbers"))
         val result = MathEngine.calculate(lines)
         assertEquals("15.0", result[0].result)
     }
 
     @Test
-    fun `full line comment returns empty result`() {
+    fun `full line comment returns empty result`() = runBlocking {
         val lines = listOf(createLine("# This is just a comment"))
         val result = MathEngine.calculate(lines)
         assertEquals("", result[0].result)
     }
 
     @Test
-    fun `comment with special characters is ignored`() {
+    fun `comment with special characters is ignored`() = runBlocking {
         val lines = listOf(createLine("20 * 2 # result should be 40!"))
         val result = MathEngine.calculate(lines)
         assertEquals("40.0", result[0].result)
     }
 
     @Test
-    fun `hash symbol in middle of expression is treated as comment`() {
+    fun `hash symbol in middle of expression is treated as comment`() = runBlocking {
         val lines = listOf(createLine("5 + 5 # + 10"))
         val result = MathEngine.calculate(lines)
         assertEquals("10.0", result[0].result)
     }
 
     @Test
-    fun `empty expression returns empty result`() {
+    fun `empty expression returns empty result`() = runBlocking {
         val lines = listOf(createLine(""))
         val result = MathEngine.calculate(lines)
         assertEquals("", result[0].result)
     }
 
     @Test
-    fun `blank expression with spaces returns empty result`() {
+    fun `blank expression with spaces returns empty result`() = runBlocking {
         val lines = listOf(createLine("   "))
         val result = MathEngine.calculate(lines)
         assertEquals("", result[0].result)
     }
 
     @Test
-    fun `expression with only comment and spaces returns empty result`() {
+    fun `expression with only comment and spaces returns empty result`() = runBlocking {
         val lines = listOf(createLine("   # just a comment"))
         val result = MathEngine.calculate(lines)
         assertEquals("", result[0].result)
     }
 
     @Test
-    fun `invalid expression returns Err`() {
+    fun `invalid expression returns Err`() = runBlocking {
         val lines = listOf(createLine("2 + * 2"))
         val result = MathEngine.calculate(lines)
         assertEquals("Err", result[0].result)
     }
 
     @Test
-    fun `division by zero returns Err`() {
+    fun `division by zero returns Err`() = runBlocking {
         val lines = listOf(createLine("10 / 0"))
         val result = MathEngine.calculate(lines)
         assertEquals("Err", result[0].result)
     }
 
     @Test
-    fun `undefined variable returns Err`() {
+    fun `undefined variable returns Err`() = runBlocking {
         val lines = listOf(createLine("unknownVar * 2"))
         val result = MathEngine.calculate(lines)
         assertEquals("Err", result[0].result)
     }
 
     @Test
-    fun `malformed parentheses returns Err`() {
+    fun `malformed parentheses returns Err`() = runBlocking {
         val lines = listOf(createLine("(2 + 3"))
         val result = MathEngine.calculate(lines)
         assertEquals("Err", result[0].result)
     }
 
     @Test
-    fun `complex calculation with variables and percentages`() {
+    fun `complex calculation with variables and percentages`() = runBlocking {
         val lines = listOf(
             createLine("basePrice = 1000", sortOrder = 0),
             createLine("discount = 15% of basePrice", sortOrder = 1),
@@ -403,7 +404,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `multi-line with comments and calculations`() {
+    fun `multi-line with comments and calculations`() = runBlocking {
         val lines = listOf(
             createLine("# Monthly budget calculation", sortOrder = 0),
             createLine("income = 5000", sortOrder = 1),
@@ -420,7 +421,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `variable dependency chain calculates correctly`() {
+    fun `variable dependency chain calculates correctly`() = runBlocking {
         val lines = listOf(
             createLine("a = 10", sortOrder = 0),
             createLine("b = a * 2", sortOrder = 1),
@@ -435,7 +436,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `mixed valid and invalid lines process independently`() {
+    fun `mixed valid and invalid lines process independently`() = runBlocking {
         val lines = listOf(
             createLine("5 + 5", sortOrder = 0),
             createLine("invalid ++", sortOrder = 1),
@@ -448,14 +449,14 @@ class MathEngineTest {
     }
 
     @Test
-    fun `large integer within Long range is returned correctly`() {
+    fun `large integer within Long range is returned correctly`() = runBlocking {
         val lines = listOf(createLine("1000000000 * 2"))
         val result = MathEngine.calculate(lines)
         assertEquals("2.0E9", result[0].result)
     }
 
     @Test
-    fun `very large number uses scientific notation`() {
+    fun `very large number uses scientific notation`() = runBlocking {
         val lines = listOf(createLine("999999999999999 * 999999999999999"))
         val result = MathEngine.calculate(lines)
         // Should be in scientific notation format
@@ -463,49 +464,49 @@ class MathEngineTest {
     }
 
     @Test
-    fun `single number evaluates to itself`() {
+    fun `single number evaluates to itself`() = runBlocking {
         val lines = listOf(createLine("42"))
         val result = MathEngine.calculate(lines)
         assertEquals("42.0", result[0].result)
     }
 
     @Test
-    fun `negative numbers work correctly`() {
+    fun `negative numbers work correctly`() = runBlocking {
         val lines = listOf(createLine("-10 + 5"))
         val result = MathEngine.calculate(lines)
         assertEquals("-5.0", result[0].result)
     }
 
     @Test
-    fun `nested parentheses calculate correctly`() {
+    fun `nested parentheses calculate correctly`() = runBlocking {
         val lines = listOf(createLine("((2 + 3) * (4 + 5))"))
         val result = MathEngine.calculate(lines)
         assertEquals("45.0", result[0].result)
     }
 
     @Test
-    fun `expression with only whitespace after comment`() {
+    fun `expression with only whitespace after comment`() = runBlocking {
         val lines = listOf(createLine("10 + 5 #    "))
         val result = MathEngine.calculate(lines)
         assertEquals("15.0", result[0].result)
     }
 
     @Test
-    fun `zero as result displays as 0`() {
+    fun `zero as result displays as 0`() = runBlocking {
         val lines = listOf(createLine("5 - 5"))
         val result = MathEngine.calculate(lines)
         assertEquals("0.0", result[0].result)
     }
 
     @Test
-    fun `maintains decimal precision correctly`() {
+    fun `maintains decimal precision correctly`() = runBlocking {
         val lines = listOf(createLine("1 / 3 * 3"))
         val result = MathEngine.calculate(lines)
         assertEquals("1.0", result[0].result) // Result is whole number
     }
 
     @Test
-    fun `variable with underscore in name works`() {
+    fun `variable with underscore in name works`() = runBlocking {
         val lines = listOf(
             createLine("my_var = 100", sortOrder = 0),
             createLine("my_var * 2", sortOrder = 1)
@@ -516,7 +517,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `percentage calculation order matters`() {
+    fun `percentage calculation order matters`() = runBlocking {
         // 20% of 100 should be 20, not 100% of 20
         val lines = listOf(createLine("20% of 100"))
         val result = MathEngine.calculate(lines)
@@ -524,35 +525,35 @@ class MathEngineTest {
     }
 
     @Test
-    fun `multiple spaces in expression are handled`() {
+    fun `multiple spaces in expression are handled`() = runBlocking {
         val lines = listOf(createLine("10    +    20"))
         val result = MathEngine.calculate(lines)
         assertEquals("30.0", result[0].result)
     }
 
     @Test
-    fun `invalid variable name with spaces returns error`() {
+    fun `invalid variable name with spaces returns error`() = runBlocking {
         val lines = listOf(createLine("rate with disc = 10"))
         val result = MathEngine.calculate(lines)
         assertEquals("Err", result[0].result)
     }
 
     @Test
-    fun `invalid variable name starting with digit returns error`() {
+    fun `invalid variable name starting with digit returns error`() = runBlocking {
         val lines = listOf(createLine("2rate = 10"))
         val result = MathEngine.calculate(lines)
         assertEquals("Err", result[0].result)
     }
 
     @Test
-    fun `invalid variable name with special characters returns error`() {
+    fun `invalid variable name with special characters returns error`() = runBlocking {
         val lines = listOf(createLine("rate-disc = 10"))
         val result = MathEngine.calculate(lines)
         assertEquals("Err", result[0].result)
     }
 
     @Test
-    fun `valid variable names with underscores work`() {
+    fun `valid variable names with underscores work`() = runBlocking {
         val lines = listOf(
             createLine("rate_with_disc = 10", sortOrder = 0),
             createLine("rate_2 = 11", sortOrder = 1),
@@ -569,7 +570,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `trigonometric functions work`() {
+    fun `trigonometric functions work`() = runBlocking {
         val lines = listOf(
             createLine("sin(0)", sortOrder = 0),
             createLine("cos(0)", sortOrder = 1),
@@ -582,7 +583,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `inverse trigonometric functions work`() {
+    fun `inverse trigonometric functions work`() = runBlocking {
         val lines = listOf(
             createLine("asin(0)", sortOrder = 0),
             createLine("acos(1)", sortOrder = 1),
@@ -595,7 +596,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `logarithm functions work`() {
+    fun `logarithm functions work`() = runBlocking {
         val lines = listOf(
             createLine("log10(1000)", sortOrder = 0),
             createLine("log2(8)", sortOrder = 1),
@@ -608,7 +609,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `power and root functions work`() {
+    fun `power and root functions work`() = runBlocking {
         val lines = listOf(
             createLine("sqrt(16)", sortOrder = 0),
             createLine("cbrt(27)", sortOrder = 1),
@@ -623,7 +624,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `rounding functions work`() {
+    fun `rounding functions work`() = runBlocking {
         val lines = listOf(
             createLine("abs(-42)", sortOrder = 0),
             createLine("floor(3.7)", sortOrder = 1),
@@ -642,7 +643,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `constants work`() {
+    fun `constants work`() = runBlocking {
         val lines = listOf(
             createLine("PI", sortOrder = 0),
             createLine("E", sortOrder = 1),
@@ -669,7 +670,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `functions can be used with variables`() {
+    fun `functions can be used with variables`() = runBlocking {
         val lines = listOf(
             createLine("radius = 5", sortOrder = 0),
             createLine("area = PI * pow(radius, 2)", sortOrder = 1)
@@ -681,7 +682,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `nested functions work`() {
+    fun `nested functions work`() = runBlocking {
         val lines = listOf(
             createLine("sqrt(pow(3, 2) + pow(4, 2))", sortOrder = 0),
             createLine("abs(sin(0) - 1)", sortOrder = 1)
@@ -692,7 +693,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `functions are case sensitive`() {
+    fun `functions are case sensitive`() = runBlocking {
         val lines = listOf(
             createLine("SQRT(16)", sortOrder = 0),
             createLine("SIN(0)", sortOrder = 1)
@@ -703,7 +704,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `functions require parentheses`() {
+    fun `functions require parentheses`() = runBlocking {
         val lines = listOf(
             createLine("floor(3.7)", sortOrder = 0),
             createLine("floor 3.7", sortOrder = 1),
@@ -718,7 +719,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `increment operator increases variable by 1`() {
+    fun `increment operator increases variable by 1`() = runBlocking {
         val lines = listOf(
             createLine("count = 5", sortOrder = 0),
             createLine("count++", sortOrder = 1)
@@ -729,7 +730,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `decrement operator decreases variable by 1`() {
+    fun `decrement operator decreases variable by 1`() = runBlocking {
         val lines = listOf(
             createLine("count = 5", sortOrder = 0),
             createLine("count--", sortOrder = 1)
@@ -740,7 +741,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `compound addition assignment`() {
+    fun `compound addition assignment`() = runBlocking {
         val lines = listOf(
             createLine("total = 10", sortOrder = 0),
             createLine("total += 5 + 2", sortOrder = 1)
@@ -751,7 +752,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `compound subtraction assignment`() {
+    fun `compound subtraction assignment`() = runBlocking {
         val lines = listOf(
             createLine("total = 20", sortOrder = 0),
             createLine("total -= 5 * 2", sortOrder = 1)
@@ -762,7 +763,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `compound multiplication assignment`() {
+    fun `compound multiplication assignment`() = runBlocking {
         val lines = listOf(
             createLine("factor = 3", sortOrder = 0),
             createLine("factor *= 2 + 1", sortOrder = 1)
@@ -773,7 +774,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `compound division assignment`() {
+    fun `compound division assignment`() = runBlocking {
         val lines = listOf(
             createLine("value = 100", sortOrder = 0),
             createLine("value /= 5", sortOrder = 1)
@@ -784,7 +785,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `compound modulo (remainder) assignment`() {
+    fun `compound modulo (remainder) assignment`() = runBlocking {
         val lines = listOf(
             createLine("value = 10", sortOrder = 0),
             createLine("value %= 3", sortOrder = 1)
@@ -795,7 +796,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `calculateFrom returns only the affected lines starting at changedIndex`() {
+    fun `calculateFrom returns only the affected lines starting at changedIndex`() = runBlocking {
         val lines =
                 listOf(
                         createLine("1 + 1", sortOrder = 0),
@@ -810,7 +811,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `calculateFrom respects variables defined in preceding lines`() {
+    fun `calculateFrom respects variables defined in preceding lines`() = runBlocking {
         val lines =
                 listOf(
                         createLine("price = 100", sortOrder = 0), // preceding (not recalculated)
@@ -823,7 +824,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `local function basic definition and call`() {
+    fun `local function basic definition and call`() = runBlocking {
         val lines = listOf(
             createLine("f(x) = x * 2", sortOrder = 0),
             createLine("f(5)", sortOrder = 1)
@@ -834,7 +835,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `local function multiple parameters`() {
+    fun `local function multiple parameters`() = runBlocking {
         val lines = listOf(
             createLine("calc(a, b) = a + b;", sortOrder = 0),
             createLine("calc(10, 20)", sortOrder = 1)
@@ -845,7 +846,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `local function multiple statements returns last expression`() {
+    fun `local function multiple statements returns last expression`() = runBlocking {
         val lines = listOf(
             createLine("salary(workHours) = base = workHours * 1000; bonus = base * 0.20; tax = base * 0.10; base + bonus - tax", sortOrder = 0),
             createLine("salary(120)", sortOrder = 1)
@@ -856,7 +857,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `local function strictly isolates scope`() {
+    fun `local function strictly isolates scope`() = runBlocking {
         val lines = listOf(
             createLine("v = 10", sortOrder = 0),
             createLine("f(x) = v = x;", sortOrder = 1),
@@ -871,7 +872,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `local function prevents infinite recursion`() {
+    fun `local function prevents infinite recursion`() = runBlocking {
         val lines = listOf(
             createLine("calc(a) = calc(a);", sortOrder = 0),
             createLine("calc(2)", sortOrder = 1)
@@ -882,7 +883,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `local function with trailing comment does not return 0`() {
+    fun `local function with trailing comment does not return 0`() = runBlocking {
         val lines =
                 listOf(
                         createLine("f(x) = x * 2; # comment", sortOrder = 0),
@@ -893,7 +894,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `nested function definition in a local function body is not allowed`() {
+    fun `nested function definition in a local function body is not allowed`() = runBlocking {
         val lines =
                 listOf(
                         createLine("f(x) = g(y) = y; x", sortOrder = 0),
@@ -904,7 +905,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `semicolons outside function bodies fail parsing`() {
+    fun `semicolons outside function bodies fail parsing`() = runBlocking {
         val lines = listOf(
             createLine("x = 10; y = 20", sortOrder = 0)
         )
@@ -913,7 +914,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `calculateFrom with changedIndex 0 is equivalent to full calculate`() {
+    fun `calculateFrom with changedIndex 0 is equivalent to full calculate`() = runBlocking {
         val lines =
                 listOf(
                         createLine("a = 5", sortOrder = 0),
@@ -926,7 +927,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `calculateFrom propagates variable reassignment from preceding lines to affected lines`() {
+    fun `calculateFrom propagates variable reassignment from preceding lines to affected lines`() = runBlocking {
         // Simulate the user having changed line at index 1 (x = 10), now recalculating affected lines
         val lines =
                 listOf(
@@ -944,7 +945,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `calculateFrom clamps out-of-bounds changedIndex gracefully`() {
+    fun `calculateFrom clamps out-of-bounds changedIndex gracefully`() = runBlocking {
         val lines = listOf(
                             createLine("5 + 5", sortOrder = 0),
                            createLine("2 * 3", sortOrder = 1)
@@ -955,7 +956,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `calculateFrom clamps negative changedIndex to full recalculation`() {
+    fun `calculateFrom clamps negative changedIndex to full recalculation`() = runBlocking {
         val lines = listOf(
             createLine("a = 5", sortOrder = 0),
             createLine("a * 2", sortOrder = 1)
@@ -968,7 +969,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `total sums all results above in same block`() {
+    fun `total sums all results above in same block`() = runBlocking {
         val lines = listOf(
             createLine("4 / 2", sortOrder = 0),
             createLine("b = 2", sortOrder = 1),
@@ -983,7 +984,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `sum is an alias for total`() {
+    fun `sum is an alias for total`() = runBlocking {
         val lines = listOf(
             createLine("10", sortOrder = 0),
             createLine("20", sortOrder = 1),
@@ -994,7 +995,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `blank line resets the block for total`() {
+    fun `blank line resets the block for total`() = runBlocking {
         val lines = listOf(
             createLine("a = 10", sortOrder = 0),
             createLine("b = 20", sortOrder = 1),
@@ -1011,7 +1012,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `comment-only lines do not contribute to total`() {
+    fun `comment-only lines do not contribute to total`() = runBlocking {
         val lines =
                 listOf(
                         createLine("10", sortOrder = 0),
@@ -1026,7 +1027,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `total used in an expression`() {
+    fun `total used in an expression`() = runBlocking {
         val lines = listOf(
             createLine("item1 = 25", sortOrder = 0),
             createLine("item2 = 75", sortOrder = 1),
@@ -1039,7 +1040,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `total assignment overrides aggregate meaning`() {
+    fun `total assignment overrides aggregate meaning`() = runBlocking {
         val lines = listOf(
             createLine("10", sortOrder = 0),
             createLine("20", sortOrder = 1),
@@ -1054,7 +1055,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `total increment overrides aggregate meaning`() {
+    fun `total increment overrides aggregate meaning`() = runBlocking {
         val lines = listOf(
             createLine("10", sortOrder = 0),
             createLine("total++", sortOrder = 1),
@@ -1067,7 +1068,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `total decrement overrides aggregate meaning`() {
+    fun `total decrement overrides aggregate meaning`() = runBlocking {
         val lines = listOf(
             createLine("10", sortOrder = 0),
             createLine("total--", sortOrder = 1),
@@ -1080,7 +1081,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `total += overrides aggregate meaning`() {
+    fun `total += overrides aggregate meaning`() = runBlocking {
         val lines = listOf(
             createLine("10", sortOrder = 0),
             createLine("total += 5", sortOrder = 1),
@@ -1093,7 +1094,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `total -= overrides aggregate meaning`() {
+    fun `total -= overrides aggregate meaning`() = runBlocking {
         val lines = listOf(
             createLine("10", sortOrder = 0),
             createLine("total -= 3", sortOrder = 1),
@@ -1106,7 +1107,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `total multiply-assign overrides aggregate meaning`() {
+    fun `total multiply-assign overrides aggregate meaning`() = runBlocking {
         val lines = listOf(
             createLine("10", sortOrder = 0),
             createLine("total *= 2", sortOrder = 1),
@@ -1119,7 +1120,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `total divide-assign overrides aggregate meaning`() {
+    fun `total divide-assign overrides aggregate meaning`() = runBlocking {
         val lines = listOf(
             createLine("10", sortOrder = 0),
             createLine("total /= 2", sortOrder = 1),
@@ -1132,7 +1133,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `total modulo-assign overrides aggregate meaning`() {
+    fun `total modulo-assign overrides aggregate meaning`() = runBlocking {
         val lines = listOf(
             createLine("10", sortOrder = 0),
             createLine("20", sortOrder = 1),
@@ -1147,7 +1148,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `total with no preceding results is 0`() {
+    fun `total with no preceding results is 0`() = runBlocking {
         val lines = listOf(
             createLine("total", sortOrder = 0)
         )
@@ -1156,7 +1157,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `calculateFrom correctly handles total in affected lines`() {
+    fun `calculateFrom correctly handles total in affected lines`() = runBlocking {
         val lines = listOf(
             createLine("a = 10", sortOrder = 0),
             createLine("b = 20", sortOrder = 1),
@@ -1168,7 +1169,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `total includes its own block results across calculateFrom boundary`() {
+    fun `total includes its own block results across calculateFrom boundary`() = runBlocking {
         val lines = listOf(
             createLine("5", sortOrder = 0),
             createLine("15", sortOrder = 1),
@@ -1180,7 +1181,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `avg averages all results above in same block`() {
+    fun `avg averages all results above in same block`() = runBlocking {
         val lines = listOf(
             createLine("10", sortOrder = 0),
             createLine("20", sortOrder = 1),
@@ -1195,7 +1196,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `average is an alias for avg`() {
+    fun `average is an alias for avg`() = runBlocking {
         val lines = listOf(
             createLine("10", sortOrder = 0),
             createLine("30", sortOrder = 1),
@@ -1208,7 +1209,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `avg with no preceding results is 0`() {
+    fun `avg with no preceding results is 0`() = runBlocking {
         val lines = listOf(
             createLine("avg", sortOrder = 0)
         )
@@ -1217,7 +1218,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `blank line resets the block for avg`() {
+    fun `blank line resets the block for avg`() = runBlocking {
         val lines = listOf(
             createLine("10", sortOrder = 0),
             createLine("20", sortOrder = 1),
@@ -1233,7 +1234,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `comment-only lines do not contribute to avg`() {
+    fun `comment-only lines do not contribute to avg`() = runBlocking {
         val lines = listOf(
             createLine("10", sortOrder = 0),
             createLine("# ignore this", sortOrder = 1), // Should be null in lineResults
@@ -1246,7 +1247,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `avg used in an expression`() {
+    fun `avg used in an expression`() = runBlocking {
         val lines = listOf(
             createLine("25", sortOrder = 0),
             createLine("75", sortOrder = 1),
@@ -1257,7 +1258,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `avg assignment overrides aggregate meaning`() {
+    fun `avg assignment overrides aggregate meaning`() = runBlocking {
         val lines = listOf(
             createLine("10", sortOrder = 0),
             createLine("20", sortOrder = 1),
@@ -1270,7 +1271,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `avg increment overrides aggregate meaning`() {
+    fun `avg increment overrides aggregate meaning`() = runBlocking {
         val lines = listOf(
             createLine("10", sortOrder = 0),
             createLine("20", sortOrder = 1),
@@ -1283,7 +1284,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `avg decrement overrides aggregate meaning`() {
+    fun `avg decrement overrides aggregate meaning`() = runBlocking {
         val lines = listOf(
             createLine("10", sortOrder = 0),
             createLine("20", sortOrder = 1),
@@ -1296,7 +1297,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `avg += overrides aggregate meaning`() {
+    fun `avg += overrides aggregate meaning`() = runBlocking {
         val lines = listOf(
             createLine("10", sortOrder = 0),
             createLine("20", sortOrder = 1),
@@ -1310,7 +1311,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `avg -= overrides aggregate meaning`() {
+    fun `avg -= overrides aggregate meaning`() = runBlocking {
         val lines = listOf(
             createLine("10", sortOrder = 0),
             createLine("20", sortOrder = 1),
@@ -1324,7 +1325,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `avg multiply-assign overrides aggregate meaning`() {
+    fun `avg multiply-assign overrides aggregate meaning`() = runBlocking {
         val lines = listOf(
             createLine("10", sortOrder = 0),
             createLine("20", sortOrder = 1),
@@ -1338,7 +1339,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `avg divide-assign overrides aggregate meaning`() {
+    fun `avg divide-assign overrides aggregate meaning`() = runBlocking {
         val lines = listOf(
             createLine("10", sortOrder = 0),
             createLine("20", sortOrder = 1),
@@ -1352,7 +1353,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `avg modulo-assign overrides aggregate meaning`() {
+    fun `avg modulo-assign overrides aggregate meaning`() = runBlocking {
         val lines = listOf(
             createLine("10", sortOrder = 0),
             createLine("20", sortOrder = 1),
@@ -1366,7 +1367,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `calculateFrom correctly handles avg in affected lines`() {
+    fun `calculateFrom correctly handles avg in affected lines`() = runBlocking {
         val lines = listOf(
             createLine("a = 10", sortOrder = 0),
             createLine("b = 20", sortOrder = 1),
@@ -1378,7 +1379,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `avg includes its own block results across calculateFrom boundary`() {
+    fun `avg includes its own block results across calculateFrom boundary`() = runBlocking {
         val lines = listOf(
             createLine("5", sortOrder = 0),
             createLine("35", sortOrder = 1),
@@ -1390,7 +1391,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `last keyword refers to the previous line result`() {
+    fun `last keyword refers to the previous line result`() = runBlocking {
         val lines = listOf(
             createLine("10 * 5", sortOrder = 0),
             createLine("last + 10", sortOrder = 1)
@@ -1401,7 +1402,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `prev keyword refers to the previous line result`() {
+    fun `prev keyword refers to the previous line result`() = runBlocking {
         val lines = listOf(
             createLine("100 / 4", sortOrder = 0),
             createLine("prev * 2", sortOrder = 1)
@@ -1412,7 +1413,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `previous keyword refers to the previous line result`() {
+    fun `previous keyword refers to the previous line result`() = runBlocking {
         val lines = listOf(
             createLine("20 + 30", sortOrder = 0),
             createLine("previous - 10", sortOrder = 1)
@@ -1423,7 +1424,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `above keyword refers to the previous line result`() {
+    fun `above keyword refers to the previous line result`() = runBlocking {
         val lines = listOf(
             createLine("5 ^ 2", sortOrder = 0),
             createLine("above / 5", sortOrder = 1)
@@ -1434,7 +1435,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `underscore keyword refers to the previous line result`() {
+    fun `underscore keyword refers to the previous line result`() = runBlocking {
         val lines = listOf(
             createLine("42", sortOrder = 0),
             createLine("_ + 8", sortOrder = 1)
@@ -1445,7 +1446,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `last keyword returns 0 if the preceding line is blank`() {
+    fun `last keyword returns 0 if the preceding line is blank`() = runBlocking {
         val lines = listOf(
             createLine("10", sortOrder = 0),
             createLine("   ", sortOrder = 1),
@@ -1456,7 +1457,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `last keyword returns 0 if the preceding line is a comment`() {
+    fun `last keyword returns 0 if the preceding line is a comment`() = runBlocking {
         val lines = listOf(
             createLine("10", sortOrder = 0),
             createLine("# comment", sortOrder = 1),
@@ -1467,7 +1468,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `last keyword returns 0 if the preceding line resulted in an error`() {
+    fun `last keyword returns 0 if the preceding line resulted in an error`() = runBlocking {
         val lines = listOf(
             createLine("10", sortOrder = 0),
             createLine("{", sortOrder = 1), // Invalid expression
@@ -1479,7 +1480,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `last keyword returns 0 on the first line`() {
+    fun `last keyword returns 0 on the first line`() = runBlocking {
         val lines = listOf(
             createLine("last + 10", sortOrder = 0)
         )
@@ -1488,27 +1489,27 @@ class MathEngineTest {
     }
 
     @Test
-    fun `last keyword reassignment is blocked`() {
+    fun `last keyword reassignment is blocked`() = runBlocking {
         val lines = listOf(createLine("last = 10", sortOrder = 0))
         val result = MathEngine.calculate(lines)
         assertEquals("Err", result[0].result)
 
         val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("'last' is reserved and cannot be reassigned", err)
+        assertEquals("'last' is a reserved name and cannot be changed", err)
     }
 
     @Test
-    fun `compound assignment to underscore is blocked`() {
+    fun `compound assignment to underscore is blocked`() = runBlocking {
         val lines = listOf(createLine("_ += 5", sortOrder = 0))
         val result = MathEngine.calculate(lines)
         assertEquals("Err", result[0].result)
 
         val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("'_' is reserved and cannot be reassigned", err)
+        assertEquals("'_' is a reserved name and cannot be changed", err)
     }
 
     @Test
-    fun `formatDisplayResult formats raw strings correctly`() {
+    fun `formatDisplayResult formats raw strings correctly`() = runBlocking {
         assertEquals("0.33", MathEngine.formatDisplayResult("0.3333333333333333", 2))
         assertEquals("0.3333", MathEngine.formatDisplayResult("0.3333333333333333", 4))
         assertEquals("10", MathEngine.formatDisplayResult("10.0", 2)) // whole numbers are displayed without decimal points
@@ -1519,7 +1520,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `formatDisplayResult handles out of bounds precision`() {
+    fun `formatDisplayResult handles out of bounds precision`() = runBlocking {
         // Should clamp value below MIN_PRECISION to MIN_PRECISION
         assertEquals("0", MathEngine.formatDisplayResult("0.333", Constants.MIN_PRECISION - 1))
         // Should clamp value above MAX_PRECISION to MAX_PRECISION
@@ -1527,76 +1528,76 @@ class MathEngineTest {
     }
 
     @Test
-    fun `formatDisplayResult handles scientific notation`() {
+    fun `formatDisplayResult handles scientific notation`() = runBlocking {
         assertEquals("1.00e+20", MathEngine.formatDisplayResult("1.0E20", 2))
         assertEquals("1e+20", MathEngine.formatDisplayResult("1.0E20", 0))
     }
 
     @Test
-    fun `getErrorDetails handles undefined variable`() {
+    fun `getErrorDetails handles undefined variable`() = runBlocking {
         val lines = listOf(createLine("x + 5"))
         val err = MathEngine.getErrorDetails(lines, 0)
         assertEquals("Unknown variable or constant 'x'", err)
     }
 
     @Test
-    fun `getErrorDetails handles syntax error`() {
+    fun `getErrorDetails handles syntax error`() = runBlocking {
         val lines = listOf(createLine("1 + (2 * 3"))
         val err = MathEngine.getErrorDetails(lines, 0)
         assertEquals("Expected ), but found end of line", err)
     }
 
     @Test
-    fun `getErrorDetails returns null for blank line`() {
+    fun `getErrorDetails returns null for blank line`() = runBlocking {
         val lines = listOf(createLine(""))
         val err = MathEngine.getErrorDetails(lines, 0)
         assertNull(err)
     }
 
     @Test
-    fun `getErrorDetails handles division by zero`() {
+    fun `getErrorDetails handles division by zero`() = runBlocking {
         val lines = listOf(createLine("10 / 0"))
         val err = MathEngine.getErrorDetails(lines, 0)
         assertEquals("Cannot divide by zero", err)
     }
 
     @Test
-    fun `getErrorDetails handles unknown function`() {
+    fun `getErrorDetails handles unknown function`() = runBlocking {
         val lines = listOf(createLine("unknown(5)"))
         val err = MathEngine.getErrorDetails(lines, 0)
         assertEquals("Unknown function 'unknown'", err)
     }
 
     @Test
-    fun `getErrorDetails handles lexer error`() {
+    fun `getErrorDetails handles lexer error`() = runBlocking {
         val lines = listOf(createLine("1 @ 2"))
         val err = MathEngine.getErrorDetails(lines, 0)
         assertEquals("Unexpected character '@'", err)
     }
 
     @Test
-    fun `getErrorDetails handles multiple operators`() {
+    fun `getErrorDetails handles multiple operators`() = runBlocking {
         val lines = listOf(createLine("1 + * 2"))
         val err = MathEngine.getErrorDetails(lines, 0)
         assertEquals("Expected a value or '(', but found *", err)
     }
 
     @Test
-    fun `getErrorDetails handles missing operand`() {
+    fun `getErrorDetails handles missing operand`() = runBlocking {
         val lines = listOf(createLine("5 + "))
         val err = MathEngine.getErrorDetails(lines, 0)
         assertEquals("Expected a value or '(', but found end of line", err)
     }
 
     @Test
-    fun `getErrorDetails handles empty parentheses`() {
+    fun `getErrorDetails handles empty parentheses`() = runBlocking {
         val lines = listOf(createLine("()"))
         val err = MathEngine.getErrorDetails(lines, 0)
         assertEquals("Expected a value or '(', but found )", err)
     }
 
     @Test
-    fun `getErrorDetails handles arity mismatch for user-defined function`() {
+    fun `getErrorDetails handles arity mismatch for user-defined function`() = runBlocking {
         val lines = listOf(
             createLine("f(x) = x * 2"),
             createLine("f(1, 2)")
@@ -1606,14 +1607,14 @@ class MathEngineTest {
     }
 
     @Test
-    fun `arity mismatch reported before undefined argument for built in function`() {
+    fun `arity mismatch reported before undefined argument for built in function`() = runBlocking {
         val lines = listOf(createLine("sinh(2, 5)"))
         val err = MathEngine.getErrorDetails(lines, 0)
         assertEquals("Function 'sinh' expects 1 argument, but got 2", err)
     }
 
     @Test
-    fun `arity mismatch reported before undefined argument for local function`() {
+    fun `arity mismatch reported before undefined argument for local function`() = runBlocking {
         val lines = listOf(
             createLine("f(x) = x * 2"),
             createLine("f(1, unknown_var)")
@@ -1623,14 +1624,14 @@ class MathEngineTest {
     }
 
     @Test
-    fun `arity mismatch reported before undefined argument for built-in function with invalid arg`() {
+    fun `arity mismatch reported before undefined argument for built-in function with invalid arg`() = runBlocking {
         val lines = listOf(createLine("sinh(1, unknown_var)"))
         val err = MathEngine.getErrorDetails(lines, 0)
         assertEquals("Function 'sinh' expects 1 argument, but got 2", err)
     }
 
     @Test
-    fun `lineno, linenumber, and currentLineNumber returns correct current line number`() {
+    fun `lineno, linenumber, and currentLineNumber returns correct current line number`() = runBlocking {
         val lines = listOf(
             createLine("lineno", sortOrder = 0),
             createLine("linenumber", sortOrder = 1),
@@ -1643,7 +1644,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `lineno works in expressions`() {
+    fun `lineno works in expressions`() = runBlocking {
         val lines = listOf(
             createLine("10 + lineno"), // 10 + 1 = 11
             createLine("lineno * 5")   // 2 * 5 = 10
@@ -1654,40 +1655,40 @@ class MathEngineTest {
     }
 
     @Test
-    fun `lineno is reserved and cannot be reassigned`() {
+    fun `lineno is reserved and cannot be reassigned`() = runBlocking {
         val lines = listOf(
             createLine("lineno = 10")
         )
         val result = MathEngine.calculate(lines)
         assertEquals("Err", result[0].result)
         var err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("'lineno' is reserved and cannot be reassigned", err)
+        assertEquals("'lineno' is a reserved name and cannot be changed", err)
     }
 
     @Test
-    fun `compound assignment to lineno is not allowed`() {
+    fun `compound assignment to lineno is not allowed`() = runBlocking {
         val lines = listOf(
             createLine("lineno += 5")
         )
         val result = MathEngine.calculate(lines)
         assertEquals("Err", result[0].result)
         var err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("'lineno' is reserved and cannot be reassigned", err)
+        assertEquals("'lineno' is a reserved name and cannot be changed", err)
     }
 
     @Test
-    fun `increment on lineno is not allowed`() {
+    fun `increment on lineno is not allowed`() = runBlocking {
         val lines = listOf(
             createLine("lineno++")
         )
         val result = MathEngine.calculate(lines)
         assertEquals("Err", result[0].result)
         var err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("'lineno' is reserved and cannot be reassigned", err)
+        assertEquals("'lineno' is a reserved name and cannot be changed", err)
     }
 
     @Test
-    fun `lineno updates correctly after line insertion`() {
+    fun `lineno updates correctly after line insertion`() = runBlocking {
         // Initial state
         val lines = mutableListOf(
             createLine("x = 10", sortOrder = 0),
@@ -1708,7 +1709,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `lineno updates correctly after line deletion`() {
+    fun `lineno updates correctly after line deletion`() = runBlocking {
         val lines = listOf(
             createLine("10", sortOrder = 0),
             createLine("20", sortOrder = 1),
@@ -1725,7 +1726,7 @@ class MathEngineTest {
     }
 
     @Test
-    fun `calculateFrom handles lineno correctly for partial recalculation`() {
+    fun `calculateFrom handles lineno correctly for partial recalculation`() = runBlocking {
         val lines = listOf(
             createLine("a = 5", sortOrder = 0),   // L1
             createLine("b = 10", sortOrder = 1),  // L2

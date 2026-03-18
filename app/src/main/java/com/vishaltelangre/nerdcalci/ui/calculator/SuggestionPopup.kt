@@ -243,12 +243,14 @@ private fun SuggestionItem(
             SuggestionType.DYNAMIC_VARIABLE -> "DYNAMIC\nVAR"
             SuggestionType.CONSTANT -> "CONST"
             SuggestionType.VARIABLE -> "VAR"
+            SuggestionType.FILE -> "FILE"
         }
 
         val (itemColor, isItalic) = when (suggestion.type) {
             SuggestionType.DYNAMIC_VARIABLE -> keywordColor to true
             SuggestionType.LOCAL_FUNCTION, SuggestionType.GLOBAL_FUNCTION -> functionColor to true
             SuggestionType.VARIABLE, SuggestionType.CONSTANT -> variableColor to true
+            SuggestionType.FILE -> keywordColor to false
         }
 
         val isMultiline = typeLabel.contains("\n")
@@ -288,7 +290,7 @@ private fun SuggestionItem(
         }
 
         Spacer(modifier = Modifier.width(6.dp))
-
+ 
         // Text content with fuzzy-match bolding applied to matched segments.
         Text(
             text = buildSuggestionText(suggestion),
@@ -336,6 +338,7 @@ private fun isItalicType(type: SuggestionType): Boolean {
         SuggestionType.GLOBAL_FUNCTION,
         SuggestionType.VARIABLE,
         SuggestionType.CONSTANT -> true
+        SuggestionType.FILE -> false
     }
 }
 
@@ -353,9 +356,30 @@ private fun handleSuggestionClick(
     val cursorPos = textFieldValue.selection.start
 
     // Find the full word currently under or just before the cursor.
-    val range = text.getIdentifierRangeAt(if (cursorPos > 0) cursorPos - 1 else 0)
-    val wordStart = range.first
-    var wordEnd = range.last + 1
+    var wordStart: Int
+    var wordEnd: Int
+
+    if (suggestion.type == SuggestionType.FILE) {
+        val fileRegex = Regex("""\bfile\(\s*"([^"]*)$""")
+        val fileMatch = fileRegex.find(text.substring(0, cursorPos))
+        if (fileMatch != null) {
+            val filterText = fileMatch.groupValues[1]
+            wordStart = cursorPos - filterText.length
+            wordEnd = wordStart
+            while (wordEnd < text.length && text[wordEnd] != '"' && text[wordEnd] != ')') {
+                wordEnd++
+            }
+        } else {
+            val range = text.getIdentifierRangeAt(if (cursorPos > 0) cursorPos - 1 else 0)
+            wordStart = range.first
+            wordEnd = range.last + 1
+        }
+    } else {
+        val isAfterDot = cursorPos > 0 && text[cursorPos - 1] == '.'
+        val range = text.getIdentifierRangeAt(if (cursorPos > 0) cursorPos - 1 else 0)
+        wordStart = if (isAfterDot) cursorPos else range.first
+        wordEnd = if (isAfterDot) cursorPos else range.last + 1
+    }
 
     val hasParens = wordEnd < text.length && text[wordEnd] == '('
     val isFunctionSuggestion = suggestion.type == SuggestionType.LOCAL_FUNCTION ||
@@ -368,8 +392,21 @@ private fun handleSuggestionClick(
 
     // Determine the exact string to insert.
     val replacementText = if (isFunctionSuggestion) {
-        // Only append parens if they aren't already there.
-        if (hasParens) suggestion.name else "${suggestion.name}()"
+        if (suggestion.name == "file") {
+            if (hasParens) "${suggestion.name}\"\"" else "${suggestion.name}(\"\")"
+        } else {
+            if (hasParens) suggestion.name else "${suggestion.name}()"
+        }
+    } else if (suggestion.type == SuggestionType.FILE) {
+        val afterWord = text.substring(wordEnd)
+        val insideClosingFileCall = afterWord.matches(Regex("""^"\s*\).*"""))
+
+        val sb = java.lang.StringBuilder()
+        sb.append(suggestion.name)
+        if (!insideClosingFileCall) {
+            sb.append("\")")
+        }
+        sb.toString()
     } else {
         suggestion.name
     }
@@ -377,10 +414,15 @@ private fun handleSuggestionClick(
     val newText = text.substring(0, wordStart) + replacementText + text.substring(wordEnd)
 
     // Cursor placement rules:
-    // 1. Inside empty parens if we just added a function.
-    // 2. Otherwise at the end of the newly inserted word.
+    // 1. Inside empty quotes if we just added file("").
+    // 2. Inside empty parens if we just added a function.
+    // 3. Otherwise at the end of the newly inserted word.
     val newCursorPos = if (isFunctionSuggestion && !hasParens) {
-        wordStart + replacementText.length - 1
+        if (suggestion.name == "file") {
+            wordStart + replacementText.length - 2 // inside quotes
+        } else {
+            wordStart + replacementText.length - 1 // inside parens
+        }
     } else {
         wordStart + replacementText.length
     }

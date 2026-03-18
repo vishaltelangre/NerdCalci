@@ -7,6 +7,8 @@ import android.util.Log
 import androidx.documentfile.provider.DocumentFile
 import com.vishaltelangre.nerdcalci.core.Constants
 import com.vishaltelangre.nerdcalci.core.MathEngine
+import com.vishaltelangre.nerdcalci.core.FileContextLoader
+import com.vishaltelangre.nerdcalci.core.MathContext
 import com.vishaltelangre.nerdcalci.data.local.CalculatorDao
 import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
@@ -373,6 +375,17 @@ object BackupManager {
         var importedCount = 0
 
         ZipInputStream(inputStream).use { zipIn ->
+            val cache = mutableMapOf<String, MathContext>()
+            val fileContextLoader = object : FileContextLoader {
+                override suspend fun loadContext(fileName: String, loadingStack: Set<String>): MathContext? {
+                    cache[fileName]?.let { return it }
+                    val file = dao.getFileByName(fileName) ?: return null
+                    val lines = dao.getLinesForFileSync(file.id)
+                    val context = MathEngine.buildVariableState(lines, this)
+                    cache[fileName] = context
+                    return context
+                }
+            }
             var entry: ZipEntry? = zipIn.nextEntry
 
             while (entry != null) {
@@ -442,7 +455,7 @@ object BackupManager {
                     dao.insertLinesWithoutTouch(lineEntities)
 
                     val allLines = dao.getLinesForFileSync(fileId)
-                    val calculatedLines = MathEngine.calculate(allLines)
+                    val calculatedLines = MathEngine.calculate(allLines, fileContextLoader)
                     dao.updateLines(fileId, calculatedLines)
 
                     // Final touch to ensure the timestamp is exactly as intended,

@@ -129,7 +129,18 @@ data class FuzzyMatch(
  * Returns null if the query is not a subsequence of the target.
  */
 fun String.calculateFuzzyMatch(query: String, type: SuggestionType? = null): FuzzyMatch? {
-    if (query.isEmpty()) return FuzzyMatch(0, emptyList())
+    if (query.isEmpty()) {
+        var score = 0
+        if (type != null) {
+            score += when (type) {
+                SuggestionType.VARIABLE, SuggestionType.LOCAL_FUNCTION -> 200
+                SuggestionType.DYNAMIC_VARIABLE -> 100
+                else -> 0
+            }
+        }
+        score -= this.length
+        return FuzzyMatch(score, emptyList())
+    }
 
     val queryLower = query.lowercase()
     val targetLower = this.lowercase()

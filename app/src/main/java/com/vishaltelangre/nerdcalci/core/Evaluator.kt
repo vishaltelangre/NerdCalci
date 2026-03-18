@@ -14,10 +14,13 @@ import kotlin.math.pow
 class Evaluator(
     private val variables: Map<String, Double>,
     private val localFunctions: Map<String, LocalFunction> = emptyMap(),
-    private val callStack: Set<String> = emptySet()
+    private val callStack: Set<String> = emptySet(),
+    private val fileVariables: Map<String, String> = emptyMap(),
+    private val fileContextLoader: FileContextLoader? = null,
+    private val loadingStack: Set<String> = emptySet()
 ) {
 
-    fun evaluate(expr: Expr): Double = when (expr) {
+    suspend fun evaluate(expr: Expr): Double = when (expr) {
         is Expr.NumberLiteral  -> expr.value
         is Expr.PercentLiteral -> expr.value / 100.0
         is Expr.PercentOf      -> evaluate(expr.base) * expr.percent / 100.0
@@ -26,6 +29,9 @@ class Evaluator(
         is Expr.Variable       -> resolveVariable(expr.name)
         is Expr.FunctionCall   -> evaluateFunction(expr.name, expr.args)
         is Expr.BinaryOp       -> evaluateBinaryOp(expr)
+        is Expr.StringLiteral  -> throw EvalException("Quotes are only allowed when specifying file names in file(\"...\")")
+        is Expr.MemberAccess   -> resolveMemberAccess(expr)
+        is Expr.MemberFunctionCall -> resolveMemberFunctionCall(expr)
     }
 
     private fun resolveVariable(name: String): Double {
@@ -35,7 +41,7 @@ class Evaluator(
         throw UndefinedVariableException(name)
     }
 
-    private fun evaluateFunction(name: String, argExprs: List<Expr>): Double {
+    private suspend fun evaluateFunction(name: String, argExprs: List<Expr>): Double {
         // Check if it's a user-defined local function
         val localFunc = localFunctions[name]
         if (localFunc != null) {
@@ -43,8 +49,8 @@ class Evaluator(
                 throw ArityMismatchException(name, localFunc.params.size, argExprs.size)
             }
             val args = argExprs.map { evaluate(it) }
-            if (name in callStack) {
-                throw EvalException("Infinite recursion detected in function '$name'")
+            if (callStack.contains(name)) {
+                throw EvalException("Function '$name' calls itself too many times")
             }
 
             // Create a strictly isolated scope
@@ -57,7 +63,10 @@ class Evaluator(
             val innerEvaluator = Evaluator(
                 variables = localVars,
                 localFunctions = localFunctions,
-                callStack = callStack + name
+                callStack = callStack + name,
+                fileVariables = fileVariables,
+                fileContextLoader = fileContextLoader,
+                loadingStack = loadingStack
             )
 
             var lastResult: Double = 0.0
@@ -71,6 +80,10 @@ class Evaluator(
                 }
             }
             return lastResult
+        }
+
+        if (name == "file") {
+            throw EvalException("The `file()` function either needs to be assigned like `f = file(\"FileName\")` or used in dot notation like `file(\"FileName\").variable`")
         }
 
         // Fallback to built-ins
@@ -88,7 +101,7 @@ class Evaluator(
      * mutating `context` (variables or localFunctions) as necessary.
      * Returns the numeric result of the statement, or null if it produces no result.
      */
-    fun evaluateStatement(statement: Statement, context: MathContext): Double? {
+    suspend fun evaluateStatement(statement: Statement, context: MathContext): Double? {
         return when (statement) {
             is Statement.Empty -> null
 
@@ -103,16 +116,45 @@ class Evaluator(
             }
 
             is Statement.Assignment -> {
-                validateVariableOrFunctionName(statement.name)
+                val target = statement.target
+                if (target !is Expr.Variable) throw EvalException("Invalid assignment target")
+                val name = target.name
+                validateVariableOrFunctionName(name)
+
+                // Intercept file("...") FunctionCall
+                if (statement.expr is Expr.FunctionCall && statement.expr.name == "file") {
+                    val args = statement.expr.args
+                    if (args.size != 1) {
+                        throw EvalException("The file() function requires exactly one file name in quotes, e.g., file(\"FileName\")")
+                    }
+                    val arg = args[0]
+                    if (arg !is Expr.StringLiteral) {
+                        throw EvalException("The file() function requires exactly one file name in quotes, e.g., file(\"FileName\")")
+                    }
+                    val fileName = arg.value
+                    context.fileVariables[name] = fileName
+                    return null
+                }
+
+                // Intercept File Variable Copy
+                if (statement.expr is Expr.Variable && context.fileVariables.containsKey(statement.expr.name)) {
+                    val sourceFile = context.fileVariables[statement.expr.name]!!
+                    context.fileVariables[name] = sourceFile
+                    return null
+                }
+
                 val result = evaluate(statement.expr)
-                context.variables[statement.name] = result
+                context.variables[name] = result
                 result
             }
 
             is Statement.CompoundAssignment -> {
-                validateVariableOrFunctionName(statement.name)
-                val current = context.variables[statement.name]
-                    ?: throw UndefinedVariableException(statement.name)
+                val target = statement.target
+                if (target !is Expr.Variable) throw EvalException("Invalid assignment target")
+                val name = target.name
+                validateVariableOrFunctionName(name)
+                val current = context.variables[name]
+                    ?: throw UndefinedVariableException(name)
                 val rhs = evaluate(statement.expr)
                 val result = when (statement.op) {
                     TokenKind.PLUS_EQUALS    -> current + rhs
@@ -128,25 +170,31 @@ class Evaluator(
                     }
                     else -> throw EvalException("Unknown compound operator: ${statement.op}")
                 }
-                context.variables[statement.name] = result
+                context.variables[name] = result
                 result
             }
 
             is Statement.Increment -> {
-                validateVariableOrFunctionName(statement.name)
-                val current = context.variables[statement.name]
-                    ?: throw UndefinedVariableException(statement.name)
+                val target = statement.target
+                if (target !is Expr.Variable) throw EvalException("Invalid assignment target")
+                val name = target.name
+                validateVariableOrFunctionName(name)
+                val current = context.variables[name]
+                    ?: throw UndefinedVariableException(name)
                 val result = current + 1
-                context.variables[statement.name] = result
+                context.variables[name] = result
                 result
             }
 
             is Statement.Decrement -> {
-                validateVariableOrFunctionName(statement.name)
-                val current = context.variables[statement.name]
-                    ?: throw UndefinedVariableException(statement.name)
+                val target = statement.target
+                if (target !is Expr.Variable) throw EvalException("Invalid assignment target")
+                val name = target.name
+                validateVariableOrFunctionName(name)
+                val current = context.variables[name]
+                    ?: throw UndefinedVariableException(name)
                 val result = current - 1
-                context.variables[statement.name] = result
+                context.variables[name] = result
                 result
             }
         }
@@ -158,7 +206,7 @@ class Evaluator(
         }
     }
 
-    private fun evaluateBinaryOp(expr: Expr.BinaryOp): Double {
+    private suspend fun evaluateBinaryOp(expr: Expr.BinaryOp): Double {
         val left = evaluate(expr.left)
 
         // Percentage addition/subtraction
@@ -190,5 +238,65 @@ class Evaluator(
         }
         TokenKind.CARET   -> left.pow(right)
         else -> throw EvalException("Unknown operator: $op")
+    }
+
+    private suspend fun resolveMemberAccess(expr: Expr.MemberAccess): Double {
+        val obj = expr.obj
+        val name = expr.name
+        val fileName = getFileNameFromObj(obj, false)
+        val remoteContext = loadRemoteContext(fileName)
+        if (name in MathEngine.EXCLUDED_DOT_NOTATION_VARIABLES) {
+            throw EvalException("Line number variables (like '$name') are relative to the file being viewed and cannot be accessed from other files")
+        }
+        if (Builtins.isConstant(name)) {
+            throw EvalException("'$name' is a global constant and should be accessed directly, not via dot notation")
+        }
+        return remoteContext.variables[name] ?: throw UndefinedVariableException(name)
+    }
+
+    private suspend fun loadRemoteContext(fileName: String): MathContext {
+        if (loadingStack.contains(fileName)) {
+            throw EvalException("Endless loop: File '$fileName' refers to a file that refers back to it")
+        }
+        val loader = fileContextLoader ?: throw EvalException("File loading is not supported in this context")
+        return loader.loadContext(fileName, loadingStack + fileName) ?: throw EvalException("Failed to load file '$fileName'")
+    }
+
+    private suspend fun resolveMemberFunctionCall(expr: Expr.MemberFunctionCall): Double {
+        val obj = expr.obj
+        val name = expr.name
+        val argExprs = expr.args
+        val fileName = getFileNameFromObj(obj, true)
+
+        if (Builtins.isFunction(name)) {
+            throw EvalException("'$name()' is a global function and should be called directly, not via dot notation")
+        }
+        val remoteContext = loadRemoteContext(fileName)
+
+        val args = argExprs.map { evaluate(it) }
+        val evaluatedArgs = args.map { Expr.NumberLiteral(it) }
+
+        val remoteEvaluator = Evaluator(
+            variables = remoteContext.variables.toMutableMap(),
+            localFunctions = remoteContext.localFunctions.toMutableMap(),
+            fileVariables = remoteContext.fileVariables.toMutableMap(),
+            fileContextLoader = fileContextLoader,
+            loadingStack = loadingStack
+        )
+        return remoteEvaluator.evaluateFunction(name, evaluatedArgs)
+    }
+
+    private fun getFileNameFromObj(obj: Expr, isFunctionCall: Boolean): String {
+        val operation = if (isFunctionCall) "call functions from" else "access items from"
+        return if (obj is Expr.Variable) {
+            fileVariables[obj.name] ?: throw EvalException("'${obj.name}' is not linked to any file. Use file(\"...\") to link first")
+        } else if (obj is Expr.FunctionCall && obj.name == "file") {
+            if (obj.args.size != 1 || obj.args[0] !is Expr.StringLiteral) {
+                throw EvalException("file() expects exactly one file name in quotes, e.g., file(\"FileName\")")
+            }
+            (obj.args[0] as Expr.StringLiteral).value
+        } else {
+            throw EvalException("You can only $operation other files using dot notation")
+        }
     }
 }

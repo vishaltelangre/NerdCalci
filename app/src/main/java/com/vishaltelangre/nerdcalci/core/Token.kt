@@ -3,7 +3,7 @@ package com.vishaltelangre.nerdcalci.core
 /** Every distinct lexeme kind produced by [Lexer]. */
 enum class TokenKind(val display: String) {
     // Literals
-    NUMBER("number"),
+    NUMBER("number"), STRING_LITERAL("string"),
 
     // Identifiers (variables, function names, keywords)
     IDENTIFIER("identifier"),
@@ -18,10 +18,10 @@ enum class TokenKind(val display: String) {
     PLUS_PLUS("++"), MINUS_MINUS("--"),
 
     // Grouping & punctuation
-    LPAREN("("), RPAREN(")"), COMMA(","), EQUALS("="), SEMICOLON(";"),
+    LPAREN("("), RPAREN(")"), COMMA(","), EQUALS("="), SEMICOLON(";"), DOT("."),
 
     // Keywords — resolved from IDENTIFIER by the Lexer
-    KW_OF("of"), KW_OFF("off"),
+    KW_OF("of"), KW_OFF("off"), KW_FILE("file"),
     KW_LAST("last"), KW_PREV("prev"), KW_PREVIOUS("previous"), KW_ABOVE("above"),
     KW_UNDERSCORE("_"),
     KW_LINENO("lineno"), KW_LINENUMBER("linenumber"), KW_CURRENTLINENUMBER("currentLineNumber"),

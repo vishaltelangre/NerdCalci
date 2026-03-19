@@ -57,9 +57,6 @@ class CalculatorViewModel(
             override suspend fun loadContext(fileName: String, loadingStack: Set<String>): MathContext? {
                 cache[fileName]?.let { return it }
                 val file = dao.getFileByName(fileName) ?: return null
-                if (file.id == currentFileId) {
-                    throw EvalException("You cannot reference the current file inside itself")
-                }
                 val lines = dao.getLinesForFileSync(file.id)
                 val context = MathEngine.buildVariableState(lines, this, loadingStack)
                 cache[fileName] = context
@@ -71,7 +68,11 @@ class CalculatorViewModel(
     suspend fun getSuggestionsForFile(fileName: String): Set<Suggestion> {
         val file = dao.getFileByName(fileName) ?: return emptySet()
         val lines = dao.getLinesForFileSync(file.id)
-        val context = MathEngine.buildVariableState(lines, createFileContextLoader(file.id))
+        val context = try {
+            MathEngine.buildVariableState(lines, createFileContextLoader(file.id))
+        } catch (e: Exception) {
+            MathContext()
+        }
         val suggestions = mutableSetOf<Suggestion>()
         context.variables.keys
             .filter { it !in MathEngine.EXCLUDED_DOT_NOTATION_VARIABLES }
@@ -421,9 +422,10 @@ class CalculatorViewModel(
 
     suspend fun getLineErrorMessage(fileId: Long, targetLineId: Long): String? {
         return withContext(Dispatchers.IO) {
+            val file = dao.getFileById(fileId) ?: return@withContext null
             val allLines = dao.getLinesForFileSync(fileId)
             val targetIndex = allLines.indexOfFirst { it.id == targetLineId }
-            if (targetIndex != -1) MathEngine.getErrorDetails(allLines, targetIndex, createFileContextLoader(fileId)) else null
+            if (targetIndex != -1) MathEngine.getErrorDetails(allLines, targetIndex, createFileContextLoader(fileId), setOf(file.name)) else null
         }
     }
 

@@ -1818,4 +1818,75 @@ class MathEngineTest {
         val err = MathEngine.getErrorDetails(lines, 0)
         assertEquals("Missing variable or function name after `.`", err)
     }
+
+    private class RecursiveFakeFileContextLoader(
+        private val files: Map<String, List<LineEntity>>
+    ) : FileContextLoader {
+        override suspend fun loadContext(fileName: String, loadingStack: Set<String>): MathContext? {
+            val lines = files[fileName] ?: return null
+            return MathEngine.buildVariableState(lines, this, loadingStack)
+        }
+    }
+
+    @Test
+    fun `circular dependency between files results in Err`() = runBlocking {
+        val fileALines = listOf(
+            createLine("b = file(\"File B\")", fileId = 1L, sortOrder = 0),
+            createLine("b.y", fileId = 1L, sortOrder = 1)
+        )
+        val fileBLines = listOf(
+            createLine("a = file(\"File A\")", fileId = 2L, sortOrder = 0),
+            createLine("a.x", fileId = 2L, sortOrder = 1)
+        )
+
+        val loader = RecursiveFakeFileContextLoader(mapOf(
+            "File A" to fileALines,
+            "File B" to fileBLines
+        ))
+
+        val result = MathEngine.calculate(fileALines, loader)
+        assertEquals("Err", result[1].result)
+    }
+
+    @Test
+    fun `CircularReferenceException formats message intuitively`() {
+        // Direct self-reference loop: A -> A
+        val selfLoop = CircularReferenceException("Salary", setOf("Salary"))
+        assertEquals("File `Salary` references itself, causing an endless loop", selfLoop.message)
+
+        // Indirect double-hop loop: A -> B -> A
+        val doubleHop = CircularReferenceException("Untitled", setOf("Untitled", "Salary"))
+        assertEquals("File `Salary` also references file `Untitled`, causing an endless loop", doubleHop.message)
+
+        // Deeper nested multi-hop loop: A -> B -> C -> D -> B (fallback to arrows)
+        val genericChain = CircularReferenceException("D", setOf("A", "B", "C"))
+        assertEquals("Endless loop: A -> B -> C -> D", genericChain.message)
+    }
+
+    @Test
+    fun `getErrorDetails reports intuitive circular messages with seeded stack`() = runBlocking {
+        val fileALines = listOf(
+            createLine("b = file(\"File B\")", fileId = 1L, sortOrder = 0),
+            createLine("b.y", fileId = 1L, sortOrder = 1)
+        )
+        val fileBLines = listOf(
+            createLine("a = file(\"File A\")", fileId = 2L, sortOrder = 0),
+            createLine("a.x", fileId = 2L, sortOrder = 1)
+        )
+
+        val loader = RecursiveFakeFileContextLoader(mapOf(
+            "File A" to fileALines,
+            "File B" to fileBLines
+        ))
+
+        // Trigger loading B.y from A -> triggers circular loop back to A
+        val errMsg = MathEngine.getErrorDetails(
+            allLines = fileALines,
+            targetIndex = 1,
+            loader = loader,
+            loadingStack = setOf("File A")
+        )
+
+        assertEquals("File `File B` also references file `File A`, causing an endless loop", errMsg)
+    }
 }

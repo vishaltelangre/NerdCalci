@@ -268,7 +268,7 @@ class Evaluator(
      */
     private suspend fun loadRemoteContext(fileName: String): MathContext {
         if (loadingStack.contains(fileName)) {
-            throw CircularReferenceException(fileName)
+            throw CircularReferenceException(fileName, loadingStack)
         }
         val loader = fileContextLoader ?: throw EvalException("File loading is not supported in this context")
         return loader.loadContext(fileName, loadingStack + fileName) ?: throw EvalException("Failed to load file `$fileName`")

@@ -109,7 +109,8 @@ object MathEngine {
                 val result = evaluateLine(line.expression, context, loader, loadingStack)
                 context.lineResults.add(result)
                 trackDynamicVariableAssignment(line.expression, context.userAssignedDynamicVariables)
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                if (e is CircularReferenceException && loadingStack.isNotEmpty()) throw e
                 context.lineResults.add(null)
             }
         }
@@ -134,10 +135,12 @@ object MathEngine {
         val precedingLines = allLines.subList(0, firstAffectedIndex)
         val affectedLines = allLines.subList(firstAffectedIndex, allLines.size)
 
-        // Collect variable state and line results from preceding lines,
-        // then fully recalculate affected lines
-        val context = buildVariableState(precedingLines, loader, loadingStack)
-        return calculateWithContext(affectedLines, context, loader, loadingStack)
+        try {
+            val context = buildVariableState(precedingLines, loader, loadingStack)
+            return calculateWithContext(affectedLines, context, loader, loadingStack)
+        } catch (e: CircularReferenceException) {
+            return calculateWithContext(allLines, MathContext(), loader, loadingStack)
+        }
     }
 
     /**
@@ -150,9 +153,8 @@ object MathEngine {
         val precedingLines = allLines.subList(0, targetIndex)
         val targetLine = allLines[targetIndex]
 
-        if (targetLine.expression.isBlank()) return null
-        val context = buildVariableState(precedingLines, loader, loadingStack)
         try {
+            val context = buildVariableState(precedingLines, loader, loadingStack)
             injectDynamicVariables(context)
             evaluateLine(targetLine.expression, context, loader, loadingStack)
             return null // No error occurred during this evaluation

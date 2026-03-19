@@ -136,6 +136,8 @@ object MathEngine {
         val affectedLines = allLines.subList(firstAffectedIndex, allLines.size)
 
         try {
+            // Collect variable state and line results from preceding lines,
+            // then fully recalculate affected lines
             val context = buildVariableState(precedingLines, loader, loadingStack)
             return calculateWithContext(affectedLines, context, loader, loadingStack)
         } catch (e: CircularReferenceException) {

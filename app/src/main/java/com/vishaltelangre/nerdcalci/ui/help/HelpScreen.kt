@@ -80,10 +80,11 @@ fun HelpScreen(onBack: () -> Unit) {
     val tocItems = remember(tocText) {
         if (tocText.isBlank()) emptyList()
         else {
+            val tocLinkRegex = Regex("\\[([^\\]]+)\\]\\((#[^)]+)\\)")
             tocText.split("\n")
                 .filter { it.isNotBlank() }
                 .mapNotNull { line ->
-                    val match = Regex("\\[([^\\]]+)\\]\\((#[^)]+)\\)").find(line)
+                    val match = tocLinkRegex.find(line)
                     if (match != null) {
                         val title = match.groupValues[1]
                         val anchor = match.groupValues[2].substring(1)
@@ -210,6 +211,7 @@ private fun scrollToAnchor(
     val lines = text.toString().split("\n")
     var matchOffset = -1
     var currentOffset = 0
+    val slugAnchor = slugify(anchor)
  
     for (i in lines.indices) {
         val lineText = lines[i].trim()
@@ -219,7 +221,6 @@ private fun scrollToAnchor(
             lineText
         }
         val slugClean = slugify(cleanText)
-        val slugAnchor = slugify(anchor)
  
         if (slugClean.isNotEmpty() && slugClean == slugAnchor) {
             matchOffset = currentOffset
@@ -287,11 +288,10 @@ private fun HelpScreenContent(
                 TextView(ctx).apply {
                     isVerticalScrollBarEnabled = false
                     isNestedScrollingEnabled = false
-                }
+                }.also { onTextViewReady(it) }
             },
             update = { textView ->
                 textView.setTextColor(markdownTextColor)
-                onTextViewReady(textView)
                 markwon.setMarkdown(textView, contentText)
             }
         )

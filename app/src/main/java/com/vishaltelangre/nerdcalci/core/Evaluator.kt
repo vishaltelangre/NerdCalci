@@ -29,7 +29,7 @@ class Evaluator(
         is Expr.Variable       -> resolveVariable(expr.name)
         is Expr.FunctionCall   -> evaluateFunction(expr.name, expr.args)
         is Expr.BinaryOp       -> evaluateBinaryOp(expr)
-        is Expr.StringLiteral  -> throw EvalException("Quotes are only allowed when specifying file names in file(\"...\")")
+        is Expr.StringLiteral  -> throw EvalException("Quotes are only allowed when specifying file names in `file(\"...\")`")
         is Expr.MemberAccess   -> resolveMemberAccess(expr)
         is Expr.MemberFunctionCall -> resolveMemberFunctionCall(expr)
     }
@@ -50,7 +50,7 @@ class Evaluator(
             }
             val args = argExprs.map { evaluate(it) }
             if (callStack.contains(name)) {
-                throw EvalException("Function '$name' calls itself too many times")
+                throw EvalException("Function `$name()` calls itself too many times which is not allowed")
             }
 
             // Create a strictly isolated scope
@@ -125,11 +125,11 @@ class Evaluator(
                 if (statement.expr is Expr.FunctionCall && statement.expr.name == "file") {
                     val args = statement.expr.args
                     if (args.size != 1) {
-                        throw EvalException("The file() function requires exactly one file name in quotes, e.g., file(\"FileName\")")
+                        throw EvalException("The `file()` function requires exactly one file name in quotes, e.g., `file(\"FileName\")`")
                     }
                     val arg = args[0]
                     if (arg !is Expr.StringLiteral) {
-                        throw EvalException("The file() function requires exactly one file name in quotes, e.g., file(\"FileName\")")
+                        throw EvalException("The `file()` function requires exactly one file name in quotes, e.g., `file(\"FileName\")`")
                     }
                     val fileName = arg.value
                     context.fileVariables[name] = fileName
@@ -168,7 +168,7 @@ class Evaluator(
                         if (rhs == 0.0) throw DivisionByZeroException()
                         current % rhs
                     }
-                    else -> throw EvalException("Unknown compound operator: ${statement.op}")
+                    else -> throw EvalException("Unknown compound operator: `${statement.op}`")
                 }
                 context.variables[name] = result
                 result
@@ -202,7 +202,7 @@ class Evaluator(
 
     private fun validateVariableOrFunctionName(name: String) {
         if (!name.matches(Regex(Constants.VAR_FUNC_NAME_PATTERN))) {
-            throw EvalException("Invalid variable or function name '$name'")
+            throw EvalException("Invalid variable or function name `$name`")
         }
     }
 
@@ -237,29 +237,41 @@ class Evaluator(
             left % right
         }
         TokenKind.CARET   -> left.pow(right)
-        else -> throw EvalException("Unknown operator: $op")
+        else -> throw EvalException("Unknown operator: `$op`")
     }
 
+    /**
+     * Resolves a member access expression (e.g., `obj.name`).
+     *
+     * It extracts the file reference link, loads that file's evaluated context,
+     * and fetches the variable value from it.
+     */
     private suspend fun resolveMemberAccess(expr: Expr.MemberAccess): Double {
         val obj = expr.obj
         val name = expr.name
         val fileName = getFileNameFromObj(obj, false)
         val remoteContext = loadRemoteContext(fileName)
         if (name in MathEngine.EXCLUDED_DOT_NOTATION_VARIABLES) {
-            throw EvalException("Line number variables (like '$name') are relative to the file being viewed and cannot be accessed from other files")
+            throw EvalException("Line number variables (like `$name`) are relative to the file being viewed and cannot be accessed from other files")
         }
         if (Builtins.isConstant(name)) {
-            throw EvalException("'$name' is a global constant and should be accessed directly, not via dot notation")
+            throw EvalException("`$name` is a global constant and should be accessed directly, not via dot notation")
         }
         return remoteContext.variables[name] ?: throw UndefinedVariableException(name)
     }
 
+    /**
+     * Loads the MathContext of another file, strictly guarding against circular references.
+     *
+     * [loadingStack] tracks the chain of files currently being loaded to detect infinite loops
+     * (e.g., FileA refers to FileB, which refers back to FileA).
+     */
     private suspend fun loadRemoteContext(fileName: String): MathContext {
         if (loadingStack.contains(fileName)) {
-            throw EvalException("Endless loop: File '$fileName' refers to a file that refers back to it")
+            throw EvalException("Endless loop: File `$fileName` refers to a file that refers back to it")
         }
         val loader = fileContextLoader ?: throw EvalException("File loading is not supported in this context")
-        return loader.loadContext(fileName, loadingStack + fileName) ?: throw EvalException("Failed to load file '$fileName'")
+        return loader.loadContext(fileName, loadingStack + fileName) ?: throw EvalException("Failed to load file `$fileName`")
     }
 
     private suspend fun resolveMemberFunctionCall(expr: Expr.MemberFunctionCall): Double {
@@ -269,7 +281,7 @@ class Evaluator(
         val fileName = getFileNameFromObj(obj, true)
 
         if (Builtins.isFunction(name)) {
-            throw EvalException("'$name()' is a global function and should be called directly, not via dot notation")
+            throw EvalException("`$name()` is a global function and should be called directly, not via dot notation")
         }
         val remoteContext = loadRemoteContext(fileName)
 
@@ -286,13 +298,16 @@ class Evaluator(
         return remoteEvaluator.evaluateFunction(name, evaluatedArgs)
     }
 
+    /**
+     * Extracts the file name from a dot notation expression.
+     */
     private fun getFileNameFromObj(obj: Expr, isFunctionCall: Boolean): String {
         val operation = if (isFunctionCall) "call functions from" else "access items from"
         return if (obj is Expr.Variable) {
-            fileVariables[obj.name] ?: throw EvalException("'${obj.name}' is not linked to any file. Use file(\"...\") to link first")
+            fileVariables[obj.name] ?: throw EvalException("`${obj.name}` is not linked to any file. Use `file(\"...\")` to link first")
         } else if (obj is Expr.FunctionCall && obj.name == "file") {
             if (obj.args.size != 1 || obj.args[0] !is Expr.StringLiteral) {
-                throw EvalException("file() expects exactly one file name in quotes, e.g., file(\"FileName\")")
+                throw EvalException("`file()` expects exactly one file name in quotes, e.g., `file(\"FileName\")`")
             }
             (obj.args[0] as Expr.StringLiteral).value
         } else {

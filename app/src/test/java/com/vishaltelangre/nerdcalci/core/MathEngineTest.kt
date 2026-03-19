@@ -1495,7 +1495,7 @@ class MathEngineTest {
         assertEquals("Err", result[0].result)
 
         val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("'last' is a reserved name and cannot be changed", err)
+        assertEquals("`last` is a reserved name and cannot be changed", err)
     }
 
     @Test
@@ -1505,7 +1505,7 @@ class MathEngineTest {
         assertEquals("Err", result[0].result)
 
         val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("'_' is a reserved name and cannot be changed", err)
+        assertEquals("`_` is a reserved name and cannot be changed", err)
     }
 
     @Test
@@ -1537,14 +1537,14 @@ class MathEngineTest {
     fun `getErrorDetails handles undefined variable`() = runBlocking {
         val lines = listOf(createLine("x + 5"))
         val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("Unknown variable or constant 'x'", err)
+        assertEquals("Unknown variable `x`", err)
     }
 
     @Test
     fun `getErrorDetails handles syntax error`() = runBlocking {
         val lines = listOf(createLine("1 + (2 * 3"))
         val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("Expected ), but found end of line", err)
+        assertEquals("Expected `)`, but found `end of line`", err)
     }
 
     @Test
@@ -1565,35 +1565,35 @@ class MathEngineTest {
     fun `getErrorDetails handles unknown function`() = runBlocking {
         val lines = listOf(createLine("unknown(5)"))
         val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("Unknown function 'unknown'", err)
+        assertEquals("Unknown function `unknown()`", err)
     }
 
     @Test
     fun `getErrorDetails handles lexer error`() = runBlocking {
         val lines = listOf(createLine("1 @ 2"))
         val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("Unexpected character '@'", err)
+        assertEquals("Unexpected character `@`", err)
     }
 
     @Test
     fun `getErrorDetails handles multiple operators`() = runBlocking {
         val lines = listOf(createLine("1 + * 2"))
         val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("Expected a value or '(', but found *", err)
+        assertEquals("Expected a value or `(`, but found `*`", err)
     }
 
     @Test
     fun `getErrorDetails handles missing operand`() = runBlocking {
         val lines = listOf(createLine("5 + "))
         val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("Expected a value or '(', but found end of line", err)
+        assertEquals("Expected a value or `(`, but found `end of line`", err)
     }
 
     @Test
     fun `getErrorDetails handles empty parentheses`() = runBlocking {
         val lines = listOf(createLine("()"))
         val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("Expected a value or '(', but found )", err)
+        assertEquals("Expected a value or `(`, but found `)`", err)
     }
 
     @Test
@@ -1603,14 +1603,14 @@ class MathEngineTest {
             createLine("f(1, 2)")
         )
         val err = MathEngine.getErrorDetails(lines, 1)
-        assertEquals("Function 'f' expects 1 argument, but got 2", err)
+        assertEquals("Function `f()` expects 1 argument, but got 2", err)
     }
 
     @Test
     fun `arity mismatch reported before undefined argument for built in function`() = runBlocking {
         val lines = listOf(createLine("sinh(2, 5)"))
         val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("Function 'sinh' expects 1 argument, but got 2", err)
+        assertEquals("Function `sinh()` expects 1 argument, but got 2", err)
     }
 
     @Test
@@ -1620,14 +1620,14 @@ class MathEngineTest {
             createLine("f(1, unknown_var)")
         )
         val err = MathEngine.getErrorDetails(lines, 1)
-        assertEquals("Function 'f' expects 1 argument, but got 2", err)
+        assertEquals("Function `f()` expects 1 argument, but got 2", err)
     }
 
     @Test
     fun `arity mismatch reported before undefined argument for built-in function with invalid arg`() = runBlocking {
         val lines = listOf(createLine("sinh(1, unknown_var)"))
         val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("Function 'sinh' expects 1 argument, but got 2", err)
+        assertEquals("Function `sinh()` expects 1 argument, but got 2", err)
     }
 
     @Test
@@ -1662,7 +1662,7 @@ class MathEngineTest {
         val result = MathEngine.calculate(lines)
         assertEquals("Err", result[0].result)
         var err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("'lineno' is a reserved name and cannot be changed", err)
+        assertEquals("`lineno` is a reserved name and cannot be changed", err)
     }
 
     @Test
@@ -1673,7 +1673,7 @@ class MathEngineTest {
         val result = MathEngine.calculate(lines)
         assertEquals("Err", result[0].result)
         var err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("'lineno' is a reserved name and cannot be changed", err)
+        assertEquals("`lineno` is a reserved name and cannot be changed", err)
     }
 
     @Test
@@ -1684,7 +1684,7 @@ class MathEngineTest {
         val result = MathEngine.calculate(lines)
         assertEquals("Err", result[0].result)
         var err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("'lineno' is a reserved name and cannot be changed", err)
+        assertEquals("`lineno` is a reserved name and cannot be changed", err)
     }
 
     @Test

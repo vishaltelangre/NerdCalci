@@ -248,6 +248,7 @@ private fun applySyntaxHighlighting(
                 withStyle(SpanStyle(color = color, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic)) {
                     append(elementText)
                 }
+                // Reset state after consumption to prevent chained leaks.
                 dotSeenAfterFileVar = false
                 lastFileVariableNode = false
             } else {
@@ -266,11 +267,14 @@ private fun applySyntaxHighlighting(
                 }
 
                 if (token.type == TokenType.Variable && fileVariables.containsKey(elementText)) {
+                    // Found a variable that holds a file reference
                     lastFileVariableNode = true
                     dotSeenAfterFileVar = false
                 } else if (token.type == TokenType.Default && elementText == "." && lastFileVariableNode) {
+                    // Found a dot operator directly following a file variable
                     dotSeenAfterFileVar = true
                 } else if (token.type != TokenType.Default || elementText.trim().isNotEmpty()) {
+                    // Any other non-whitespace token breaks the chain for dot notation
                     lastFileVariableNode = false
                     dotSeenAfterFileVar = false
                 }
@@ -774,7 +778,7 @@ fun CalculatorScreen(
                                 .padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 4.dp),
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            val symbols = listOf(".", "_", "(", ")", "#", "=", "+", "-", "×", "÷", "%", "^")
+                            val symbols = listOf(".", "_", "(", ")", "#", "=", "+", "-", "×", "÷", "%", "^", "\"")
                             symbols.forEach { symbol ->
                                 ShortcutButton(text = symbol) {
                                     currentlyFocusedLineId?.let { lineId ->
@@ -1157,27 +1161,28 @@ private fun LineRow(
         val cursorPos = textFieldValue.selection.start
         val text = textFieldValue.text
         if (cursorPos > 0) {
-            // Check if cursor is inside a comment (after #)
+            // Check if cursor is inside a comment (after #) to suppress suggestions
             val beforeCursor = text.substring(0, cursorPos)
             val hashIndex = beforeCursor.indexOf('#')
             if (hashIndex >= 0) {
                 return@remember Triple("", SuggestionType.VARIABLE, false)
             }
 
-            // Match `file("...`
+            // Match `file("...` to suggest available file names
             val fileRegex = Regex("""file\(\s*"([^"]*)$""")
             val fileMatch = fileRegex.find(beforeCursor)
             if (fileMatch != null) {
                 return@remember Triple(fileMatch.groupValues[1], SuggestionType.FILE, true)
             }
 
-            // Match `.` (dot notation)
+            // Match dot notation (`obj.`) to suggest members of that file
             val dotRegex = Regex("""(\w+|\bfile\(\s*"[^"]*"\s*\))\s*\.\s*(\w*)$""")
             val dotMatch = dotRegex.find(beforeCursor)
             if (dotMatch != null) {
                 return@remember Triple(dotMatch.groupValues[2], SuggestionType.VARIABLE, true)
             }
 
+            // Default back to normal word extraction for local variables
             val range = text.getIdentifierRangeAt(cursorPos - 1)
             if (cursorPos <= range.last + 1) {
                 return@remember Triple(text.substring(range.first, cursorPos), SuggestionType.VARIABLE, false)
@@ -1192,19 +1197,25 @@ private fun LineRow(
 
     var remoteSuggestions by remember { mutableStateOf<Set<Suggestion>>(emptySet()) }
 
+    // Extracts the target file name when user types a dot notation expression (e.g. `file("OtherFile").` or `var.`).
     val dotFileName = remember(textFieldValue.text, textFieldValue.selection, fileVariables) {
         val cursorPos = textFieldValue.selection.start
         val text = textFieldValue.text
         if (cursorPos > 0) {
             val beforeCursor = text.substring(0, cursorPos)
+            // Checks for dot notation expression with either:
+            // - a normal variable identifier (e.g., myFile)
+            // - a file() expression (e.g., file("OtherFile"))
             val dotRegex = Regex("""(\w+|\bfile\(\s*"[^"]*"\s*\))\s*\.\s*(\w*)$""")
             val dotMatch = dotRegex.find(beforeCursor)
             if (dotMatch != null) {
                 val objectName = dotMatch.groupValues[1]
+                // If it's `file("OtherFile").something`, extract "OtherFile" literal directly
                 if (objectName.startsWith("file(")) {
                     val m = Regex("""file\(\s*"([^"]+)"\s*\)""").find(objectName)
                     m?.groupValues?.getOrNull(1)
                 } else {
+                    // Otherwise resolve linked file name using local variable references mapping
                     fileVariables[objectName]
                 }
             } else null

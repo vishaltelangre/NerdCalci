@@ -55,7 +55,7 @@ class Parser(private val tokens: List<Token>) {
         val token = peek()
         if (token.kind != kind) {
             throw ParseException(
-                "Expected ${kind.display}, but found ${token.kind.display}", token.position
+                "Expected `${kind.display}`, but found `${token.kind.display}`", token.position
             )
         }
         return advance()
@@ -69,7 +69,7 @@ class Parser(private val tokens: List<Token>) {
         if (!isAtEnd()) {
             val leftover = peek()
             throw ParseException(
-                "Unexpected ${leftover.kind.display}", leftover.position
+                "Unexpected `${leftover.kind.display}`", leftover.position
             )
         }
         return stmt
@@ -304,27 +304,38 @@ class Parser(private val tokens: List<Token>) {
         return parsePostfix()
     }
 
+    /**
+     * Parse postfix operations, specifically member access and function calls
+     * using dot notation (e.g., `obj.member` or `obj.func()`).
+     *
+     * It iteratively chains dot access expressions onto the base expression.
+     */
     private fun parsePostfix(): Expr {
         var expr = parsePrimary()
+        // Continue consuming as long as next token is a DOT
         while (peekKind() == TokenKind.DOT) {
             advance() // consume "."
             val token = peek()
+
             if (token.kind != TokenKind.IDENTIFIER && !token.kind.name.startsWith("KW_")) {
                 val message = if (token.kind == TokenKind.EOF) {
-                    "Missing variable or function name after '.'"
+                    "Missing variable or function name after `.`"
                 } else {
-                    "Expected variable or function name after '.', but found '${token.lexeme}'"
+                    "Expected variable or function name after `.`, but found `${token.lexeme}`"
                 }
                 throw ParseException(message, token.position)
             }
             advance()
             val name = token.lexeme
+
+            // Check if it's a member function call
             if (peekKind() == TokenKind.LPAREN) {
                 advance() // consume "("
                 val args = parseArgList()
                 expect(TokenKind.RPAREN)
                 expr = Expr.MemberFunctionCall(expr, name, args)
             } else {
+                // Otherwise treat it as a property/variable accessor
                 expr = Expr.MemberAccess(expr, name)
             }
         }
@@ -421,7 +432,7 @@ class Parser(private val tokens: List<Token>) {
                 } else {
                     val token = peek()
                     throw ParseException(
-                        "Expected a value or '(', but found ${token.kind.display}", token.position
+                        "Expected a value or `(`, but found `${token.kind.display}`", token.position
                     )
                 }
             }
@@ -447,7 +458,7 @@ class Parser(private val tokens: List<Token>) {
      */
     private fun requireAssignable(name: String, position: Int) {
         if (Builtins.isBuiltin(name) || MathEngine.reservedVariableNames.contains(name)) {
-            throw ParseException("'$name' is a reserved name and cannot be changed", position)
+            throw ParseException("`$name` is a reserved name and cannot be changed", position)
         }
     }
 

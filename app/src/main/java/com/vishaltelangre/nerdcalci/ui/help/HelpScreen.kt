@@ -248,7 +248,7 @@ private fun HelpScreenContent(
 ) {
     val context = LocalContext.current
     val primaryColor = MaterialTheme.colorScheme.primary.toArgb()
-    val markwon: Markwon = remember {
+    val markwon: Markwon = remember(context, primaryColor) {
         val firaCodeTypeface = ResourcesCompat.getFont(context, R.font.fira_code_regular)
         val defaultTextSize = TextView(context).textSize
 

@@ -289,9 +289,9 @@ class Evaluator(
         val evaluatedArgs = args.map { Expr.NumberLiteral(it) }
 
         val remoteEvaluator = Evaluator(
-            variables = remoteContext.variables.toMutableMap(),
-            localFunctions = remoteContext.localFunctions.toMutableMap(),
-            fileVariables = remoteContext.fileVariables.toMutableMap(),
+            variables = remoteContext.variables,
+            localFunctions = remoteContext.localFunctions,
+            fileVariables = remoteContext.fileVariables,
             fileContextLoader = fileContextLoader,
             loadingStack = loadingStack
         )

@@ -1773,6 +1773,29 @@ class MathEngineTest {
     }
 
     @Test
+    fun `evaluate resolves remote function call from linked file`() = runBlocking {
+        val remoteContext = MathContext()
+        remoteContext.localFunctions["double"] = LocalFunction(
+            name = "double",
+            params = listOf("x"),
+            body = listOf(
+                Statement.ExprStatement(
+                    Expr.BinaryOp(
+                        Expr.Variable("x"),
+                        TokenKind.STAR,
+                        Expr.NumberLiteral(2.0)
+                    )
+                )
+            )
+        )
+        val loader = FakeFileContextLoader(mapOf("Summary" to remoteContext))
+
+        val lines = listOf(createLine("file(\"Summary\").double(5) + 3"))
+        val result = MathEngine.calculate(lines, loader)
+        assertEquals("13.0", result[0].result)
+    }
+
+    @Test
     fun `standalone string literal throws error`() = runBlocking {
         val lines = listOf(createLine("\"hello\""))
         val result = MathEngine.calculate(lines)

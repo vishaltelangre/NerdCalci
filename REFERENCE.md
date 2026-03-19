@@ -1,3 +1,40 @@
+- [1. Basic math and operators](#1-basic-math-and-operators)
+  - [Addition](#addition)
+  - [Subtraction](#subtraction)
+  - [Multiplication](#multiplication)
+  - [Division](#division)
+  - [Modulo](#modulo)
+  - [Exponentiation](#exponentiation)
+  - [Grouping](#grouping)
+- [2. Variables and state](#2-variables-and-state)
+  - [Assignment](#assignment)
+  - [Compound assignment](#compound-assignment)
+  - [Increment and decrement](#increment-and-decrement)
+- [3. Percentages](#3-percentages)
+  - [Percentage of](#percentage-of)
+  - [Percentage off (discounting)](#percentage-off-discounting)
+  - [Addition / subtraction](#addition--subtraction)
+- [4. Built-in mathematical functions](#4-built-in-mathematical-functions)
+  - [Power \& Roots](#power--roots)
+  - [Rounding \& Signs](#rounding--signs)
+  - [Logarithmic \& Exponential](#logarithmic--exponential)
+  - [Trigonometry](#trigonometry)
+- [5. Built-in constants](#5-built-in-constants)
+- [6. Comments](#6-comments)
+- [7. Dynamic variables](#7-dynamic-variables)
+  - [Sum / Total](#sum--total)
+  - [Average](#average)
+  - [Reference to previous line result](#reference-to-previous-line-result)
+  - [Reference to current line number](#reference-to-current-line-number)
+- [8. User-defined functions](#8-user-defined-functions)
+  - [Basic definition](#basic-definition)
+  - [Multiple statements](#multiple-statements)
+  - [Scope isolation](#scope-isolation)
+  - [Recursion](#recursion)
+- [9. Cross-file references](#9-cross-file-references)
+  - [Referencing a file](#referencing-a-file)
+  - [Accessing variables from other files](#accessing-variables-from-other-files)
+  - [Accessing functions from other files](#accessing-functions-from-other-files)
 
 ## 1. Basic math and operators
 
@@ -354,3 +391,44 @@ Variables defined inside a function (like `base`, `bonus`, `tax` above) are **lo
 ### Recursion
 
 For safety, NerdCalci prevents functions from calling themselves, either directly or indirectly.
+
+## 9. Cross-file references
+
+You can access variables and functions from other calculation files using the `file()` function and dot notation.
+
+### Referencing a file
+
+Use `file("FileName")` to load the context of another file. The file name must be inside quotes. Alternatively, you can use the file name directly if it doesn't contain spaces or special characters.
+
+```text
+f = file("Summary")
+```
+
+### Accessing variables from other files
+
+Use dot notation (`.`) to read variables from the referenced file. These variables are **read-only**, meaning you cannot modify them from another file.
+
+For example, if you have a file named "Summary" with the following content:
+
+```text
+item1 = 10
+item2 = 20
+item1 + item2
+```
+
+Then in another file, you can:
+
+```text
+f = file("Summary")
+f.item1             # 10
+r = f.total * 1.05  # 31.50
+```
+
+### Accessing functions from other files
+
+You can call functions defined in the referenced file just like variables, passing any required arguments.
+
+```text
+calcs = file("Calculations")
+result = calcs.calculateTax(1000)
+```

@@ -1,0 +1,1 @@
+Added support for referencing variables and functions from other files (e.g., `file("Summary").someVariable` or `otherFile.someFunction(2, localVar)`).

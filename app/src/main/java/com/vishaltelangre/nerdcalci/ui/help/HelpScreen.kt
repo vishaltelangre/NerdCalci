@@ -208,9 +208,9 @@ private fun scrollToAnchor(
 ) {
     val text = textView.text as? android.text.Spanned ?: return
     val lines = text.toString().split("\n")
-    var lastMatchOffset = -1
+    var matchOffset = -1
     var currentOffset = 0
-
+ 
     for (i in lines.indices) {
         val lineText = lines[i].trim()
         val cleanText = if (lineText.startsWith("#")) {
@@ -220,16 +220,17 @@ private fun scrollToAnchor(
         }
         val slugClean = slugify(cleanText)
         val slugAnchor = slugify(anchor)
-
+ 
         if (slugClean.isNotEmpty() && slugClean == slugAnchor) {
-            lastMatchOffset = currentOffset
+            matchOffset = currentOffset
+            break
         }
         currentOffset += lines[i].length + 1
     }
-
-    if (lastMatchOffset != -1) {
+ 
+    if (matchOffset != -1) {
         textView.layout?.let { layout ->
-            val lineIndex = layout.getLineForOffset(lastMatchOffset)
+            val lineIndex = layout.getLineForOffset(matchOffset)
             val lineTop = layout.getLineTop(lineIndex)
             coroutineScope.launch {
                 scrollState.animateScrollTo((androidViewTop + lineTop).toInt())

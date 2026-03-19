@@ -55,7 +55,7 @@ class Parser(private val tokens: List<Token>) {
         val token = peek()
         if (token.kind != kind) {
             throw ParseException(
-                "Expected ${kind.display}, but found ${token.kind.display}", token.position
+                "Expected `${kind.display}`, but found `${token.kind.display}`", token.position
             )
         }
         return advance()
@@ -69,7 +69,7 @@ class Parser(private val tokens: List<Token>) {
         if (!isAtEnd()) {
             val leftover = peek()
             throw ParseException(
-                "Unexpected ${leftover.kind.display}", leftover.position
+                "Unexpected `${leftover.kind.display}`", leftover.position
             )
         }
         return stmt
@@ -87,65 +87,77 @@ class Parser(private val tokens: List<Token>) {
      */
     private fun parseStatement(allowFunctionDef: Boolean = true): Statement {
         val kind = peekKind()
-        if (kind == TokenKind.IDENTIFIER || kind.isPreviousLineAlias || kind.isLineNumberAlias) {
-            val name = peek().lexeme
-            val position = peek().position
-            val nextKind = peekAt(1)
-
-            return when (nextKind) {
-                // e.g. price = 100
-                TokenKind.EQUALS -> {
-                    requireAssignable(name, position)
-                    advance() // skip past "price"
-                    advance() // skip past "="
-                    val expr = parseExpression()
-                    Statement.Assignment(name, expr)
+        if (kind == TokenKind.IDENTIFIER && peekAt(1) == TokenKind.LPAREN) {
+            if (isFunctionDefinition()) {
+                val position = peek().position
+                if (!allowFunctionDef) {
+                    throw ParseException("Functions cannot be created inside other functions", position)
                 }
-                // e.g. f(x) = x * 2;
-                TokenKind.LPAREN -> {
-                    // It could be a function definition (if it's `f(x) = ...`)
-                    // or a function call (if it's just `f(x)` without `=`)
-                    if (isFunctionDefinition()) {
-                        if (!allowFunctionDef) {
-                            throw ParseException("Nested function definitions are not allowed", position)
-                        }
-                        requireAssignable(name, position)
-                        advance() // skip past "f" (function name)
-                        return parseFunctionDefinition(name)
-                    } else {
-                        return Statement.ExprStatement(parseExpression())
-                    }
-                }
-                // e.g. total += 5, score -= 3, x *= 2, x /= 4, x %= 3
-                TokenKind.PLUS_EQUALS, TokenKind.MINUS_EQUALS,
-                TokenKind.STAR_EQUALS, TokenKind.SLASH_EQUALS,
-                TokenKind.PERCENT_EQUALS -> {
-                    requireAssignable(name, position)
-                    advance() // skip past "total"
-                    val opToken = advance() // skip past "+=" (and remember which operator)
-                    val expr = parseExpression()
-                    Statement.CompoundAssignment(name, opToken.kind, expr)
-                }
-                // e.g. count++
-                TokenKind.PLUS_PLUS -> {
-                    requireAssignable(name, position)
-                    advance() // skip past "count"
-                    advance() // skip past "++"
-                    Statement.Increment(name)
-                }
-                // e.g. count--
-                TokenKind.MINUS_MINUS -> {
-                    requireAssignable(name, position)
-                    advance() // skip past "count"
-                    advance() // skip past "--"
-                    Statement.Decrement(name)
-                }
-                // Everything else is an expression, e.g. 2 + 3, price * 1.1
-                else -> Statement.ExprStatement(parseExpression())
+                val name = peek().lexeme
+                requireAssignable(name, position)
+                advance() // skip past name
+                return parseFunctionDefinition(name)
             }
         }
 
-        return Statement.ExprStatement(parseExpression())
+        val checkpoint = pos
+        val target: Expr = try {
+            parsePostfix()
+        } catch (e: Exception) {
+            pos = checkpoint
+            return Statement.ExprStatement(parseExpression())
+        }
+
+        val nextKind = peekKind()
+        val isAssignment = nextKind == TokenKind.EQUALS ||
+                nextKind == TokenKind.PLUS_EQUALS ||
+                nextKind == TokenKind.MINUS_EQUALS ||
+                nextKind == TokenKind.STAR_EQUALS ||
+                nextKind == TokenKind.SLASH_EQUALS ||
+                nextKind == TokenKind.PERCENT_EQUALS ||
+                nextKind == TokenKind.PLUS_PLUS ||
+                nextKind == TokenKind.MINUS_MINUS
+
+        if (isAssignment) {
+            requireAssignableExpr(target)
+            return when (nextKind) {
+                TokenKind.EQUALS -> {
+                    advance()
+                    Statement.Assignment(target, parseExpression())
+                }
+                TokenKind.PLUS_EQUALS, TokenKind.MINUS_EQUALS,
+                TokenKind.STAR_EQUALS, TokenKind.SLASH_EQUALS,
+                TokenKind.PERCENT_EQUALS -> {
+                    val opToken = advance()
+                    Statement.CompoundAssignment(target, opToken.kind, parseExpression())
+                }
+                // e.g. count++
+                TokenKind.PLUS_PLUS -> {
+                    advance()
+                    Statement.Increment(target)
+                }
+                // e.g. count--
+                TokenKind.MINUS_MINUS -> {
+                    advance()
+                    Statement.Decrement(target)
+                }
+                else -> throw ParseException("Something is wrong with this notation", peek().position)
+            }
+        } else {
+            pos = checkpoint
+            return Statement.ExprStatement(parseExpression())
+        }
+    }
+
+    private fun requireAssignableExpr(target: Expr) {
+        if (target is Expr.MemberAccess) {
+            throw ParseException("Variables from other files are read-only and cannot be changed", peek().position)
+        }
+        if (target is Expr.Variable) {
+            requireAssignable(target.name, peek().position)
+            return
+        }
+        throw ParseException("Values can only be assigned to variables", peek().position)
     }
 
     /**
@@ -289,7 +301,45 @@ class Parser(private val tokens: List<Token>) {
             val operand = parseUnary()
             return Expr.UnaryMinus(operand)
         }
-        return parsePrimary()
+        return parsePostfix()
+    }
+
+    /**
+     * Parse postfix operations, specifically member access and function calls
+     * using dot notation (e.g., `obj.member` or `obj.func()`).
+     *
+     * It iteratively chains dot access expressions onto the base expression.
+     */
+    private fun parsePostfix(): Expr {
+        var expr = parsePrimary()
+        // Continue consuming as long as next token is a DOT
+        while (peekKind() == TokenKind.DOT) {
+            advance() // consume "."
+            val token = peek()
+
+            if (token.kind != TokenKind.IDENTIFIER && !token.kind.name.startsWith("KW_")) {
+                val message = if (token.kind == TokenKind.EOF) {
+                    "Missing variable or function name after `.`"
+                } else {
+                    "Expected variable or function name after `.`, but found `${token.lexeme}`"
+                }
+                throw ParseException(message, token.position)
+            }
+            advance()
+            val name = token.lexeme
+
+            // Check if it's a member function call
+            if (peekKind() == TokenKind.LPAREN) {
+                advance() // consume "("
+                val args = parseArgList()
+                expect(TokenKind.RPAREN)
+                expr = Expr.MemberFunctionCall(expr, name, args)
+            } else {
+                // Otherwise treat it as a property/variable accessor
+                expr = Expr.MemberAccess(expr, name)
+            }
+        }
+        return expr
     }
 
     /**
@@ -311,6 +361,19 @@ class Parser(private val tokens: List<Token>) {
     private fun parsePrimary(): Expr {
         val kind = peekKind()
         return when (kind) {
+            TokenKind.STRING_LITERAL -> {
+                val token = advance()
+                Expr.StringLiteral(token.lexeme)
+            }
+
+            TokenKind.KW_FILE -> {
+                advance() // consume "file"
+                expect(TokenKind.LPAREN)
+                val args = parseArgList()
+                expect(TokenKind.RPAREN)
+                Expr.FunctionCall("file", args)
+            }
+
             TokenKind.NUMBER -> {
                 val numToken = advance()
                 // Check for percentage syntax: 20% of X, 15% off X, or bare 20%
@@ -369,7 +432,7 @@ class Parser(private val tokens: List<Token>) {
                 } else {
                     val token = peek()
                     throw ParseException(
-                        "Expected a value or '(', but found ${token.kind.display}", token.position
+                        "Expected a value or `(`, but found `${token.kind.display}`", token.position
                     )
                 }
             }
@@ -395,7 +458,7 @@ class Parser(private val tokens: List<Token>) {
      */
     private fun requireAssignable(name: String, position: Int) {
         if (Builtins.isBuiltin(name) || MathEngine.reservedVariableNames.contains(name)) {
-            throw ParseException("'$name' is reserved and cannot be reassigned", position)
+            throw ParseException("`$name` is a reserved name and cannot be changed", position)
         }
     }
 
@@ -408,5 +471,8 @@ class Parser(private val tokens: List<Token>) {
     /** Check whether a token kind can start an expression (used for % disambiguation). */
     private fun canStartExpression(kind: TokenKind): Boolean =
         kind == TokenKind.NUMBER || kind == TokenKind.LPAREN ||
-                kind == TokenKind.IDENTIFIER || kind.isPreviousLineAlias || kind.isLineNumberAlias
+                kind == TokenKind.IDENTIFIER || kind.isPreviousLineAlias || kind.isLineNumberAlias ||
+                kind == TokenKind.STRING_LITERAL || kind == TokenKind.KW_FILE
 }
+
+private class BacktrackException : Exception()

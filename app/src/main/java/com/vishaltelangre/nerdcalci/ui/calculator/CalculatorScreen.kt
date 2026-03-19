@@ -133,6 +133,7 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.ui.graphics.drawscope.Stroke
 import com.vishaltelangre.nerdcalci.core.Constants
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
+import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
 import com.vishaltelangre.nerdcalci.ui.components.DeleteFileDialog
 import com.vishaltelangre.nerdcalci.ui.components.RenameFileDialog
 import com.vishaltelangre.nerdcalci.ui.components.FileInfoDialog
@@ -164,7 +165,8 @@ private class SyntaxHighlightingTransformation(
     private val operatorColor: Color,
     private val percentColor: Color,
     private val commentColor: Color,
-    private val defaultColor: Color
+    private val defaultColor: Color,
+    private val fileVariables: Map<String, String> = emptyMap()
 ) : VisualTransformation {
     override fun filter(text: AnnotatedString): TransformedText {
         // We use a single space " " for empty lines so that backspace can delete them.
@@ -182,7 +184,8 @@ private class SyntaxHighlightingTransformation(
                 operatorColor,
                 percentColor,
                 commentColor,
-                defaultColor
+                defaultColor,
+                fileVariables
             )
         }
 
@@ -218,10 +221,14 @@ private fun applySyntaxHighlighting(
     operatorColor: Color,
     percentColor: Color,
     commentColor: Color,
-    defaultColor: Color
+    defaultColor: Color,
+    fileVariables: Map<String, String> = emptyMap()
 ): AnnotatedString {
     return buildAnnotatedString {
         val tokens = SyntaxUtils.parseSyntaxTokens(text)
+        var lastFileVariableNode = false
+        var dotSeenAfterFileVar = false
+
         for (token in tokens) {
             val elementText = text.substring(token.start, token.end)
             val color = when (token.type) {
@@ -232,19 +239,45 @@ private fun applySyntaxHighlighting(
                 TokenType.Operator -> operatorColor
                 TokenType.Percent -> percentColor
                 TokenType.Comment -> commentColor
+                TokenType.StringLiteral -> keywordColor
                 TokenType.Default -> defaultColor
             }
-            if (token.type == TokenType.Variable || token.type == TokenType.Keyword || token.type == TokenType.Function) {
-                withStyle(SpanStyle(color = color, fontWeight = FontWeight.Bold)) {
+
+            val isTargetAfterDot = (token.type == TokenType.Variable || token.type == TokenType.Keyword || token.type == TokenType.Function) && dotSeenAfterFileVar
+
+            if (isTargetAfterDot) {
+                withStyle(SpanStyle(color = color, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic)) {
                     append(elementText)
                 }
-            } else if (token.type == TokenType.Comment) {
-                withStyle(SpanStyle(color = color, fontStyle = FontStyle.Italic)) {
-                    append(elementText)
-                }
+                // Reset state after consumption to prevent chained leaks.
+                dotSeenAfterFileVar = false
+                lastFileVariableNode = false
             } else {
-                withStyle(SpanStyle(color = color)) {
-                    append(elementText)
+                if (token.type == TokenType.Variable || token.type == TokenType.Keyword || token.type == TokenType.Function) {
+                    withStyle(SpanStyle(color = color, fontWeight = FontWeight.Bold)) {
+                        append(elementText)
+                    }
+                } else if (token.type == TokenType.Comment) {
+                    withStyle(SpanStyle(color = color, fontStyle = FontStyle.Italic)) {
+                        append(elementText)
+                    }
+                } else {
+                    withStyle(SpanStyle(color = color)) {
+                        append(elementText)
+                    }
+                }
+
+                if (token.type == TokenType.Variable && fileVariables.containsKey(elementText)) {
+                    // Found a variable that holds a file reference
+                    lastFileVariableNode = true
+                    dotSeenAfterFileVar = false
+                } else if (token.type == TokenType.Default && elementText == "." && lastFileVariableNode) {
+                    // Found a dot operator directly following a file variable
+                    dotSeenAfterFileVar = true
+                } else if (token.type != TokenType.Default || elementText.trim().isNotEmpty()) {
+                    // Any other non-whitespace token breaks the chain for dot notation
+                    lastFileVariableNode = false
+                    dotSeenAfterFileVar = false
                 }
             }
         }
@@ -265,14 +298,15 @@ private fun applySyntaxHighlighting(
  * @return Set of Suggestions defined before the specified line
  */
 @OptIn(ExperimentalMaterial3Api::class)
-private fun extractSuggestions(lines: List<LineEntity>, upToSortOrder: Int): Set<Suggestion> {
+private fun extractSuggestions(lines: List<LineEntity>, upToSortOrder: Int): Pair<Set<Suggestion>, Map<String, String>> {
     val suggestionMap = mutableMapOf<String, Suggestion>()
+    val fileVariables = mutableMapOf<String, String>()
 
     // Defaults (Dynamic variables, constants, global functions)
     MathEngine.dynamicVariableNames.forEach { suggestionMap[it] = Suggestion(it, SuggestionType.DYNAMIC_VARIABLE) }
     Builtins.constantNames.forEach { suggestionMap[it] = Suggestion(it, SuggestionType.CONSTANT) }
     Builtins.functionNames.forEach { suggestionMap[it] = Suggestion(it, SuggestionType.GLOBAL_FUNCTION) }
-
+    suggestionMap["file"] = Suggestion("file", SuggestionType.GLOBAL_FUNCTION)
     lines.filter { it.sortOrder < upToSortOrder }.forEach { line ->
         // Strip comments first
         val hashIndex = line.expression.indexOf('#')
@@ -296,10 +330,18 @@ private fun extractSuggestions(lines: List<LineEntity>, upToSortOrder: Int): Set
                 suggestionMap[name] = Suggestion(name, SuggestionType.LOCAL_FUNCTION)
             } else {
                 suggestionMap[name] = Suggestion(name, SuggestionType.VARIABLE)
+                fileVariables.remove(name)
+
+                val rhs = exprWithoutComment.substring(matchResult.groups[0]!!.range.last + 1).trim()
+                val fileMatch = Regex("""file\(\s*"([^"]+)"\s*\)""").matchEntire(rhs)
+                when {
+                    fileMatch != null -> fileVariables[name] = fileMatch.groupValues[1]
+                    rhs in fileVariables -> fileVariables[name] = fileVariables.getValue(rhs)
+                }
             }
         }
     }
-    return suggestionMap.values.toSet()
+    return Pair(suggestionMap.values.toSet(), fileVariables)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -333,6 +375,11 @@ fun CalculatorScreen(
     }
 
     BackHandler(onBack = handleBack)
+
+    LaunchedEffect(fileId) {
+        viewModel.recalculateFile(fileId)
+    }
+
     val lines by viewModel.getLines(fileId).collectAsState(initial = emptyList())
     val precision by viewModel.precision.collectAsState()
     val files by viewModel.allFiles.collectAsState(initial = emptyList())
@@ -733,7 +780,7 @@ fun CalculatorScreen(
                                 .padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 4.dp),
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            val symbols = listOf(".", "_", "(", ")", "#", "=", "+", "-", "×", "÷", "%", "^")
+                            val symbols = listOf(".", "_", "(", ")", "#", "=", "+", "-", "×", "÷", "%", "^", "\"")
                             symbols.forEach { symbol ->
                                 ShortcutButton(text = symbol) {
                                     currentlyFocusedLineId?.let { lineId ->
@@ -819,9 +866,10 @@ fun CalculatorScreen(
                 modifier = Modifier.fillMaxSize()
             ) {
                 itemsIndexed(lines, key = { _, line -> line.id }) { index, line ->
-
                     // Compute available variables for this line (only from previous lines)
-                    val availableVariables = extractSuggestions(lines, line.sortOrder)
+                    val suggestionsResult = extractSuggestions(lines, line.sortOrder)
+                    val availableVariables = suggestionsResult.first
+                    val fileVariables = suggestionsResult.second
 
                     LineRow(
                         line = line,
@@ -831,6 +879,9 @@ fun CalculatorScreen(
                         precision = precision,
                         numberWidth = numberWidth,
                         availableVariables = availableVariables,
+                        fileVariables = fileVariables,
+                        allFiles = files,
+                        onGetSuggestionsForFile = viewModel::getSuggestionsForFile,
                         shouldFocus = focusLineId == line.id,
                         focusCursorPos = if (focusLineId == line.id) focusCursorPosition else null,
                         insertTextRequest = if (insertTextRequest?.first == line.id) insertTextRequest?.second else null,
@@ -1044,6 +1095,9 @@ private fun LineRow(
     precision: Int,
     numberWidth: Dp,
     availableVariables: Set<Suggestion>,
+    fileVariables: Map<String, String> = emptyMap(),
+    allFiles: List<FileEntity>,
+    onGetSuggestionsForFile: suspend (String) -> Set<Suggestion>,
     shouldFocus: Boolean,
     focusCursorPos: Int?,
     insertTextRequest: String?,
@@ -1075,11 +1129,18 @@ private fun LineRow(
 
     val syntaxHighlightingTransformation = remember(
         numberColor, variableColor, keywordColor, functionColor,
-        operatorColor, percentColor, commentColor, defaultTextColor
+        operatorColor, percentColor, commentColor, defaultTextColor, fileVariables
     ) {
         SyntaxHighlightingTransformation(
-            numberColor, variableColor, keywordColor, functionColor,
-            operatorColor, percentColor, commentColor, defaultTextColor
+            numberColor = numberColor,
+            variableColor = variableColor,
+            keywordColor = keywordColor,
+            functionColor = functionColor,
+            operatorColor = operatorColor,
+            percentColor = percentColor,
+            commentColor = commentColor,
+            defaultColor = defaultTextColor,
+            fileVariables = fileVariables
         )
     }
     var previousSelection by remember { mutableStateOf(textFieldValue.selection) }
@@ -1098,40 +1159,132 @@ private fun LineRow(
             forceDismissSuggestions = true
         }
     }
-
-    val currentWord = remember(textFieldValue.text, textFieldValue.selection) {
+    val suggestionContext = remember(textFieldValue.text, textFieldValue.selection, fileVariables) {
         val cursorPos = textFieldValue.selection.start
         val text = textFieldValue.text
         if (cursorPos > 0) {
-            // Check if cursor is inside a comment (after #)
+            // Check if cursor is inside a comment (after #) to suppress suggestions
             val beforeCursor = text.substring(0, cursorPos)
             val hashIndex = beforeCursor.indexOf('#')
             if (hashIndex >= 0) {
-                // Cursor is inside a comment, don't suggest
-                ""
-            } else {
-                val range = text.getIdentifierRangeAt(cursorPos - 1)
-
-                if (cursorPos <= range.last + 1) {
-                    text.substring(range.first, cursorPos)
-                } else ""
+                return@remember Triple("", SuggestionType.VARIABLE, false)
             }
-        } else ""
+
+            // Match `file("...` to suggest available file names
+            val fileRegex = Regex("""file\(\s*"([^"]*)$""")
+            val fileMatch = fileRegex.find(beforeCursor)
+            if (fileMatch != null) {
+                return@remember Triple(fileMatch.groupValues[1], SuggestionType.FILE, true)
+            }
+
+            // Match dot notation (`obj.`) to suggest members of that file
+            val dotRegex = Regex("""(\w+|\bfile\(\s*"[^"]*"\s*\))\s*\.\s*(\w*)$""")
+            val dotMatch = dotRegex.find(beforeCursor)
+            if (dotMatch != null) {
+                val objectName = dotMatch.groupValues[1]
+                val linkedFile = if (objectName.startsWith("file(")) {
+                    Regex("""file\(\s*"([^"]+)"\s*\)""").find(objectName)?.groupValues?.getOrNull(1)
+                } else {
+                    fileVariables[objectName]
+                }
+                if (linkedFile != null) {
+                    return@remember Triple(dotMatch.groupValues[2], SuggestionType.VARIABLE, true)
+                }
+            }
+
+            // Default back to normal word extraction for local variables
+            val range = text.getIdentifierRangeAt(cursorPos - 1)
+            if (cursorPos <= range.last + 1) {
+                return@remember Triple(text.substring(range.first, cursorPos), SuggestionType.VARIABLE, false)
+            }
+        }
+        Triple("", SuggestionType.VARIABLE, false)
     }
 
-    val suggestions = remember(currentWord, availableVariables, forceDismissSuggestions, showSuggestions) {
-        if (!forceDismissSuggestions &&
-            showSuggestions &&
-            currentWord.isNotEmpty() &&
-            // Don't suggest for purely numeric inputs (allows variables like 'a1' but not '1')
-            currentWord.any { char -> char.isLetter() || char == '_' } &&
-            currentWord.all { char -> char.isLetterOrDigit() || char == '_' }) {
-            availableVariables.mapNotNull {
-                val match = it.name.calculateFuzzyMatch(currentWord, it.type)
-                if (match != null && it.name != currentWord) {
-                    it.copy(matchIndices = match.matchIndices, score = match.score)
-                } else null
-            }.sortedByDescending { it.score }
+    val currentWord = suggestionContext.first
+    val contextType = suggestionContext.second
+    val isExplicitTrigger = suggestionContext.third
+
+    var remoteSuggestions by remember { mutableStateOf<Set<Suggestion>>(emptySet()) }
+
+    // Extracts the target file name when user types a dot notation expression (e.g. `file("OtherFile").` or `var.`).
+    val dotFileName = remember(textFieldValue.text, textFieldValue.selection, fileVariables) {
+        val cursorPos = textFieldValue.selection.start
+        val text = textFieldValue.text
+        if (cursorPos > 0) {
+            val beforeCursor = text.substring(0, cursorPos)
+            // Checks for dot notation expression with either:
+            // - a normal variable identifier (e.g., myFile)
+            // - a file() expression (e.g., file("OtherFile"))
+            val dotRegex = Regex("""(\w+|\bfile\(\s*"[^"]*"\s*\))\s*\.\s*(\w*)$""")
+            val dotMatch = dotRegex.find(beforeCursor)
+            if (dotMatch != null) {
+                val objectName = dotMatch.groupValues[1]
+                // If it's `file("OtherFile").something`, extract "OtherFile" literal directly
+                if (objectName.startsWith("file(")) {
+                    val m = Regex("""file\(\s*"([^"]+)"\s*\)""").find(objectName)
+                    m?.groupValues?.getOrNull(1)
+                } else {
+                    // Otherwise resolve linked file name using local variable references mapping
+                    fileVariables[objectName]
+                }
+            } else null
+        } else null
+    }
+
+    var loadingSuggestions by remember { mutableStateOf(false) }
+
+    LaunchedEffect(dotFileName) {
+        if (dotFileName != null) {
+            loadingSuggestions = true
+            try {
+                remoteSuggestions = onGetSuggestionsForFile(dotFileName)
+            } finally {
+                loadingSuggestions = false
+            }
+        } else {
+            remoteSuggestions = emptySet()
+            loadingSuggestions = false
+        }
+    }
+
+    val combinedVariables = remember(availableVariables, remoteSuggestions, dotFileName, suggestionContext) {
+        val isDotNotation = suggestionContext.second == SuggestionType.VARIABLE && suggestionContext.third
+        if (isDotNotation) {
+            if (dotFileName != null) remoteSuggestions else emptySet()
+        } else {
+            availableVariables
+        }
+    }
+
+    val suggestions = remember(suggestionContext, combinedVariables, allFiles, forceDismissSuggestions, showSuggestions, loadingSuggestions) {
+        if (!forceDismissSuggestions && showSuggestions && (currentWord.isNotEmpty() || isExplicitTrigger)) {
+            if (loadingSuggestions && combinedVariables.isEmpty()) {
+                return@remember listOf(Suggestion("Loading...", SuggestionType.VARIABLE))
+            }
+            if (contextType == SuggestionType.FILE) {
+                allFiles.filter { it.id != line.fileId }.mapNotNull { file ->
+                    val match = file.name.calculateFuzzyMatch(currentWord, SuggestionType.FILE)
+                    if (match != null && (currentWord.isEmpty() || file.name != currentWord)) {
+                        Suggestion(
+                            name = file.name,
+                            type = SuggestionType.FILE,
+                            matchIndices = match.matchIndices,
+                            score = match.score
+                        )
+                    } else null
+                }.sortedByDescending { it.score }
+            } else {
+                if (currentWord.isEmpty() || (currentWord.any { char -> char.isLetter() || char == '_' } &&
+                    currentWord.all { char -> char.isLetterOrDigit() || char == '_' })) {
+                    combinedVariables.mapNotNull {
+                        val match = it.name.calculateFuzzyMatch(currentWord, it.type)
+                        if (match != null && it.name != currentWord) {
+                            it.copy(matchIndices = match.matchIndices, score = match.score)
+                        } else null
+                    }.sortedByDescending { it.score }
+                } else emptyList()
+            }
         } else emptyList()
     }
 
@@ -1514,10 +1667,8 @@ private fun LineRow(
                             .padding(12.dp)
                     ) {
                         Text(
-                            text = errorMessage ?: "Loading error details...",
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                fontFamily = FiraCodeFamily
-                            ),
+                            text = (errorMessage ?: "Loading error details...").parseBackticks(),
+                            style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onError
                         )
                     }
@@ -1547,6 +1698,27 @@ private fun LineRow(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+private fun String.parseBackticks(): AnnotatedString {
+    return buildAnnotatedString {
+        val parts = this@parseBackticks.split("`")
+        for (i in parts.indices) {
+            if (i % 2 == 1) {
+                withStyle(
+                    SpanStyle(
+                        fontWeight = FontWeight.Normal,
+                        fontFamily = FiraCodeFamily,
+                        background = Color.White.copy(alpha = 0.15f)
+                    )
+                ) {
+                    append(parts[i])
+                }
+            } else {
+                append(parts[i])
             }
         }
     }

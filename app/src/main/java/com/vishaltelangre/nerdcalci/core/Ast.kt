@@ -8,16 +8,16 @@ sealed class Statement {
     data class ExprStatement(val expr: Expr) : Statement()
 
     /** Variable assignment: `price = 100` */
-    data class Assignment(val name: String, val expr: Expr) : Statement()
+    data class Assignment(val target: Expr, val expr: Expr) : Statement()
 
     /** Compound assignment: `total += 5`, `x *= 2` */
-    data class CompoundAssignment(val name: String, val op: TokenKind, val expr: Expr) : Statement()
+    data class CompoundAssignment(val target: Expr, val op: TokenKind, val expr: Expr) : Statement()
 
     /** Increment: `count++` */
-    data class Increment(val name: String) : Statement()
+    data class Increment(val target: Expr) : Statement()
 
     /** Decrement: `count--` */
-    data class Decrement(val name: String) : Statement()
+    data class Decrement(val target: Expr) : Statement()
 
     /** Local custom function definition: `f(x) = x * 2;` */
     data class FunctionDefinition(val name: String, val params: List<String>, val body: List<Statement>) : Statement()
@@ -53,4 +53,13 @@ sealed class Expr {
 
     /** Function call: `sqrt(16)`, `pow(2, 8)` */
     data class FunctionCall(val name: String, val args: List<Expr>) : Expr()
+
+    /** String literal: `"hello"` */
+    data class StringLiteral(val value: String) : Expr()
+
+    /** Member access: `obj.name` */
+    data class MemberAccess(val obj: Expr, val name: String) : Expr()
+
+    /** Member function call: `obj.func(args)` */
+    data class MemberFunctionCall(val obj: Expr, val name: String, val args: List<Expr>) : Expr()
 }

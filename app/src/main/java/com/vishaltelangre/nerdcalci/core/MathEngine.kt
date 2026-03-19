@@ -10,7 +10,8 @@ data class MathContext(
     val variables: MutableMap<String, Double> = mutableMapOf(),
     val localFunctions: MutableMap<String, LocalFunction> = mutableMapOf(),
     val lineResults: MutableList<Double?> = mutableListOf(),
-    val userAssignedDynamicVariables: MutableSet<String> = mutableSetOf()
+    val userAssignedDynamicVariables: MutableSet<String> = mutableSetOf(),
+    val fileVariables: MutableMap<String, String> = mutableMapOf() // varName -> fileName
 )
 
 object MathEngine {
@@ -38,6 +39,8 @@ object MathEngine {
         "linenumber"        to ::computeCurrentLineNumber,
         "currentLineNumber" to ::computeCurrentLineNumber
     )
+
+    val EXCLUDED_DOT_NOTATION_VARIABLES = setOf("lineno", "linenumber", "currentLineNumber")
 
     private val RESERVED_DYNAMIC_VARIABLES = TokenKind.entries
         .filter { it.isPreviousLineAlias || it.isLineNumberAlias }
@@ -80,8 +83,8 @@ object MathEngine {
      * @param lines List of line entities to calculate
      * @return List of line entities with populated results
      */
-    fun calculate(lines: List<LineEntity>): List<LineEntity> {
-        return calculateWithContext(lines, MathContext())
+    suspend fun calculate(lines: List<LineEntity>, loader: FileContextLoader? = null): List<LineEntity> {
+        return calculateWithContext(lines, MathContext(), loader)
     }
 
     /**
@@ -90,8 +93,10 @@ object MathEngine {
      *
      * Returns a populated MathContext.
      */
-    private fun buildVariableState(
-        lines: List<LineEntity>
+    suspend fun buildVariableState(
+        lines: List<LineEntity>,
+        loader: FileContextLoader? = null,
+        loadingStack: Set<String> = emptySet()
     ): MathContext {
         val context = MathContext()
         for (line in lines) {
@@ -101,13 +106,15 @@ object MathEngine {
             }
             try {
                 injectDynamicVariables(context)
-                val result = evaluateLine(line.expression, context)
+                val result = evaluateLine(line.expression, context, loader, loadingStack)
                 context.lineResults.add(result)
                 trackDynamicVariableAssignment(line.expression, context.userAssignedDynamicVariables)
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                if (e is CircularReferenceException && loadingStack.isNotEmpty()) throw e
                 context.lineResults.add(null)
             }
         }
+        injectDynamicVariables(context)
         return context
     }
 
@@ -122,35 +129,36 @@ object MathEngine {
      * @param changedIndex  Index of the first line that changed (0-based).
      * @return Recalculated affected lines: `allLines[changedIndex..end]` with updated results.
      */
-    fun calculateFrom(allLines: List<LineEntity>, changedIndex: Int): List<LineEntity> {
+    suspend fun calculateFrom(allLines: List<LineEntity>, changedIndex: Int, loader: FileContextLoader? = null, loadingStack: Set<String> = emptySet()): List<LineEntity> {
         // Determine which lines are affected by the edit
         val firstAffectedIndex = changedIndex.coerceIn(0, allLines.size)
         val precedingLines = allLines.subList(0, firstAffectedIndex)
         val affectedLines = allLines.subList(firstAffectedIndex, allLines.size)
 
-        // Collect variable state and line results from preceding lines,
-        // then fully recalculate affected lines
-        val context = buildVariableState(precedingLines)
-        return calculateWithContext(affectedLines, context)
+        try {
+            // Collect variable state and line results from preceding lines,
+            // then fully recalculate affected lines
+            val context = buildVariableState(precedingLines, loader, loadingStack)
+            return calculateWithContext(affectedLines, context, loader, loadingStack)
+        } catch (e: CircularReferenceException) {
+            return calculateWithContext(allLines, MathContext(), loader, loadingStack)
+        }
     }
 
     /**
      * Re-evaluates a specific line to capture the exact exception message.
      * Used for on-demand error tooltips.
      */
-    fun getErrorDetails(allLines: List<LineEntity>, targetIndex: Int): String? {
+    suspend fun getErrorDetails(allLines: List<LineEntity>, targetIndex: Int, loader: FileContextLoader? = null, loadingStack: Set<String> = emptySet()): String? {
         if (targetIndex < 0 || targetIndex >= allLines.size) return null
 
         val precedingLines = allLines.subList(0, targetIndex)
         val targetLine = allLines[targetIndex]
 
-        if (targetLine.expression.isBlank()) return null
-
-        val context = buildVariableState(precedingLines)
-
         try {
+            val context = buildVariableState(precedingLines, loader, loadingStack)
             injectDynamicVariables(context)
-            evaluateLine(targetLine.expression, context)
+            evaluateLine(targetLine.expression, context, loader, loadingStack)
             return null // No error occurred during this evaluation
         } catch (e: Exception) {
             return e.message
@@ -164,15 +172,18 @@ object MathEngine {
      * [lineResults] tracks the numeric result of each line (null for blank/comment/error),
      * used to compute values for dynamic variables like `sum`/`total`.
      */
-    private fun calculateWithContext(
+    private suspend fun calculateWithContext(
         lines: List<LineEntity>,
-        context: MathContext
+        context: MathContext,
+        loader: FileContextLoader? = null,
+        loadingStack: Set<String> = emptySet()
     ): List<LineEntity> {
         val variables = context.variables.toMutableMap()
         val localFunctions = context.localFunctions.toMutableMap()
         val lineResults = context.lineResults
         val userAssignedDynamicVariables = context.userAssignedDynamicVariables.toMutableSet()
-        val isolatedContext = MathContext(variables, localFunctions, lineResults, userAssignedDynamicVariables)
+        val fileVariables = context.fileVariables.toMutableMap()
+        val isolatedContext = MathContext(variables, localFunctions, lineResults, userAssignedDynamicVariables, fileVariables)
 
         return lines.map { line ->
             if (line.expression.isBlank()) {
@@ -185,7 +196,7 @@ object MathEngine {
                 injectDynamicVariables(isolatedContext)
 
                 // Evaluate the line, updating `isolatedContext` if it's an assignment/function definition
-                val result = evaluateLine(line.expression, isolatedContext)
+                val result = evaluateLine(line.expression, isolatedContext, loader, loadingStack)
                     ?: run {
                         lineResults.add(null)
                         return@map line.copy(result = "")
@@ -289,7 +300,12 @@ object MathEngine {
      * Mutates [context] if the line is an assignment, compound assignment,
      * increment/decrement, or function definition.
      */
-    private fun evaluateLine(expression: String, context: MathContext): Double? {
+    private suspend fun evaluateLine(
+        expression: String,
+        context: MathContext,
+        loader: FileContextLoader? = null,
+        loadingStack: Set<String> = emptySet()
+    ): Double? {
         val tokens = Lexer(expression).tokenize()
 
         // If the only tokens are EOF (blank line) or the lexer skipped everything
@@ -298,8 +314,13 @@ object MathEngine {
 
         val statement = Parser(tokens).parse()
 
-        return Evaluator(variables = context.variables, localFunctions = context.localFunctions)
-            .evaluateStatement(statement, context)
+        return Evaluator(
+            variables = context.variables,
+            localFunctions = context.localFunctions,
+            fileVariables = context.fileVariables,
+            fileContextLoader = loader,
+            loadingStack = loadingStack
+        ).evaluateStatement(statement, context)
     }
 
     /** Format a numeric result for display based on user-defined precision. */

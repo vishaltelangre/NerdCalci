@@ -29,6 +29,7 @@ class Lexer(private val source: String) {
         "lineno" to TokenKind.KW_LINENO,
         "linenumber" to TokenKind.KW_LINENUMBER,
         "currentLineNumber" to TokenKind.KW_CURRENTLINENUMBER,
+        "file" to TokenKind.KW_FILE
     )
 
     fun tokenize(): List<Token> {
@@ -46,6 +47,9 @@ class Lexer(private val source: String) {
                 }
                 ch.isDigit() || (ch == '.' && peekNext()?.isDigit() == true) -> {
                     tokens.add(scanNumber(start))
+                }
+                ch == '"' -> {
+                    tokens.add(scanString(start))
                 }
                 ch.isLetter() || ch == '_' -> {
                     tokens.add(scanIdentifier(start))
@@ -75,6 +79,20 @@ class Lexer(private val source: String) {
         return Token(TokenKind.NUMBER, lexeme, value, start)
     }
 
+    private fun scanString(start: Int): Token {
+        pos++ // consume opening "
+        val stringStart = pos
+        while (pos < source.length && source[pos] != '"') {
+            pos++
+        }
+        if (pos >= source.length) {
+            throw ParseException("Unterminated string literal", start)
+        }
+        val lexeme = source.substring(stringStart, pos)
+        pos++ // consume closing "
+        return Token(TokenKind.STRING_LITERAL, lexeme, position = start)
+    }
+
     private fun scanIdentifier(start: Int): Token {
         while (pos < source.length && (source[pos].isLetterOrDigit() || source[pos] == '_')) pos++
         val lexeme = source.substring(start, pos)
@@ -91,6 +109,7 @@ class Lexer(private val source: String) {
                 match('+') -> Token(TokenKind.PLUS_PLUS, "++", position = start)
                 else       -> Token(TokenKind.PLUS, "+", position = start)
             }
+            '.' -> Token(TokenKind.DOT, ".", position = start)
             '-' -> when {
                 match('=') -> Token(TokenKind.MINUS_EQUALS, "-=", position = start)
                 match('-') -> Token(TokenKind.MINUS_MINUS, "--", position = start)
@@ -114,7 +133,7 @@ class Lexer(private val source: String) {
             ',' -> Token(TokenKind.COMMA, ",", position = start)
             '=' -> Token(TokenKind.EQUALS, "=", position = start)
             ';' -> Token(TokenKind.SEMICOLON, ";", position = start)
-            else -> throw ParseException("Unexpected character '$ch'", start)
+            else -> throw ParseException("Unexpected character `$ch`", start)
         }
     }
 

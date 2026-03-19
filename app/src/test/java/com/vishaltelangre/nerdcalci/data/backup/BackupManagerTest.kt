@@ -28,6 +28,8 @@ class BackupManagerTest {
 
         override suspend fun getPinnedFilesCount(): Int = files.count { it.isPinned }
 
+        override suspend fun getFileByName(name: String): FileEntity? = files.find { it.name == name }
+
         override suspend fun doesFileExist(name: String): Boolean = files.any { it.name == name }
 
         override suspend fun doesFileExist(name: String, excludeId: Long): Boolean =

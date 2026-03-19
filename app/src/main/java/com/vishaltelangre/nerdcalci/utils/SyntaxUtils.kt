@@ -1,7 +1,7 @@
 package com.vishaltelangre.nerdcalci.utils
 
 enum class TokenType {
-    Number, Variable, Keyword, Operator, Percent, Comment, Function, Default
+    Number, Variable, Keyword, Operator, Percent, Comment, Function, StringLiteral, Default
 }
 
 data class SyntaxToken(val start: Int, val end: Int, val type: TokenType)
@@ -33,6 +33,15 @@ object SyntaxUtils {
                     val start = i
                     while (i < text.length && (text[i].isDigit() || text[i] == '.')) i++
                     tokens.add(SyntaxToken(start, i, TokenType.Number))
+                    continue
+                }
+
+                char == '"' -> {
+                    val start = i
+                    i++ // consume open "
+                    while (i < text.length && text[i] != '"') i++
+                    if (i < text.length) i++ // consume close "
+                    tokens.add(SyntaxToken(start, i, TokenType.StringLiteral))
                     continue
                 }
 
@@ -129,7 +138,18 @@ data class FuzzyMatch(
  * Returns null if the query is not a subsequence of the target.
  */
 fun String.calculateFuzzyMatch(query: String, type: SuggestionType? = null): FuzzyMatch? {
-    if (query.isEmpty()) return FuzzyMatch(0, emptyList())
+    if (query.isEmpty()) {
+        var score = 0
+        if (type != null) {
+            score += when (type) {
+                SuggestionType.VARIABLE, SuggestionType.LOCAL_FUNCTION -> 200
+                SuggestionType.DYNAMIC_VARIABLE -> 100
+                else -> 0
+            }
+        }
+        score -= this.length
+        return FuzzyMatch(score, emptyList())
+    }
 
     val queryLower = query.lowercase()
     val targetLower = this.lowercase()

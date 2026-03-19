@@ -195,6 +195,20 @@ class SyntaxUtilsTest {
     }
 
     @Test
+    fun `double quoted string tokenizes as StringLiteral`() {
+        assertSingleToken("\"hello\"", TokenType.StringLiteral)
+    }
+
+    @Test
+    fun `string literal token spans entire quotes`() {
+        val result = tokens("\"test string\"")
+        assertEquals(1, result.size)
+        assertEquals(TokenType.StringLiteral, result[0].type)
+        assertEquals(0, result[0].start)
+        assertEquals(13, result[0].end)
+    }
+
+    @Test
     fun `percent token in expression has correct span`() {
         // "20%" — Percent is at index 2
         val result = tokens("20%")

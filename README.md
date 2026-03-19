@@ -87,6 +87,16 @@
   salary(160)    # 8800
   ```
 
+- **Cross-file References**
+
+  ```text
+  f = file("Summary")
+  total_cost = f.total * 1.1
+
+  # Or invoke functions directly
+  file("Calculations").taxFunc(1000)
+  ```
+
 - **Mathematical Functions**
 
   ```text

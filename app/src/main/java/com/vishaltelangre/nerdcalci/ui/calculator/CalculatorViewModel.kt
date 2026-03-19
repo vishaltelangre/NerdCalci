@@ -9,6 +9,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vishaltelangre.nerdcalci.core.Constants
 import com.vishaltelangre.nerdcalci.core.MathEngine
+import com.vishaltelangre.nerdcalci.core.FileContextLoader
+import com.vishaltelangre.nerdcalci.core.MathContext
+import com.vishaltelangre.nerdcalci.core.EvalException
 import com.vishaltelangre.nerdcalci.data.backup.AutoBackupScheduler
 import com.vishaltelangre.nerdcalci.data.backup.BackupFileInfo
 import com.vishaltelangre.nerdcalci.data.backup.BackupFrequency
@@ -17,6 +20,8 @@ import com.vishaltelangre.nerdcalci.data.backup.BackupManager
 import com.vishaltelangre.nerdcalci.data.local.CalculatorDao
 import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
+import com.vishaltelangre.nerdcalci.utils.Suggestion
+import com.vishaltelangre.nerdcalci.utils.SuggestionType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -45,6 +50,48 @@ class CalculatorViewModel(
 
     // Mutex to ensure atomic recalculation cycles per fileId
     private val calculationMutex = Mutex()
+
+    private fun createFileContextLoader(currentFileId: Long): FileContextLoader {
+        val cache = mutableMapOf<String, MathContext>()
+        return object : FileContextLoader {
+            override suspend fun loadContext(fileName: String, loadingStack: Set<String>): MathContext? {
+                cache[fileName]?.let { return it }
+                val file = dao.getFileByName(fileName) ?: return null
+                val lines = dao.getLinesForFileSync(file.id)
+                val context = MathEngine.buildVariableState(lines, this, loadingStack)
+                cache[fileName] = context
+                return context
+            }
+        }
+    }
+
+    suspend fun getSuggestionsForFile(fileName: String): Set<Suggestion> {
+        val file = dao.getFileByName(fileName) ?: return emptySet()
+        val lines = dao.getLinesForFileSync(file.id)
+        val context = try {
+            MathEngine.buildVariableState(lines, createFileContextLoader(file.id))
+        } catch (e: Exception) {
+            MathContext()
+        }
+        val suggestions = mutableSetOf<Suggestion>()
+        context.variables.keys
+            .filter { it !in MathEngine.EXCLUDED_DOT_NOTATION_VARIABLES }
+            .forEach {
+                val type = if (MathEngine.dynamicVariableNames.contains(it)) SuggestionType.DYNAMIC_VARIABLE else SuggestionType.VARIABLE
+                suggestions.add(Suggestion(it, type))
+            }
+        context.localFunctions.keys.forEach { suggestions.add(Suggestion(it, SuggestionType.LOCAL_FUNCTION)) }
+
+        // Add select dynamic variables for dot notation with accurate type
+        MathEngine.dynamicVariableNames
+            .filter { it !in MathEngine.EXCLUDED_DOT_NOTATION_VARIABLES }
+            .forEach {
+                suggestions.add(Suggestion(it, SuggestionType.DYNAMIC_VARIABLE))
+            }
+        
+        return suggestions
+    }
+
 
     companion object {
         private const val PREF_PRECISION = "precision"
@@ -298,7 +345,7 @@ class CalculatorViewModel(
 
         // Recalculate everything and batch-write results in one transaction
         val allLines = dao.getLinesForFileSync(fileId)
-        val calculatedLines = MathEngine.calculate(allLines)
+        val calculatedLines = MathEngine.calculate(allLines, createFileContextLoader(fileId))
         dao.updateLines(fileId, calculatedLines)
     }
 
@@ -308,6 +355,16 @@ class CalculatorViewModel(
                 undoStacks[fileId]?.clear()
                 redoStacks[fileId]?.clear()
                 updateUndoRedoState(fileId)
+            }
+        }
+    }
+
+    fun recalculateFile(fileId: Long) {
+        viewModelScope.launch(Dispatchers.IO) {
+            calculationMutex.withLock {
+                val allLines = dao.getLinesForFileSync(fileId)
+                val calculatedLines = MathEngine.calculate(allLines, createFileContextLoader(fileId))
+                dao.updateLines(fileId, calculatedLines)
             }
         }
     }
@@ -355,7 +412,7 @@ class CalculatorViewModel(
 
                 // Recalculate only affected lines (from changedIndex onward), inheriting variable
                 // state from the preceding lines without re-evaluating them.
-                val affectedLines = MathEngine.calculateFrom(allLines, changedIndex)
+                val affectedLines = MathEngine.calculateFrom(allLines, changedIndex, createFileContextLoader(updatedLine.fileId))
 
                 // Batch-write all updated results in one DB transaction
                 dao.updateLines(updatedLine.fileId, affectedLines)
@@ -365,9 +422,10 @@ class CalculatorViewModel(
 
     suspend fun getLineErrorMessage(fileId: Long, targetLineId: Long): String? {
         return withContext(Dispatchers.IO) {
+            val file = dao.getFileById(fileId) ?: return@withContext null
             val allLines = dao.getLinesForFileSync(fileId)
             val targetIndex = allLines.indexOfFirst { it.id == targetLineId }
-            if (targetIndex != -1) MathEngine.getErrorDetails(allLines, targetIndex) else null
+            if (targetIndex != -1) MathEngine.getErrorDetails(allLines, targetIndex, createFileContextLoader(fileId), setOf(file.name)) else null
         }
     }
 
@@ -403,7 +461,7 @@ class CalculatorViewModel(
                 val insertIndex = updatedAllLines.indexOfFirst { it.id == newId }.coerceAtLeast(0)
 
                 // Recalculate everything from the new line downward
-                val affectedLines = MathEngine.calculateFrom(updatedAllLines, insertIndex)
+                val affectedLines = MathEngine.calculateFrom(updatedAllLines, insertIndex, createFileContextLoader(fileId))
                 dao.updateLines(fileId, affectedLines)
 
                 newId
@@ -431,7 +489,7 @@ class CalculatorViewModel(
                 // Because we normalized (0, 1, 2...), the line that was below
                 // the deleted one now sits at the deleted line's old position.
                 if (deletedIndex in updatedLines.indices) {
-                    val affectedLines = MathEngine.calculateFrom(updatedLines, deletedIndex)
+                    val affectedLines = MathEngine.calculateFrom(updatedLines, deletedIndex, createFileContextLoader(line.fileId))
                     dao.updateLines(line.fileId, affectedLines)
                 }
             }

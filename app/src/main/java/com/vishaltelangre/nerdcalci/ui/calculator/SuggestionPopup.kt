@@ -290,7 +290,7 @@ private fun SuggestionItem(
         }
 
         Spacer(modifier = Modifier.width(6.dp))
- 
+
         // Text content with fuzzy-match bolding applied to matched segments.
         Text(
             text = buildSuggestionText(suggestion),

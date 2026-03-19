@@ -331,11 +331,11 @@ private fun extractSuggestions(lines: List<LineEntity>, upToSortOrder: Int): Pai
             } else {
                 suggestionMap[name] = Suggestion(name, SuggestionType.VARIABLE)
 
-                val fileRegex = Regex("""file\(\s*"([^"]+)"\s*\)""")
-                val rhs = exprWithoutComment.substring(matchResult.groups[0]!!.range.last + 1)
-                val fileMatch = fileRegex.find(rhs)
-                if (fileMatch != null) {
-                    fileVariables[name] = fileMatch.groupValues[1]
+                val rhs = exprWithoutComment.substring(matchResult.groups[0]!!.range.last + 1).trim()
+                val fileMatch = Regex("""file\(\s*"([^"]+)"\s*\)""").matchEntire(rhs)
+                when {
+                    fileMatch != null -> fileVariables[name] = fileMatch.groupValues[1]
+                    rhs in fileVariables -> fileVariables[name] = fileVariables.getValue(rhs)
                 }
             }
         }
@@ -1239,8 +1239,13 @@ private fun LineRow(
         }
     }
 
-    val combinedVariables = remember(availableVariables, remoteSuggestions, dotFileName) {
-        if (dotFileName != null) remoteSuggestions else availableVariables
+    val combinedVariables = remember(availableVariables, remoteSuggestions, dotFileName, suggestionContext) {
+        val isDotNotation = suggestionContext.second == SuggestionType.VARIABLE && suggestionContext.third
+        if (isDotNotation) {
+            if (dotFileName != null) remoteSuggestions else emptySet()
+        } else {
+            availableVariables
+        }
     }
 
     val suggestions = remember(suggestionContext, combinedVariables, allFiles, forceDismissSuggestions, showSuggestions, loadingSuggestions) {

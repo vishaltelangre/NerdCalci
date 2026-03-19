@@ -381,7 +381,7 @@ object BackupManager {
                     cache[fileName]?.let { return it }
                     val file = dao.getFileByName(fileName) ?: return null
                     val lines = dao.getLinesForFileSync(file.id)
-                    val context = MathEngine.buildVariableState(lines, this)
+                    val context = MathEngine.buildVariableState(lines, this, loadingStack)
                     cache[fileName] = context
                     return context
                 }

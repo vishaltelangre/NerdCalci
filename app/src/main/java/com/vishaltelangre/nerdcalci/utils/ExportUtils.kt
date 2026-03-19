@@ -277,6 +277,9 @@ val file = File(exportDir, "$fileNameWithDate.pdf")
                     spannable.setSpan(ForegroundColorSpan(commentColor), token.start, token.end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
                     spannable.setSpan(StyleSpan(android.graphics.Typeface.ITALIC), token.start, token.end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
                 }
+                TokenType.StringLiteral -> {
+                    spannable.setSpan(ForegroundColorSpan(keywordColor), token.start, token.end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                }
                 TokenType.Default -> {} // Do nothing
             }
         }

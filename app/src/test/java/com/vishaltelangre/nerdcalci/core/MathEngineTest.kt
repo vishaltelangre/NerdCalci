@@ -1742,4 +1742,80 @@ class MathEngineTest {
         assertEquals(1, partialResult.size)
         assertEquals("8.0", partialResult[0].result)
     }
+
+    private class FakeFileContextLoader(private val contexts: Map<String, MathContext>) : FileContextLoader {
+        override suspend fun loadContext(fileName: String, loadingStack: Set<String>): MathContext? {
+            return contexts[fileName]
+        }
+    }
+
+    @Test
+    fun `evaluate resolves member access from linked file`() = runBlocking {
+        val remoteContext = MathContext(variables = mutableMapOf("x" to 20.0))
+        val loader = FakeFileContextLoader(mapOf("File B" to remoteContext))
+
+        val lines = listOf(
+            createLine("f = file(\"File B\")"),
+            createLine("f.x + 5")
+        )
+        val result = MathEngine.calculate(lines, loader)
+        assertEquals("25.0", result[1].result)
+    }
+
+    @Test
+    fun `evaluate with direct file function access`() = runBlocking {
+        val remoteContext = MathContext(variables = mutableMapOf("total" to 100.0))
+        val loader = FakeFileContextLoader(mapOf("Summary" to remoteContext))
+
+        val lines = listOf(createLine("file(\"Summary\").total * 0.1"))
+        val result = MathEngine.calculate(lines, loader)
+        assertEquals("10.0", result[0].result)
+    }
+
+    @Test
+    fun `standalone string literal throws error`() = runBlocking {
+        val lines = listOf(createLine("\"hello\""))
+        val result = MathEngine.calculate(lines)
+        assertEquals("Err", result[0].result)
+        val err = MathEngine.getErrorDetails(lines, 0)
+        assertEquals("Quotes are only allowed when specifying file names in `file(\"...\")`", err)
+    }
+
+    @Test
+    fun `writing to member access target is read-only`() = runBlocking {
+        val lines = listOf(createLine("f = file(\"File B\")"), createLine("f.x = 10"))
+        val result = MathEngine.calculate(lines)
+        assertEquals("Err", result[1].result)
+        val err = MathEngine.getErrorDetails(lines, 1)
+        assertEquals("Variables from other files are read-only and cannot be changed", err)
+    }
+
+    @Test
+    fun `dot notation on global functions throws error`() = runBlocking {
+        val remoteContext = MathContext()
+        val loader = FakeFileContextLoader(mapOf("File B" to remoteContext))
+        val lines = listOf(createLine("f = file(\"File B\")"), createLine("f.sin(90)"))
+        val result = MathEngine.calculate(lines, loader)
+        assertEquals("Err", result[1].result)
+        val err = MathEngine.getErrorDetails(lines, 1, loader)
+        assertEquals("`sin()` is a global function and should be called directly, not via dot notation", err)
+    }
+
+    @Test
+    fun `file call missing closing parenthesis throws error`() = runBlocking {
+        val lines = listOf(createLine("file(\"A\""))
+        val result = MathEngine.calculate(lines)
+        assertEquals("Err", result[0].result)
+        val err = MathEngine.getErrorDetails(lines, 0)
+        assertTrue(err != null && err.contains("Expected `)`"))
+    }
+
+    @Test
+    fun `dot notation missing identifier throws error`() = runBlocking {
+        val lines = listOf(createLine("file(\"A\")."))
+        val result = MathEngine.calculate(lines)
+        assertEquals("Err", result[0].result)
+        val err = MathEngine.getErrorDetails(lines, 0)
+        assertEquals("Missing variable or function name after `.`", err)
+    }
 }

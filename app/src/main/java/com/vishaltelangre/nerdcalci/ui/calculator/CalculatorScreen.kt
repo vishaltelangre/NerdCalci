@@ -239,6 +239,7 @@ private fun applySyntaxHighlighting(
                 TokenType.Operator -> operatorColor
                 TokenType.Percent -> percentColor
                 TokenType.Comment -> commentColor
+                TokenType.StringLiteral -> keywordColor
                 TokenType.Default -> defaultColor
             }
 

@@ -1789,6 +1789,31 @@ class MathEngineTest {
     }
 
     @Test
+    fun `evaluate remote function call self-reference loop triggers CircularReferenceException`() = runBlocking {
+        val fileBContext = MathContext()
+
+        fileBContext.localFunctions["loopback"] = LocalFunction(
+            name = "loopback",
+            params = emptyList(),
+            body = listOf(
+                Statement.ExprStatement(Expr.MemberAccess(Expr.FunctionCall("file", listOf(Expr.StringLiteral("File B"))), "x"))
+            )
+        )
+
+        val loader = FakeFileContextLoader(mapOf(
+            "File B" to fileBContext
+        ))
+
+        val lines = listOf(
+            createLine("file(\"File B\").loopback()")
+        )
+        val result = MathEngine.calculate(lines, loader)
+        assertEquals("Err", result[0].result)
+        val err = MathEngine.getErrorDetails(lines, 0, loader)
+        assertEquals("File `File B` references itself, causing an endless loop", err)
+    }
+
+    @Test
     fun `evaluate resolves remote function call from linked file`() = runBlocking {
         val remoteContext = MathContext()
         remoteContext.localFunctions["double"] = LocalFunction(

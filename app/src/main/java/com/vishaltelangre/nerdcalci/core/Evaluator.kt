@@ -299,7 +299,7 @@ class Evaluator(
             localFunctions = remoteContext.localFunctions,
             fileVariables = remoteContext.fileVariables,
             fileContextLoader = fileContextLoader,
-            loadingStack = loadingStack
+            loadingStack = loadingStack + fileName
         )
         return remoteEvaluator.evaluateFunction(name, evaluatedArgs)
     }

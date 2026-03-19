@@ -1773,6 +1773,22 @@ class MathEngineTest {
     }
 
     @Test
+    fun `evaluate clears file linked state after reassignment to number`() = runBlocking {
+        val remoteContext = MathContext(variables = mutableMapOf("x" to 20.0))
+        val loader = FakeFileContextLoader(mapOf("File B" to remoteContext))
+
+        val lines = listOf(
+            createLine("f = file(\"File B\")"),
+            createLine("f = 42"),
+            createLine("f.x")
+        )
+        val result = MathEngine.calculate(lines, loader)
+        assertEquals("Err", result[2].result)
+        val err = MathEngine.getErrorDetails(lines, 2, loader)
+        assertEquals("`f` is not linked to any file. Use `file(\"...\")` to link first", err)
+    }
+
+    @Test
     fun `evaluate resolves remote function call from linked file`() = runBlocking {
         val remoteContext = MathContext()
         remoteContext.localFunctions["double"] = LocalFunction(

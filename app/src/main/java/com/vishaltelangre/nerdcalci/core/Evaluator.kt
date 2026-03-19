@@ -132,6 +132,7 @@ class Evaluator(
                         throw EvalException("The `file()` function requires exactly one file name in quotes, e.g., `file(\"FileName\")`")
                     }
                     val fileName = arg.value
+                    context.variables.remove(name)
                     context.fileVariables[name] = fileName
                     return null
                 }
@@ -139,11 +140,13 @@ class Evaluator(
                 // Intercept File Variable Copy
                 if (statement.expr is Expr.Variable && context.fileVariables.containsKey(statement.expr.name)) {
                     val sourceFile = context.fileVariables[statement.expr.name]!!
+                    context.variables.remove(name)
                     context.fileVariables[name] = sourceFile
                     return null
                 }
 
                 val result = evaluate(statement.expr)
+                context.fileVariables.remove(name)
                 context.variables[name] = result
                 result
             }
@@ -170,6 +173,7 @@ class Evaluator(
                     }
                     else -> throw EvalException("Unknown compound operator: `${statement.op}`")
                 }
+                context.fileVariables.remove(name)
                 context.variables[name] = result
                 result
             }
@@ -182,6 +186,7 @@ class Evaluator(
                 val current = context.variables[name]
                     ?: throw UndefinedVariableException(name)
                 val result = current + 1
+                context.fileVariables.remove(name)
                 context.variables[name] = result
                 result
             }
@@ -194,6 +199,7 @@ class Evaluator(
                 val current = context.variables[name]
                     ?: throw UndefinedVariableException(name)
                 val result = current - 1
+                context.fileVariables.remove(name)
                 context.variables[name] = result
                 result
             }

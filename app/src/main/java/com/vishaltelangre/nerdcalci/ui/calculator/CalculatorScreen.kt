@@ -330,6 +330,7 @@ private fun extractSuggestions(lines: List<LineEntity>, upToSortOrder: Int): Pai
                 suggestionMap[name] = Suggestion(name, SuggestionType.LOCAL_FUNCTION)
             } else {
                 suggestionMap[name] = Suggestion(name, SuggestionType.VARIABLE)
+                fileVariables.remove(name)
 
                 val rhs = exprWithoutComment.substring(matchResult.groups[0]!!.range.last + 1).trim()
                 val fileMatch = Regex("""file\(\s*"([^"]+)"\s*\)""").matchEntire(rhs)

@@ -1158,7 +1158,7 @@ private fun LineRow(
             forceDismissSuggestions = true
         }
     }
-    val suggestionContext = remember(textFieldValue.text, textFieldValue.selection) {
+    val suggestionContext = remember(textFieldValue.text, textFieldValue.selection, fileVariables) {
         val cursorPos = textFieldValue.selection.start
         val text = textFieldValue.text
         if (cursorPos > 0) {
@@ -1180,7 +1180,15 @@ private fun LineRow(
             val dotRegex = Regex("""(\w+|\bfile\(\s*"[^"]*"\s*\))\s*\.\s*(\w*)$""")
             val dotMatch = dotRegex.find(beforeCursor)
             if (dotMatch != null) {
-                return@remember Triple(dotMatch.groupValues[2], SuggestionType.VARIABLE, true)
+                val objectName = dotMatch.groupValues[1]
+                val linkedFile = if (objectName.startsWith("file(")) {
+                    Regex("""file\(\s*"([^"]+)"\s*\)""").find(objectName)?.groupValues?.getOrNull(1)
+                } else {
+                    fileVariables[objectName]
+                }
+                if (linkedFile != null) {
+                    return@remember Triple(dotMatch.groupValues[2], SuggestionType.VARIABLE, true)
+                }
             }
 
             // Default back to normal word extraction for local variables

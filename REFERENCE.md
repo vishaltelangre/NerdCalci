@@ -35,6 +35,7 @@
   - [Referencing a file](#referencing-a-file)
   - [Accessing variables from other files](#accessing-variables-from-other-files)
   - [Accessing functions from other files](#accessing-functions-from-other-files)
+  - [Circular references](#circular-references)
 
 ## 1. Basic math and operators
 
@@ -432,3 +433,9 @@ You can call functions defined in the referenced file just like variables, passi
 calcs = file("Calculations")
 result = calcs.calculateTax(1000)
 ```
+
+### Circular references
+
+To prevent system crashes or freezes, NerdCalci strictly enforces circular dependency guards against files referring back to one another.
+
+A **circular reference** happens when File A loads File B, while File B (or its functions) concurrently resolves references back into File A, creating a closed loop.

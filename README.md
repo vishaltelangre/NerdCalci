@@ -8,6 +8,22 @@
   <strong>Fully offline Android calculator app for power users with variable support, syntax highlighting, file-based sessions, and more. A free Android alternative to proprietary text-based calculators like Numi, Calca, and Soulver.</strong>
 </p>
 
+[<img src="https://play.google.com/intl/en_us/badges/images/generic/en-play-badge.png"
+    alt="Get it on Google Play"
+    height="80">](https://play.google.com/store/apps/details?id=com.vishaltelangre.nerdcalci)
+[<img src="https://f-droid.org/badge/get-it-on.png"
+    alt="Get it on F-Droid"
+    height="80">](https://f-droid.org/packages/com.vishaltelangre.nerdcalci/)
+[<img
+src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid.png"
+height="80" alt="Get it at
+IzzyOnDroid">](https://apt.izzysoft.de/packages/com.vishaltelangre.nerdcalci)
+[<img src="https://github.com/user-attachments/assets/713d71c5-3dec-4ec4-a3f2-8d28d025a9c6"
+    alt="Get it on Obtainium" height="80">](https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22com.vishaltelangre.nerdcalci%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Fvishaltelangre%2FNerdCalci%22%2C%22author%22%3A%22vishaltelangre%22%2C%22name%22%3A%22NerdCalci%22%2C%22supportFixedAPKURL%22%3Afalse%7D)
+[<img src="https://github.com/machiav3lli/oandbackupx/raw/034b226cea5c1b30eb4f6a6f313e4dadcbb0ece4/badge_github.png"
+    alt="Get it on GitHub"
+    height="80">](https://github.com/vishaltelangre/NerdCalci/releases)
+
 ## Screenshots
 
 <p align="center">
@@ -126,58 +142,6 @@
 - **Undo/Redo**: Up to 30 steps per file
 - **Dark/Light Theme**: System, dark, or light mode
 - **Real-time Results**: See calculations update as you type
-
-## Download/Install
-
-### From Google Play Store
-
-[<img src="https://play.google.com/intl/en_us/badges/images/generic/en-play-badge.png"
-    alt="Get it on Google Play"
-    height="80">](https://play.google.com/store/apps/details?id=com.vishaltelangre.nerdcalci)
-
-### From F-Droid
-
-[<img src="https://f-droid.org/badge/get-it-on.png"
-    alt="Get it on F-Droid"
-    height="80">](https://f-droid.org/packages/com.vishaltelangre.nerdcalci/)
-
-### From IzzyOnDroid
-
-[<img
-src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid.png"
- height="80" alt="Get it at
-IzzyOnDroid">](https://apt.izzysoft.de/packages/com.vishaltelangre.nerdcalci)
-
-### From Obtainium
-
-[<img src="https://github.com/user-attachments/assets/713d71c5-3dec-4ec4-a3f2-8d28d025a9c6"
-    alt="Get it on Obtainium" height="80">](https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22com.vishaltelangre.nerdcalci%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Fvishaltelangre%2FNerdCalci%22%2C%22author%22%3A%22vishaltelangre%22%2C%22name%22%3A%22NerdCalci%22%2C%22supportFixedAPKURL%22%3Afalse%7D)
-
-You need to install [Obtainium](https://github.com/ImranR98/Obtainium) first on your Android device.
-
-### From GitHub Releases
-
-[<img src="https://github.com/machiav3lli/oandbackupx/raw/034b226cea5c1b30eb4f6a6f313e4dadcbb0ece4/badge_github.png"
-    alt="Get it on GitHub"
-    height="80">](https://github.com/vishaltelangre/NerdCalci/releases)
-
-1. Go to the [Releases](https://github.com/vishaltelangre/NerdCalci/releases) page
-2. Download the latest APK file
-3. Transfer to your Android device
-4. Enable "Install from Unknown Sources" if prompted
-5. Open the APK and install
-6. Start calculating!
-
-### From Source
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/vishaltelangre/NerdCalci.git
-   cd nerdcalci
-   ```
-
-2. Open the project in Android Studio
-
-3. Build and run on your device or emulator
 
 ## Built With
 

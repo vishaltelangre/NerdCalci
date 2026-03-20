@@ -328,45 +328,57 @@ fun RestoreProgressDialog(
 }
 
 @Composable
+private fun BulletItem(text: String, style: androidx.compose.ui.text.TextStyle) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(vertical = 2.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(6.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.onSurfaceVariant)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(text = text, style = style)
+    }
+}
+
+@Composable
 fun RestoreCompleteDialog(
     visible: Boolean,
     message: String,
     addedCount: Int = 0,
     overwrittenCount: Int = 0,
     skippedCount: Int = 0,
+    isSuccess: Boolean = true,
     onDismiss: () -> Unit
 ) {
     if (!visible) return
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Restore finished") },
+        title = {
+            Text(
+                text = if (isSuccess) "Restore finished" else "Restore failed",
+                color = if (isSuccess) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.error
+            )
+        },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
-                Text(text = message, style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (isSuccess) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error
+                )
                 Spacer(modifier = Modifier.height(12.dp))
 
                 val itemStyle = MaterialTheme.typography.bodyMedium
-
-                @Composable
-                fun BulletItem(text: String) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(vertical = 2.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(6.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.onSurfaceVariant)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = text, style = itemStyle)
-                    }
+                
+                if (isSuccess) {
+                    BulletItem("$addedCount added", itemStyle)
+                    BulletItem("$overwrittenCount replaced", itemStyle)
+                    BulletItem("$skippedCount skipped", itemStyle)
                 }
-
-                BulletItem("$addedCount added")
-                BulletItem("$overwrittenCount replaced")
-                BulletItem("$skippedCount skipped")
             }
         },
         confirmButton = {

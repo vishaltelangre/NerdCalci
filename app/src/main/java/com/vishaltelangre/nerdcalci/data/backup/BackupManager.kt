@@ -32,8 +32,6 @@ import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 import java.nio.file.attribute.FileTime
 import android.os.Build
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 
 private const val TAG = "BackupManager"
 
@@ -426,6 +424,7 @@ object BackupManager {
                     }
                 }
             } catch (e: Exception) {
+                Log.w(TAG, "Failed to count ZIP entries, proceeding with unknown total", e)
                 0
             }
         }
@@ -456,6 +455,8 @@ object BackupManager {
 
                             if (!entry.isDirectory && entry.name.endsWith(Constants.EXPORT_FILE_EXTENSION)) {
                                 val fileName = entry.name.removeSuffix(Constants.EXPORT_FILE_EXTENSION)
+                                var fileToDelete: FileEntity? = null
+                                var currentInsertedFile: FileEntity? = null
                                 currentProgress++
                                 onProgress(currentProgress, totalEntries, fileName)
 
@@ -506,11 +507,11 @@ object BackupManager {
                                     uniqueName
                                 } else {
                                     if (existingFile != null) {
-                                        dao.deleteFile(existingFile)
+                                        fileToDelete = existingFile
                                         isOverwrite = true
                                         overwrittenCount++
                                     }
-                                    fileName
+                                    "${fileName}_importing_${System.currentTimeMillis()}"
                                 }
                             } else {
                                 addedCount++
@@ -540,14 +541,13 @@ object BackupManager {
                                     createdAt = finalCreateTime
                                 )
                             )
-                            if (!isOverwrite) {
-                                insertedFiles.add(FileEntity(
-                                    id = fileId,
-                                    name = finalFileName,
-                                    lastModified = finalModifiedTime,
-                                    createdAt = finalCreateTime
-                                ))
-                            }
+                            currentInsertedFile = FileEntity(
+                                id = fileId,
+                                name = finalFileName,
+                                lastModified = finalModifiedTime,
+                                createdAt = finalCreateTime
+                            )
+                            insertedFiles.add(currentInsertedFile)
                             existingNames.add(finalFileName)
 
                             val lineEntities = expressions.mapIndexed { index, expr ->
@@ -567,6 +567,13 @@ object BackupManager {
                     // Final touch to ensure the timestamp is exactly as intended,
                     // even after updateLines might have moved it to "now".
                             dao.touchFile(fileId, finalModifiedTime)
+                            
+                            if (fileToDelete != null) {
+                                dao.deleteFile(fileToDelete)
+                                dao.renameFile(fileId, fileName)
+                            }
+                            
+                            currentInsertedFile?.let { insertedFiles.remove(it) }
                         }
 
                         zipIn.closeEntry()

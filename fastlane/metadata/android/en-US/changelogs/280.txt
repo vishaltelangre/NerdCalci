@@ -1,2 +1,4 @@
-- Added conflict resolution screen when restoring or importing files.
-- Shows options to keep local file, replace with file from ZIP, or keep both files with safe auto-renaming.
+- Added a conflict resolution screen when restoring or importing files with duplicate names.
+- Shows options to keep local file, replace with file from ZIP, or keep both files via safe automatic renaming.
+- Shows restore/import progress and a completion summary with counts of added, replaced, and skipped files.
+- Opening a file no longer updates its last-modified time.

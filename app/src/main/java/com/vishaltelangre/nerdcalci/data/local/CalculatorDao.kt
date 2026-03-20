@@ -69,6 +69,9 @@ abstract class CalculatorDao {
     @Query("UPDATE files SET lastModified = :timestamp WHERE id = :fileId")
     protected abstract suspend fun updateFileTimestamp(fileId: Long, timestamp: Long)
 
+    @Query("UPDATE files SET name = :name WHERE id = :fileId")
+    abstract suspend fun renameFile(fileId: Long, name: String)
+
     suspend fun touchFile(fileId: Long, timestamp: Long = System.currentTimeMillis()) {
         updateFileTimestamp(fileId, timestamp)
     }

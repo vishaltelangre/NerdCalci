@@ -82,6 +82,11 @@ class BackupManagerTest {
             if (idx >= 0) files[idx] = file
         }
 
+        override suspend fun renameFile(fileId: Long, name: String) {
+            val idx = files.indexOfFirst { it.id == fileId }
+            if (idx >= 0) files[idx] = files[idx].copy(name = name)
+        }
+
         override suspend fun deleteFile(file: FileEntity) {
             files.removeAll { it.id == file.id }
             lines.removeAll { it.fileId == file.id }

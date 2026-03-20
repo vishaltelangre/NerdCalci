@@ -58,7 +58,8 @@ data class RestoreProgressState(
     val overwrittenCount: Int = 0,
     val processedCount: Int = 0,
     val addedCount: Int = 0,
-    val skippedCount: Int = 0
+    val skippedCount: Int = 0,
+    val isSuccess: Boolean = true
 )
 
 class CalculatorViewModel(
@@ -82,7 +83,7 @@ class CalculatorViewModel(
     }
 
     fun dismissRestoreStats() {
-        _restoreProgress.value = _restoreProgress.value.copy(completionMessage = null, overwrittenCount = 0)
+        _restoreProgress.value = RestoreProgressState()
     }
 
     private fun createFileContextLoader(currentFileId: Long): FileContextLoader {
@@ -763,10 +764,13 @@ class CalculatorViewModel(
             val result = operation()
             _restoreProgress.value = _restoreProgress.value.copy(
                 isProcessing = false,
+                isSuccess = result.isSuccess,
                 completionMessage = if (result.isSuccess) {
                     val count = result.getOrNull()?.processedCount ?: 0
                     if (count == 1) "$verb 1 file" else "$verb $count files"
-                } else null,
+                } else {
+                    result.exceptionOrNull()?.message ?: "An unknown error occurred"
+                },
                 overwrittenCount = result.getOrNull()?.overwrittenCount ?: 0,
                 processedCount = result.getOrNull()?.processedCount ?: 0,
                 addedCount = result.getOrNull()?.addedCount ?: 0,

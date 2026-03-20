@@ -271,9 +271,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
                 lastBackupAt = lastBackupAt,
                 availableBackups = availableBackups,
                 onRestoreBackup = { backup ->
-                    coroutineScope.launch {
-                        viewModel.restoreFromBackup(context, backup)
-                    }
+                    viewModel.restoreFromBackup(context, backup)
                 },
                 onRestoreFromDifferentLocation = { importLauncher.launch(arrayOf("application/zip")) },
                 precision = precision,
@@ -354,9 +352,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
         onDismiss = { showHomeRestoreListDialog = false },
         onBackupSelected = { backup ->
             showHomeRestoreListDialog = false
-            coroutineScope.launch {
-                viewModel.restoreFromBackup(context, backup)
-            }
+            viewModel.restoreFromBackup(context, backup)
         }
     )
 

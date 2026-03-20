@@ -16,6 +16,7 @@ import com.vishaltelangre.nerdcalci.utils.FilenameUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.isActive
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileInputStream
@@ -31,6 +32,8 @@ import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 import java.nio.file.attribute.FileTime
 import android.os.Build
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 private const val TAG = "BackupManager"
 
@@ -67,6 +70,17 @@ data class BackupSettings(
     val locationMode: BackupLocationMode,
     val customFolderUri: String?,
     val keepLatestCount: Int
+)
+
+enum class ConflictResolution {
+    REPLACE_WITH_FILE_FROM_ZIP,
+    KEEP_LOCAL_FILE,
+    KEEP_BOTH_FILES
+}
+
+data class RestoreResult(
+    val importedCount: Int,
+    val overwrittenCount: Int
 )
 
 data class BackupFileInfo(
@@ -125,15 +139,22 @@ object BackupManager {
         }
     }
 
-    suspend fun importFiles(context: Context, dao: CalculatorDao, inputUri: Uri): Result<String> {
+    suspend fun importFiles(
+        context: Context,
+        dao: CalculatorDao,
+        inputUri: Uri,
+        onProgress: suspend (current: Int, total: Int, fileName: String) -> Unit,
+        onConflict: suspend (fileName: String, localModified: Long, zipModified: Long) -> ConflictResolution
+    ): Result<RestoreResult> {
         return withContext(Dispatchers.IO) {
             try {
-                val importedCount = context.contentResolver.openInputStream(inputUri)?.use { inputStream ->
-                    importFromZip(dao, inputStream)
-                } ?: return@withContext Result.failure(Exception("Could not open input stream"))
+                val stats = importFromZip(dao, {
+                    context.contentResolver.openInputStream(inputUri)
+                        ?: throw Exception("Could not open input stream")
+                }, onProgress, onConflict)
 
-                Log.d(TAG, "Imported $importedCount file(s) from ${inputUri.lastPathSegment}")
-                Result.success("Imported $importedCount file(s)")
+                Log.d(TAG, "Imported ${stats.importedCount} file(s), ${stats.overwrittenCount} overwritten from ${inputUri.lastPathSegment}")
+                Result.success(stats)
             } catch (e: Exception) {
                 Log.e(TAG, "Import failed from ${inputUri.lastPathSegment}", e)
                 Result.failure(e)
@@ -194,26 +215,31 @@ object BackupManager {
         }
     }
 
-    suspend fun restoreFromBackup(context: Context, dao: CalculatorDao, backup: BackupFileInfo): Result<String> {
+    suspend fun restoreFromBackup(
+        context: Context,
+        dao: CalculatorDao,
+        backup: BackupFileInfo,
+        onProgress: suspend (current: Int, total: Int, fileName: String) -> Unit,
+        onConflict: suspend (fileName: String, localModified: Long, zipModified: Long) -> ConflictResolution
+    ): Result<RestoreResult> {
         return withContext(Dispatchers.IO) {
             try {
                 Log.d(TAG, "Restoring from backup: ${backup.displayName}")
-                val importedCount = when (backup.source) {
+                val stats = when (backup.source) {
                     BackupSource.APP_STORAGE -> {
-                        FileInputStream(File(backup.pathOrUri)).use { input ->
-                            importFromZip(dao, input)
-                        }
+                        importFromZip(dao, { FileInputStream(File(backup.pathOrUri)) }, onProgress, onConflict)
                     }
 
                     BackupSource.CUSTOM_FOLDER -> {
                         val uri = Uri.parse(backup.pathOrUri)
-                        context.contentResolver.openInputStream(uri)?.use { input ->
-                            importFromZip(dao, input)
-                        } ?: return@withContext Result.failure(Exception("Could not open backup file"))
+                        importFromZip(dao, {
+                            context.contentResolver.openInputStream(uri)
+                                ?: throw Exception("Could not open backup file")
+                        }, onProgress, onConflict)
                     }
                 }
-                Log.d(TAG, "Successfully restored $importedCount file(s) from ${backup.displayName}")
-                Result.success("Restored $importedCount file(s)")
+                Log.d(TAG, "Successfully restored ${stats.importedCount} file(s), ${stats.overwrittenCount} overwritten from ${backup.displayName}")
+                Result.success(stats)
             } catch (e: Exception) {
                 Log.e(TAG, "Restore failed from ${backup.displayName}", e)
                 Result.failure(e)
@@ -369,107 +395,191 @@ object BackupManager {
         return exportedCount
     }
 
-    internal suspend fun importFromZip(dao: CalculatorDao, inputStream: InputStream): Int {
+    internal suspend fun importFromZip(
+        dao: CalculatorDao,
+        streamSupplier: () -> InputStream,
+        onProgress: suspend (current: Int, total: Int, fileName: String) -> Unit,
+        onConflict: suspend (fileName: String, localModified: Long, zipModified: Long) -> ConflictResolution
+    ): RestoreResult {
         val existingFiles = dao.getAllFiles().first()
         val existingNames = existingFiles.map { it.name }.toMutableSet()
         var importedCount = 0
+        var overwrittenCount = 0
 
-        ZipInputStream(inputStream).use { zipIn ->
-            val cache = mutableMapOf<String, MathContext>()
-            val fileContextLoader = object : FileContextLoader {
-                override suspend fun loadContext(fileName: String, loadingStack: Set<String>): MathContext? {
-                    cache[fileName]?.let { return it }
-                    val file = dao.getFileByName(fileName) ?: return null
-                    val lines = dao.getLinesForFileSync(file.id)
-                    val context = MathEngine.buildVariableState(lines, this, loadingStack)
-                    cache[fileName] = context
-                    return context
-                }
-            }
-            var entry: ZipEntry? = zipIn.nextEntry
-
-            while (entry != null) {
-                if (!entry.isDirectory && entry.name.endsWith(Constants.EXPORT_FILE_EXTENSION)) {
-                    val fileName = entry.name.removeSuffix(Constants.EXPORT_FILE_EXTENSION)
-                    val content = BufferedReader(InputStreamReader(zipIn)).readText()
-
-                    val expressions = content.lines()
-                        .map { line ->
-                            val lastHashIndex = line.lastIndexOf('#')
-                            if (lastHashIndex > 0) {
-                                val exprCandidate = line.substring(0, lastHashIndex).trim()
-                                val potentialResult = line.substring(lastHashIndex + 1).trim()
-                                val isResult = potentialResult == "Err" || potentialResult.toDoubleOrNull() != null
-
-                                if (isResult && shouldShowResult(exprCandidate)) {
-                                    exprCandidate
-                                } else {
-                                    line.trim()
-                                }
-                            } else {
-                                line.trim()
+        val totalEntries = withContext(Dispatchers.IO) {
+            try {
+                streamSupplier().use { stream ->
+                    ZipInputStream(stream).use { zipIn ->
+                        var count = 0
+                        var e = zipIn.nextEntry
+                        while (e != null) {
+                            if (!e.isDirectory && e.name.endsWith(Constants.EXPORT_FILE_EXTENSION)) {
+                                count++
                             }
+                            zipIn.closeEntry()
+                            e = zipIn.nextEntry
                         }
-
-                    val finalFileName = if (existingNames.contains(fileName)) {
-                        FilenameUtils.generateUniqueFileName(fileName) { name ->
-                            existingNames.contains(name)
-                        }
-                    } else {
-                        fileName
+                        count
                     }
-
-                    val modifiedTime = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        entry.lastModifiedTime?.toMillis() ?: entry.time
-                    } else {
-                        entry.time
-                    }
-                    val createTime = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        entry.creationTime?.toMillis() ?: modifiedTime
-                    } else {
-                        modifiedTime
-                    }
-
-                    // ZipEntry.time defaults to -1 if no time info is present.
-                    // We only use System.currentTimeMillis() as a final fallback.
-                    val finalModifiedTime = if (modifiedTime != -1L) modifiedTime else System.currentTimeMillis()
-                    val finalCreateTime = if (createTime != -1L) createTime else finalModifiedTime
-
-                    val fileId = dao.insertFile(
-                        FileEntity(
-                            name = finalFileName,
-                            lastModified = finalModifiedTime,
-                            createdAt = finalCreateTime
-                        )
-                    )
-                    existingNames.add(finalFileName)
-
-                    val lineEntities = expressions.mapIndexed { index, expr ->
-                        LineEntity(
-                            fileId = fileId,
-                            sortOrder = index,
-                            expression = expr,
-                            result = ""
-                        )
-                    }
-                    dao.insertLinesWithoutTouch(lineEntities)
-
-                    val allLines = dao.getLinesForFileSync(fileId)
-                    val calculatedLines = MathEngine.calculate(allLines, fileContextLoader)
-                    dao.updateLines(fileId, calculatedLines)
-
-                    // Final touch to ensure the timestamp is exactly as intended,
-                    // even after updateLines might have moved it to "now".
-                    dao.touchFile(fileId, finalModifiedTime)
-                    importedCount++
                 }
-
-                zipIn.closeEntry()
-                entry = zipIn.nextEntry
+            } catch (e: Exception) {
+                0
             }
         }
 
-        return importedCount
+        withContext(Dispatchers.IO) {
+            streamSupplier().use { inputStream ->
+                ZipInputStream(inputStream).use { zipIn ->
+                    val cache = mutableMapOf<String, MathContext>()
+                    val fileContextLoader = object : FileContextLoader {
+                        override suspend fun loadContext(fileName: String, loadingStack: Set<String>): MathContext? {
+                            cache[fileName]?.let { return it }
+                            val file = dao.getFileByName(fileName) ?: return null
+                            val lines = dao.getLinesForFileSync(file.id)
+                            val context = MathEngine.buildVariableState(lines, this, loadingStack)
+                            cache[fileName] = context
+                            return context
+                        }
+                    }
+                    val insertedFiles = mutableListOf<com.vishaltelangre.nerdcalci.data.local.entities.FileEntity>()
+                    try {
+                        var entry: ZipEntry? = zipIn.nextEntry
+                        var currentProgress = 0
+
+                        while (entry != null) {
+                            if (!kotlin.coroutines.coroutineContext.isActive) {
+                                throw kotlinx.coroutines.CancellationException("Restore cancelled")
+                            }
+
+                            if (!entry.isDirectory && entry.name.endsWith(Constants.EXPORT_FILE_EXTENSION)) {
+                                val fileName = entry.name.removeSuffix(Constants.EXPORT_FILE_EXTENSION)
+                                currentProgress++
+                                onProgress(currentProgress, totalEntries, fileName)
+
+                            val content = BufferedReader(InputStreamReader(zipIn)).readText()
+
+                            val expressions = content.lines()
+                                .map { line ->
+                                    val lastHashIndex = line.lastIndexOf('#')
+                                    if (lastHashIndex > 0) {
+                                        val exprCandidate = line.substring(0, lastHashIndex).trim()
+                                        val potentialResult = line.substring(lastHashIndex + 1).trim()
+                                        val isResult = potentialResult == "Err" || potentialResult.toDoubleOrNull() != null
+
+                                        if (isResult && shouldShowResult(exprCandidate)) {
+                                            exprCandidate
+                                        } else {
+                                            line.trim()
+                                        }
+                                    } else {
+                                        line.trim()
+                                    }
+                                }
+
+                            var isOverwrite = false
+                            val finalFileName = if (existingNames.contains(fileName)) {
+                                val existingFile = dao.getFileByName(fileName)
+                                val localModified = existingFile?.lastModified ?: 0L
+                                val zipModified = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                    entry.lastModifiedTime?.toMillis() ?: entry.time
+                                } else {
+                                    entry.time
+                                }
+                                val decision = onConflict(fileName, localModified, zipModified)
+                                if (decision == ConflictResolution.KEEP_LOCAL_FILE) {
+                                    zipIn.closeEntry()
+                                    entry = zipIn.nextEntry
+                                    continue
+                                }
+                                if (decision == ConflictResolution.KEEP_BOTH_FILES) {
+                                    var suffixCount = 1
+                                    var uniqueName = fileName
+                                    while (existingNames.contains(uniqueName)) {
+                                        uniqueName = "$fileName ($suffixCount)"
+                                        suffixCount++
+                                    }
+                                    uniqueName
+                                } else {
+                                    if (existingFile != null) {
+                                        dao.deleteFile(existingFile)
+                                        isOverwrite = true
+                                    }
+                                    fileName
+                                }
+                            } else {
+                                fileName
+                            }
+
+                            val modifiedTime = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                entry.lastModifiedTime?.toMillis() ?: entry.time
+                            } else {
+                                entry.time
+                            }
+                            val createTime = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                entry.creationTime?.toMillis() ?: modifiedTime
+                            } else {
+                                modifiedTime
+                            }
+
+                    // ZipEntry.time defaults to -1 if no time info is present.
+                    // We only use System.currentTimeMillis() as a final fallback.
+                            val finalModifiedTime = if (modifiedTime != -1L) modifiedTime else System.currentTimeMillis()
+                            val finalCreateTime = if (createTime != -1L) createTime else finalModifiedTime
+
+                            val fileId = dao.insertFile(
+                                FileEntity(
+                                    name = finalFileName,
+                                    lastModified = finalModifiedTime,
+                                    createdAt = finalCreateTime
+                                )
+                            )
+                            if (!isOverwrite) {
+                                insertedFiles.add(FileEntity(
+                                    id = fileId,
+                                    name = finalFileName,
+                                    lastModified = finalModifiedTime,
+                                    createdAt = finalCreateTime
+                                ))
+                            }
+                            existingNames.add(finalFileName)
+
+                            val lineEntities = expressions.mapIndexed { index, expr ->
+                                LineEntity(
+                                    fileId = fileId,
+                                    sortOrder = index,
+                                    expression = expr,
+                                    result = ""
+                                )
+                            }
+                            dao.insertLinesWithoutTouch(lineEntities)
+
+                            val allLines = dao.getLinesForFileSync(fileId)
+                            val calculatedLines = MathEngine.calculate(allLines, fileContextLoader)
+                            dao.updateLines(fileId, calculatedLines)
+
+                    // Final touch to ensure the timestamp is exactly as intended,
+                    // even after updateLines might have moved it to "now".
+                            dao.touchFile(fileId, finalModifiedTime)
+                            importedCount++
+                            if (isOverwrite) {
+                                overwrittenCount++
+                            }
+                        }
+
+                        zipIn.closeEntry()
+                        entry = zipIn.nextEntry
+                    }
+                } catch (e: Exception) {
+                    insertedFiles.forEach { file ->
+                        try { dao.deleteFile(file) } catch (_: Exception) {}
+                    }
+                    throw e
+                }
+            }
+        }
+    }
+
+        return RestoreResult(importedCount, overwrittenCount)
     }
 
     private fun formatFileContent(lines: List<LineEntity>, precision: Int): String {

@@ -17,6 +17,8 @@ import com.vishaltelangre.nerdcalci.data.backup.BackupFileInfo
 import com.vishaltelangre.nerdcalci.data.backup.BackupFrequency
 import com.vishaltelangre.nerdcalci.data.backup.BackupLocationMode
 import com.vishaltelangre.nerdcalci.data.backup.BackupManager
+import com.vishaltelangre.nerdcalci.data.backup.ConflictResolution
+import com.vishaltelangre.nerdcalci.data.backup.RestoreResult
 import com.vishaltelangre.nerdcalci.data.local.CalculatorDao
 import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
@@ -43,6 +45,19 @@ data class FileSnapshot(
     val lines: List<LineEntity>
 )
 
+data class RestoreProgressState(
+    val isProcessing: Boolean = false,
+    val current: Int = 0,
+    val total: Int = 0,
+    val currentFile: String = "",
+    val conflictFile: String? = null,
+    val localConflictModified: Long = 0L,
+    val zipConflictModified: Long = 0L,
+    val applyToAll: ConflictResolution? = null,
+    val completionMessage: String? = null,
+    val overwrittenCount: Int = 0
+)
+
 class CalculatorViewModel(
     private val dao: CalculatorDao,
     private val prefs: SharedPreferences? = null
@@ -50,6 +65,22 @@ class CalculatorViewModel(
 
     // Mutex to ensure atomic recalculation cycles per fileId
     private val calculationMutex = Mutex()
+
+    private val _restoreProgress = MutableStateFlow(RestoreProgressState())
+    val restoreProgress = _restoreProgress.asStateFlow()
+
+    private var conflictDeferred: kotlinx.coroutines.CompletableDeferred<ConflictResolution>? = null
+
+    fun resolveConflict(resolution: ConflictResolution, rememberChoice: Boolean) {
+        if (rememberChoice) {
+            _restoreProgress.value = _restoreProgress.value.copy(applyToAll = resolution)
+        }
+        conflictDeferred?.complete(resolution)
+    }
+
+    fun dismissRestoreStats() {
+        _restoreProgress.value = _restoreProgress.value.copy(completionMessage = null, overwrittenCount = 0)
+    }
 
     private fun createFileContextLoader(currentFileId: Long): FileContextLoader {
         val cache = mutableMapOf<String, MathContext>()
@@ -88,7 +119,7 @@ class CalculatorViewModel(
             .forEach {
                 suggestions.add(Suggestion(it, SuggestionType.DYNAMIC_VARIABLE))
             }
-        
+
         return suggestions
     }
 
@@ -251,10 +282,37 @@ class CalculatorViewModel(
         return result
     }
 
-    suspend fun restoreFromBackup(context: Context, backup: BackupFileInfo): Result<String> {
-        val result = BackupManager.restoreFromBackup(context, dao, backup)
-        refreshBackups(context)
-        return result
+    fun restoreFromBackup(context: Context, backup: BackupFileInfo) {
+        executeRestoreOrImport("Restored", operation = {
+            BackupManager.restoreFromBackup(
+                context = context,
+                dao = dao,
+                backup = backup,
+                onProgress = { current, total, fileName ->
+                    _restoreProgress.value = _restoreProgress.value.copy(
+                        current = current,
+                        total = total,
+                        currentFile = fileName
+                    )
+                },
+                onConflict = conflict@ { fileName, localModified, zipModified ->
+                    val state = _restoreProgress.value
+                    if (state.applyToAll != null) return@conflict state.applyToAll
+
+                    _restoreProgress.value = _restoreProgress.value.copy(
+                        conflictFile = fileName,
+                        localConflictModified = localModified,
+                        zipConflictModified = zipModified
+                    )
+                    val deferred = kotlinx.coroutines.CompletableDeferred<ConflictResolution>()
+                    conflictDeferred = deferred
+                    val res = deferred.await()
+                    conflictDeferred = null
+                    _restoreProgress.value = _restoreProgress.value.copy(conflictFile = null)
+                    res
+                }
+            )
+        }, onSuccess = { refreshBackups(context) })
     }
 
     private val undoStacks = mutableMapOf<Long, MutableList<FileSnapshot>>()
@@ -631,8 +689,45 @@ class CalculatorViewModel(
         return BackupManager.exportAllFiles(context, dao, outputUri)
     }
 
-    suspend fun importFiles(context: Context, inputUri: Uri): Result<String> {
-        return BackupManager.importFiles(context, dao, inputUri)
+    private var restoreJob: kotlinx.coroutines.Job? = null
+
+    fun cancelRestore() {
+        restoreJob?.cancel()
+        restoreJob = null
+        _restoreProgress.value = RestoreProgressState() // Reset state to hide dialog
+    }
+
+    fun importFiles(context: Context, inputUri: Uri) {
+        executeRestoreOrImport("Imported", operation = {
+            BackupManager.importFiles(
+                context = context,
+                dao = dao,
+                inputUri = inputUri,
+                onProgress = { current, total, fileName ->
+                    _restoreProgress.value = _restoreProgress.value.copy(
+                        current = current,
+                        total = total,
+                        currentFile = fileName
+                    )
+                },
+                onConflict = conflict@ { fileName, localModified, zipModified ->
+                    val state = _restoreProgress.value
+                    if (state.applyToAll != null) return@conflict state.applyToAll
+
+                    _restoreProgress.value = _restoreProgress.value.copy(
+                        conflictFile = fileName,
+                        localConflictModified = localModified,
+                        zipConflictModified = zipModified
+                    )
+                    val deferred = kotlinx.coroutines.CompletableDeferred<ConflictResolution>()
+                    conflictDeferred = deferred
+                    val res = deferred.await()
+                    conflictDeferred = null
+                    _restoreProgress.value = _restoreProgress.value.copy(conflictFile = null)
+                    res
+                }
+            )
+        })
     }
 
     suspend fun copyFileToClipboard(context: Context, fileId: Long): Result<String> {
@@ -652,5 +747,29 @@ class CalculatorViewModel(
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val clip = ClipData.newPlainText(label, text)
         clipboard.setPrimaryClip(clip)
+    }
+
+    private fun executeRestoreOrImport(
+        verb: String,
+        operation: suspend () -> Result<RestoreResult>,
+        onSuccess: () -> Unit = {}
+    ) {
+        _restoreProgress.value = RestoreProgressState(isProcessing = true)
+        restoreJob?.cancel()
+        restoreJob = viewModelScope.launch {
+            val result = operation()
+            _restoreProgress.value = _restoreProgress.value.copy(
+                isProcessing = false,
+                completionMessage = if (result.isSuccess) {
+                    val count = result.getOrNull()?.importedCount ?: 0
+                    if (count == 1) "$verb 1 file" else "$verb $count files"
+                } else null,
+                overwrittenCount = result.getOrNull()?.overwrittenCount ?: 0
+            )
+            if (result.isSuccess) {
+                onSuccess()
+            }
+            restoreJob = null
+        }
     }
 }

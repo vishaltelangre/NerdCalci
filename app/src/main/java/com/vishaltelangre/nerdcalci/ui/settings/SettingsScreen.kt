@@ -78,7 +78,6 @@ import com.vishaltelangre.nerdcalci.data.backup.BackupFileInfo
 import com.vishaltelangre.nerdcalci.data.backup.BackupFrequency
 import com.vishaltelangre.nerdcalci.data.backup.BackupLocationMode
 import com.vishaltelangre.nerdcalci.ui.components.RestoreBackupListDialog
-import com.vishaltelangre.nerdcalci.ui.components.RestoreConfirmDialog
 import com.vishaltelangre.nerdcalci.ui.components.RestoreSourceDialog
 import com.vishaltelangre.nerdcalci.ui.components.formatBackupLocationText
 
@@ -117,7 +116,6 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     var showRestoreDialog by remember { mutableStateOf(false) }
-    var pendingRestoreBackup by remember { mutableStateOf<BackupFileInfo?>(null) }
     var showRestoreActionDialog by remember { mutableStateOf(false) }
     var showBackupNowActionDialog by remember { mutableStateOf(false) }
     var showLocationDialog by remember { mutableStateOf(false) }
@@ -456,19 +454,9 @@ fun SettingsScreen(
         currentLocationText = currentLocationText,
         backups = availableBackups,
         onDismiss = { showRestoreDialog = false },
-        onBackupSelected = { backup -> pendingRestoreBackup = backup }
-    )
-
-    RestoreConfirmDialog(
-        visible = pendingRestoreBackup != null,
-        onDismiss = { pendingRestoreBackup = null },
-        onConfirm = {
-            val selected = pendingRestoreBackup
-            pendingRestoreBackup = null
+        onBackupSelected = { backup ->
             showRestoreDialog = false
-            if (selected != null) {
-                onRestoreBackup(selected)
-            }
+            onRestoreBackup(backup)
         }
     )
 

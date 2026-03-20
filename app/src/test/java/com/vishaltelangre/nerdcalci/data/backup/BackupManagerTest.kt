@@ -51,7 +51,7 @@ class BackupManagerTest {
             return id
         }
 
-        override suspend fun internalInsertLines(lines: List<LineEntity>) {
+        public override suspend fun internalInsertLines(lines: List<LineEntity>) {
             lines.forEach { line ->
                 val id = if (line.id == 0L) nextLineId++ else line.id
                 this.lines.add(line.copy(id = id))
@@ -80,6 +80,11 @@ class BackupManagerTest {
         override suspend fun internalUpdateFile(file: FileEntity) {
             val idx = files.indexOfFirst { it.id == file.id }
             if (idx >= 0) files[idx] = file
+        }
+
+        override suspend fun renameFile(fileId: Long, name: String) {
+            val idx = files.indexOfFirst { it.id == fileId }
+            if (idx >= 0) files[idx] = files[idx].copy(name = name)
         }
 
         override suspend fun deleteFile(file: FileEntity) {
@@ -114,7 +119,7 @@ class BackupManagerTest {
         val content = "10+10 # 20\n\n# this is a dedicated comment\na = 10 # my comment\nb = 20 + 5 # another comment\nsum # this is total # 35"
         val zipBytes = createMockZip("test_file", content)
 
-        BackupManager.importFromZip(dao, ByteArrayInputStream(zipBytes))
+        BackupManager.importFromZip(dao, { ByteArrayInputStream(zipBytes) }, { _, _, _ -> }, { _, _, _ -> ConflictResolution.KEEP_LOCAL_FILE })
 
         val importedLines = dao.getLinesForFileSync(1)
         assertEquals(6, importedLines.size)
@@ -124,5 +129,94 @@ class BackupManagerTest {
         assertEquals("a = 10 # my comment", importedLines[3].expression)
         assertEquals("b = 20 + 5 # another comment", importedLines[4].expression)
         assertEquals("sum # this is total", importedLines[5].expression)
+    }
+
+    @Test
+    fun `test import conflict with keep local choice`() = runBlocking {
+        val dao = FakeCalculatorDao()
+        val fileId = dao.insertFile(FileEntity(name = "test_file", createdAt = 1000L, lastModified = 1000L))
+        dao.internalInsertLines(listOf(LineEntity(fileId = fileId, expression = "local expression", sortOrder = 0, result = "")))
+
+        val zipBytes = createMockZip("test_file", "zip expression")
+
+        val result = BackupManager.importFromZip(
+            dao,
+            { ByteArrayInputStream(zipBytes) },
+            onProgress = { _, _, _ -> },
+            onConflict = { _, _, _ -> ConflictResolution.KEEP_LOCAL_FILE }
+        )
+
+        assertEquals(1, result.processedCount)
+        assertEquals(0, result.addedCount)
+        assertEquals(0, result.overwrittenCount)
+        assertEquals(1, result.skippedCount)
+
+        val localLines = dao.getLinesForFileSync(fileId)
+        assertEquals(1, localLines.size)
+        assertEquals("local expression", localLines[0].expression)
+    }
+
+    @Test
+    fun `test import conflict with replace choice`() = runBlocking {
+        val dao = FakeCalculatorDao()
+        val fileId = dao.insertFile(FileEntity(name = "test_file", createdAt = 1000L, lastModified = 1000L))
+        dao.internalInsertLines(listOf(LineEntity(fileId = fileId, expression = "local expression", sortOrder = 0, result = "")))
+
+        val zipBytes = createMockZip("test_file", "zip expression")
+
+        val result = BackupManager.importFromZip(
+            dao,
+            { ByteArrayInputStream(zipBytes) },
+            onProgress = { _, _, _ -> },
+            onConflict = { _, _, _ -> ConflictResolution.REPLACE_WITH_FILE_FROM_ZIP }
+        )
+
+        assertEquals(1, result.processedCount)
+        assertEquals(0, result.addedCount)
+        assertEquals(1, result.overwrittenCount)
+        assertEquals(0, result.skippedCount)
+
+        assertEquals(1, dao.files.size)
+        val newFileId = dao.files[0].id
+
+        val localLines = dao.getLinesForFileSync(newFileId)
+        assertEquals(1, localLines.size)
+        assertEquals("zip expression", localLines[0].expression)
+    }
+
+    @Test
+    fun `test import conflict with keep both choice`() = runBlocking {
+        val dao = FakeCalculatorDao()
+        val fileId = dao.insertFile(FileEntity(name = "test_file", createdAt = 1000L, lastModified = 1000L))
+        dao.internalInsertLines(listOf(LineEntity(fileId = fileId, expression = "local expression", sortOrder = 0, result = "")))
+
+        val zipBytes = createMockZip("test_file", "zip expression")
+
+        val result = BackupManager.importFromZip(
+            dao,
+            { ByteArrayInputStream(zipBytes) },
+            onProgress = { _, _, _ -> },
+            onConflict = { _, _, _ -> ConflictResolution.KEEP_BOTH_FILES }
+        )
+
+        assertEquals(1, result.processedCount)
+        assertEquals(1, result.addedCount)
+        assertEquals(0, result.overwrittenCount)
+        assertEquals(0, result.skippedCount)
+
+        assertEquals(2, dao.files.size)
+        val oldFile = dao.files.find { it.id == fileId }!!
+        val newFile = dao.files.find { it.id != fileId }!!
+
+        assertEquals("test_file", oldFile.name)
+        assertEquals("test_file (1)", newFile.name)
+
+        val localLines = dao.getLinesForFileSync(fileId)
+        assertEquals(1, localLines.size)
+        assertEquals("local expression", localLines[0].expression)
+
+        val newLines = dao.getLinesForFileSync(newFile.id)
+        assertEquals(1, newLines.size)
+        assertEquals("zip expression", newLines[0].expression)
     }
 }

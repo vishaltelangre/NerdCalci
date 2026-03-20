@@ -49,8 +49,9 @@ import com.vishaltelangre.nerdcalci.ui.calculator.CalculatorScreen
 import com.vishaltelangre.nerdcalci.ui.calculator.CalculatorViewModel
 import com.vishaltelangre.nerdcalci.ui.components.formatBackupLocationText
 import com.vishaltelangre.nerdcalci.ui.components.RestoreBackupListDialog
-import com.vishaltelangre.nerdcalci.ui.components.RestoreConfirmDialog
 import com.vishaltelangre.nerdcalci.ui.components.RestoreSourceDialog
+import com.vishaltelangre.nerdcalci.ui.components.RestoreProgressDialog
+import com.vishaltelangre.nerdcalci.ui.components.RestoreCompleteDialog
 import com.vishaltelangre.nerdcalci.ui.help.HelpScreen
 import com.vishaltelangre.nerdcalci.ui.home.HomeScreen
 import com.vishaltelangre.nerdcalci.ui.settings.SettingsScreen
@@ -127,6 +128,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
     val showSuggestions by viewModel.showSuggestions.collectAsState()
     val showSymbolsShortcuts by viewModel.showSymbolsShortcuts.collectAsState()
     val showNumbersShortcuts by viewModel.showNumbersShortcuts.collectAsState()
+    val restoreProgress by viewModel.restoreProgress.collectAsState()
     val customBackupFolderSummary = remember(customBackupFolderUri) {
         customBackupFolderUri?.let { uriString ->
             val parsed = Uri.parse(uriString)
@@ -140,7 +142,6 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
     )
     var showHomeRestoreActionDialog by remember { mutableStateOf(false) }
     var showHomeRestoreListDialog by remember { mutableStateOf(false) }
-    var pendingHomeRestoreBackup by remember { mutableStateOf<BackupFileInfo?>(null) }
 
     // Export launcher - creates a one-off ZIP file at user-chosen location
     val exportLauncher = rememberLauncherForActivityResult(
@@ -163,14 +164,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
         uri?.let {
-            coroutineScope.launch {
-                val result = viewModel.importFiles(context, it)
-                result.onSuccess { message ->
-                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                }.onFailure { error ->
-                    Toast.makeText(context, "Import failed: ${error.message}", Toast.LENGTH_LONG).show()
-                }
-            }
+            viewModel.importFiles(context, it)
         }
     }
 
@@ -275,18 +269,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
                 lastBackupAt = lastBackupAt,
                 availableBackups = availableBackups,
                 onRestoreBackup = { backup ->
-                    coroutineScope.launch {
-                        val result = viewModel.restoreFromBackup(context, backup)
-                        result.onSuccess { message ->
-                            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                            navController.navigate("home") {
-                                popUpTo("home") { inclusive = false }
-                                launchSingleTop = true
-                            }
-                        }.onFailure { error ->
-                            Toast.makeText(context, "Restore failed: ${error.message}", Toast.LENGTH_LONG).show()
-                        }
-                    }
+                    viewModel.restoreFromBackup(context, backup)
                 },
                 onRestoreFromDifferentLocation = { importLauncher.launch(arrayOf("application/zip")) },
                 precision = precision,
@@ -365,29 +348,40 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
         currentLocationText = currentLocationText,
         backups = availableBackups,
         onDismiss = { showHomeRestoreListDialog = false },
-        onBackupSelected = { backup -> pendingHomeRestoreBackup = backup }
+        onBackupSelected = { backup ->
+            showHomeRestoreListDialog = false
+            viewModel.restoreFromBackup(context, backup)
+        }
     )
 
-    RestoreConfirmDialog(
-        visible = pendingHomeRestoreBackup != null,
-        onDismiss = { pendingHomeRestoreBackup = null },
-        onConfirm = {
-            val selected = pendingHomeRestoreBackup
-            pendingHomeRestoreBackup = null
-            showHomeRestoreListDialog = false
-            if (selected != null) {
-                coroutineScope.launch {
-                    val result = viewModel.restoreFromBackup(context, selected)
-                    result.onSuccess { message ->
-                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                        navController.navigate("home") {
-                            popUpTo("home") { inclusive = false }
-                            launchSingleTop = true
-                        }
-                    }.onFailure { error ->
-                        Toast.makeText(context, "Restore failed: ${error.message}", Toast.LENGTH_LONG).show()
-                    }
-                }
+    RestoreProgressDialog(
+        visible = restoreProgress.isProcessing,
+        currentFile = restoreProgress.currentFile,
+        current = restoreProgress.current,
+        total = restoreProgress.total,
+        conflictFile = restoreProgress.conflictFile,
+        localModified = restoreProgress.localConflictModified,
+        zipModified = restoreProgress.zipConflictModified,
+        onResolveConflict = { resolution, remember ->
+            viewModel.resolveConflict(resolution, remember)
+        },
+        onCancel = {
+            viewModel.cancelRestore()
+        }
+    )
+
+    RestoreCompleteDialog(
+        visible = restoreProgress.completionMessage != null,
+        message = restoreProgress.completionMessage ?: "",
+        addedCount = restoreProgress.addedCount,
+        overwrittenCount = restoreProgress.overwrittenCount,
+        skippedCount = restoreProgress.skippedCount,
+        isSuccess = restoreProgress.isSuccess,
+        onDismiss = {
+            viewModel.dismissRestoreStats()
+            navController.navigate("home") {
+                popUpTo("home") { inclusive = false }
+                launchSingleTop = true
             }
         }
     )

@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.0] - 2026-03-20
+### Added
+- Added a conflict resolution screen when restoring or importing files with duplicate names.
+- Shows options to keep local file, replace with file from ZIP, or keep both files with safe auto-renaming.
+- Shows restore/import progress and a completion summary (counts for added, replaced, and skipped files).
+
+### Changed
+- Opening a file no longer updates its last-modified time.
+
 ## [2.7.0] - 2026-03-19
 ### Added
 - Added support for referencing variables and functions from other files (e.g., `file("Summary").someVariable` or `otherFile.someFunction(2, localVar)`).

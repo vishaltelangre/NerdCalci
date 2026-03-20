@@ -267,6 +267,26 @@ class DatabaseTest {
         assertTrue(file!!.lastModified >= beforeTouch)
     }
 
+    // Opening a file doesn't bump modified timestamp
+    @Test
+    fun updateLines_withUpdateTimestampFalse_doesNotTouchFile() = runBlocking {
+        val initialTimestamp = 1000L
+        val fileId = dao.insertFile(FileEntity(name = "Test", lastModified = initialTimestamp))
+        dao.insertLine(LineEntity(fileId = fileId, sortOrder = 0, expression = "1 + 1", result = ""))
+
+        val lines = dao.getLinesForFileSync(fileId)
+        val updated = lines.map { it.copy(result = "DONE") }
+
+        Thread.sleep(10)
+        dao.updateLines(fileId, updated, updateTimestamp = false)
+
+        val retrieved = dao.getLinesForFileSync(fileId)
+        assertTrue(retrieved.all { it.result == "DONE" })
+
+        val file = dao.getFileById(fileId)
+        assertEquals(initialTimestamp, file!!.lastModified)
+    }
+
     @Test
     fun updateLines_emptyListIsNoOp() = runBlocking {
         val fileId = dao.insertFile(FileEntity(name = "Test", lastModified = 1000L))

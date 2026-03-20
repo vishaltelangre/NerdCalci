@@ -141,8 +141,10 @@ class BackupManagerTest {
             onConflict = { _, _, _ -> ConflictResolution.KEEP_LOCAL_FILE }
         )
 
-        assertEquals(0, result.importedCount)
+        assertEquals(1, result.processedCount)
+        assertEquals(0, result.addedCount)
         assertEquals(0, result.overwrittenCount)
+        assertEquals(1, result.skippedCount)
 
         val localLines = dao.getLinesForFileSync(fileId)
         assertEquals(1, localLines.size)
@@ -164,8 +166,10 @@ class BackupManagerTest {
             onConflict = { _, _, _ -> ConflictResolution.REPLACE_WITH_FILE_FROM_ZIP }
         )
 
-        assertEquals(1, result.importedCount)
+        assertEquals(1, result.processedCount)
+        assertEquals(0, result.addedCount)
         assertEquals(1, result.overwrittenCount)
+        assertEquals(0, result.skippedCount)
 
         assertEquals(1, dao.files.size)
         val newFileId = dao.files[0].id
@@ -190,8 +194,10 @@ class BackupManagerTest {
             onConflict = { _, _, _ -> ConflictResolution.KEEP_BOTH_FILES }
         )
 
-        assertEquals(1, result.importedCount)
+        assertEquals(1, result.processedCount)
+        assertEquals(1, result.addedCount)
         assertEquals(0, result.overwrittenCount)
+        assertEquals(0, result.skippedCount)
 
         assertEquals(2, dao.files.size)
         val oldFile = dao.files.find { it.id == fileId }!!

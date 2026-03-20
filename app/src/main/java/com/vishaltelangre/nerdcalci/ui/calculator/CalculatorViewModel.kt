@@ -55,7 +55,10 @@ data class RestoreProgressState(
     val zipConflictModified: Long = 0L,
     val applyToAll: ConflictResolution? = null,
     val completionMessage: String? = null,
-    val overwrittenCount: Int = 0
+    val overwrittenCount: Int = 0,
+    val processedCount: Int = 0,
+    val addedCount: Int = 0,
+    val skippedCount: Int = 0
 )
 
 class CalculatorViewModel(
@@ -761,10 +764,13 @@ class CalculatorViewModel(
             _restoreProgress.value = _restoreProgress.value.copy(
                 isProcessing = false,
                 completionMessage = if (result.isSuccess) {
-                    val count = result.getOrNull()?.importedCount ?: 0
+                    val count = result.getOrNull()?.processedCount ?: 0
                     if (count == 1) "$verb 1 file" else "$verb $count files"
                 } else null,
-                overwrittenCount = result.getOrNull()?.overwrittenCount ?: 0
+                overwrittenCount = result.getOrNull()?.overwrittenCount ?: 0,
+                processedCount = result.getOrNull()?.processedCount ?: 0,
+                addedCount = result.getOrNull()?.addedCount ?: 0,
+                skippedCount = result.getOrNull()?.skippedCount ?: 0
             )
             if (result.isSuccess) {
                 onSuccess()

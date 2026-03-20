@@ -79,8 +79,10 @@ enum class ConflictResolution {
 }
 
 data class RestoreResult(
-    val importedCount: Int,
-    val overwrittenCount: Int
+    val processedCount: Int,
+    val overwrittenCount: Int,
+    val skippedCount: Int,
+    val addedCount: Int
 )
 
 data class BackupFileInfo(
@@ -153,7 +155,7 @@ object BackupManager {
                         ?: throw Exception("Could not open input stream")
                 }, onProgress, onConflict)
 
-                Log.d(TAG, "Imported ${stats.importedCount} file(s), ${stats.overwrittenCount} overwritten from ${inputUri.lastPathSegment}")
+                Log.d(TAG, "Imported ${stats.processedCount} file(s), ${stats.overwrittenCount} overwritten from ${inputUri.lastPathSegment}")
                 Result.success(stats)
             } catch (e: Exception) {
                 Log.e(TAG, "Import failed from ${inputUri.lastPathSegment}", e)
@@ -238,7 +240,7 @@ object BackupManager {
                         }, onProgress, onConflict)
                     }
                 }
-                Log.d(TAG, "Successfully restored ${stats.importedCount} file(s), ${stats.overwrittenCount} overwritten from ${backup.displayName}")
+                Log.d(TAG, "Successfully restored ${stats.processedCount} file(s), ${stats.overwrittenCount} overwritten from ${backup.displayName}")
                 Result.success(stats)
             } catch (e: Exception) {
                 Log.e(TAG, "Restore failed from ${backup.displayName}", e)
@@ -403,8 +405,9 @@ object BackupManager {
     ): RestoreResult {
         val existingFiles = dao.getAllFiles().first()
         val existingNames = existingFiles.map { it.name }.toMutableSet()
-        var importedCount = 0
         var overwrittenCount = 0
+        var skippedCount = 0
+        var addedCount = 0
 
         val totalEntries = withContext(Dispatchers.IO) {
             try {
@@ -487,11 +490,13 @@ object BackupManager {
                                 }
                                 val decision = onConflict(fileName, localModified, zipModified)
                                 if (decision == ConflictResolution.KEEP_LOCAL_FILE) {
+                                    skippedCount++
                                     zipIn.closeEntry()
                                     entry = zipIn.nextEntry
                                     continue
                                 }
                                 if (decision == ConflictResolution.KEEP_BOTH_FILES) {
+                                    addedCount++
                                     var suffixCount = 1
                                     var uniqueName = fileName
                                     while (existingNames.contains(uniqueName)) {
@@ -503,10 +508,12 @@ object BackupManager {
                                     if (existingFile != null) {
                                         dao.deleteFile(existingFile)
                                         isOverwrite = true
+                                        overwrittenCount++
                                     }
                                     fileName
                                 }
                             } else {
+                                addedCount++
                                 fileName
                             }
 
@@ -560,10 +567,6 @@ object BackupManager {
                     // Final touch to ensure the timestamp is exactly as intended,
                     // even after updateLines might have moved it to "now".
                             dao.touchFile(fileId, finalModifiedTime)
-                            importedCount++
-                            if (isOverwrite) {
-                                overwrittenCount++
-                            }
                         }
 
                         zipIn.closeEntry()
@@ -579,7 +582,7 @@ object BackupManager {
         }
     }
 
-        return RestoreResult(importedCount, overwrittenCount)
+        return RestoreResult(addedCount + overwrittenCount + skippedCount, overwrittenCount, skippedCount, addedCount)
     }
 
     private fun formatFileContent(lines: List<LineEntity>, precision: Int): String {

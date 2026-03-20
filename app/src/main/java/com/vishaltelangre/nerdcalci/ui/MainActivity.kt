@@ -379,7 +379,9 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
     RestoreCompleteDialog(
         visible = restoreProgress.completionMessage != null,
         message = restoreProgress.completionMessage ?: "",
+        addedCount = restoreProgress.addedCount,
         overwrittenCount = restoreProgress.overwrittenCount,
+        skippedCount = restoreProgress.skippedCount,
         onDismiss = {
             viewModel.dismissRestoreStats()
             navController.navigate("home") {

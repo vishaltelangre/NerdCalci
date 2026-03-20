@@ -41,6 +41,12 @@ import java.text.SimpleDateFormat
 import androidx.compose.material3.RadioButton
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
 
 @Composable
 fun RestoreSourceDialog(
@@ -325,7 +331,9 @@ fun RestoreProgressDialog(
 fun RestoreCompleteDialog(
     visible: Boolean,
     message: String,
-    overwrittenCount: Int,
+    addedCount: Int = 0,
+    overwrittenCount: Int = 0,
+    skippedCount: Int = 0,
     onDismiss: () -> Unit
 ) {
     if (!visible) return
@@ -334,15 +342,31 @@ fun RestoreCompleteDialog(
         title = { Text("Restore finished") },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
-                Text(message)
-                if (overwrittenCount > 0) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "$overwrittenCount files were overwritten from ZIP",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                Text(text = message, style = MaterialTheme.typography.bodyLarge)
+                Spacer(modifier = Modifier.height(12.dp))
+
+                val itemStyle = MaterialTheme.typography.bodyMedium
+
+                @Composable
+                fun BulletItem(text: String) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(vertical = 2.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.onSurfaceVariant)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = text, style = itemStyle)
+                    }
                 }
+
+                BulletItem("$addedCount added")
+                BulletItem("$overwrittenCount replaced")
+                BulletItem("$skippedCount skipped")
             }
         },
         confirmButton = {

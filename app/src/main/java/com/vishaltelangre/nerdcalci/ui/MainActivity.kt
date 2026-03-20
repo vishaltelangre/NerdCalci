@@ -164,9 +164,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
         uri?.let {
-            coroutineScope.launch {
-                viewModel.importFiles(context, it)
-            }
+            viewModel.importFiles(context, it)
         }
     }
 

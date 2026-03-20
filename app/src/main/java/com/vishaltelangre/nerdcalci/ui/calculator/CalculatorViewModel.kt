@@ -422,7 +422,7 @@ class CalculatorViewModel(
             calculationMutex.withLock {
                 val allLines = dao.getLinesForFileSync(fileId)
                 val calculatedLines = MathEngine.calculate(allLines, createFileContextLoader(fileId))
-                dao.updateLines(fileId, calculatedLines)
+                dao.updateLines(fileId, calculatedLines, updateTimestamp = false)
             }
         }
     }

@@ -92,10 +92,12 @@ abstract class CalculatorDao {
     }
 
     @Transaction
-    open suspend fun updateLines(fileId: Long, lines: List<LineEntity>) {
+    open suspend fun updateLines(fileId: Long, lines: List<LineEntity>, updateTimestamp: Boolean = true) {
         if (lines.isEmpty()) return
         internalUpdateLines(lines)
-        touchFile(fileId)
+        if (updateTimestamp) {
+            touchFile(fileId)
+        }
     }
 
     @Transaction

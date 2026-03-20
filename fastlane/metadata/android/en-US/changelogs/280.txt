@@ -1,0 +1,2 @@
+- Added conflict resolution screen when restoring or importing files.
+- Shows options to keep local file, replace with file from ZIP, or keep both files with safe auto-renaming.

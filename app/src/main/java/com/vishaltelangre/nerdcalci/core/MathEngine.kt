@@ -107,7 +107,7 @@ object MathEngine {
             try {
                 injectDynamicVariables(context)
                 val result = evaluateLine(line.expression, context, loader, loadingStack)
-                context.lineResults.add(result)
+                context.lineResults.add(result.takeIf { it.value != null })
                 trackDynamicVariableAssignment(line.expression, context.userAssignedDynamicVariables)
             } catch (e: Exception) {
                 if (e is CircularReferenceException && loadingStack.isNotEmpty()) throw e
@@ -211,6 +211,7 @@ object MathEngine {
                 val u = if (result.unit != null) UnitConverter.findUnit(result.unit) else null
                 val resultString = if (u != null) {
                     if (u.category == UnitCategory.NUMERAL_SYSTEM) {
+                        if (result.value % 1.0 != 0.0) throw IllegalArgumentException("Fractional value cannot be converted to numeral system")
                         formatNumeralSystem(result.value.toLong(), u.factor.toInt())
                     } else {
                         val displayValue = UnitConverter.fromBase(result.value, u, isolatedContext.variables)
@@ -353,6 +354,7 @@ object MathEngine {
         val isNumeralSystem = trimmedUnit in listOf("bin", "hex", "oct", "dec")
 
         val formattedResult = if (isNumeralSystem) {
+            if (value % 1.0 != 0.0) return "Err"
             val radix = when (trimmedUnit) {
                 "bin" -> 2
                 "hex" -> 16

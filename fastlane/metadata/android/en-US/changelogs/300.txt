@@ -1,0 +1,7 @@
+- Convert between 100+ units across Time, Length, Weight, Temperature, Data and more!
+- Type conversions naturally, e.g., `10 km in m` or `2 hours to minutes`.
+- Do math with mixed units safely, e.g., `10 km + 500m` scales automatically.
+- Type high numbers quickly with words like million, crore, thousand, etc.
+- Smarter autocomplete suggestions trigger right right after typing quantity.
+- Added degree symbol ("°") to shortcuts bar for easy entry.
+- Trigonometric functions now accept arguments in degrees, e.g., `sin(45°)`, `cos(90deg)`, etc. By default, the arguments are treated as radians.

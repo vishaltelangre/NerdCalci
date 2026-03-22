@@ -36,6 +36,29 @@
   - [Accessing variables from other files](#accessing-variables-from-other-files)
   - [Accessing functions from other files](#accessing-functions-from-other-files)
   - [Circular references](#circular-references)
+- [10. Unit conversions](#10-unit-conversions)
+  - [Creating quantities](#creating-quantities)
+  - [Dimension-safe arithmetic](#dimension-safe-arithmetic)
+  - [Conversion operations](#conversion-operations)
+  - [The `convert()` function](#the-convert-function)
+  - [Quantities inside Trigonometry](#quantities-inside-trigonometry)
+  - [Time](#time)
+  - [Length](#length)
+  - [Area](#area)
+  - [Volume](#volume)
+  - [Mass](#mass)
+  - [Speed](#speed)
+  - [Angle](#angle)
+  - [Temperature](#temperature)
+  - [Frequency](#frequency)
+  - [Energy](#energy)
+  - [Power](#power)
+  - [Data](#data)
+  - [Force](#force)
+  - [Fuel consumption](#fuel-consumption)
+  - [Pressure](#pressure)
+- [11. Numeral systems](#11-numeral-systems)
+  - [Radix base conversions](#radix-base-conversions)
 
 ## 1. Basic math and operators
 
@@ -197,7 +220,7 @@ NerdCalci includes a wide array of built-in math functions.
 
 ### Trigonometry
 
-Trigonometric functions expect angles in **radians**.
+Trigonometric functions expect angles in **radians** by default, but also natively support explicit angle quantities (e.g., `sin(90°)`, `cos(45 deg)`).
 
 | Function  | Example     | Result | Description        |
 | --------- | ----------- | ------ | ------------------ |
@@ -439,3 +462,353 @@ result = calcs.calculateTax(1000)
 To prevent system crashes or freezes, NerdCalci strictly enforces circular dependency guards against files referring back to one another.
 
 A **circular reference** happens when File A loads File B, while File B (or its functions) concurrently resolves references back into File A, creating a closed loop.
+
+## 10. Unit conversions
+
+NerdCalci supports dimensionally-safe arithmetic and conversions out of the box for over 100 units across various categories like Length, Mass, Time, Temperature, Data, and more.
+
+### Creating quantities
+
+Simply attach the unit name or symbol suffix to any number:
+
+```text
+10km
+5kg
+3 hr
+32°
+```
+
+### Dimension-safe arithmetic
+
+You can mix units in operators, NerdCalci will automatically normalize and preserve dimensions securely using the left-hand side unit for the result:
+
+```text
+10km + 500m                        # 10.5 km
+35 °C + 10 degF                    # 105 °F
+35 °C + 10 degF in degC            # 40.56 °C
+
+# Chained arithmetic with mixed scaling
+10km + 500m + 200cm                # 10502 m
+
+# Unit arithmetic
+(12 months in days + 48h) in years # 1.01 y
+
+# Units with variables
+dist = 10km
+dist + 500m                        # 10.5 km
+```
+
+### Conversion operations
+
+Use standard connectors `to`, `in`, or `as` to scale values securely:
+
+```text
+10 km to m          # 10000 m
+5 kg in g           # 5000 g
+100 °C as °F        # 212 °F
+
+# Combination with Large Numeral Multipliers
+5 million m to km   # 5000 km
+1.5 lakh g in kg    # 150 kg
+```
+
+### The `convert()` function
+
+Alternatively, you can use the built-in `convert()` function for programmatic conversions.
+
+**Syntax**: `convert(value, "fromUnit", "toUnit")`
+
+The second and third arguments MUST be quoted strings.
+
+```text
+convert(10, "km", "m")       # 10000 m
+convert(100, "°C", "°F")     # 212 °F
+```
+
+### Quantities inside Trigonometry
+
+You can pass quantities with explicit angle units directly into trigonometric functions:
+
+```text
+sin(90)        # 0.89 (defaults to radians)
+sin(90°)       # 1.0
+sin(30 deg)    # 0.5
+cos(60 degree) # 0.5
+```
+
+### Time
+
+| Unit        | Symbols (Aliases)                         | Example         |
+| :---------- | :---------------------------------------- | :-------------- |
+| Nanosecond  | `ns`, `nanosecond`, `nanoseconds`         | `10 ns`         |
+| Microsecond | `µs`, `us`, `microsecond`, `microseconds` | `10 µs`         |
+| Millisecond | `ms`, `millisecond`, `milliseconds`       | `10 ms`         |
+| Second      | `s`, `sec`, `secs`, `second`, `seconds`   | `10 s`          |
+| Minute      | `min`, `mins`, `minute`, `minutes`        | `10 min`        |
+| Hour        | `h`, `hr`, `hrs`, `hour`, `hours`         | `10 h`          |
+| Day         | `d`, `day`, `days`                        | `10 d`          |
+| Week        | `wk`, `wks`, `week`, `weeks`              | `10 wk`         |
+| Month       | `mo`, `mnth`, `mnths`, `month`, `months`  | `10 mo`         |
+| Year        | `y`, `yr`, `yrs`, `year`, `years`         | `10 y`          |
+| Lustrum     | `lustrum`, `lustrums`                     | `10 lustrum`    |
+| Decade      | `decade`, `decades`                       | `10 decade`     |
+| Century     | `century`, `centuries`                    | `10 century`    |
+| Millennium  | `millennium`, `millennia`, `millenniums`  | `10 millennium` |
+| Decisecond  | `ds`, `decisecond`, `deciseconds`         | `10 ds`         |
+| Centisecond | `cs`, `centisecond`, `centiseconds`       | `10 cs`         |
+
+### Length
+
+| Unit              | Symbols (Aliases)                                     | Example   |
+| :---------------- | :---------------------------------------------------- | :-------- |
+| Nanometer         | `nm`, `nanometer`, `nanometers`                       | `10 nm`   |
+| Micrometer        | `µm`, `um`, `micrometer`, `micrometers`               | `10 µm`   |
+| Millimeter        | `mm`, `millimeter`, `millimeters`                     | `10 mm`   |
+| Centimeter        | `cm`, `centimeter`, `centimeters`                     | `10 cm`   |
+| Decimeter         | `dm`, `decimeter`, `decimeters`                       | `10 dm`   |
+| Meter             | `m`, `meter`, `meters`                                | `10 m`    |
+| Kilometer         | `km`, `kms`, `kilometer`, `kilometers`                | `10 km`   |
+| Inch              | `inch`, `inches`                                      | `10 inch` |
+| Foot              | `ft`, `foot`, `feet`                                  | `10 ft`   |
+| Yard              | `yd`, `yard`, `yards`                                 | `10 yd`   |
+| Mile              | `mi`, `mile`, `miles`                                 | `10 mi`   |
+| Furlong           | `fur`, `furlong`                                      | `10 fur`  |
+| Fathom            | `ftm`, `fathom`                                       | `10 ftm`  |
+| Nautical Mile     | `NM`, `nmi`                                           | `10 NM`   |
+| Light Year        | `ly`                                                  | `10 ly`   |
+| Angstrom          | `Å`, `angstrom`, `angstroms`                          | `10 Å`    |
+| Picometer         | `pm`, `picometer`, `picometers`                       | `10 pm`   |
+| Astronomical Unit | `au`, `AU`, `astronomical unit`, `astronomical units` | `10 au`   |
+
+### Area
+
+| Unit              | Symbols (Aliases)                                                              | Example  |
+| :---------------- | :----------------------------------------------------------------------------- | :------- |
+| Square Nanometer  | `nm²`, `nm^2`, `nm2`, `sqnm`, `square nanometer`, `square nanometers`          | `10 nm²` |
+| Square Micrometer | `µm²`, `µm^2`, `µm2`, `um2`, `squm`, `square micrometer`, `square micrometers` | `10 µm²` |
+| Square Millimeter | `mm²`, `mm^2`, `mm2`, `sqmm`, `square millimeter`, `square millimeters`        | `10 mm²` |
+| Square Centimeter | `cm²`, `cm^2`, `cm2`, `sqcm`, `square centimeter`, `square centimeters`        | `10 cm²` |
+| Square Meter      | `m²`, `m^2`, `m2`, `sqm`, `square meter`, `square meters`                      | `10 m²`  |
+| Square Kilometer  | `km²`, `km^2`, `km2`, `sqkm`, `square kilometer`, `square kilometers`          | `10 km²` |
+| Square Inch       | `in²`, `in^2`, `in2`, `sqin`, `square inch`, `square inches`                   | `10 in²` |
+| Square Feet       | `ft²`, `ft^2`, `ft2`, `sqft`, `square foot`, `square feet`                     | `10 ft²` |
+| Square Yard       | `yd²`, `yd^2`, `yd2`, `sqyd`, `square yard`, `square yards`                    | `10 yd²` |
+| Square Mile       | `mi²`, `mi^2`, `mi2`, `sqmi`, `square mile`, `square miles`                    | `10 mi²` |
+| Acre              | `ac`, `acre`, `acres`                                                          | `10 ac`  |
+| Hectare           | `ha`, `hectare`, `hectares`                                                    | `10 ha`  |
+
+### Volume
+
+| Unit                   | Symbols (Aliases)                                                   | Example        |
+| :--------------------- | :------------------------------------------------------------------ | :------------- |
+| Milliliter             | `mL`, `ml`, `milliliter`, `milliliters`                             | `10 mL`        |
+| Liter                  | `L`, `l`, `liter`, `liters`                                         | `10 L`         |
+| Kiloliter              | `kL`, `kl`, `kiloliter`, `kiloliters`                               | `10 kL`        |
+| Megaliter              | `ML`, `megaliter`, `megaliters`                                     | `10 ML`        |
+| Cubic Centimeter       | `cm³`, `cm^3`, `cm3`, `cc`, `cubic centimeter`, `cubic centimeters` | `10 cm³`       |
+| Cubic Meter            | `m³`, `m^3`, `m3`, `cubic meter`, `cubic meters`                    | `10 m³`        |
+| Deciliter              | `dL`, `dl`, `deciliter`, `deciliters`                               | `10 dL`        |
+| Centiliter             | `cL`, `cl`, `centiliter`, `centiliters`                             | `10 cL`        |
+| Microliter             | `µL`, `uL`, `µl`, `ul`, `microliter`, `microliters`                 | `10 µL`        |
+| Cubic Millimeter       | `mm³`, `mm^3`, `mm3`, `cubic millimeter`, `cubic millimeters`       | `10 mm³`       |
+| Gallon                 | `gal`, `gallon`, `gallons`, `US gallon`, `US gallons`               | `10 gal`       |
+| Quart                  | `qt`, `quart`, `quarts`, `US quarts`                                | `10 qt`        |
+| Pint                   | `pint`, `pints`, `US pints`                                         | `10 pint`      |
+| Cup                    | `cup`, `cups`, `US cups`                                            | `10 cup`       |
+| Fluid Ounce            | `fl oz`, `floz`, `fluid ounce`, `fluid ounces`, `US fluid ounces`   | `10 fl oz`     |
+| Gallon (Imperial)      | `gal-imp`, `imperial gallon`, `imperial gallons`                    | `10 gal-imp`   |
+| Quart (Imperial)       | `qt-imp`, `imperial quart`, `imperial quarts`                       | `10 qt-imp`    |
+| Pint (Imperial)        | `pint-imp`, `imperial pint`, `imperial pints`                       | `10 pint-imp`  |
+| Fluid Ounce (Imperial) | `fl-oz-imp`, `imperial fluid ounce`, `imperial fluid ounces`        | `10 fl-oz-imp` |
+| Gill (US)              | `gi-us`, `US gill`, `US gills`                                      | `10 gi-us`     |
+| Gill (Imperial)        | `gi-imp`, `imperial gill`, `imperial gills`                         | `10 gi-imp`    |
+| Tablespoon             | `tbsp`, `tablespoon`, `tablespoons`                                 | `10 tbsp`      |
+| Teaspoon               | `tsp`, `teaspoon`, `teaspoons`                                      | `10 tsp`       |
+| Cubic Inch             | `in³`, `in^3`, `in3`, `cubic inch`, `cubic inches`                  | `10 in³`       |
+| Cubic Feet             | `ft³`, `ft^3`, `ft3`, `cuft`, `cubic foot`, `cubic feet`            | `10 ft³`       |
+
+### Mass
+
+| Unit                     | Symbols (Aliases)                                                                                   | Example     |
+| :----------------------- | :-------------------------------------------------------------------------------------------------- | :---------- |
+| Nanogram                 | `ng`, `nanogram`, `nanograms`                                                                       | `10 ng`     |
+| Microgram                | `mcg`, `µg`, `ug`, `microgram`, `micrograms`                                                        | `10 mcg`    |
+| Milligram                | `mg`, `milligram`, `milligrams`                                                                     | `10 mg`     |
+| Gram                     | `g`, `gram`, `grams`                                                                                | `10 g`      |
+| Kilogram                 | `kg`, `kgs`, `kilograms`                                                                            | `10 kg`     |
+| Metric Ton               | `t`, `tonne`, `tonnes`, `ton`, `tons`, `metric ton`, `metric tons`, `metric tonne`, `metric tonnes` | `10 t`      |
+| Ounce                    | `oz`, `ounce`, `ounces`                                                                             | `10 oz`     |
+| Pound                    | `lb`, `lbs`, `pound`, `pounds`                                                                      | `10 lb`     |
+| Stone                    | `st`, `stone`, `stones`                                                                             | `10 st`     |
+| Short Ton                | `sh ton`, `short ton`, `short tons`                                                                 | `10 sh ton` |
+| Troy Ounce               | `ozt`, `oz t`, `troy ounce`, `troy ounces`                                                          | `10 ozt`    |
+| Carat                    | `ct`, `carat`, `carats`                                                                             | `10 ct`     |
+| Ettogram                 | `hg`, `ettogram`, `ettograms`                                                                       | `10 hg`     |
+| Centigram                | `cg`, `centigram`, `centigrams`                                                                     | `10 cg`     |
+| Quintal                  | `q`, `quintal`, `quintals`                                                                          | `10 q`      |
+| Pennyweight              | `dwt`, `pennyweight`                                                                                | `10 dwt`    |
+| Unified atomic mass unit | `u`, `amu`                                                                                          | `10 u`      |
+
+### Speed
+
+| Unit               | Symbols (Aliases)                           | Example             |
+| :----------------- | :------------------------------------------ | :------------------ |
+| Meter per second   | `m/s`, `mps`, `meters per second`           | `10 m/s`            |
+| Kilometer per hour | `km/h`, `kmh`, `kph`, `kilometers per hour` | `10 km/h`           |
+| Miles per hour     | `mi/h`, `mph`, `miles per hour`             | `10 mi/h`           |
+| Knot               | `kn`, `knot`, `knots`                       | `10 kn`             |
+| Feet per second    | `ft/s`, `fps`, `feet per second`            | `10 ft/s`           |
+| Speed of light     | `speed of light`                            | `10 speed of light` |
+
+### Angle
+
+| Unit          | Symbols (Aliases)               | Example     |
+| :------------ | :------------------------------ | :---------- |
+| Radian        | `rad`, `radian`, `radians`      | `10 rad`    |
+| Degree        | `deg`, `degree`, `degrees`, `°` | `10 deg`    |
+| Minute of arc | `arcmin`, `minute of arc`       | `10 arcmin` |
+| Second of arc | `arcsec`, `second of arc`       | `10 arcsec` |
+
+### Temperature
+
+| Unit       | Symbols (Aliases)                                    | Example  |
+| :--------- | :--------------------------------------------------- | :------- |
+| Celsius    | `°C`, `C`, `celsius`, `degC`, `degree celsius`       | `10 °C`  |
+| Fahrenheit | `°F`, `F`, `fahrenheit`, `degF`, `degree fahrenheit` | `10 °F`  |
+| Kelvin     | `K`, `kelvin`                                        | `10 K`   |
+| Reaumur    | `°Re`, `Re`, `reaumur`, `Réaumur`                    | `10 °Re` |
+| Rømer      | `°Rø`, `Rø`, `romer`, `Rømer`                        | `10 °Rø` |
+| Delisle    | `°De`, `De`, `delisle`                               | `10 °De` |
+| Rankine    | `°Ra`, `Ra`, `rankine`                               | `10 °Ra` |
+
+### Frequency
+
+| Unit      | Symbols (Aliases)  | Example  |
+| :-------- | :----------------- | :------- |
+| Hertz     | `Hz`, `hertz`      | `10 Hz`  |
+| Kilohertz | `kHz`, `kilohertz` | `10 kHz` |
+| Megahertz | `MHz`, `megahertz` | `10 MHz` |
+| Gigahertz | `GHz`, `gigahertz` | `10 GHz` |
+
+### Energy
+
+| Unit                 | Symbols (Aliases)                             | Example     |
+| :------------------- | :-------------------------------------------- | :---------- |
+| Joule                | `J`, `joule`, `joules`                        | `10 J`      |
+| Kilojoule            | `kJ`, `kilojoule`, `kilojoules`               | `10 kJ`     |
+| Megajoule            | `MJ`, `megajoule`, `megajoules`               | `10 MJ`     |
+| Calorie              | `cal`, `calorie`, `calories`                  | `10 cal`    |
+| Kilocalorie          | `kCal`, `kcal`, `kilocalorie`, `kilocalories` | `10 kCal`   |
+| Watt hour            | `Wh`, `watt hour`, `watt hours`               | `10 Wh`     |
+| Kilowatt hour        | `kWh`, `kilowatt hour`, `kilowatt hours`      | `10 kWh`    |
+| Electron volt        | `eV`, `electronvolt`, `electron volts`        | `10 eV`     |
+| Foot pound-force     | `ft lbf`, `ft-lbf`, `foot-pound`              | `10 ft lbf` |
+| British thermal unit | `BTU`, `btu`                                  | `10 BTU`    |
+
+### Power
+
+| Unit       | Symbols (Aliases)                 | Example |
+| :--------- | :-------------------------------- | :------ |
+| Watt       | `W`, `watt`, `watts`              | `10 W`  |
+| Milliwatt  | `mW`, `milliwatt`, `milliwatts`   | `10 mW` |
+| Kilowatt   | `kW`, `kilowatt`, `kilowatts`     | `10 kW` |
+| Megawatt   | `MW`, `megawatt`, `megawatts`     | `10 MW` |
+| Horsepower | `hp`, `horsepower`, `horsepowers` | `10 hp` |
+| Gigawatt   | `GW`, `gigawatt`, `gigawatts`     | `10 GW` |
+
+### Data
+
+| Unit     | Symbols (Aliases)                   | Example     |
+| :------- | :---------------------------------- | :---------- |
+| Bit      | `bit`, `bits`, `b`                  | `10 bit`    |
+| Nibble   | `nibble`, `nibbles`                 | `10 nibble` |
+| Byte     | `B`, `byte`, `bytes`                | `10 B`      |
+| Kilobyte | `kB`, `KB`, `kilobyte`, `kilobytes` | `10 kB`     |
+| Megabyte | `MB`, `megabyte`, `megabytes`       | `10 MB`     |
+| Gigabyte | `GB`, `gigabyte`, `gigabytes`       | `10 GB`     |
+| Terabyte | `TB`, `terabyte`, `terabytes`       | `10 TB`     |
+| Kibibyte | `KiB`, `kibibyte`, `kibibytes`      | `10 KiB`    |
+| Mebibyte | `MiB`, `mebibyte`, `mebibytes`      | `10 MiB`    |
+| Gibibyte | `GiB`, `gibibyte`, `gibibytes`      | `10 GiB`    |
+| Tebibyte | `TiB`, `tebibyte`, `tebibytes`      | `10 TiB`    |
+| Pebibyte | `PiB`, `pebibyte`, `pebibytes`      | `10 PiB`    |
+| Exbibyte | `EiB`, `exbibyte`, `exbibytes`      | `10 EiB`    |
+| Petabyte | `PB`, `petabyte`, `petabytes`       | `10 PB`     |
+| Exabyte  | `EB`, `exabyte`, `exabytes`         | `10 EB`     |
+| Kibibit  | `Kibit`, `kibibit`                  | `10 Kibit`  |
+| Mebibit  | `Mibit`, `mebibit`                  | `10 Mibit`  |
+| Gibibit  | `Gibit`, `gibibit`                  | `10 Gibit`  |
+| Tebibit  | `Tibit`, `tebibit`                  | `10 Tibit`  |
+| Pebibit  | `Pibit`, `pebibit`                  | `10 Pibit`  |
+| Exbibit  | `Eibit`, `exbibit`                  | `10 Eibit`  |
+| Kilobit  | `kb`, `kilobit`                     | `10 kb`     |
+| Megabit  | `Mb`, `megabit`                     | `10 Mb`     |
+| Gigabit  | `Gb`, `gigabit`                     | `10 Gb`     |
+| Terabit  | `Tb`, `terabit`                     | `10 Tb`     |
+| Petabit  | `Pb`, `petabit`                     | `10 Pb`     |
+| Exabit   | `Eb`, `exabit`                      | `10 Eb`     |
+
+### Force
+
+| Unit           | Symbols (Aliases)        | Example  |
+| :------------- | :----------------------- | :------- |
+| Newton         | `N`, `newton`, `newtons` | `10 N`   |
+| Kilogram-force | `kgf`, `kg-f`            | `10 kgf` |
+| Pound-force    | `lbf`, `lb-f`            | `10 lbf` |
+| Dyne           | `dyn`, `dyne`            | `10 dyn` |
+| Poundal        | `pdl`                    | `10 pdl` |
+
+### Fuel consumption
+
+| Unit                        | Symbols (Aliases)    | Example      |
+| :-------------------------- | :------------------- | :----------- |
+| Liters per 100 km           | `L/100km`, `l/100km` | `10 L/100km` |
+| Kilometers per liter        | `km/L`, `km/l`       | `10 km/L`    |
+| Miles per Gallon (US)       | `mpg`, `mpg_us`      | `10 mpg`     |
+| Miles per Gallon (Imperial) | `mpg_imp`, `mpg_uk`  | `10 mpg_imp` |
+
+### Pressure
+
+| Unit              | Symbols (Aliases)              | Example   |
+| :---------------- | :----------------------------- | :-------- |
+| Pascal            | `Pa`, `pascal`                 | `10 Pa`   |
+| Kilopascal        | `kPa`, `kilopascal`            | `10 kPa`  |
+| Megapascal        | `MPa`, `megapascal`            | `10 MPa`  |
+| Gigapascal        | `GPa`, `gigapascal`            | `10 GPa`  |
+| Hectopascal       | `hPa`, `hectopascal`           | `10 hPa`  |
+| Bar               | `bar`, `bars`                  | `10 bar`  |
+| Millibar          | `mbar`, `millibar`             | `10 mbar` |
+| Atmosphere        | `atm`, `atmosphere`            | `10 atm`  |
+| Psi               | `psi`, `pound per square inch` | `10 psi`  |
+| Ksi               | `ksi`                          | `10 ksi`  |
+| Torr              | `torr`, `mmHg`                 | `10 torr` |
+| Inches of Mercury | `inHg`                         | `10 inHg` |
+
+## 11. Numeral systems
+
+NerdCalci expands numeric representations supporting standard numeral naming conventions efficiently with scalable word suffixes:
+
+| Word       | Multiplier          | Example      | Evaluates to |
+| :--------- | :------------------ | :----------- | :----------- |
+| `hundred`  | `100`               | `5 hundred`  | `500`        |
+| `thousand` | `1,000`             | `2 thousand` | `2000`       |
+| `lakh`     | `100,000`           | `10 lakh`    | `1000000`    |
+| `million`  | `1,000,000`         | `5 million`  | `5000000`    |
+| `crore`    | `10,000,000`        | `1.5 crore`  | `15000000`   |
+| `billion`  | `1,000,000,000`     | `1 billion`  | `1000000000` |
+| `trillion` | `1,000,000,000,000` | `1 trillion` | `1E12`       |
+
+### Radix base conversions
+
+NerdCalci supports converting decimal numbers to/from other number bases using the `in`/`to` operators.
+
+| System      | Keywords             | Base | Example         | Result   |
+| :---------- | :------------------- | :--- | :-------------- | :------- |
+| Hexadecimal | `hex`, `hexadecimal` | 16   | `15 dec in hex` | `0xF`    |
+| Binary      | `bin`, `binary`      | 2    | `10 in bin`     | `0b1010` |
+| Octal       | `oct`, `octal`       | 8    | `64 in oct`     | `0o100`  |
+| Decimal     | `dec`, `decimal`     | 10   | `10.5 in dec`   | `10`     |
+
+> **💡 Note**: Conversion to other bases casts the value to an Integer (`Long`) before formatting. Floating point fractions are truncated.
+>
+> **⚠️ Important**: NerdCalci currently only supports decimal literals as numerical inputs in expressions. While you can convert **to** Hex/Binary representations for display, you cannot directly use hex literals like `0x10` or `0b1101` in calculation inputs.

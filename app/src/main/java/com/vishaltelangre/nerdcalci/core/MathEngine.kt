@@ -7,9 +7,9 @@ data class LocalFunction(val name: String, val params: List<String>, val body: L
 
 /** Container for evaluated state. */
 data class MathContext(
-    val variables: MutableMap<String, Double> = mutableMapOf(),
+    val variables: MutableMap<String, EvaluationResult> = mutableMapOf(),
     val localFunctions: MutableMap<String, LocalFunction> = mutableMapOf(),
-    val lineResults: MutableList<Double?> = mutableListOf(),
+    val lineResults: MutableList<EvaluationResult?> = mutableListOf(),
     val userAssignedDynamicVariables: MutableSet<String> = mutableSetOf(),
     val fileVariables: MutableMap<String, String> = mutableMapOf() // varName -> fileName
 )
@@ -22,7 +22,7 @@ object MathEngine {
      * Each entry maps a keyword name to a function that computes its value based on
      * the current block's line results.
      */
-    private val DYNAMIC_VARIABLES: Map<String, (List<Double?>) -> Double> = mapOf(
+    private val DYNAMIC_VARIABLES: Map<String, (List<EvaluationResult?>) -> EvaluationResult> = mapOf(
         "sum"               to ::computeBlockSum,
         "total"             to ::computeBlockSum,
 
@@ -107,7 +107,7 @@ object MathEngine {
             try {
                 injectDynamicVariables(context)
                 val result = evaluateLine(line.expression, context, loader, loadingStack)
-                context.lineResults.add(result)
+                context.lineResults.add(result.takeIf { it.value != null })
                 trackDynamicVariableAssignment(line.expression, context.userAssignedDynamicVariables)
             } catch (e: Exception) {
                 if (e is CircularReferenceException && loadingStack.isNotEmpty()) throw e
@@ -197,10 +197,10 @@ object MathEngine {
 
                 // Evaluate the line, updating `isolatedContext` if it's an assignment/function definition
                 val result = evaluateLine(line.expression, isolatedContext, loader, loadingStack)
-                    ?: run {
-                        lineResults.add(null)
-                        return@map line.copy(result = "")
-                    }
+                if (result.value == null) {
+                    lineResults.add(null)
+                    return@map line.copy(result = "")
+                }
 
                 lineResults.add(result)
 
@@ -208,8 +208,20 @@ object MathEngine {
                 trackDynamicVariableAssignment(line.expression, userAssignedDynamicVariables)
 
                 // Store raw numeric result for persistence
-                line.copy(result = result.toString())
-            } catch (_: Exception) {
+                val u = if (result.unit != null) UnitConverter.findUnit(result.unit) else null
+                val resultString = if (u != null) {
+                    if (u.category == UnitCategory.NUMERAL_SYSTEM) {
+                        if (result.value % 1.0 != 0.0) throw IllegalArgumentException(ERR_FRACTIONAL_NUMERAL_SYSTEM)
+                        formatNumeralSystem(result.value.toLong(), u.factor.toInt())
+                    } else {
+                        val displayValue = UnitConverter.fromBase(result.value, u, isolatedContext.variables)
+                        "$displayValue ${result.unit}"
+                    }
+                } else {
+                    result.value.toString()
+                }
+                line.copy(result = resultString)
+            } catch (e: Exception) {
                 lineResults.add(null)
                 line.copy(result = "Err")
             }
@@ -254,43 +266,44 @@ object MathEngine {
      * Sum the current block's line results, scanning backward from the end of
      * [lineResults] until a null entry (blank line / comment / error) or the start.
      */
-    private fun computeBlockSum(lineResults: List<Double?>): Double {
+    private fun computeBlockSum(lineResults: List<EvaluationResult?>): EvaluationResult {
         var sum = 0.0
         for (i in lineResults.indices.reversed()) {
             val result = lineResults[i] ?: break
-            sum += result
+            sum += result.value ?: 0.0
         }
-        return sum
+        return EvaluationResult(sum)
     }
 
     /**
      * Average the current block's line results, scanning backward from the end of
      * [lineResults] until a null entry (blank line / comment / error) or the start.
      */
-    private fun computeBlockAverage(lineResults: List<Double?>): Double {
+    private fun computeBlockAverage(lineResults: List<EvaluationResult?>): EvaluationResult {
         var sum = 0.0
         var count = 0
         for (i in lineResults.indices.reversed()) {
             val result = lineResults[i] ?: break
-            sum += result
+            sum += result.value ?: 0.0
             count++
         }
-        return if (count > 0) sum / count else 0.0
+        val avg = if (count > 0) sum / count else 0.0
+        return EvaluationResult(avg)
     }
 
     /**
      * Returns the result of the immediately preceding line, or 0.0 if that line
      * was blank, a comment, or an error.
      */
-    private fun computePreviousLineResult(lineResults: List<Double?>): Double {
-        return lineResults.lastOrNull() ?: 0.0
+    private fun computePreviousLineResult(lineResults: List<EvaluationResult?>): EvaluationResult {
+        return lineResults.lastOrNull() ?: EvaluationResult(0.0)
     }
 
     /**
      * Returns the 1-based index of the line currently being evaluated.
      */
-    private fun computeCurrentLineNumber(lineResults: List<Double?>): Double {
-        return (lineResults.size + 1).toDouble()
+    private fun computeCurrentLineNumber(lineResults: List<EvaluationResult?>): EvaluationResult {
+        return EvaluationResult((lineResults.size + 1).toDouble())
     }
 
     /**
@@ -305,12 +318,12 @@ object MathEngine {
         context: MathContext,
         loader: FileContextLoader? = null,
         loadingStack: Set<String> = emptySet()
-    ): Double? {
+    ): EvaluationResult {
         val tokens = Lexer(expression).tokenize()
 
         // If the only tokens are EOF (blank line) or the lexer skipped everything
         // (pure comment), there's nothing to evaluate.
-        if (tokens.size == 1 && tokens[0].kind == TokenKind.EOF) return null
+        if (tokens.size == 1 && tokens[0].kind == TokenKind.EOF) return EvaluationResult(null)
 
         val statement = Parser(tokens).parse()
 
@@ -326,10 +339,30 @@ object MathEngine {
     /** Format a numeric result for display based on user-defined precision. */
     fun formatDisplayResult(rawResult: String, precision: Int): String {
         if (rawResult.isBlank() || rawResult == "Err") return rawResult
-        val value = rawResult.toDoubleOrNull() ?: return rawResult
+
+        val spaceIndex = rawResult.indexOf(' ')
+        val (numStr, unitStr) = if (spaceIndex > 0) {
+            rawResult.substring(0, spaceIndex) to rawResult.substring(spaceIndex)
+        } else {
+            rawResult to ""
+        }
+
+        val value = numStr.toDoubleOrNull() ?: return rawResult
         val safePrecision = precision.coerceIn(Constants.MIN_PRECISION, Constants.MAX_PRECISION)
 
-        return if (value % 1.0 == 0.0) {
+        val trimmedUnit = unitStr.trim().lowercase()
+        val isNumeralSystem = UnitConverter.isNumeralSystemSymbol(trimmedUnit)
+
+        val formattedResult = if (isNumeralSystem) {
+            if (value % 1.0 != 0.0) return "Err"
+            val radix = when (trimmedUnit) {
+                "bin" -> 2
+                "hex" -> 16
+                "oct" -> 8
+                else -> 10
+            }
+            formatNumeralSystem(value.toLong(), radix)
+        } else if (value % 1.0 == 0.0) {
             when {
                 value >= Int.MIN_VALUE && value <= Int.MAX_VALUE ->
                     value.toInt().toString()
@@ -341,5 +374,17 @@ object MathEngine {
         } else {
             String.format("%.${safePrecision}f", value)
         }
+
+        return if (isNumeralSystem) formattedResult else formattedResult + unitStr
+    }
+
+    private fun formatNumeralSystem(value: Long, radix: Int): String {
+        val prefix = when (radix) {
+            16 -> "0x"
+            2 -> "0b"
+            8 -> "0o"
+            else -> ""
+        }
+        return "$prefix${java.lang.Long.toString(value, radix).uppercase()}"
     }
 }

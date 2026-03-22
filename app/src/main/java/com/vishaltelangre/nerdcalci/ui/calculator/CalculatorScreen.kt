@@ -2,6 +2,8 @@ package com.vishaltelangre.nerdcalci.ui.calculator
 
 import com.vishaltelangre.nerdcalci.core.Builtins
 import com.vishaltelangre.nerdcalci.core.MathEngine
+import com.vishaltelangre.nerdcalci.core.UnitCategory
+import com.vishaltelangre.nerdcalci.core.UnitConverter
 import androidx.compose.foundation.background
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
@@ -307,6 +309,7 @@ private fun extractSuggestions(lines: List<LineEntity>, upToSortOrder: Int): Pai
     Builtins.constantNames.forEach { suggestionMap[it] = Suggestion(it, SuggestionType.CONSTANT) }
     Builtins.functionNames.forEach { suggestionMap[it] = Suggestion(it, SuggestionType.GLOBAL_FUNCTION) }
     suggestionMap["file"] = Suggestion("file", SuggestionType.GLOBAL_FUNCTION)
+    suggestionMap["convert"] = Suggestion("convert", SuggestionType.GLOBAL_FUNCTION)
     lines.filter { it.sortOrder < upToSortOrder }.forEach { line ->
         // Strip comments first
         val hashIndex = line.expression.indexOf('#')
@@ -780,7 +783,7 @@ fun CalculatorScreen(
                                 .padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 4.dp),
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            val symbols = listOf(".", "_", "(", ")", "#", "=", "+", "-", "×", "÷", "%", "^", "\"")
+                            val symbols = listOf(".", "_", "(", ")", "#", "=", "+", "-", "×", "÷", "%", "^", "\"", "°")
                             symbols.forEach { symbol ->
                                 ShortcutButton(text = symbol) {
                                     currentlyFocusedLineId?.let { lineId ->
@@ -1086,6 +1089,7 @@ private fun ShortcutButton(
     }
 }
 
+
 @Composable
 private fun LineRow(
     line: LineEntity,
@@ -1162,48 +1166,18 @@ private fun LineRow(
     val suggestionContext = remember(textFieldValue.text, textFieldValue.selection, fileVariables) {
         val cursorPos = textFieldValue.selection.start
         val text = textFieldValue.text
-        if (cursorPos > 0) {
-            // Check if cursor is inside a comment (after #) to suppress suggestions
-            val beforeCursor = text.substring(0, cursorPos)
-            val hashIndex = beforeCursor.indexOf('#')
-            if (hashIndex >= 0) {
-                return@remember Triple("", SuggestionType.VARIABLE, false)
-            }
-
-            // Match `file("...` to suggest available file names
-            val fileRegex = Regex("""file\(\s*"([^"]*)$""")
-            val fileMatch = fileRegex.find(beforeCursor)
-            if (fileMatch != null) {
-                return@remember Triple(fileMatch.groupValues[1], SuggestionType.FILE, true)
-            }
-
-            // Match dot notation (`obj.`) to suggest members of that file
-            val dotRegex = Regex("""(\w+|\bfile\(\s*"[^"]*"\s*\))\s*\.\s*(\w*)$""")
-            val dotMatch = dotRegex.find(beforeCursor)
-            if (dotMatch != null) {
-                val objectName = dotMatch.groupValues[1]
-                val linkedFile = if (objectName.startsWith("file(")) {
-                    Regex("""file\(\s*"([^"]+)"\s*\)""").find(objectName)?.groupValues?.getOrNull(1)
-                } else {
-                    fileVariables[objectName]
-                }
-                if (linkedFile != null) {
-                    return@remember Triple(dotMatch.groupValues[2], SuggestionType.VARIABLE, true)
-                }
-            }
-
-            // Default back to normal word extraction for local variables
-            val range = text.getIdentifierRangeAt(cursorPos - 1)
-            if (cursorPos <= range.last + 1) {
-                return@remember Triple(text.substring(range.first, cursorPos), SuggestionType.VARIABLE, false)
-            }
-        }
-        Triple("", SuggestionType.VARIABLE, false)
+        val beforeCursor = if (cursorPos > 0) text.substring(0, cursorPos) else ""
+        com.vishaltelangre.nerdcalci.utils.getSuggestionContext(
+            beforeCursor,
+            text,
+            cursorPos,
+            fileVariables
+        )
     }
 
-    val currentWord = suggestionContext.first
-    val contextType = suggestionContext.second
-    val isExplicitTrigger = suggestionContext.third
+    val currentWord = suggestionContext.word
+    val contextType = suggestionContext.type
+    val isExplicitTrigger = suggestionContext.isExplicitTrigger
 
     var remoteSuggestions by remember { mutableStateOf<Set<Suggestion>>(emptySet()) }
 
@@ -1249,7 +1223,7 @@ private fun LineRow(
     }
 
     val combinedVariables = remember(availableVariables, remoteSuggestions, dotFileName, suggestionContext) {
-        val isDotNotation = suggestionContext.second == SuggestionType.VARIABLE && suggestionContext.third
+        val isDotNotation = suggestionContext.type == SuggestionType.VARIABLE && suggestionContext.isExplicitTrigger
         if (isDotNotation) {
             if (dotFileName != null) remoteSuggestions else emptySet()
         } else {
@@ -1258,7 +1232,16 @@ private fun LineRow(
     }
 
     val suggestions = remember(suggestionContext, combinedVariables, allFiles, forceDismissSuggestions, showSuggestions, loadingSuggestions) {
+        val cursorPos = textFieldValue.selection.start
+        val text = textFieldValue.text
+        val beforeCursor = if (cursorPos > 0) text.substring(0, cursorPos) else ""
+
         if (!forceDismissSuggestions && showSuggestions && (currentWord.isNotEmpty() || isExplicitTrigger)) {
+            val tokens = runCatching { 
+                com.vishaltelangre.nerdcalci.core.Lexer(beforeCursor).tokenize() 
+            }.getOrElse { emptyList() }
+            val cleanTokens = tokens.filter { it.kind != com.vishaltelangre.nerdcalci.core.TokenKind.EOF }
+
             if (loadingSuggestions && combinedVariables.isEmpty()) {
                 return@remember listOf(Suggestion("Loading...", SuggestionType.VARIABLE))
             }
@@ -1274,10 +1257,44 @@ private fun LineRow(
                         )
                     } else null
                 }.sortedByDescending { it.score }
+            } else if (contextType == SuggestionType.UNIT) {
+                val category = suggestionContext.unitCategory
+                val units = if (category != null) {
+                    UnitConverter.UNITS.filter { u ->
+                        u.category == category ||
+                                (category == UnitCategory.SCALAR && u.category == UnitCategory.NUMERAL_SYSTEM) ||
+                                (category == UnitCategory.NUMERAL_SYSTEM && u.category == UnitCategory.SCALAR)
+                    }
+                } else {
+                    UnitConverter.UNITS
+                }
+                units.flatMap { unit ->
+                    unit.symbols.map { symbol ->
+                        Suggestion(name = symbol, type = SuggestionType.UNIT, replaceStart = suggestionContext.replaceStart)
+                    }
+                }.mapNotNull {
+                    val match = it.name.calculateFuzzyMatch(currentWord, SuggestionType.UNIT)
+                    if (match != null && it.name != currentWord) {
+                        it.copy(matchIndices = match.matchIndices, score = if (currentWord.isEmpty()) 100 - units.indexOfFirst { u -> u.symbols.contains(it.name) } else match.score)
+                    } else null
+                }.sortedByDescending { it.score }
+            } else if (contextType == SuggestionType.KEYWORD) {
+                listOf("to", "in", "as").map { Suggestion(name = it, type = SuggestionType.KEYWORD) }.mapNotNull {
+                    val match = it.name.calculateFuzzyMatch(currentWord, SuggestionType.KEYWORD)
+                    if (match != null && it.name != currentWord) {
+                        it.copy(matchIndices = match.matchIndices, score = match.score)
+                    } else null
+                }.sortedByDescending { it.score }
             } else {
                 if (currentWord.isEmpty() || (currentWord.any { char -> char.isLetter() || char == '_' } &&
                     currentWord.all { char -> char.isLetterOrDigit() || char == '_' })) {
-                    combinedVariables.mapNotNull {
+                    val prevToken = cleanTokens.getOrNull(cleanTokens.size - 2)
+                    val showUnits = prevToken?.kind == com.vishaltelangre.nerdcalci.core.TokenKind.NUMBER
+                    val unitsList = if (showUnits) {
+                        UnitConverter.UNITS.flatMap { u -> u.symbols.map { Suggestion(it, SuggestionType.UNIT) } }
+                    } else emptyList()
+                    val allSuggestions = combinedVariables + unitsList
+                    allSuggestions.mapNotNull {
                         val match = it.name.calculateFuzzyMatch(currentWord, it.type)
                         if (match != null && it.name != currentWord) {
                             it.copy(matchIndices = match.matchIndices, score = match.score)
@@ -1534,7 +1551,9 @@ private fun LineRow(
                     boxPosition = boxPosition,
                     keywordColor = keywordColor,
                     functionColor = functionColor,
-                    variableColor = variableColor
+                    variableColor = variableColor,
+                    replaceStart = suggestionContext.replaceStart,
+                    argumentIndex = suggestionContext.argumentIndex
                 )
             }
         }

@@ -62,4 +62,11 @@ sealed class Expr {
 
     /** Member function call: `obj.func(args)` */
     data class MemberFunctionCall(val obj: Expr, val name: String, val args: List<Expr>) : Expr()
+
+    /** A value tagged with a unit: `10 km`, `5 hours` */
+    data class Quantity(val value: Expr, val unit: String) : Expr()
+
+    /** Unit conversion: `<expr> [to|in|as] <unit>` */
+    data class UnitConversion(val expr: Expr, val toUnit: String) : Expr()
 }
+

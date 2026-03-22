@@ -81,7 +81,9 @@ fun SuggestionPopup(
     boxPosition: Offset,
     keywordColor: Color,
     functionColor: Color,
-    variableColor: Color
+    variableColor: Color,
+    replaceStart: Int? = null,
+    argumentIndex: Int? = null
 ) {
     // Only show if there are suggestions, field is focused, and it hasn't been manually dismissed.
     if (suggestions.isEmpty() || !isFocused || forceDismissSuggestions) return
@@ -212,7 +214,9 @@ fun SuggestionPopup(
                                 suggestion = suggestion,
                                 textFieldValue = textFieldValue,
                                 onTextFieldValueChange = onTextFieldValueChange,
-                                onValueChange = onValueChange
+                                onValueChange = onValueChange,
+                                contextReplaceStart = replaceStart,
+                                contextArgumentIndex = argumentIndex
                             )
                         }
                     )
@@ -244,13 +248,15 @@ private fun SuggestionItem(
             SuggestionType.CONSTANT -> "CONST"
             SuggestionType.VARIABLE -> "VAR"
             SuggestionType.FILE -> "FILE"
+            SuggestionType.UNIT -> "UNIT"
+            SuggestionType.KEYWORD -> "KEY"
         }
 
         val (itemColor, isItalic) = when (suggestion.type) {
             SuggestionType.DYNAMIC_VARIABLE -> keywordColor to true
             SuggestionType.LOCAL_FUNCTION, SuggestionType.GLOBAL_FUNCTION -> functionColor to true
             SuggestionType.VARIABLE, SuggestionType.CONSTANT -> variableColor to true
-            SuggestionType.FILE -> keywordColor to false
+            SuggestionType.FILE, SuggestionType.UNIT, SuggestionType.KEYWORD -> keywordColor to false
         }
 
         val isMultiline = typeLabel.contains("\n")
@@ -316,17 +322,21 @@ private fun buildSuggestionText(suggestion: Suggestion): AnnotatedString {
             if (i in matchedIndices) {
                 // Characters matching the user's current word are bolded for feedback.
                 withStyle(SpanStyle(fontWeight = FontWeight.ExtraBold)) {
-                    append(name[i])
+                    append(name[i].toString())
                 }
             } else {
-                append(name[i])
+                append(name[i].toString())
             }
         }
 
         // Functions are shown with empty parentheses in the list to visually distinguish them.
         if (suggestion.type == SuggestionType.LOCAL_FUNCTION ||
             suggestion.type == SuggestionType.GLOBAL_FUNCTION) {
-            append("()")
+            when (suggestion.name) {
+                "convert" -> append("(val, \"from\", \"to\")")
+                "file" -> append("(\"...\")")
+                else -> append("()")
+            }
         }
     }
 }
@@ -338,7 +348,7 @@ private fun isItalicType(type: SuggestionType): Boolean {
         SuggestionType.GLOBAL_FUNCTION,
         SuggestionType.VARIABLE,
         SuggestionType.CONSTANT -> true
-        SuggestionType.FILE -> false
+        SuggestionType.FILE, SuggestionType.UNIT, SuggestionType.KEYWORD -> false
     }
 }
 
@@ -350,7 +360,9 @@ private fun handleSuggestionClick(
     suggestion: Suggestion,
     textFieldValue: TextFieldValue,
     onTextFieldValueChange: (TextFieldValue) -> Unit,
-    onValueChange: (String) -> Unit
+    onValueChange: (String) -> Unit,
+    contextReplaceStart: Int? = null,
+    contextArgumentIndex: Int? = null
 ) {
     val text = textFieldValue.text
     val cursorPos = textFieldValue.selection.start
@@ -359,7 +371,18 @@ private fun handleSuggestionClick(
     var wordStart: Int
     var wordEnd: Int
 
-    if (suggestion.type == SuggestionType.FILE) {
+    if (suggestion.replaceStart != null) {
+        wordStart = suggestion.replaceStart
+        wordEnd = cursorPos
+    } else if (contextReplaceStart != null) {
+        wordStart = contextReplaceStart
+        wordEnd = cursorPos
+        if (suggestion.type == SuggestionType.UNIT && wordStart > 0 && text[wordStart - 1] == '"') {
+            while (wordEnd < text.length && text[wordEnd] != '"' && text[wordEnd] != ',' && text[wordEnd] != ')') {
+                wordEnd++
+            }
+        }
+    } else if (suggestion.type == SuggestionType.FILE) {
         val fileRegex = Regex("""\bfile\(\s*"([^"]*)$""")
         val fileMatch = fileRegex.find(text.substring(0, cursorPos))
         if (fileMatch != null) {
@@ -394,9 +417,40 @@ private fun handleSuggestionClick(
     val replacementText = if (isFunctionSuggestion) {
         if (suggestion.name == "file") {
             if (hasParens) "${suggestion.name}\"\"" else "${suggestion.name}(\"\")"
+        } else if (suggestion.name == "convert") {
+            if (hasParens) suggestion.name else "${suggestion.name}(, \"\", \"\")"
         } else {
             if (hasParens) suggestion.name else "${suggestion.name}()"
         }
+    } else if (suggestion.type == SuggestionType.UNIT && (contextArgumentIndex == 2 || contextArgumentIndex == 3)) {
+        val alreadyQuoted = contextReplaceStart != null && wordStart > 0 && text[wordStart - 1] == '"'
+        val afterWord = text.substring(wordEnd)
+        val insideClosingString = afterWord.startsWith("\"")
+
+        val sb = java.lang.StringBuilder()
+        if (!alreadyQuoted) {
+            sb.append("\"")
+        }
+        sb.append(suggestion.name)
+
+        if (!alreadyQuoted) {
+            sb.append("\"")
+            if (contextArgumentIndex == 3) {
+                val insideClosingCall = afterWord.trim().startsWith(")")
+                if (!insideClosingCall) {
+                    sb.append(")")
+                }
+            }
+        } else if (!insideClosingString) {
+            sb.append("\"")
+            if (contextArgumentIndex == 3) {
+                val insideClosingCall = afterWord.matches(Regex("""^"?\s*\).*"""))
+                if (!insideClosingCall) {
+                    sb.append(")")
+                }
+            }
+        }
+        sb.toString()
     } else if (suggestion.type == SuggestionType.FILE) {
         val afterWord = text.substring(wordEnd)
         val insideClosingFileCall = afterWord.matches(Regex("""^"\s*\).*"""))
@@ -420,6 +474,8 @@ private fun handleSuggestionClick(
     val newCursorPos = if (isFunctionSuggestion && !hasParens) {
         if (suggestion.name == "file") {
             wordStart + replacementText.length - 2 // inside quotes
+        } else if (suggestion.name == "convert") {
+            wordStart + suggestion.name.length + 1 // after opening paren
         } else {
             wordStart + replacementText.length - 1 // inside parens
         }

@@ -837,6 +837,6 @@ NerdCalci supports converting decimal numbers to/from other number bases using t
 | Octal       | `oct`, `octal`       | 8    | `64 in oct`     | `0o100`  |
 | Decimal     | `dec`, `decimal`     | 10   | `10.5 in dec`   | `10`     |
 
-> **💡 Note**: Conversion to other bases casts the value to an Integer (`Long`) before formatting. Floating point fractions are truncated.
+> **💡 Note**: Conversion to other bases casts the value to an Integer (`Long`) before formatting. Floating-point fractions are truncated.
 >
 > **⚠️ Important**: NerdCalci currently only supports decimal literals as numerical inputs in expressions. While you can convert **to** Hex/Binary representations for display, you cannot directly use hex literals like `0x10` or `0b1101` in calculation inputs.

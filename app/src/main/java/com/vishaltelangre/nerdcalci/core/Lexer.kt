@@ -54,7 +54,7 @@ class Lexer(private val source: String) {
                 ch == '"' -> {
                     tokens.add(scanString(start))
                 }
-                ch.isLetter() || ch == '_' || ch == '°' || ch == '\'' -> {
+                ch.isLetter() || ch == '_' || ch == '°' -> {
                     tokens.add(scanIdentifier(start))
                 }
                 else -> {

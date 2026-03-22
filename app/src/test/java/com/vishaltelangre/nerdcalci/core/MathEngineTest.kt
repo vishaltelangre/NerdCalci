@@ -125,6 +125,35 @@ class MathEngineTest {
     }
 
     @Test
+    fun `em conversion with custom variable`() = runBlocking {
+        val lines = listOf(
+            createLine("em = 20", sortOrder = 0),
+            createLine("2 em in px", sortOrder = 1)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("40.0 px", result[1].result)
+    }
+
+    @Test
+    fun `pixel conversion with custom ppi variable`() = runBlocking {
+        val lines = listOf(
+            createLine("ppi = 120", sortOrder = 0),
+            createLine("10 px in inches", sortOrder = 1)
+        )
+        val result = MathEngine.calculate(lines)
+
+        val resultStr = result[1].result
+        val spaceIndex = resultStr.indexOf(' ')
+        assertTrue(spaceIndex > 0)
+
+        val value = resultStr.substring(0, spaceIndex).toDouble()
+        val unit = resultStr.substring(spaceIndex + 1)
+
+        assertEquals(0.083333333333, value, 1e-6)
+        assertEquals("inch", unit)
+    }
+
+    @Test
     fun `trigonometric functions support degree inputs`() = runBlocking {
         val lines = listOf(
             createLine("sin(90°)"),

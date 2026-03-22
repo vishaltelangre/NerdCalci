@@ -57,6 +57,8 @@
   - [Force](#force)
   - [Fuel consumption](#fuel-consumption)
   - [Pressure](#pressure)
+  - [CSS](#css)
+    - [Changing the values](#changing-the-values)
 - [11. Numeral systems](#11-numeral-systems)
   - [Radix base conversions](#radix-base-conversions)
 
@@ -783,6 +785,32 @@ cos(60 degree) # 0.5
 | Ksi               | `ksi`                          | `10 ksi`  |
 | Torr              | `torr`, `mmHg`                 | `10 torr` |
 | Inches of Mercury | `inHg`                         | `10 inHg` |
+
+### CSS
+
+| Unit  | Symbols (Aliases)       | Example |
+| :---- | :---------------------- | :------ |
+| Pixel | `px`, `pixel`, `pixels` | `10 px` |
+| Point | `pt`                    | `10 pt` |
+| Em    | `em`                    | `2 em`  |
+
+Screen units (`px` and `em`) depend on your setup. By default:
+- `px` uses `ppi = 96` (Pixels Per Inch) to convert to real-world sizes (like inches or cm).
+- `em` is based on font size instead. It defaults to `16` pixels.
+
+#### Changing the values
+
+You can change these values like regular variables in any calculation line to adjust the conversion:
+
+```text
+10px in inches     # 0.10 inch (default)
+ppi = 120
+10 px in inches    # 0.08 inch
+
+2 em in px         # 32 px (default)
+em = 20
+2 em in px         # 40 px
+```
 
 ## 11. Numeral systems
 

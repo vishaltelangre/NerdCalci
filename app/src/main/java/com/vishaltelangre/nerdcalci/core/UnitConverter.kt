@@ -312,19 +312,19 @@ object UnitConverter {
         Unit("Em", listOf("em"), UnitCategory.LENGTH,
             customToBase = { v, vars ->
                 val emVar = vars["em"]?.value
+                val ppi = vars["ppi"]?.value ?: 96.0
                 if (emVar != null) {
-                    v * emVar
+                    (v * emVar) * (1.0 / ppi) * 0.0254
                 } else {
-                    val ppi = vars["ppi"]?.value ?: 96.0
                     v * 16.0 * (1.0 / ppi) * 0.0254
                 }
             },
             customFromBase = { v, vars ->
                 val emVar = vars["em"]?.value
+                val ppi = vars["ppi"]?.value ?: 96.0
                 if (emVar != null) {
-                    v / emVar
+                    (v / (0.0254 / ppi)) / emVar
                 } else {
-                    val ppi = vars["ppi"]?.value ?: 96.0
                     v / (16.0 * (1.0 / ppi) * 0.0254)
                 }
             }

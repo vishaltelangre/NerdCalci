@@ -618,12 +618,12 @@ cos(60 degree) # 0.5
 | Pint                   | `pint`, `pints`, `US pints`                                         | `10 pint`      |
 | Cup                    | `cup`, `cups`, `US cups`                                            | `10 cup`       |
 | Fluid Ounce            | `fl oz`, `floz`, `fluid ounce`, `fluid ounces`, `US fluid ounces`   | `10 fl oz`     |
-| Gallon (Imperial)      | `gal-imp`, `imperial gallon`, `imperial gallons`                    | `10 gal-imp`   |
-| Quart (Imperial)       | `qt-imp`, `imperial quart`, `imperial quarts`                       | `10 qt-imp`    |
-| Pint (Imperial)        | `pint-imp`, `imperial pint`, `imperial pints`                       | `10 pint-imp`  |
-| Fluid Ounce (Imperial) | `fl-oz-imp`, `imperial fluid ounce`, `imperial fluid ounces`        | `10 fl-oz-imp` |
-| Gill (US)              | `gi-us`, `US gill`, `US gills`                                      | `10 gi-us`     |
-| Gill (Imperial)        | `gi-imp`, `imperial gill`, `imperial gills`                         | `10 gi-imp`    |
+| Gallon (Imperial)      | `gal_imp`, `imperial gallon`, `imperial gallons`                    | `10 gal_imp`   |
+| Quart (Imperial)       | `qt_imp`, `imperial quart`, `imperial quarts`                       | `10 qt_imp`    |
+| Pint (Imperial)        | `pint_imp`, `imperial pint`, `imperial pints`                       | `10 pint_imp`  |
+| Fluid Ounce (Imperial) | `fl_oz_imp`, `imperial fluid ounce`, `imperial fluid ounces`        | `10 fl_oz_imp` |
+| Gill (US)              | `gi_us`, `US gill`, `US gills`                                      | `10 gi_us`     |
+| Gill (Imperial)        | `gi_imp`, `imperial gill`, `imperial gills`                         | `10 gi_imp`    |
 | Tablespoon             | `tbsp`, `tablespoon`, `tablespoons`                                 | `10 tbsp`      |
 | Teaspoon               | `tsp`, `teaspoon`, `teaspoons`                                      | `10 tsp`       |
 | Cubic Inch             | `in³`, `in^3`, `in3`, `cubic inch`, `cubic inches`                  | `10 in³`       |
@@ -655,11 +655,11 @@ cos(60 degree) # 0.5
 
 | Unit               | Symbols (Aliases)                           | Example             |
 | :----------------- | :------------------------------------------ | :------------------ |
-| Meter per second   | `m/s`, `mps`, `meters per second`           | `10 m/s`            |
-| Kilometer per hour | `km/h`, `kmh`, `kph`, `kilometers per hour` | `10 km/h`           |
-| Miles per hour     | `mi/h`, `mph`, `miles per hour`             | `10 mi/h`           |
-| Knot               | `kn`, `knot`, `knots`                       | `10 kn`             |
-| Feet per second    | `ft/s`, `fps`, `feet per second`            | `10 ft/s`           |
+| Meter per second   | `mps`, `meters per second`                  | `10 mps`   |
+| Kilometer per hour | `kmh`, `kph`, `kilometers per hour`        | `10 kmh`   |
+| Miles per hour     | `mph`, `miles per hour`                    | `10 mph`   |
+| Knot               | `kn`, `knot`, `knots`                       | `10 kn`    |
+| Feet per second    | `fps`, `feet per second`                   | `10 fps`   |
 | Speed of light     | `speed of light`                            | `10 speed of light` |
 
 ### Angle
@@ -704,7 +704,7 @@ cos(60 degree) # 0.5
 | Watt hour            | `Wh`, `watt hour`, `watt hours`               | `10 Wh`     |
 | Kilowatt hour        | `kWh`, `kilowatt hour`, `kilowatt hours`      | `10 kWh`    |
 | Electron volt        | `eV`, `electronvolt`, `electron volts`        | `10 eV`     |
-| Foot pound-force     | `ft lbf`, `ft-lbf`, `foot-pound`              | `10 ft lbf` |
+| Foot pound-force     | `ft_lbf`, `foot_pound`                         | `10 ft_lbf` |
 | British thermal unit | `BTU`, `btu`                                  | `10 BTU`    |
 
 ### Power
@@ -755,19 +755,19 @@ cos(60 degree) # 0.5
 | Unit           | Symbols (Aliases)        | Example  |
 | :------------- | :----------------------- | :------- |
 | Newton         | `N`, `newton`, `newtons` | `10 N`   |
-| Kilogram-force | `kgf`, `kg-f`            | `10 kgf` |
-| Pound-force    | `lbf`, `lb-f`            | `10 lbf` |
+| Kilogram-force | `kgf`, `kg_f`            | `10 kgf` |
+| Pound-force    | `lbf`, `lb_f`            | `10 lbf` |
 | Dyne           | `dyn`, `dyne`            | `10 dyn` |
 | Poundal        | `pdl`                    | `10 pdl` |
 
 ### Fuel consumption
 
-| Unit                        | Symbols (Aliases)    | Example      |
-| :-------------------------- | :------------------- | :----------- |
-| Liters per 100 km           | `L/100km`, `l/100km` | `10 L/100km` |
-| Kilometers per liter        | `km/L`, `km/l`       | `10 km/L`    |
-| Miles per Gallon (US)       | `mpg`, `mpg_us`      | `10 mpg`     |
-| Miles per Gallon (Imperial) | `mpg_imp`, `mpg_uk`  | `10 mpg_imp` |
+| Unit                        | Symbols (Aliases)                                           | Example      |
+| :-------------------------- | :---------------------------------------------------------- | :----------- |
+| Liters per 100 km           | `l100km`, `L100km`, `liters per 100km`, `liters per 100 km` | `10 l100km`  |
+| Kilometers per liter        | `kmpl`, `kpl`, `kilometers per liter`                       | `10 kmpl`    |
+| Miles per Gallon (US)       | `mpg`, `mpg_us`                                             | `10 mpg`     |
+| Miles per Gallon (Imperial) | `mpg_imp`, `mpg_uk`                                         | `10 mpg_imp` |
 
 ### Pressure
 

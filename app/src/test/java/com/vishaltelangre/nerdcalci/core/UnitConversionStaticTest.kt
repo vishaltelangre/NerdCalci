@@ -1519,38 +1519,38 @@ class UnitConversionStaticTest {
             createLine("10 L in fluid ounces", sortOrder = 121),
             createLine("10 US fluid ounces in L", sortOrder = 122),
             createLine("10 L in US fluid ounces", sortOrder = 123),
-            createLine("10 gal-imp in L", sortOrder = 124),
-            createLine("10 L in gal-imp", sortOrder = 125),
+            createLine("10 gal_imp in L", sortOrder = 124),
+            createLine("10 L in gal_imp", sortOrder = 125),
             createLine("10 imperial gallon in L", sortOrder = 126),
             createLine("10 L in imperial gallon", sortOrder = 127),
             createLine("10 imperial gallons in L", sortOrder = 128),
             createLine("10 L in imperial gallons", sortOrder = 129),
-            createLine("10 qt-imp in L", sortOrder = 130),
-            createLine("10 L in qt-imp", sortOrder = 131),
+            createLine("10 qt_imp in L", sortOrder = 130),
+            createLine("10 L in qt_imp", sortOrder = 131),
             createLine("10 imperial quart in L", sortOrder = 132),
             createLine("10 L in imperial quart", sortOrder = 133),
             createLine("10 imperial quarts in L", sortOrder = 134),
             createLine("10 L in imperial quarts", sortOrder = 135),
-            createLine("10 pint-imp in L", sortOrder = 136),
-            createLine("10 L in pint-imp", sortOrder = 137),
+            createLine("10 pint_imp in L", sortOrder = 136),
+            createLine("10 L in pint_imp", sortOrder = 137),
             createLine("10 imperial pint in L", sortOrder = 138),
             createLine("10 L in imperial pint", sortOrder = 139),
             createLine("10 imperial pints in L", sortOrder = 140),
             createLine("10 L in imperial pints", sortOrder = 141),
-            createLine("10 fl-oz-imp in L", sortOrder = 142),
-            createLine("10 L in fl-oz-imp", sortOrder = 143),
+            createLine("10 fl_oz_imp in L", sortOrder = 142),
+            createLine("10 L in fl_oz_imp", sortOrder = 143),
             createLine("10 imperial fluid ounce in L", sortOrder = 144),
             createLine("10 L in imperial fluid ounce", sortOrder = 145),
             createLine("10 imperial fluid ounces in L", sortOrder = 146),
             createLine("10 L in imperial fluid ounces", sortOrder = 147),
-            createLine("10 gi-us in L", sortOrder = 148),
-            createLine("10 L in gi-us", sortOrder = 149),
+            createLine("10 gi_us in L", sortOrder = 148),
+            createLine("10 L in gi_us", sortOrder = 149),
             createLine("10 US gill in L", sortOrder = 150),
             createLine("10 L in US gill", sortOrder = 151),
             createLine("10 US gills in L", sortOrder = 152),
             createLine("10 L in US gills", sortOrder = 153),
-            createLine("10 gi-imp in L", sortOrder = 154),
-            createLine("10 L in gi-imp", sortOrder = 155),
+            createLine("10 gi_imp in L", sortOrder = 154),
+            createLine("10 L in gi_imp", sortOrder = 155),
             createLine("10 imperial gill in L", sortOrder = 156),
             createLine("10 L in imperial gill", sortOrder = 157),
             createLine("10 imperial gills in L", sortOrder = 158),
@@ -1961,10 +1961,10 @@ class UnitConversionStaticTest {
         assertEquals("L to US fluid ounces", 338.14022701843, val123!!, 0.05)
         val val124 = result[124].result.substringBefore(' ').toDoubleOrNull()
         assertNotNull(val124)
-        assertEquals("gal-imp to L", 45.4609, val124!!, 0.05)
+        assertEquals("gal_imp to L", 45.4609, val124!!, 0.05)
         val val125 = result[125].result.substringBefore(' ').toDoubleOrNull()
         assertNotNull(val125)
-        assertEquals("L to gal-imp", 2.1996924829908777, val125!!, 0.05)
+        assertEquals("L to gal_imp", 2.1996924829908777, val125!!, 0.05)
         val val126 = result[126].result.substringBefore(' ').toDoubleOrNull()
         assertNotNull(val126)
         assertEquals("imperial gallon to L", 45.4609, val126!!, 0.05)
@@ -1979,10 +1979,10 @@ class UnitConversionStaticTest {
         assertEquals("L to imperial gallons", 2.1996924829908777, val129!!, 0.05)
         val val130 = result[130].result.substringBefore(' ').toDoubleOrNull()
         assertNotNull(val130)
-        assertEquals("qt-imp to L", 11.365225, val130!!, 0.05)
+        assertEquals("qt_imp to L", 11.365225, val130!!, 0.05)
         val val131 = result[131].result.substringBefore(' ').toDoubleOrNull()
         assertNotNull(val131)
-        assertEquals("L to qt-imp", 8.79876993196351, val131!!, 0.05)
+        assertEquals("L to qt_imp", 8.79876993196351, val131!!, 0.05)
         val val132 = result[132].result.substringBefore(' ').toDoubleOrNull()
         assertNotNull(val132)
         assertEquals("imperial quart to L", 11.365225, val132!!, 0.05)
@@ -1997,10 +1997,10 @@ class UnitConversionStaticTest {
         assertEquals("L to imperial quarts", 8.79876993196351, val135!!, 0.05)
         val val136 = result[136].result.substringBefore(' ').toDoubleOrNull()
         assertNotNull(val136)
-        assertEquals("pint-imp to L", 5.6826125, val136!!, 0.05)
+        assertEquals("pint_imp to L", 5.6826125, val136!!, 0.05)
         val val137 = result[137].result.substringBefore(' ').toDoubleOrNull()
         assertNotNull(val137)
-        assertEquals("L to pint-imp", 17.59753986392702, val137!!, 0.05)
+        assertEquals("L to pint_imp", 17.59753986392702, val137!!, 0.05)
         val val138 = result[138].result.substringBefore(' ').toDoubleOrNull()
         assertNotNull(val138)
         assertEquals("imperial pint to L", 5.6826125, val138!!, 0.05)
@@ -2015,10 +2015,10 @@ class UnitConversionStaticTest {
         assertEquals("L to imperial pints", 17.59753986392702, val141!!, 0.05)
         val val142 = result[142].result.substringBefore(' ').toDoubleOrNull()
         assertNotNull(val142)
-        assertEquals("fl-oz-imp to L", 0.28413062499999997, val142!!, 0.05)
+        assertEquals("fl_oz_imp to L", 0.28413062499999997, val142!!, 0.05)
         val val143 = result[143].result.substringBefore(' ').toDoubleOrNull()
         assertNotNull(val143)
-        assertEquals("L to fl-oz-imp", 351.95079727854045, val143!!, 0.05)
+        assertEquals("L to fl_oz_imp", 351.95079727854045, val143!!, 0.05)
         val val144 = result[144].result.substringBefore(' ').toDoubleOrNull()
         assertNotNull(val144)
         assertEquals("imperial fluid ounce to L", 0.28413062499999997, val144!!, 0.05)
@@ -2033,10 +2033,10 @@ class UnitConversionStaticTest {
         assertEquals("L to imperial fluid ounces", 351.95079727854045, val147!!, 0.05)
         val val148 = result[148].result.substringBefore(' ').toDoubleOrNull()
         assertNotNull(val148)
-        assertEquals("gi-us to L", 1.1829411825, val148!!, 0.05)
+        assertEquals("gi_us to L", 1.1829411825, val148!!, 0.05)
         val val149 = result[149].result.substringBefore(' ').toDoubleOrNull()
         assertNotNull(val149)
-        assertEquals("L to gi-us", 84.5350567546075, val149!!, 0.05)
+        assertEquals("L to gi_us", 84.5350567546075, val149!!, 0.05)
         val val150 = result[150].result.substringBefore(' ').toDoubleOrNull()
         assertNotNull(val150)
         assertEquals("US gill to L", 1.1829411825, val150!!, 0.05)
@@ -2051,10 +2051,10 @@ class UnitConversionStaticTest {
         assertEquals("L to US gills", 84.5350567546075, val153!!, 0.05)
         val val154 = result[154].result.substringBefore(' ').toDoubleOrNull()
         assertNotNull(val154)
-        assertEquals("gi-imp to L", 1.420653125, val154!!, 0.05)
+        assertEquals("gi_imp to L", 1.420653125, val154!!, 0.05)
         val val155 = result[155].result.substringBefore(' ').toDoubleOrNull()
         assertNotNull(val155)
-        assertEquals("L to gi-imp", 70.39015945570809, val155!!, 0.05)
+        assertEquals("L to gi_imp", 70.39015945570809, val155!!, 0.05)
         val val156 = result[156].result.substringBefore(' ').toDoubleOrNull()
         assertNotNull(val156)
         assertEquals("imperial gill to L", 1.420653125, val156!!, 0.05)
@@ -3191,12 +3191,12 @@ class UnitConversionStaticTest {
             createLine("10 J in electronvolt", sortOrder = 47),
             createLine("10 electron volts in J", sortOrder = 48),
             createLine("10 J in electron volts", sortOrder = 49),
-            createLine("10 ft lbf in J", sortOrder = 50),
-            createLine("10 J in ft lbf", sortOrder = 51),
-            createLine("10 ft-lbf in J", sortOrder = 52),
-            createLine("10 J in ft-lbf", sortOrder = 53),
-            createLine("10 foot-pound in J", sortOrder = 54),
-            createLine("10 J in foot-pound", sortOrder = 55),
+            createLine("10 ft_lbf in J", sortOrder = 50),
+            createLine("10 J in ft_lbf", sortOrder = 51),
+            createLine("10 ft_lbf in J", sortOrder = 52),
+            createLine("10 J in ft_lbf", sortOrder = 53),
+            createLine("10 foot_pound in J", sortOrder = 54),
+            createLine("10 J in foot_pound", sortOrder = 55),
             createLine("10 BTU in J", sortOrder = 56),
             createLine("10 J in BTU", sortOrder = 57),
             createLine("10 btu in J", sortOrder = 58),
@@ -3355,22 +3355,22 @@ class UnitConversionStaticTest {
         assertEquals("J to electron volts", 6.241509074460763E19, val49!!, 0.05)
         val val50 = result[50].result.substringBefore(' ').toDoubleOrNull()
         assertNotNull(val50)
-        assertEquals("ft lbf to J", 13.558179483314, val50!!, 0.05)
+        assertEquals("ft_lbf to J", 13.558179483314, val50!!, 0.05)
         val val51 = result[51].result.substringBefore(' ').toDoubleOrNull()
         assertNotNull(val51)
-        assertEquals("J to ft lbf", 7.375621492772656, val51!!, 0.05)
+        assertEquals("J to ft_lbf", 7.375621492772656, val51!!, 0.05)
         val val52 = result[52].result.substringBefore(' ').toDoubleOrNull()
         assertNotNull(val52)
-        assertEquals("ft-lbf to J", 13.558179483314, val52!!, 0.05)
+        assertEquals("ft_lbf to J", 13.558179483314, val52!!, 0.05)
         val val53 = result[53].result.substringBefore(' ').toDoubleOrNull()
         assertNotNull(val53)
-        assertEquals("J to ft-lbf", 7.375621492772656, val53!!, 0.05)
+        assertEquals("J to ft_lbf", 7.375621492772656, val53!!, 0.05)
         val val54 = result[54].result.substringBefore(' ').toDoubleOrNull()
         assertNotNull(val54)
-        assertEquals("foot-pound to J", 13.558179483314, val54!!, 0.05)
+        assertEquals("foot_pound to J", 13.558179483314, val54!!, 0.05)
         val val55 = result[55].result.substringBefore(' ').toDoubleOrNull()
         assertNotNull(val55)
-        assertEquals("J to foot-pound", 7.375621492772656, val55!!, 0.05)
+        assertEquals("J to foot_pound", 7.375621492772656, val55!!, 0.05)
         val val56 = result[56].result.substringBefore(' ').toDoubleOrNull()
         assertNotNull(val56)
         assertEquals("BTU to J", 10550.5585262, val56!!, 0.05)
@@ -4106,12 +4106,12 @@ class UnitConversionStaticTest {
             createLine("10 N in newtons", sortOrder = 5),
             createLine("10 kgf in N", sortOrder = 6),
             createLine("10 N in kgf", sortOrder = 7),
-            createLine("10 kg-f in N", sortOrder = 8),
-            createLine("10 N in kg-f", sortOrder = 9),
+            createLine("10 kg_f in N", sortOrder = 8),
+            createLine("10 N in kg_f", sortOrder = 9),
             createLine("10 lbf in N", sortOrder = 10),
             createLine("10 N in lbf", sortOrder = 11),
-            createLine("10 lb-f in N", sortOrder = 12),
-            createLine("10 N in lb-f", sortOrder = 13),
+            createLine("10 lb_f in N", sortOrder = 12),
+            createLine("10 N in lb_f", sortOrder = 13),
             createLine("10 dyn in N", sortOrder = 14),
             createLine("10 N in dyn", sortOrder = 15),
             createLine("10 dyne in N", sortOrder = 16),
@@ -4146,10 +4146,10 @@ class UnitConversionStaticTest {
         assertEquals("N to kgf", 1.0197162129779282, val7!!, 0.05)
         val val8 = result[8].result.substringBefore(' ').toDoubleOrNull()
         assertNotNull(val8)
-        assertEquals("kg-f to N", 98.06649999999999, val8!!, 0.05)
+        assertEquals("kg_f to N", 98.06649999999999, val8!!, 0.05)
         val val9 = result[9].result.substringBefore(' ').toDoubleOrNull()
         assertNotNull(val9)
-        assertEquals("N to kg-f", 1.0197162129779282, val9!!, 0.05)
+        assertEquals("N to kg_f", 1.0197162129779282, val9!!, 0.05)
         val val10 = result[10].result.substringBefore(' ').toDoubleOrNull()
         assertNotNull(val10)
         assertEquals("lbf to N", 44.482220000000005, val10!!, 0.05)
@@ -4158,10 +4158,10 @@ class UnitConversionStaticTest {
         assertEquals("N to lbf", 2.2480892365533913, val11!!, 0.05)
         val val12 = result[12].result.substringBefore(' ').toDoubleOrNull()
         assertNotNull(val12)
-        assertEquals("lb-f to N", 44.482220000000005, val12!!, 0.05)
+        assertEquals("lb_f to N", 44.482220000000005, val12!!, 0.05)
         val val13 = result[13].result.substringBefore(' ').toDoubleOrNull()
         assertNotNull(val13)
-        assertEquals("N to lb-f", 2.2480892365533913, val13!!, 0.05)
+        assertEquals("N to lb_f", 2.2480892365533913, val13!!, 0.05)
         val val14 = result[14].result.substringBefore(' ').toDoubleOrNull()
         assertNotNull(val14)
         assertEquals("dyn to N", 1.0E-4, val14!!, 0.05)

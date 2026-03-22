@@ -117,12 +117,12 @@ object UnitConverter {
         Unit("Cup", listOf("cup", "cups", "US cups"), UnitCategory.VOLUME, 0.2365882365),
         Unit("Fluid Ounce", listOf("fl oz", "floz", "fluid ounce", "fluid ounces", "US fluid ounces"), UnitCategory.VOLUME, 0.0295735295625),
 
-        Unit("Gallon (Imperial)", listOf("gal-imp", "imperial gallon", "imperial gallons"), UnitCategory.VOLUME, 4.54609),
-        Unit("Quart (Imperial)", listOf("qt-imp", "imperial quart", "imperial quarts"), UnitCategory.VOLUME, 1.1365225),
-        Unit("Pint (Imperial)", listOf("pint-imp", "imperial pint", "imperial pints"), UnitCategory.VOLUME, 0.56826125),
-        Unit("Fluid Ounce (Imperial)", listOf("fl-oz-imp", "imperial fluid ounce", "imperial fluid ounces"), UnitCategory.VOLUME, 0.0284130625),
-        Unit("Gill (US)", listOf("gi-us", "US gill", "US gills"), UnitCategory.VOLUME, 0.11829411825),
-        Unit("Gill (Imperial)", listOf("gi-imp", "imperial gill", "imperial gills"), UnitCategory.VOLUME, 0.1420653125),
+        Unit("Gallon (Imperial)", listOf("gal_imp", "imperial gallon", "imperial gallons"), UnitCategory.VOLUME, 4.54609),
+        Unit("Quart (Imperial)", listOf("qt_imp", "imperial quart", "imperial quarts"), UnitCategory.VOLUME, 1.1365225),
+        Unit("Pint (Imperial)", listOf("pint_imp", "imperial pint", "imperial pints"), UnitCategory.VOLUME, 0.56826125),
+        Unit("Fluid Ounce (Imperial)", listOf("fl_oz_imp", "imperial fluid ounce", "imperial fluid ounces"), UnitCategory.VOLUME, 0.0284130625),
+        Unit("Gill (US)", listOf("gi_us", "US gill", "US gills"), UnitCategory.VOLUME, 0.11829411825),
+        Unit("Gill (Imperial)", listOf("gi_imp", "imperial gill", "imperial gills"), UnitCategory.VOLUME, 0.1420653125),
         Unit("Tablespoon", listOf("tbsp", "tablespoon", "tablespoons"), UnitCategory.VOLUME, 0.01478676478125),
         Unit("Teaspoon", listOf("tsp", "teaspoon", "teaspoons"), UnitCategory.VOLUME, 0.00492892159375),
         Unit("Cubic Inch", listOf("in³", "in^3", "in3", "cubic inch", "cubic inches"), UnitCategory.VOLUME, 0.016387064),
@@ -148,11 +148,11 @@ object UnitConverter {
         Unit("Unified atomic mass unit", listOf("u", "amu"), UnitCategory.MASS, 1.66053906660e-24),
 
         // --- SPEED --- (Base: m/s)
-        Unit("Meter per second", listOf("m/s", "mps", "meters per second"), UnitCategory.SPEED, 1.0),
-        Unit("Kilometer per hour", listOf("km/h", "kmh", "kph", "kilometers per hour"), UnitCategory.SPEED, 1.0 / 3.6),
-        Unit("Miles per hour", listOf("mi/h", "mph", "miles per hour"), UnitCategory.SPEED, 0.44704),
+        Unit("Meter per second", listOf("mps", "meters per second"), UnitCategory.SPEED, 1.0),
+        Unit("Kilometer per hour", listOf("kmh", "kph", "kmph", "kilometers per hour"), UnitCategory.SPEED, 1.0 / 3.6),
+        Unit("Miles per hour", listOf("mph", "miph", "miles per hour"), UnitCategory.SPEED, 0.44704),
         Unit("Knot", listOf("kn", "knot", "knots"), UnitCategory.SPEED, 0.514444),
-        Unit("Feet per second", listOf("ft/s", "fps", "feet per second"), UnitCategory.SPEED, 0.3048),
+        Unit("Feet per second", listOf("fps", "feet per second"), UnitCategory.SPEED, 0.3048),
         Unit("Speed of light", listOf("speed of light"), UnitCategory.SPEED, 299792458.0),
 
         // --- ANGLE --- (Base: Radian)
@@ -203,7 +203,7 @@ object UnitConverter {
         Unit("Watt hour", listOf("Wh", "watt hour", "watt hours"), UnitCategory.ENERGY, 3600.0),
         Unit("Kilowatt hour", listOf("kWh", "kilowatt hour", "kilowatt hours"), UnitCategory.ENERGY, 3.6e6),
         Unit("Electron volt", listOf("eV", "electronvolt", "electron volts"), UnitCategory.ENERGY, 1.602176634e-19),
-        Unit("Foot pound-force", listOf("ft lbf", "ft-lbf", "foot-pound"), UnitCategory.ENERGY, 1.3558179483314),
+        Unit("Foot pound-force", listOf("ft lbf", "ft_lbf", "foot_pound"), UnitCategory.ENERGY, 1.3558179483314),
         Unit("British thermal unit", listOf("BTU", "btu"), UnitCategory.ENERGY, 1055.05585262),
 
         // --- POWER --- (Base: Watt)
@@ -248,14 +248,14 @@ object UnitConverter {
 
         // --- FORCE --- (Base: Newton)
         Unit("Newton", listOf("N", "newton", "newtons"), UnitCategory.FORCE, 1.0),
-        Unit("Kilogram-force", listOf("kgf", "kg-f"), UnitCategory.FORCE, 9.80665),
-        Unit("Pound-force", listOf("lbf", "lb-f"), UnitCategory.FORCE, 4.448222),
+        Unit("Kilogram-force", listOf("kgf", "kg_f"), UnitCategory.FORCE, 9.80665),
+        Unit("Pound-force", listOf("lbf", "lb_f"), UnitCategory.FORCE, 4.448222),
         Unit("Dyne", listOf("dyn", "dyne"), UnitCategory.FORCE, 1e-5),
         Unit("Poundal", listOf("pdl"), UnitCategory.FORCE, 0.138255),
 
         // --- FUEL CONSUMPTION --- (Base: Liters per 100 km)
-        Unit("Liters per 100 km", listOf("L/100km", "l/100km"), UnitCategory.FUEL_CONSUMPTION, 1.0),
-        Unit("Kilometers per liter", listOf("km/L", "km/l"), UnitCategory.FUEL_CONSUMPTION,
+        Unit("Liters per 100 km", listOf("l100km", "L100km", "liters per 100km", "liters per 100 km"), UnitCategory.FUEL_CONSUMPTION, 1.0),
+        Unit("Kilometers per liter", listOf("kmpl", "kpl", "kilometers per liter"), UnitCategory.FUEL_CONSUMPTION,
             customToBase = { v, _ -> if (v > 0) 100.0 / v else 0.0 },
             customFromBase = { v, _ -> if (v > 0) 100.0 / v else 0.0 }
         ),
@@ -311,25 +311,59 @@ object UnitConverter {
         Unit("Point", listOf("pt"), UnitCategory.LENGTH, (1.0 / 72.0) * 0.0254),
         Unit("Em", listOf("em"), UnitCategory.LENGTH,
             customToBase = { v, vars ->
-                val emVar = vars["em"]?.value
+                val emResult = vars["em"]
                 val ppi = vars["ppi"]?.value ?: 96.0
-                if (emVar != null) {
-                    (v * emVar) * (1.0 / ppi) * 0.0254
+                if (emResult != null) {
+                    if (emResult.unit != null) {
+                        // em was assigned with a unit (e.g., em = 21px), so its value
+                        // is already stored in base meters. 1 em = emResult.value meters.
+                        v * (emResult.value ?: 0.0)
+                    } else {
+                        // em was assigned as a plain number (e.g., em = 20),
+                        // treated as a pixel count at the current ppi.
+                        v * (emResult.value ?: 0.0) * (1.0 / ppi) * 0.0254
+                    }
                 } else {
+                    // Default: 1em = 16px at 96ppi
                     v * 16.0 * (1.0 / ppi) * 0.0254
                 }
             },
             customFromBase = { v, vars ->
-                val emVar = vars["em"]?.value
+                val emResult = vars["em"]
                 val ppi = vars["ppi"]?.value ?: 96.0
-                if (emVar != null) {
-                    (v / (0.0254 / ppi)) / emVar
+                if (emResult != null) {
+                    if (emResult.unit != null) {
+                        v / (emResult.value ?: 1.0)
+                    } else {
+                        v / ((emResult.value ?: 16.0) * (1.0 / ppi) * 0.0254)
+                    }
                 } else {
                     v / (16.0 * (1.0 / ppi) * 0.0254)
                 }
             }
         )
     )
+
+    /**
+     * Set of all unit symbols/aliases that users must NOT reassign as variables
+     * (except for the special dynamic units: `ppi` and `em`).
+     */
+    val RESERVED_UNIT_SYMBOLS: Set<String> by lazy {
+        val result = mutableSetOf<String>()
+        for (unit in UNITS) {
+            for (symbol in unit.symbols) {
+                // Only identifier-safe, multi-char symbols can meaningfully clash with variable names.
+                // Single-char symbols (like 'g', 's', 'W') are too common as variable names to block.
+                if (symbol.length >= 2 && symbol.all { it.isLetterOrDigit() || it == '_' }) {
+                    result.add(symbol)
+                    result.add(symbol.lowercase())
+                }
+            }
+        }
+        // ppi and em are intentionally allowed to be overridden
+        result -= setOf("ppi", "em")
+        result
+    }
 
     private val symbolMap: Map<String, Unit> by lazy {
         val map = mutableMapOf<String, Unit>()

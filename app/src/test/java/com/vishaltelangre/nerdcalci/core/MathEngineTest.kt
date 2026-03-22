@@ -2161,6 +2161,16 @@ class MathEngineTest {
     }
 
     @Test
+    fun `reassigning to unit symbol is disallowed`() = runBlocking {
+        val lines = listOf(createLine("km = 5", sortOrder = 0))
+        val result = MathEngine.calculate(lines)
+        assertEquals("Err", result[0].result)
+
+        val error = MathEngine.getErrorDetails(lines, 0)
+        assertEquals("`km` is a unit symbol and cannot be used as a variable name", error)
+    }
+
+    @Test
     fun `unit conversion error incompatible dimensions`() = runBlocking {
         val lines = listOf(
             createLine("10 km in kg", sortOrder = 0)

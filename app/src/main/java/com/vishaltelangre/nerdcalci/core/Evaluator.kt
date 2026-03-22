@@ -266,6 +266,9 @@ class Evaluator(
         if (!name.matches(Regex(Constants.VAR_FUNC_NAME_PATTERN))) {
             throw EvalException("Invalid variable or function name `$name`")
         }
+        if (name in UnitConverter.RESERVED_UNIT_SYMBOLS) {
+            throw EvalException("`$name` is a unit symbol and cannot be used as a variable name")
+        }
     }
 
     private suspend fun evaluateBinaryOp(expr: Expr.BinaryOp): EvaluationResult {

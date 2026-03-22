@@ -229,7 +229,6 @@ object MathEngine {
                 }
                 line.copy(result = resultString)
             } catch (e: Exception) {
-                e.printStackTrace()
                 lineResults.add(null)
                 line.copy(result = "Err")
             }

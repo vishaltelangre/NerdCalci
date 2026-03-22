@@ -2265,4 +2265,11 @@ class MathEngineTest {
         assertEquals("11.0 km", result[1].result)
     }
 
+    @Test
+    fun `fractional numeral system conversion throws error`() = runBlocking {
+        val lines = listOf(createLine("10.4 in binary"))
+        val err = MathEngine.getErrorDetails(lines, 0)
+        assertEquals("Fractional value cannot be converted to numeral system", err)
+    }
+
 }

@@ -5,6 +5,7 @@ Features:
 - Offline - Works without internet
 - Variable support - Define variables and reuse them in calculations
 - Percentage calculations - Natural syntax like "20% of 50000" or "15% off 1000"
+- Unit conversions - Natural syntax like "10 m in feet" or "100 kmph to mph"
 - Custom functions - Define your own functions with multi-statement support and scope isolation
 - Dynamic variables - Quickly compute block sums (`total`) and averages (`avg`)
 - Syntax highlighting - Color-coded numbers, variables, operators, and comments

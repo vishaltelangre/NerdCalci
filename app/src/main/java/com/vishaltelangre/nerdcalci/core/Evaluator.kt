@@ -2,6 +2,8 @@ package com.vishaltelangre.nerdcalci.core
 
 import kotlin.math.pow
 
+const val ERR_FRACTIONAL_NUMERAL_SYSTEM = "Fractional value cannot be converted to numeral system"
+
 data class EvaluationResult(
     val value: Double?,
     val unit: String? = null
@@ -50,6 +52,9 @@ class Evaluator(
             val rawValue = evaluate(expr.value).value ?: 0.0
             val unit = UnitConverter.findUnit(expr.unit)
                 ?: throw EvalException("Unknown unit `${expr.unit}`")
+            if (unit.category == UnitCategory.NUMERAL_SYSTEM && rawValue % 1.0 != 0.0) {
+                throw EvalException(ERR_FRACTIONAL_NUMERAL_SYSTEM)
+            }
             EvaluationResult(UnitConverter.toBase(rawValue, unit, variables), unit.symbols.first())
         }
         is Expr.UnitConversion -> {
@@ -71,6 +76,10 @@ class Evaluator(
                 if (toUnit.category != UnitCategory.SCALAR && toUnit.category != UnitCategory.NUMERAL_SYSTEM) {
                     throw EvalException("Cannot convert unitless number to `${toUnit.name}`")
                 }
+            }
+
+            if (toUnit.category == UnitCategory.NUMERAL_SYSTEM && baseValue % 1.0 != 0.0) {
+                throw EvalException(ERR_FRACTIONAL_NUMERAL_SYSTEM)
             }
 
             EvaluationResult(baseValue, toUnit.symbols.first())
@@ -295,6 +304,9 @@ class Evaluator(
                 }
 
                 val rightDelta = if (leftUnit.category == UnitCategory.TEMPERATURE) {
+                    // Extract slope factor so right operand is treated as a temperature "delta"
+                    // (e.g., 10 degF difference) rather than an absolute temperature.
+                    // This enables expressions like 35 °C + 10 degF to behave sensibly.
                     val rawRight = UnitConverter.fromBase(rightVal, rightUnit, variables)
                     val slope = UnitConverter.toBase(1.0, rightUnit, variables) - UnitConverter.toBase(0.0, rightUnit, variables)
                     rawRight * slope

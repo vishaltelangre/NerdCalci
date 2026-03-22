@@ -482,15 +482,17 @@ Simply attach the unit name or symbol suffix to any number:
 
 ### Dimension-safe arithmetic
 
-You can mix units in operators, NerdCalci will automatically normalize and preserve dimensions securely using the left-hand side unit for the result:
+For mixed-unit arithmetic (like addition or subtraction), NerdCalci normalizes the result using the unit that has the **smaller scale (most granular)**. If factors are identical (e.g., Temperature), it preserves the unit of the **right-hand operand**. You can override this display unit using the `in <unit>` suffix anywhere:
 
 ```text
-10km + 500m                        # 10.5 km
+10km + 500m                        # 10500 m
+10km + 500m in km                  # 10.50 km
 35 °C + 10 degF                    # 105 °F
 35 °C + 10 degF in degC            # 40.56 °C
 
 # Chained arithmetic with mixed scaling
-10km + 500m + 200cm                # 10502 m
+10km + 500m + 200cm                # 1050200 cm
+(10km + 500m + 200cm) in m         # 10502 m
 
 # Unit arithmetic
 (12 months in days + 48h) in years # 1.01 y

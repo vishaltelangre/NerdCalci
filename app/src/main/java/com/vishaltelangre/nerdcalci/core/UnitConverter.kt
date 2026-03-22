@@ -344,6 +344,12 @@ object UnitConverter {
         )
     )
 
+    private val EXCLUDED_DATA_SYMBOLS = listOf("B", "kB", "KB", "MB", "GB", "TB", "PB", "EB", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB")
+
+    private fun isLetterOrDegree(symbol: String): Boolean {
+        return symbol.all { it.isLetter() } || symbol == "°"
+    }
+
     /**
      * Set of all unit symbols/aliases that users must NOT reassign as variables
      * (except for the special dynamic units: `ppi` and `em`).
@@ -356,7 +362,9 @@ object UnitConverter {
                 // Single-char symbols (like 'g', 's', 'W') are too common as variable names to block.
                 if (symbol.length >= 2 && symbol.all { it.isLetterOrDigit() || it == '_' }) {
                     result.add(symbol)
-                    result.add(symbol.lowercase())
+                    if (isLetterOrDegree(symbol) && symbol !in EXCLUDED_DATA_SYMBOLS) {
+                        result.add(symbol.lowercase())
+                    }
                 }
             }
         }
@@ -370,9 +378,7 @@ object UnitConverter {
         for (unit in UNITS) {
             for (symbol in unit.symbols) {
                 map[symbol] = unit
-                val excludedDataSymbols = listOf("B", "kB", "KB", "MB", "GB", "TB", "PB", "EB", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB")
-                val isLetterOrDegree = symbol.all { it.isLetter() } || symbol == "°"
-                if (isLetterOrDegree && symbol !in excludedDataSymbols) {
+                if (isLetterOrDegree(symbol) && symbol !in EXCLUDED_DATA_SYMBOLS) {
                     val lower = symbol.lowercase()
                     if (!map.containsKey(lower)) {
                         map[lower] = unit

@@ -3,6 +3,7 @@ package com.vishaltelangre.nerdcalci.utils
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.vishaltelangre.nerdcalci.core.UnitCategory
 
 class SyntaxUtilsTest {
     private fun tokens(text: String) = SyntaxUtils.parseSyntaxTokens(text)
@@ -556,5 +557,15 @@ class SyntaxUtilsTest {
         val dynamicScore = "sum".calculateFuzzyMatch(query, SuggestionType.DYNAMIC_VARIABLE)?.score ?: 0
         assertTrue("Dynamic 'sum' ($dynamicScore) should outrank Global 'sin' ($funcScore)", dynamicScore > funcScore)
         assertTrue("Variable 'split' ($varScore) should outrank Dynamic 'sum' ($dynamicScore)", varScore > dynamicScore)
+    }
+
+    @Test
+    fun `getSuggestionContext handles multiple spaces after keyword`() {
+        val beforeCursor = "10 kg to  "
+        val result = getSuggestionContext(beforeCursor, beforeCursor, beforeCursor.length, emptyMap())
+        assertEquals(SuggestionType.UNIT, result.type)
+        assertEquals("", result.word)
+        assertEquals(10, result.replaceStart)
+        assertEquals(UnitCategory.MASS, result.unitCategory)
     }
 }

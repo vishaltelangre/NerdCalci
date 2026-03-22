@@ -37,14 +37,13 @@ class SuggestionContextTest {
         assertEquals("t", context.word)
         assertEquals(SuggestionType.KEYWORD, context.type)
     }
-    
+
     @Test
     fun `test convert 2nd argument triggers unit suggestions`() {
         val text = "convert(10,"
         val cursorPos = text.length
         val context = getSuggestionContext(text, text, cursorPos, emptyMap())
-        assertNotNull(context)
-        assertEquals("", context!!.word)
+        assertEquals("", context.word)
         assertEquals(SuggestionType.UNIT, context.type)
         assertEquals(2, context.argumentIndex)
     }
@@ -54,8 +53,7 @@ class SuggestionContextTest {
         val text = "convert(10, \"kg\","
         val cursorPos = text.length
         val context = getSuggestionContext(text, text, cursorPos, emptyMap())
-        assertNotNull(context)
-        assertEquals("", context!!.word)
+        assertEquals("", context.word)
         assertEquals(SuggestionType.UNIT, context.type)
         assertEquals(3, context.argumentIndex)
         assertEquals(com.vishaltelangre.nerdcalci.core.UnitCategory.MASS, context.unitCategory)
@@ -66,8 +64,7 @@ class SuggestionContextTest {
         val text = "convert(10, \"kg\", \"m"
         val cursorPos = text.length
         val context = getSuggestionContext(text, text, cursorPos, emptyMap())
-        assertNotNull(context)
-        assertEquals("m", context!!.word)
+        assertEquals("m", context.word)
         assertEquals(SuggestionType.UNIT, context.type)
         assertEquals(3, context.argumentIndex)
         assertEquals(com.vishaltelangre.nerdcalci.core.UnitCategory.MASS, context.unitCategory)
@@ -78,8 +75,7 @@ class SuggestionContextTest {
         val text = "file(\""
         val cursorPos = text.length
         val context = getSuggestionContext(text, text, cursorPos, emptyMap())
-        assertNotNull(context)
-        assertEquals("", context!!.word)
+        assertEquals("", context.word)
         assertEquals(SuggestionType.FILE, context.type)
         assertTrue(context.isExplicitTrigger)
     }
@@ -89,8 +85,7 @@ class SuggestionContextTest {
         val text = "file(\"doc"
         val cursorPos = text.length
         val context = getSuggestionContext(text, text, cursorPos, emptyMap())
-        assertNotNull(context)
-        assertEquals("doc", context!!.word)
+        assertEquals("doc", context.word)
         assertEquals(SuggestionType.FILE, context.type)
     }
     @Test
@@ -114,9 +109,9 @@ class SuggestionContextTest {
         assertTrue(context.isExplicitTrigger)
         assertEquals(com.vishaltelangre.nerdcalci.core.UnitCategory.SCALAR, context.unitCategory)
     }
-    
+
     @Test
-    fun testParenthesizedExpressionConversionTrigger() {
+    fun `test parenthesized expression conversion trigger`() {
         val text = "(35 °C + 10 degF) in "
         val cursorPos = text.length
         val context = getSuggestionContext(text, text, cursorPos, emptyMap())

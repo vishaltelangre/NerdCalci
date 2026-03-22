@@ -211,15 +211,7 @@ object MathEngine {
                 val u = if (result.unit != null) UnitConverter.findUnit(result.unit) else null
                 val resultString = if (u != null) {
                     if (u.category == UnitCategory.NUMERAL_SYSTEM) {
-                        val radix = u.factor.toInt()
-                        val intVal = result.value.toLong()
-                        val prefix = when (radix) {
-                            16 -> "0x"
-                            2 -> "0b"
-                            8 -> "0o"
-                            else -> ""
-                        }
-                        "$prefix${java.lang.Long.toString(intVal, radix).uppercase()}"
+                        formatNumeralSystem(result.value.toLong(), u.factor.toInt())
                     } else {
                         val displayValue = UnitConverter.fromBase(result.value, u, isolatedContext.variables)
                         "$displayValue ${result.unit}"
@@ -361,13 +353,13 @@ object MathEngine {
         val isNumeralSystem = trimmedUnit in listOf("bin", "hex", "oct", "dec")
 
         val formattedResult = if (isNumeralSystem) {
-            val longVal = value.toLong()
-            when (trimmedUnit) {
-                "bin" -> "0b" + java.lang.Long.toBinaryString(longVal)
-                "hex" -> "0x" + java.lang.Long.toHexString(longVal).uppercase()
-                "oct" -> "0o" + java.lang.Long.toOctalString(longVal)
-                else -> longVal.toString() // "dec"
+            val radix = when (trimmedUnit) {
+                "bin" -> 2
+                "hex" -> 16
+                "oct" -> 8
+                else -> 10
             }
+            formatNumeralSystem(value.toLong(), radix)
         } else if (value % 1.0 == 0.0) {
             when {
                 value >= Int.MIN_VALUE && value <= Int.MAX_VALUE ->
@@ -382,5 +374,15 @@ object MathEngine {
         }
 
         return if (isNumeralSystem) formattedResult else formattedResult + unitStr
+    }
+
+    private fun formatNumeralSystem(value: Long, radix: Int): String {
+        val prefix = when (radix) {
+            16 -> "0x"
+            2 -> "0b"
+            8 -> "0o"
+            else -> ""
+        }
+        return "$prefix${java.lang.Long.toString(value, radix).uppercase()}"
     }
 }

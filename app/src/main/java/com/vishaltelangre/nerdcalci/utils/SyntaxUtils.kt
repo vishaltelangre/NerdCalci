@@ -179,17 +179,17 @@ fun getSuggestionContext(
             if (kwIndex >= 1) {
                 val prevToken = cleanTokens[kwIndex - 1]
                 val unit = if (prevToken.kind == TokenKind.IDENTIFIER) UnitConverter.findUnit(prevToken.lexeme) else null
-                val isValidSource = true
-
-                if (isValidSource) {
-                    val kwToken = cleanTokens[kwIndex]
-                    val unitStartPos = kwToken.position + kwToken.lexeme.length + 1
-                    val currentWord = if (unitStartPos < beforeCursor.length) {
-                        beforeCursor.substring(unitStartPos)
-                    } else ""
-                    val isExplicit = kwIndex == cleanTokens.size - 1
-                    return SuggestionContextInfo(currentWord, SuggestionType.UNIT, isExplicit, unit?.category, replaceStart = unitStartPos)
+                val kwToken = cleanTokens[kwIndex]
+                val endPos = kwToken.position + kwToken.lexeme.length
+                var replaceStart = endPos
+                while (replaceStart < beforeCursor.length && beforeCursor[replaceStart].isWhitespace()) {
+                    replaceStart++
                 }
+                val currentWord = if (replaceStart < beforeCursor.length) {
+                    beforeCursor.substring(replaceStart)
+                } else ""
+                val isExplicit = kwIndex == cleanTokens.size - 1
+                return SuggestionContextInfo(currentWord, SuggestionType.UNIT, isExplicit, unit?.category, replaceStart = replaceStart)
             }
 
             // Check for convert() function arguments context (e.g. convert(10, "km", "m"))

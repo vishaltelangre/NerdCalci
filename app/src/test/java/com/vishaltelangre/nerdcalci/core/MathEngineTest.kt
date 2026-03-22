@@ -2171,6 +2171,20 @@ class MathEngineTest {
     }
 
     @Test
+    fun `convert function performs full conversion from base`() = runBlocking {
+        val lines = listOf(createLine("convert(10, \"km\", \"cm\")", sortOrder = 0))
+        val result = MathEngine.calculate(lines)
+        assertEquals("1000000.0 cm", result[0].result)
+    }
+
+    @Test
+    fun `unit conversion expression performs full conversion from base`() = runBlocking {
+        val lines = listOf(createLine("10 km in cm", sortOrder = 0))
+        val result = MathEngine.calculate(lines)
+        assertEquals("1000000.0 cm", result[0].result)
+    }
+
+    @Test
     fun `unit conversion error incompatible dimensions`() = runBlocking {
         val lines = listOf(
             createLine("10 km in kg", sortOrder = 0)

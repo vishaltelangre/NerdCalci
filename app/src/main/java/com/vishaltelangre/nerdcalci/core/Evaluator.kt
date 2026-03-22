@@ -28,9 +28,18 @@ class Evaluator(
     suspend fun evaluate(expr: Expr): EvaluationResult = when (expr) {
         is Expr.NumberLiteral  -> EvaluationResult(expr.value)
         is Expr.PercentLiteral -> EvaluationResult(expr.value / 100.0)
-        is Expr.PercentOf      -> EvaluationResult(evaluate(expr.base).value!! * expr.percent / 100.0)
-        is Expr.PercentOff     -> EvaluationResult(evaluate(expr.base).value!! * (1.0 - expr.percent / 100.0))
-        is Expr.UnaryMinus     -> EvaluationResult(-evaluate(expr.operand).value!!)
+        is Expr.PercentOf      -> {
+            val base = evaluate(expr.base).value ?: throw EvalException("Cannot apply percentage to a non-numeric value")
+            EvaluationResult(base * expr.percent / 100.0)
+        }
+        is Expr.PercentOff     -> {
+            val base = evaluate(expr.base).value ?: throw EvalException("Cannot apply percentage to a non-numeric value")
+            EvaluationResult(base * (1.0 - expr.percent / 100.0))
+        }
+        is Expr.UnaryMinus     -> {
+            val operand = evaluate(expr.operand).value ?: throw EvalException("Cannot negate a non-numeric value")
+            EvaluationResult(-operand)
+        }
         is Expr.Variable       -> resolveVariable(expr.name)
         is Expr.FunctionCall   -> evaluateFunction(expr.name, expr.args)
         is Expr.BinaryOp       -> evaluateBinaryOp(expr)

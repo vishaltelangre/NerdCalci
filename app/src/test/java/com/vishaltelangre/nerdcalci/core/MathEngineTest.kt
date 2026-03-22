@@ -96,10 +96,86 @@ class MathEngineTest {
     }
 
     @Test
+    fun `temperature addition treats second operand as relative offset`() = runBlocking {
+        val lines = listOf(
+            createLine("35 °C + 10 degF"),
+            createLine("35 °C + 10 degF in degC"),
+        )
+        val result = MathEngine.calculate(lines)
+
+        // Line 1: 35 °C + 10 °F (relative delta equivalent to 5.55 °C) = 105 °F
+        val resultString1 = result[0].result
+        val spaceIndex1 = resultString1.indexOf(' ')
+        assertTrue(spaceIndex1 > 0)
+        val value1 = resultString1.substring(0, spaceIndex1).toDouble()
+        val unit1 = resultString1.substring(spaceIndex1 + 1)
+
+        assertEquals(105.0, value1, 1e-9)
+        assertEquals("°F", unit1)
+
+        // Line 2: (35 °C + 10 degF) in degC = 40.555... °C
+        val resultString2 = result[1].result
+        val spaceIndex2 = resultString2.indexOf(' ')
+        assertTrue(spaceIndex2 > 0)
+        val value2 = resultString2.substring(0, spaceIndex2).toDouble()
+        val unit2 = resultString2.substring(spaceIndex2 + 1)
+
+        assertEquals(40.55555555555556, value2, 1e-9)
+        assertEquals("°C", unit2)
+    }
+
+    @Test
+    fun `trigonometric functions support degree inputs`() = runBlocking {
+        val lines = listOf(
+            createLine("sin(90°)"),
+            createLine("sin(30 deg)"),
+            createLine("cos(60 degree)"),
+            createLine("sin(90)") // defaults to radians
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals(1.0, result[0].result.toDouble(), 1e-9)
+        assertEquals(0.5, result[1].result.toDouble(), 1e-9)
+        assertEquals(0.5, result[2].result.toDouble(), 1e-9)
+        assertEquals(0.8939966636005579, result[3].result.toDouble(), 1e-9)
+    }
+
+    @Test
     fun `mixed unicode and ASCII operators work together`() = runBlocking {
         val lines = listOf(createLine("10 × 2 ÷ 4 + 1"))
         val result = MathEngine.calculate(lines)
         assertEquals("6.0", result[0].result)
+    }
+
+    @Test
+    fun `numeral system multipliers evaluate correctly`() = runBlocking {
+        val lines = listOf(
+            createLine("5 thousand", sortOrder = 0),
+            createLine("2.5 million", sortOrder = 1),
+            createLine("1.5 crore", sortOrder = 2),
+            createLine("2 lakh + 5 thousand", sortOrder = 3),
+            createLine("50% of 1 lakh", sortOrder = 4),
+            createLine("1.5 hundred", sortOrder = 5),
+            createLine("1 billion", sortOrder = 6),
+            createLine("1 trillion", sortOrder = 7),
+            createLine("4500 million in crores", sortOrder = 8),
+            createLine("2 lakh to thousand", sortOrder = 9),
+            createLine("5 thousand meters to km", sortOrder = 10),
+            createLine("10 thousand in hex", sortOrder = 11)
+        )
+        val result = MathEngine.calculate(lines)
+
+        assertEquals("5000.0", result[0].result)
+        assertEquals("2500000.0", result[1].result)
+        assertEquals("1.5E7", result[2].result)
+        assertEquals("205000.0", result[3].result)
+        assertEquals("50000.0", result[4].result)
+        assertEquals("150.0", result[5].result)
+        assertEquals("1.0E9", result[6].result)
+        assertEquals("1.0E12", result[7].result)
+        assertEquals("450.0 crore", result[8].result)
+        assertEquals("200.0 thousand", result[9].result)
+        assertEquals("5.0 km", result[10].result)
+        assertEquals("0x2710", result[11].result)
     }
 
     @Test
@@ -1751,7 +1827,7 @@ class MathEngineTest {
 
     @Test
     fun `evaluate resolves member access from linked file`() = runBlocking {
-        val remoteContext = MathContext(variables = mutableMapOf("x" to 20.0))
+        val remoteContext = MathContext(variables = mutableMapOf("x" to EvaluationResult(20.0)))
         val loader = FakeFileContextLoader(mapOf("File B" to remoteContext))
 
         val lines = listOf(
@@ -1764,7 +1840,7 @@ class MathEngineTest {
 
     @Test
     fun `evaluate with direct file function access`() = runBlocking {
-        val remoteContext = MathContext(variables = mutableMapOf("total" to 100.0))
+        val remoteContext = MathContext(variables = mutableMapOf("total" to EvaluationResult(100.0)))
         val loader = FakeFileContextLoader(mapOf("Summary" to remoteContext))
 
         val lines = listOf(createLine("file(\"Summary\").total * 0.1"))
@@ -1774,7 +1850,7 @@ class MathEngineTest {
 
     @Test
     fun `evaluate clears file linked state after reassignment to number`() = runBlocking {
-        val remoteContext = MathContext(variables = mutableMapOf("x" to 20.0))
+        val remoteContext = MathContext(variables = mutableMapOf("x" to EvaluationResult(20.0)))
         val loader = FakeFileContextLoader(mapOf("File B" to remoteContext))
 
         val lines = listOf(
@@ -1953,4 +2029,144 @@ class MathEngineTest {
 
         assertEquals("File `File B` also references file `File A`, causing an endless loop", errMsg)
     }
+
+    @Test
+    fun `unit conversion simple natural language`() = runBlocking {
+        val lines = listOf(
+            createLine("10 km in m", sortOrder = 0),
+            createLine("1000 m as kilometers", sortOrder = 1),
+            createLine("2 hours in seconds", sortOrder = 2)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("10000.0 m", result[0].result)
+        assertEquals("1.0 km", result[1].result)
+        assertEquals("7200.0 s", result[2].result)
+    }
+
+    @Test
+    fun `unit conversion mixed arithmetic`() = runBlocking {
+        val lines = listOf(
+            createLine("10 km + 5000 m in km", sortOrder = 0),
+            createLine("1 m + 100 cm in m", sortOrder = 1),
+            createLine("10 kg + 20 gram to kilograms", sortOrder = 2),
+            createLine("53 weeks - 20 days", sortOrder = 3)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("15.0 km", result[0].result)
+        assertEquals("2.0 m", result[1].result)
+        assertEquals("10.02 kg", result[2].result)
+        assertEquals("351.0 d", result[3].result)
+    }
+
+    @Test
+    fun `unit conversion temperature non linear`() = runBlocking {
+        val lines = listOf(
+            createLine("0 degC in F", sortOrder = 0),
+            createLine("212 F in C", sortOrder = 1),
+            createLine("0 C in K", sortOrder = 2)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("32.0 °F", result[0].result)
+        assertEquals("100.0 °C", result[1].result)
+        assertEquals("273.15 K", result[2].result)
+    }
+
+    @Test
+    fun `unit conversion data storage`() = runBlocking {
+        val lines = listOf(
+            createLine("1 GB in MB", sortOrder = 0),
+            createLine("1 GiB in MiB", sortOrder = 1)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("1000.0 MB", result[0].result)
+        assertEquals("1024.0 MiB", result[1].result)
+    }
+
+    @Test
+    fun `unit conversion css dynamic ppi`() = runBlocking {
+        val lines = listOf(
+            createLine("96 px in inch", sortOrder = 0),
+            createLine("ppi = 300", sortOrder = 1),
+            createLine("300 px in inch", sortOrder = 2),
+            createLine("em = 21px", sortOrder = 3), // triggers em evaluation
+            createLine("1.5 em in px", sortOrder = 4)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("1.0 inch", result[0].result)
+        assertEquals("1.0 inch", result[2].result)
+        // em = 21px. 1.5 em = 1.5 * 21px = 31.5px
+        val resStr = result[4].result
+        val spaceIdx = resStr.indexOf(' ')
+        val valStr = if (spaceIdx > 0) resStr.substring(0, spaceIdx) else resStr
+        assertEquals(31.5, valStr.toDouble(), 0.0001)
+        assertEquals("px", resStr.substring(spaceIdx + 1))
+    }
+
+    @Test
+    fun `unit conversion function syntax`() = runBlocking {
+        val lines = listOf(
+            createLine("convert(10, \"km\", \"m\")", sortOrder = 0)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("10000.0 m", result[0].result)
+    }
+
+    @Test
+    fun `mixed unit addition picking smaller unit`() = runBlocking {
+        val lines = listOf(
+            createLine("53 weeks + 2 days", sortOrder = 0)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("373.0 d", result[0].result)
+    }
+
+    @Test
+    fun `add scalar inherits unit`() = runBlocking {
+        val lines = listOf(
+            createLine("53 weeks", sortOrder = 0),
+            createLine("last + 3", sortOrder = 1)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("53.0 wk", result[0].result)
+        assertEquals("56.0 wk", result[1].result)
+    }
+
+    @Test
+    fun `unit conversion error incompatible dimensions`() = runBlocking {
+        val lines = listOf(
+            createLine("10 km in kg", sortOrder = 0)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("Err", result[0].result)
+        val err = MathEngine.getErrorDetails(lines, 0)
+        assertTrue(err?.contains("dimension mismatch") == true)
+    }
+
+    @Test
+    fun `unit conversion multi word alias`() = runBlocking {
+        val lines = listOf(
+            createLine("10 degree celsius in fahrenheit", sortOrder = 0)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("50.0 °F", result[0].result)
+    }
+
+    @Test
+    fun `standalone quantity preserves unit in result`() = runBlocking {
+        val lines = listOf(
+            createLine("10 kg", sortOrder = 0)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("10.0 kg", result[0].result)
+    }
+
+    @Test
+    fun `unitless conversion to non-scalar returns Err`() = runBlocking {
+        val lines = listOf(createLine("5 as cm"))
+        val result = MathEngine.calculate(lines)
+        assertEquals("Err", result[0].result)
+        val err = MathEngine.getErrorDetails(lines, 0)
+        assertTrue(err?.contains("Cannot convert unitless number to `Centimeter`") == true)
+    }
+
 }

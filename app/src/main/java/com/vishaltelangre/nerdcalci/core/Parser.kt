@@ -210,7 +210,9 @@ class Parser(private val tokens: List<Token>) {
         return Statement.FunctionDefinition(name, params, body)
     }
 
-    private fun parseExpression(): Expr = parseAddSub()
+    private fun parseExpression(): Expr {
+        return parseAddSub()
+    }
 
     /**
      * Parse addition and subtraction: `a + b`, `a - b`, `a + b - c`.
@@ -231,10 +233,25 @@ class Parser(private val tokens: List<Token>) {
      */
     private fun parseAddSub(): Expr {
         var left = parseMulDivMod()
-        while (peekKind() == TokenKind.PLUS || peekKind() == TokenKind.MINUS) {
-            val op = advance()
-            val right = parseMulDivMod()
-            left = Expr.BinaryOp(left, op.kind, right)
+        while (peekKind() == TokenKind.PLUS || peekKind() == TokenKind.MINUS || isUnitOperator(peekKind())) {
+            val kind = peekKind()
+            if (isUnitOperator(kind)) {
+                advance() // consume to/in/as
+                val target = peek()
+                if (target.kind == TokenKind.IDENTIFIER || isUnitOperator(target.kind) || target.kind == TokenKind.KW_OF) {
+                    val firstLexeme = target.lexeme
+                    advance() // consume first
+
+                    val combinedUnit = parseCombinedUnit(firstLexeme)
+                    left = Expr.UnitConversion(left, combinedUnit)
+                } else {
+                    throw ParseException("Expected unit name after conversion operator", target.position)
+                }
+            } else {
+                val op = advance()
+                val right = parseMulDivMod()
+                left = Expr.BinaryOp(left, op.kind, right)
+            }
         }
         return left
     }
@@ -376,6 +393,17 @@ class Parser(private val tokens: List<Token>) {
 
             TokenKind.NUMBER -> {
                 val numToken = advance()
+                var numericValue = numToken.value
+
+                // Extract scalable numeral systems (million, lakh, etc) immediately
+                if (peekKind() == TokenKind.IDENTIFIER) {
+                    val multiplier = getNumeralMultiplier(peek().lexeme)
+                    if (multiplier != null) {
+                        advance() // consume numeral word
+                        numericValue *= multiplier
+                    }
+                }
+
                 // Check for percentage syntax: 20% of X, 15% off X, or bare 20%
                 if (peekKind() == TokenKind.PERCENT) {
                     val nextKind = peekAt(1)
@@ -384,25 +412,63 @@ class Parser(private val tokens: List<Token>) {
                         advance() // skip past "%"
                         advance() // skip past "of"
                         val base = parseExpression()
-                        return Expr.PercentOf(numToken.value, base)
+                        return Expr.PercentOf(numericValue, base)
                     // e.g. 15% off price
                     } else if (nextKind == TokenKind.KW_OFF) {
                         advance() // skip past "%"
                         advance() // skip past "off"
                         val base = parseExpression()
-                        return Expr.PercentOff(numToken.value, base)
+                        return Expr.PercentOff(numericValue, base)
                     } else if (canStartExpression(nextKind)) {
                         // % is followed by expression, so it's a MODULO operator.
                         // Do not consume % here; let parseMulDivMod handle it.
                     // e.g. bare 20% (used in "price + 20%")
                     } else {
                         advance() // skip past "%"
-                        return Expr.PercentLiteral(numToken.value)
+                        return Expr.PercentLiteral(numericValue)
                     }
                 }
 
-                Expr.NumberLiteral(numToken.value)
+                val nextKind = peekKind()
+                if (nextKind == TokenKind.IDENTIFIER || isUnitOperator(nextKind) || nextKind == TokenKind.KW_OF) {
+                    val firstLexeme = peek().lexeme
+                    val savedPos = pos
+                    val t = advance() // consume first
+                    val combinedUnit = parseCombinedUnit(firstLexeme)
+                    
+                    var treatAsOperator = false
+                    if (combinedUnit == "in" && t.kind == TokenKind.KW_IN) {
+                        val ahead = peekKind()
+                        if (ahead == TokenKind.IDENTIFIER) {
+                            treatAsOperator = true
+                        }
+                    }
+
+                    if (!treatAsOperator && UnitConverter.findUnit(combinedUnit) != null) {
+                        return Expr.Quantity(Expr.NumberLiteral(numericValue), combinedUnit)
+                    }
+                    pos = savedPos // Backtrack!
+
+                    val firstUnit = UnitConverter.findUnit(firstLexeme)
+                    
+                    treatAsOperator = false
+                    if (firstLexeme == "in" && tokens[pos].kind == TokenKind.KW_IN) {
+                        val aheadPos = pos + 1
+                        val ahead = if (aheadPos < tokens.size) tokens[aheadPos].kind else TokenKind.EOF
+                        if (ahead == TokenKind.IDENTIFIER) {
+                            treatAsOperator = true
+                        }
+                    }
+
+                    if (!treatAsOperator && firstUnit != null) {
+                        advance() // consume first
+                        return Expr.Quantity(Expr.NumberLiteral(numericValue), firstLexeme)
+                    }
+                }
+
+                Expr.NumberLiteral(numericValue)
             }
+
 
             TokenKind.IDENTIFIER -> {
                 val nameToken = advance()
@@ -473,6 +539,57 @@ class Parser(private val tokens: List<Token>) {
         kind == TokenKind.NUMBER || kind == TokenKind.LPAREN ||
                 kind == TokenKind.IDENTIFIER || kind.isPreviousLineAlias || kind.isLineNumberAlias ||
                 kind == TokenKind.STRING_LITERAL || kind == TokenKind.KW_FILE
+
+    private fun parseCombinedUnit(startLexeme: String): String {
+        var bestCombined = startLexeme
+        var currentCombined = startLexeme
+        var tempPos = pos
+        var consumeCount = 0
+
+        while (tempPos < tokens.size) {
+            val t = tokens[tempPos]
+            if (t.kind == TokenKind.IDENTIFIER || isUnitOperator(t.kind) || t.kind == TokenKind.KW_OF) {
+                currentCombined += " ${t.lexeme}"
+                if (UnitConverter.findUnit(currentCombined) != null) {
+                    bestCombined = currentCombined
+                    consumeCount = (tempPos - pos) + 1
+                }
+                tempPos++
+            } else if (t.kind == TokenKind.MINUS) {
+                val nextIdx = tempPos + 1
+                if (nextIdx < tokens.size && tokens[nextIdx].kind == TokenKind.IDENTIFIER) {
+                    currentCombined += "-${tokens[nextIdx].lexeme}"
+                    if (UnitConverter.findUnit(currentCombined) != null) {
+                        bestCombined = currentCombined
+                        consumeCount = (nextIdx - pos) + 1
+                    }
+                    tempPos = nextIdx + 1
+                } else {
+                    break
+                }
+            } else {
+                break
+            }
+        }
+        for (i in 0 until consumeCount) advance()
+        return bestCombined
+    }
+
+    private fun isUnitOperator(kind: TokenKind): Boolean =
+        kind == TokenKind.KW_TO || kind == TokenKind.KW_IN || kind == TokenKind.KW_AS
+
+    private fun getNumeralMultiplier(word: String): Double? {
+        return when (word.lowercase()) {
+            "hundred" -> 100.0
+            "thousand" -> 1_000.0
+            "lakh" -> 100_000.0
+            "million" -> 1_000_000.0
+            "crore" -> 10_000_000.0
+            "billion" -> 1_000_000_000.0
+            "trillion" -> 1_000_000_000_000.0
+            else -> null
+        }
+    }
 }
 
 private class BacktrackException : Exception()

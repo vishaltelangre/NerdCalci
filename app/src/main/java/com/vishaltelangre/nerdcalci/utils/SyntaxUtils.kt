@@ -1,5 +1,10 @@
 package com.vishaltelangre.nerdcalci.utils
 
+import com.vishaltelangre.nerdcalci.core.Token
+import com.vishaltelangre.nerdcalci.core.TokenKind
+import com.vishaltelangre.nerdcalci.core.Lexer
+import com.vishaltelangre.nerdcalci.core.UnitConverter
+
 enum class TokenType {
     Number, Variable, Keyword, Operator, Percent, Comment, Function, StringLiteral, Default
 }
@@ -113,6 +118,173 @@ fun String.findClosingParenthesis(index: Int): Int {
         if (balance == 0) return i
     }
     return length - 1
+}
+
+fun getSuggestionContext(
+    beforeCursor: String,
+    text: String,
+    cursorPos: Int,
+    fileVariables: Map<String, String>
+): SuggestionContextInfo {
+    if (cursorPos > 0) {
+        // Check for comment context (inline instructions)
+        val hashIndex = beforeCursor.indexOf('#')
+        if (hashIndex >= 0) {
+            return SuggestionContextInfo("", SuggestionType.VARIABLE, false)
+        }
+
+        // Check for file path suggestions (inside file("..."))
+        val fileRegex = Regex("""file\(\s*"([^"]*)$""")
+        val fileMatch = fileRegex.find(beforeCursor)
+        if (fileMatch != null) {
+            return SuggestionContextInfo(fileMatch.groupValues[1], SuggestionType.FILE, true)
+        }
+
+        // Check for dot notation suggestions (e.g. file("").)
+        val dotRegex = Regex("""(\w+|\bfile\(\s*"[^"]*"\s*\))\s*\.\s*(\w*)$""")
+        val dotMatch = dotRegex.find(beforeCursor)
+        if (dotMatch != null) {
+            val objectName = dotMatch.groupValues[1]
+            val linkedFile = if (objectName.startsWith("file(")) {
+                Regex("""file\(\s*"([^"]+)"\s*\)""").find(objectName)?.groupValues?.getOrNull(1)
+            } else {
+                fileVariables[objectName]
+            }
+            if (linkedFile != null) {
+                return SuggestionContextInfo(dotMatch.groupValues[2], SuggestionType.VARIABLE, true)
+            }
+        }
+
+        // Explicit trigger on keywords (to, in, as) for unit conversions
+        val tokens = runCatching {
+            Lexer(beforeCursor).tokenize()
+        }.getOrElse {
+            if (beforeCursor.count { it == '"' } % 2 != 0) {
+                runCatching {
+                    Lexer(beforeCursor + "\"").tokenize()
+                }.getOrElse { emptyList() }
+            } else {
+                emptyList()
+            }
+        }
+        val cleanTokens = tokens.filter { it.kind != TokenKind.EOF }
+        if (cleanTokens.isNotEmpty()) {
+            val kwIndex = cleanTokens.indexOfLast {
+                it.kind in listOf(
+                    TokenKind.KW_TO,
+                    TokenKind.KW_IN,
+                    TokenKind.KW_AS
+                )
+            }
+            if (kwIndex >= 1) {
+                val prevToken = cleanTokens[kwIndex - 1]
+                val unit = if (prevToken.kind == TokenKind.IDENTIFIER) UnitConverter.findUnit(prevToken.lexeme) else null
+                val isValidSource = true
+
+                if (isValidSource) {
+                    val kwToken = cleanTokens[kwIndex]
+                    val unitStartPos = kwToken.position + kwToken.lexeme.length + 1
+                    val currentWord = if (unitStartPos < beforeCursor.length) {
+                        beforeCursor.substring(unitStartPos)
+                    } else ""
+                    val isExplicit = kwIndex == cleanTokens.size - 1
+                    return SuggestionContextInfo(currentWord, SuggestionType.UNIT, isExplicit, unit?.category, replaceStart = unitStartPos)
+                }
+            }
+
+            // Check for convert() function arguments context (e.g. convert(10, "km", "m"))
+            val convertContext = getConvertSuggestionContext(cleanTokens, beforeCursor.length)
+            if (convertContext != null) {
+                return convertContext
+            }
+
+            val lastToken = cleanTokens.last()
+            val prevToken = cleanTokens.getOrNull(cleanTokens.size - 2)
+            val prevPrevToken = cleanTokens.getOrNull(cleanTokens.size - 3)
+
+            if (lastToken.kind == TokenKind.IDENTIFIER &&
+                prevToken?.kind == TokenKind.IDENTIFIER) {
+                if (prevPrevToken?.kind == TokenKind.NUMBER &&
+                    UnitConverter.findUnit(prevToken.lexeme) != null) {
+                    return SuggestionContextInfo(lastToken.lexeme, SuggestionType.KEYWORD, true)
+                }
+            }
+        }
+
+        val range = text.getIdentifierRangeAt(cursorPos - 1)
+        if (cursorPos <= range.last + 1) {
+            var word = text.substring(range.first, cursorPos)
+            var i = 0
+            while (i < word.length && word[i].isDigit()) {
+                i++
+            }
+            if (i > 0 && i < word.length) {
+                word = word.substring(i)
+            }
+            return SuggestionContextInfo(word, SuggestionType.VARIABLE, false, replaceStart = range.first + i)
+        }
+    }
+    return SuggestionContextInfo("", SuggestionType.VARIABLE, false)
+}
+
+/**
+ * Resolves advice suggestions for the `convert()` function arguments list.
+ * e.g., convert(value, "fromUnit", "toUnit")
+ *
+ * @param cleanTokens Sanitized Token stream up to cursor triggers layout.
+ */
+private fun getConvertSuggestionContext(cleanTokens: List<Token>, cursorPos: Int): SuggestionContextInfo? {
+    var scanIdx = cleanTokens.size - 1
+    var parenBalance = 0
+    var commaCount = 0
+    var fromUnitStr = ""
+
+    while (scanIdx >= 0) {
+        val t = cleanTokens[scanIdx]
+        if (t.kind == TokenKind.RPAREN) {
+            parenBalance++
+        } else if (t.kind == TokenKind.LPAREN) {
+            if (parenBalance > 0) {
+                parenBalance--
+            } else {
+                if (scanIdx > 0) {
+                    val funcName = cleanTokens[scanIdx - 1]
+                    if (funcName.kind == TokenKind.IDENTIFIER && funcName.lexeme == "convert") {
+                        val lastT = cleanTokens.last()
+                        val currentWord = if (lastT.kind == TokenKind.STRING_LITERAL) {
+                            lastT.lexeme
+                        } else if (lastT.kind == TokenKind.IDENTIFIER) {
+                            lastT.lexeme
+                        } else ""
+
+                        val replaceStart = when (lastT.kind) {
+                            TokenKind.STRING_LITERAL -> lastT.position + 1
+                            TokenKind.IDENTIFIER -> lastT.position
+                            else -> cursorPos
+                        }
+
+                        if (commaCount == 1) { // 2nd arg: From Unit
+                            return SuggestionContextInfo(currentWord, SuggestionType.UNIT, true, unitCategory = null, replaceStart = replaceStart, argumentIndex = 2)
+                        } else if (commaCount == 2) { // 3rd arg: To Unit
+                            // Resolve the From Unit's category by reading backwards capture
+                            val unit = UnitConverter.findUnit(fromUnitStr.trim('"'))
+                            return SuggestionContextInfo(currentWord, SuggestionType.UNIT, true, unitCategory = unit?.category, replaceStart = replaceStart, argumentIndex = 3)
+                        }
+                    }
+                }
+                break
+            }
+        } else if (t.kind == TokenKind.COMMA) {
+            if (parenBalance == 0) {
+                commaCount++
+            }
+        } else if (parenBalance == 0 && commaCount == 1 && (t.kind == TokenKind.STRING_LITERAL || t.kind == TokenKind.IDENTIFIER)) {
+            // Traverse backward and save the 2nd argument!
+            fromUnitStr = t.lexeme
+        }
+        scanIdx--
+    }
+    return null
 }
 
 /**

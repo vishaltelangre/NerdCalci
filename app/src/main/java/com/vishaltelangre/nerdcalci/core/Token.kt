@@ -25,6 +25,7 @@ enum class TokenKind(val display: String) {
     KW_LAST("last"), KW_PREV("prev"), KW_PREVIOUS("previous"), KW_ABOVE("above"),
     KW_UNDERSCORE("_"),
     KW_LINENO("lineno"), KW_LINENUMBER("linenumber"), KW_CURRENTLINENUMBER("currentLineNumber"),
+    KW_TO("to"), KW_IN("in"), KW_AS("as"),
 
     // End-of-input
     EOF("end of line");

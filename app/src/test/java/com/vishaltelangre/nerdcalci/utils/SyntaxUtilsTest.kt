@@ -200,6 +200,15 @@ class SyntaxUtilsTest {
     }
 
     @Test
+    fun `unclosed string tokenizes as StringLiteral`() {
+        val result = tokens("\"hello")
+        assertEquals(1, result.size)
+        assertEquals(TokenType.StringLiteral, result[0].type)
+        assertEquals(0, result[0].start)
+        assertEquals(6, result[0].end)
+    }
+
+    @Test
     fun `string literal token spans entire quotes`() {
         val result = tokens("\"test string\"")
         assertEquals(1, result.size)

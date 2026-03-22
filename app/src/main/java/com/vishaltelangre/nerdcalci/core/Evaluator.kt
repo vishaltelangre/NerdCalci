@@ -2,6 +2,11 @@ package com.vishaltelangre.nerdcalci.core
 
 import kotlin.math.pow
 
+data class EvaluationResult(
+    val value: Double?,
+    val unit: String? = null
+)
+
 /**
  * Recursive tree-walk evaluator that computes a [Double] result from an [Expr] AST.
  *
@@ -12,7 +17,7 @@ import kotlin.math.pow
  * Typed exceptions provide specific error messages.
  */
 class Evaluator(
-    private val variables: Map<String, Double>,
+    private val variables: Map<String, EvaluationResult>,
     private val localFunctions: Map<String, LocalFunction> = emptyMap(),
     private val callStack: Set<String> = emptySet(),
     private val fileVariables: Map<String, String> = emptyMap(),
@@ -20,28 +25,58 @@ class Evaluator(
     private val loadingStack: Set<String> = emptySet()
 ) {
 
-    suspend fun evaluate(expr: Expr): Double = when (expr) {
-        is Expr.NumberLiteral  -> expr.value
-        is Expr.PercentLiteral -> expr.value / 100.0
-        is Expr.PercentOf      -> evaluate(expr.base) * expr.percent / 100.0
-        is Expr.PercentOff     -> evaluate(expr.base) * (1.0 - expr.percent / 100.0)
-        is Expr.UnaryMinus     -> -evaluate(expr.operand)
+    suspend fun evaluate(expr: Expr): EvaluationResult = when (expr) {
+        is Expr.NumberLiteral  -> EvaluationResult(expr.value)
+        is Expr.PercentLiteral -> EvaluationResult(expr.value / 100.0)
+        is Expr.PercentOf      -> EvaluationResult(evaluate(expr.base).value!! * expr.percent / 100.0)
+        is Expr.PercentOff     -> EvaluationResult(evaluate(expr.base).value!! * (1.0 - expr.percent / 100.0))
+        is Expr.UnaryMinus     -> EvaluationResult(-evaluate(expr.operand).value!!)
         is Expr.Variable       -> resolveVariable(expr.name)
         is Expr.FunctionCall   -> evaluateFunction(expr.name, expr.args)
         is Expr.BinaryOp       -> evaluateBinaryOp(expr)
         is Expr.StringLiteral  -> throw EvalException("Quotes are only allowed when specifying file names in `file(\"...\")`")
         is Expr.MemberAccess   -> resolveMemberAccess(expr)
         is Expr.MemberFunctionCall -> resolveMemberFunctionCall(expr)
+        is Expr.Quantity -> {
+            val rawValue = evaluate(expr.value).value ?: 0.0
+            val unit = UnitConverter.findUnit(expr.unit)
+                ?: throw EvalException("Unknown unit `${expr.unit}`")
+            EvaluationResult(UnitConverter.toBase(rawValue, unit, variables), unit.symbols.first())
+        }
+        is Expr.UnitConversion -> {
+            val toUnit = UnitConverter.findUnit(expr.toUnit)
+                ?: throw EvalException("Unknown unit `${expr.toUnit}`")
+
+            val evaluatedExpr = evaluate(expr.expr)
+            val baseValue = evaluatedExpr.value ?: 0.0
+            val fromUnit = evaluatedExpr.unit?.let { UnitConverter.findUnit(it) }
+
+            if (fromUnit != null) {
+                val isCompatible = fromUnit.category == toUnit.category ||
+                        (fromUnit.category == UnitCategory.SCALAR && toUnit.category == UnitCategory.NUMERAL_SYSTEM) ||
+                        (fromUnit.category == UnitCategory.NUMERAL_SYSTEM && toUnit.category == UnitCategory.SCALAR)
+                if (!isCompatible) {
+                    throw EvalException("Cannot convert `${fromUnit.name}` to `${toUnit.name}`: dimension mismatch")
+                }
+            } else {
+                if (toUnit.category != UnitCategory.SCALAR && toUnit.category != UnitCategory.NUMERAL_SYSTEM) {
+                    throw EvalException("Cannot convert unitless number to `${toUnit.name}`")
+                }
+            }
+
+            EvaluationResult(baseValue, toUnit.symbols.first())
+        }
     }
 
-    private fun resolveVariable(name: String): Double {
+
+    private fun resolveVariable(name: String): EvaluationResult {
         // Check user variables first, then built-in constants
         variables[name]?.let { return it }
-        Builtins.constantValue(name)?.let { return it }
+        Builtins.constantValue(name)?.let { return EvaluationResult(it) }
         throw UndefinedVariableException(name)
     }
 
-    private suspend fun evaluateFunction(name: String, argExprs: List<Expr>): Double {
+    private suspend fun evaluateFunction(name: String, argExprs: List<Expr>): EvaluationResult {
         // Check if it's a user-defined local function
         val localFunc = localFunctions[name]
         if (localFunc != null) {
@@ -54,7 +89,7 @@ class Evaluator(
             }
 
             // Create a strictly isolated scope
-            val localVars = mutableMapOf<String, Double>()
+            val localVars = mutableMapOf<String, EvaluationResult>()
             for (i in args.indices) {
                 localVars[localFunc.params[i]] = args[i]
             }
@@ -68,15 +103,12 @@ class Evaluator(
                 fileContextLoader = fileContextLoader,
                 loadingStack = loadingStack
             )
-
-            var lastResult: Double = 0.0
-            val localContext = MathContext(
-                variables = localVars,
-                localFunctions = mutableMapOf() // Inner scope cannot define new functions
-            )
+            val localContext = MathContext(variables = localVars)
+            var lastResult = EvaluationResult(0.0)
             for (stmt in localFunc.body) {
-                innerEvaluator.evaluateStatement(stmt, localContext)?.let { result ->
-                    lastResult = result
+                val res = innerEvaluator.evaluateStatement(stmt, localContext)
+                if (res.value != null) {
+                    lastResult = res
                 }
             }
             return lastResult
@@ -86,14 +118,32 @@ class Evaluator(
             throw EvalException("The `file()` function either needs to be assigned like `f = file(\"FileName\")` or used in dot notation like `file(\"FileName\").variable`")
         }
 
+        if (name == "convert") {
+            if (argExprs.size != 3) throw ArityMismatchException("convert", 3, argExprs.size)
+            val value = evaluate(argExprs[0]).value ?: 0.0
+            val from = (argExprs[1] as? Expr.StringLiteral)?.value
+                ?: throw EvalException("`convert()` second argument must be a unit string, e.g., \"km\"")
+            val to = (argExprs[2] as? Expr.StringLiteral)?.value
+                ?: throw EvalException("`convert()` third argument must be a unit string, e.g., \"m\"")
+
+            val fromUnit = UnitConverter.findUnit(from) ?: throw EvalException("Unknown unit `$from`")
+            val toUnit = UnitConverter.findUnit(to) ?: throw EvalException("Unknown unit `$to`")
+
+            if (fromUnit.category != toUnit.category) {
+                throw EvalException("Cannot convert `${fromUnit.name}` to `${toUnit.name}`: dimension mismatch")
+            }
+
+            return EvaluationResult(UnitConverter.toBase(value, fromUnit, variables), toUnit.symbols.first())
+        }
+
         // Fallback to built-ins
         val builtinArity = Builtins.getArity(name)
         if (builtinArity != null && argExprs.size != builtinArity) {
             throw ArityMismatchException(name, builtinArity, argExprs.size)
         }
 
-        val args = argExprs.map { evaluate(it) }
-        return Builtins.call(name, args)
+        val args = argExprs.map { evaluate(it).value ?: 0.0 }
+        return EvaluationResult(Builtins.call(name, args))
     }
 
     /**
@@ -101,18 +151,20 @@ class Evaluator(
      * mutating `context` (variables or localFunctions) as necessary.
      * Returns the numeric result of the statement, or null if it produces no result.
      */
-    suspend fun evaluateStatement(statement: Statement, context: MathContext): Double? {
+    suspend fun evaluateStatement(statement: Statement, context: MathContext): EvaluationResult {
         return when (statement) {
-            is Statement.Empty -> null
+            is Statement.Empty -> EvaluationResult(null)
 
             is Statement.FunctionDefinition -> {
                 validateVariableOrFunctionName(statement.name)
                 context.localFunctions[statement.name] = LocalFunction(statement.name, statement.params, statement.body)
-                null
+                EvaluationResult(null)
             }
 
             is Statement.ExprStatement -> {
-                evaluate(statement.expr)
+                val res = evaluate(statement.expr)
+                val unit = if (statement.expr is Expr.Quantity) statement.expr.unit else null
+                EvaluationResult(res.value, res.unit ?: unit)
             }
 
             is Statement.Assignment -> {
@@ -134,7 +186,7 @@ class Evaluator(
                     val fileName = arg.value
                     context.variables.remove(name)
                     context.fileVariables[name] = fileName
-                    return null
+                    return EvaluationResult(null)
                 }
 
                 // Intercept File Variable Copy
@@ -142,7 +194,7 @@ class Evaluator(
                     val sourceFile = context.fileVariables[statement.expr.name]!!
                     context.variables.remove(name)
                     context.fileVariables[name] = sourceFile
-                    return null
+                    return EvaluationResult(null)
                 }
 
                 val result = evaluate(statement.expr)
@@ -159,17 +211,21 @@ class Evaluator(
                 val current = context.variables[name]
                     ?: throw UndefinedVariableException(name)
                 val rhs = evaluate(statement.expr)
+
+                val curVal = current.value ?: 0.0
+                val rhsVal = rhs.value ?: 0.0
+
                 val result = when (statement.op) {
-                    TokenKind.PLUS_EQUALS    -> current + rhs
-                    TokenKind.MINUS_EQUALS   -> current - rhs
-                    TokenKind.STAR_EQUALS    -> current * rhs
+                    TokenKind.PLUS_EQUALS    -> EvaluationResult(curVal + rhsVal, current.unit)
+                    TokenKind.MINUS_EQUALS   -> EvaluationResult(curVal - rhsVal, current.unit)
+                    TokenKind.STAR_EQUALS    -> EvaluationResult(curVal * rhsVal, current.unit)
                     TokenKind.SLASH_EQUALS   -> {
-                        if (rhs == 0.0) throw DivisionByZeroException()
-                        current / rhs
+                        if (rhsVal == 0.0) throw DivisionByZeroException()
+                        EvaluationResult(curVal / rhsVal, current.unit)
                     }
                     TokenKind.PERCENT_EQUALS -> {
-                        if (rhs == 0.0) throw DivisionByZeroException()
-                        current % rhs
+                        if (rhsVal == 0.0) throw DivisionByZeroException()
+                        EvaluationResult(curVal % rhsVal, current.unit)
                     }
                     else -> throw EvalException("Unknown compound operator: `${statement.op}`")
                 }
@@ -185,7 +241,7 @@ class Evaluator(
                 validateVariableOrFunctionName(name)
                 val current = context.variables[name]
                     ?: throw UndefinedVariableException(name)
-                val result = current + 1
+                val result = EvaluationResult((current.value ?: 0.0) + 1.0, current.unit)
                 context.fileVariables.remove(name)
                 context.variables[name] = result
                 result
@@ -198,7 +254,7 @@ class Evaluator(
                 validateVariableOrFunctionName(name)
                 val current = context.variables[name]
                     ?: throw UndefinedVariableException(name)
-                val result = current - 1
+                val result = EvaluationResult((current.value ?: 0.0) - 1.0, current.unit)
                 context.fileVariables.remove(name)
                 context.variables[name] = result
                 result
@@ -212,22 +268,70 @@ class Evaluator(
         }
     }
 
-    private suspend fun evaluateBinaryOp(expr: Expr.BinaryOp): Double {
-        val left = evaluate(expr.left)
+    private suspend fun evaluateBinaryOp(expr: Expr.BinaryOp): EvaluationResult {
+        val leftEval = evaluate(expr.left)
+        val rightEval = evaluate(expr.right)
 
         // Percentage addition/subtraction
-        // e.g. `100 + 20%` means `100 * 1.20`
         if (expr.right is Expr.PercentLiteral) {
             val pct = expr.right.value
-            return when (expr.op) {
-                TokenKind.PLUS  -> left * (1.0 + pct / 100.0)
-                TokenKind.MINUS -> left * (1.0 - pct / 100.0)
-                else -> applyOp(left, expr.op, evaluate(expr.right))
+            val leftVal = leftEval.value ?: 0.0
+            return EvaluationResult(when (expr.op) {
+                TokenKind.PLUS  -> leftVal * (1.0 + pct / 100.0)
+                TokenKind.MINUS -> leftVal * (1.0 - pct / 100.0)
+                else -> applyOp(leftVal, expr.op, rightEval.value ?: 0.0)
+            }, leftEval.unit)
+        }
+
+        val leftVal = leftEval.value ?: 0.0
+        val rightVal = rightEval.value ?: 0.0
+
+        val leftUnit = leftEval.unit?.let { UnitConverter.findUnit(it) }
+        val rightUnit = rightEval.unit?.let { UnitConverter.findUnit(it) }
+
+        if (expr.op == TokenKind.PLUS || expr.op == TokenKind.MINUS) {
+            if (leftUnit != null && rightUnit != null) {
+                if (leftUnit.category != rightUnit.category) {
+                    throw EvalException("Cannot calculate ${leftUnit.name} and ${rightUnit.name}: dimension mismatch")
+                }
+
+                val rightDelta = if (leftUnit.category == UnitCategory.TEMPERATURE) {
+                    val rawRight = UnitConverter.fromBase(rightVal, rightUnit, variables)
+                    val slope = UnitConverter.toBase(1.0, rightUnit, variables) - UnitConverter.toBase(0.0, rightUnit, variables)
+                    rawRight * slope
+                } else {
+                    // Pick the smaller unit (smaller factor values translate to smaller absolute unit
+                    // definitions)
+                    rightVal
+                }
+
+                val pickedUnit = if (leftUnit.factor < rightUnit.factor) leftUnit else rightUnit
+                return EvaluationResult(applyOp(leftVal, expr.op, rightDelta), pickedUnit.symbols.first())
+            } else if (leftUnit != null && rightUnit == null) {
+                val scaledRight = UnitConverter.toBase(rightVal, leftUnit, variables)
+                return EvaluationResult(applyOp(leftVal, expr.op, scaledRight), leftUnit.symbols.first())
+            } else if (leftUnit == null && rightUnit != null) {
+                val scaledLeft = UnitConverter.toBase(leftVal, rightUnit, variables)
+                return EvaluationResult(applyOp(scaledLeft, expr.op, rightVal), rightUnit.symbols.first())
             }
         }
 
-        val right = evaluate(expr.right)
-        return applyOp(left, expr.op, right)
+        val resultVal = applyOp(leftVal, expr.op, rightVal)
+
+        // Handle scaling multiplication/division inheritance
+        val resultUnit = if (expr.op == TokenKind.STAR || expr.op == TokenKind.SLASH) {
+            if (leftUnit != null && rightUnit == null) {
+                leftEval.unit
+            } else if (leftUnit == null && rightUnit != null && expr.op == TokenKind.STAR) {
+                rightEval.unit
+            } else {
+                null
+            }
+        } else {
+            leftEval.unit ?: rightEval.unit
+        }
+
+        return EvaluationResult(resultVal, resultUnit)
     }
 
     private fun applyOp(left: Double, op: TokenKind, right: Double): Double = when (op) {
@@ -252,7 +356,7 @@ class Evaluator(
      * It extracts the file reference link, loads that file's evaluated context,
      * and fetches the variable value from it.
      */
-    private suspend fun resolveMemberAccess(expr: Expr.MemberAccess): Double {
+    private suspend fun resolveMemberAccess(expr: Expr.MemberAccess): EvaluationResult {
         val obj = expr.obj
         val name = expr.name
         val fileName = getFileNameFromObj(obj, false)
@@ -280,7 +384,7 @@ class Evaluator(
         return loader.loadContext(fileName, loadingStack + fileName) ?: throw EvalException("Failed to load file `$fileName`")
     }
 
-    private suspend fun resolveMemberFunctionCall(expr: Expr.MemberFunctionCall): Double {
+    private suspend fun resolveMemberFunctionCall(expr: Expr.MemberFunctionCall): EvaluationResult {
         val obj = expr.obj
         val name = expr.name
         val argExprs = expr.args
@@ -292,7 +396,7 @@ class Evaluator(
         val remoteContext = loadRemoteContext(fileName)
 
         val args = argExprs.map { evaluate(it) }
-        val evaluatedArgs = args.map { Expr.NumberLiteral(it) }
+        val evaluatedArgs = args.map { Expr.NumberLiteral(it.value ?: 0.0) }
 
         val remoteEvaluator = Evaluator(
             variables = remoteContext.variables,

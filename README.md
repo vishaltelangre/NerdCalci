@@ -85,6 +85,21 @@ IzzyOnDroid">](https://apt.izzysoft.de/packages/com.vishaltelangre.nerdcalci)
   avg             # 250
   ```
 
+- **Unit Conversions & Arithmetic**
+
+  ```text
+  10km + 500m    # 10500 m
+  5 kg to g      # 5000 g
+  100 °C as °F    # 212 °F
+  ```
+
+- **Numeral Systems**
+
+  ```text
+  5 million       # 5000000
+  1.5 crore       # 15000000
+  ```
+
 - **Comments**
 
   ```text
@@ -118,6 +133,8 @@ IzzyOnDroid">](https://apt.izzysoft.de/packages/com.vishaltelangre.nerdcalci)
   ```text
   sqrt(16)           # 4
   sin(PI/2)          # 1
+  sin(45)            # 0.85 (radians by default)
+  sin(45°)           # 0.7071 (supports degrees)
   ```
 
 ### Editor Features

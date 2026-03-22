@@ -29,7 +29,10 @@ class Lexer(private val source: String) {
         "lineno" to TokenKind.KW_LINENO,
         "linenumber" to TokenKind.KW_LINENUMBER,
         "currentLineNumber" to TokenKind.KW_CURRENTLINENUMBER,
-        "file" to TokenKind.KW_FILE
+        "file" to TokenKind.KW_FILE,
+        "to" to TokenKind.KW_TO,
+        "in" to TokenKind.KW_IN,
+        "as" to TokenKind.KW_AS
     )
 
     fun tokenize(): List<Token> {
@@ -51,7 +54,7 @@ class Lexer(private val source: String) {
                 ch == '"' -> {
                     tokens.add(scanString(start))
                 }
-                ch.isLetter() || ch == '_' -> {
+                ch.isLetter() || ch == '_' || ch == '°' || ch == '\'' -> {
                     tokens.add(scanIdentifier(start))
                 }
                 else -> {
@@ -94,7 +97,7 @@ class Lexer(private val source: String) {
     }
 
     private fun scanIdentifier(start: Int): Token {
-        while (pos < source.length && (source[pos].isLetterOrDigit() || source[pos] == '_')) pos++
+        while (pos < source.length && (source[pos].isLetterOrDigit() || source[pos] == '_' || source[pos] == '²' || source[pos] == '³' || source[pos] == '°')) pos++
         val lexeme = source.substring(start, pos)
         val kind = keywords[lexeme] ?: TokenKind.IDENTIFIER
         return Token(kind, lexeme, position = start)

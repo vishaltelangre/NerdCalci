@@ -408,7 +408,20 @@ class Evaluator(
         val remoteContext = loadRemoteContext(fileName)
 
         val args = argExprs.map { evaluate(it) }
-        val evaluatedArgs = args.map { Expr.NumberLiteral(it.value ?: 0.0) }
+        val evaluatedArgs = args.map {
+            val baseValue = it.value ?: 0.0
+            if (it.unit != null) {
+                val unit = UnitConverter.findUnit(it.unit)
+                if (unit != null) {
+                    val visualValue = UnitConverter.fromBase(baseValue, unit, variables)
+                    Expr.Quantity(Expr.NumberLiteral(visualValue), it.unit)
+                } else {
+                    Expr.NumberLiteral(baseValue)
+                }
+            } else {
+                Expr.NumberLiteral(baseValue)
+            }
+        }
 
         val remoteEvaluator = Evaluator(
             variables = remoteContext.variables,

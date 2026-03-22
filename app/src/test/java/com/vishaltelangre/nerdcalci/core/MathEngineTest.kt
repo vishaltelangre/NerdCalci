@@ -1942,6 +1942,29 @@ class MathEngineTest {
     }
 
     @Test
+    fun `cross-file function call keeps unit`() = runBlocking {
+        val remoteContext = MathContext()
+        remoteContext.localFunctions["addOne"] = LocalFunction(
+            name = "addOne",
+            params = listOf("x"),
+            body = listOf(
+                Statement.ExprStatement(
+                    Expr.BinaryOp(
+                        Expr.Variable("x"),
+                        TokenKind.PLUS,
+                        Expr.Quantity(Expr.NumberLiteral(1.0), "cm")
+                    )
+                )
+            )
+        )
+        val loader = FakeFileContextLoader(mapOf("Summary" to remoteContext))
+
+        val lines = listOf(createLine("file(\"Summary\").addOne(10 cm)"))
+        val result = MathEngine.calculate(lines, loader)
+        assertEquals("11.0 cm", result[0].result)
+    }
+
+    @Test
     fun `standalone string literal throws error`() = runBlocking {
         val lines = listOf(createLine("\"hello\""))
         val result = MathEngine.calculate(lines)

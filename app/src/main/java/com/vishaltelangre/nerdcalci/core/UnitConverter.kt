@@ -86,16 +86,16 @@ object UnitConverter {
         Unit("Astronomical Unit", listOf("au", "AU", "astronomical unit", "astronomical units"), UnitCategory.LENGTH, 149597870700.0),
 
         // --- AREA --- (Base: square meter)
-        Unit("Square Nanometer", listOf("nm²", "nm^2", "nm2", "sqnm", "square nanometer", "square nanometers"), UnitCategory.AREA, 1e-18),
-        Unit("Square Micrometer", listOf("µm²", "µm^2", "µm2", "um2", "squm", "square micrometer", "square micrometers"), UnitCategory.AREA, 1e-12),
-        Unit("Square Millimeter", listOf("mm²", "mm^2", "mm2", "sqmm", "square millimeter", "square millimeters"), UnitCategory.AREA, 1e-6),
-        Unit("Square Centimeter", listOf("cm²", "cm^2", "cm2", "sqcm", "square centimeter", "square centimeters"), UnitCategory.AREA, 1e-4),
-        Unit("Square Meter", listOf("m²", "m^2", "m2", "sqm", "square meter", "square meters"), UnitCategory.AREA, 1.0),
-        Unit("Square Kilometer", listOf("km²", "km^2", "km2", "sqkm", "square kilometer", "square kilometers"), UnitCategory.AREA, 1e6),
-        Unit("Square Inch", listOf("in²", "in^2", "in2", "sqin", "square inch", "square inches"), UnitCategory.AREA, 0.00064516),
-        Unit("Square Feet", listOf("ft²", "ft^2", "ft2", "sqft", "square foot", "square feet"), UnitCategory.AREA, 0.09290304),
-        Unit("Square Yard", listOf("yd²", "yd^2", "yd2", "sqyd", "square yard", "square yards"), UnitCategory.AREA, 0.83612736),
-        Unit("Square Mile", listOf("mi²", "mi^2", "mi2", "sqmi", "square mile", "square miles"), UnitCategory.AREA, 2589988.110336),
+        Unit("Square Nanometer", listOf("nm²", "nm2", "sqnm", "square nanometer", "square nanometers"), UnitCategory.AREA, 1e-18),
+        Unit("Square Micrometer", listOf("µm²","µm2", "um2", "squm", "square micrometer", "square micrometers"), UnitCategory.AREA, 1e-12),
+        Unit("Square Millimeter", listOf("mm²", "mm2", "sqmm", "square millimeter", "square millimeters"), UnitCategory.AREA, 1e-6),
+        Unit("Square Centimeter", listOf("cm²", "cm2", "sqcm", "square centimeter", "square centimeters"), UnitCategory.AREA, 1e-4),
+        Unit("Square Meter", listOf("m²", "m2", "sqm", "square meter", "square meters"), UnitCategory.AREA, 1.0),
+        Unit("Square Kilometer", listOf("km²", "km2", "sqkm", "square kilometer", "square kilometers"), UnitCategory.AREA, 1e6),
+        Unit("Square Inch", listOf("in²", "in2", "sqin", "square inch", "square inches"), UnitCategory.AREA, 0.00064516),
+        Unit("Square Feet", listOf("ft²", "ft2", "sqft", "square foot", "square feet"), UnitCategory.AREA, 0.09290304),
+        Unit("Square Yard", listOf("yd²", "yd2", "sqyd", "square yard", "square yards"), UnitCategory.AREA, 0.83612736),
+        Unit("Square Mile", listOf("mi²", "mi2", "sqmi", "square mile", "square miles"), UnitCategory.AREA, 2589988.110336),
         Unit("Acre", listOf("ac", "acre", "acres"), UnitCategory.AREA, 4046.8564224),
         Unit("Hectare", listOf("ha", "hectare", "hectares"), UnitCategory.AREA, 10000.0),
 
@@ -104,12 +104,12 @@ object UnitConverter {
         Unit("Liter", listOf("L", "l", "liter", "liters"), UnitCategory.VOLUME, 1.0),
         Unit("Kiloliter", listOf("kL", "kl", "kiloliter", "kiloliters"), UnitCategory.VOLUME, 1000.0),
         Unit("Megaliter", listOf("ML", "megaliter", "megaliters"), UnitCategory.VOLUME, 1000000.0),
-        Unit("Cubic Centimeter", listOf("cm³", "cm^3", "cm3", "cc", "cubic centimeter", "cubic centimeters"), UnitCategory.VOLUME, 0.001), // 1cm³ = 1mL
-        Unit("Cubic Meter", listOf("m³", "m^3", "m3", "cubic meter", "cubic meters"), UnitCategory.VOLUME, 1000.0), // 1m³ = 1000L
+        Unit("Cubic Centimeter", listOf("cm³", "cm3", "cc", "cubic centimeter", "cubic centimeters"), UnitCategory.VOLUME, 0.001), // 1cm³ = 1mL
+        Unit("Cubic Meter", listOf("m³", "m3", "cubic meter", "cubic meters"), UnitCategory.VOLUME, 1000.0), // 1m³ = 1000L
         Unit("Deciliter", listOf("dL", "dl", "deciliter", "deciliters"), UnitCategory.VOLUME, 0.1),
         Unit("Centiliter", listOf("cL", "cl", "centiliter", "centiliters"), UnitCategory.VOLUME, 0.01),
         Unit("Microliter", listOf("µL", "uL", "µl", "ul", "microliter", "microliters"), UnitCategory.VOLUME, 1e-6),
-        Unit("Cubic Millimeter", listOf("mm³", "mm^3", "mm3", "cubic millimeter", "cubic millimeters"), UnitCategory.VOLUME, 1e-6),
+        Unit("Cubic Millimeter", listOf("mm³", "mm3", "cubic millimeter", "cubic millimeters"), UnitCategory.VOLUME, 1e-6),
 
         Unit("Gallon", listOf("gal", "gallon", "gallons", "US gallon", "US gallons"), UnitCategory.VOLUME, 3.785411784),
         Unit("Quart", listOf("qt", "quart", "quarts", "US quarts"), UnitCategory.VOLUME, 0.946352946),
@@ -125,8 +125,8 @@ object UnitConverter {
         Unit("Gill (Imperial)", listOf("gi_imp", "imperial gill", "imperial gills"), UnitCategory.VOLUME, 0.1420653125),
         Unit("Tablespoon", listOf("tbsp", "tablespoon", "tablespoons"), UnitCategory.VOLUME, 0.01478676478125),
         Unit("Teaspoon", listOf("tsp", "teaspoon", "teaspoons"), UnitCategory.VOLUME, 0.00492892159375),
-        Unit("Cubic Inch", listOf("in³", "in^3", "in3", "cubic inch", "cubic inches"), UnitCategory.VOLUME, 0.016387064),
-        Unit("Cubic Feet", listOf("ft³", "ft^3", "ft3", "cuft", "cubic foot", "cubic feet"), UnitCategory.VOLUME, 28.316846592),
+        Unit("Cubic Inch", listOf("in³", "in3", "cubic inch", "cubic inches"), UnitCategory.VOLUME, 0.016387064),
+        Unit("Cubic Feet", listOf("ft³", "ft3", "cuft", "cubic foot", "cubic feet"), UnitCategory.VOLUME, 28.316846592),
 
         // --- MASS --- (Base: Gram)
         Unit("Nanogram", listOf("ng", "nanogram", "nanograms"), UnitCategory.MASS, 1e-9),

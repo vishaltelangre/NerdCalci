@@ -584,20 +584,20 @@ cos(60 degree) # 0.5
 
 ### Area
 
-| Unit              | Symbols (Aliases)                                                              | Example  |
-| :---------------- | :----------------------------------------------------------------------------- | :------- |
-| Square Nanometer  | `nm²`, `nm^2`, `nm2`, `sqnm`, `square nanometer`, `square nanometers`          | `10 nm²` |
-| Square Micrometer | `µm²`, `µm^2`, `µm2`, `um2`, `squm`, `square micrometer`, `square micrometers` | `10 µm²` |
-| Square Millimeter | `mm²`, `mm^2`, `mm2`, `sqmm`, `square millimeter`, `square millimeters`        | `10 mm²` |
-| Square Centimeter | `cm²`, `cm^2`, `cm2`, `sqcm`, `square centimeter`, `square centimeters`        | `10 cm²` |
-| Square Meter      | `m²`, `m^2`, `m2`, `sqm`, `square meter`, `square meters`                      | `10 m²`  |
-| Square Kilometer  | `km²`, `km^2`, `km2`, `sqkm`, `square kilometer`, `square kilometers`          | `10 km²` |
-| Square Inch       | `in²`, `in^2`, `in2`, `sqin`, `square inch`, `square inches`                   | `10 in²` |
-| Square Feet       | `ft²`, `ft^2`, `ft2`, `sqft`, `square foot`, `square feet`                     | `10 ft²` |
-| Square Yard       | `yd²`, `yd^2`, `yd2`, `sqyd`, `square yard`, `square yards`                    | `10 yd²` |
-| Square Mile       | `mi²`, `mi^2`, `mi2`, `sqmi`, `square mile`, `square miles`                    | `10 mi²` |
-| Acre              | `ac`, `acre`, `acres`                                                          | `10 ac`  |
-| Hectare           | `ha`, `hectare`, `hectares`                                                    | `10 ha`  |
+| Unit              | Symbols (Aliases)                                                      | Example  |
+| :---------------- | :--------------------------------------------------------------------- | :------- |
+| Square Nanometer  | `nm²`, `nm2`, `sqnm`, `square nanometer`, `square nanometers`          | `10 nm²` |
+| Square Micrometer | `µm²`, `µm2`, `um2`, `squm`, `square micrometer`, `square micrometers` | `10 µm²` |
+| Square Millimeter | `mm²`, `mm2`, `sqmm`, `square millimeter`, `square millimeters`        | `10 mm²` |
+| Square Centimeter | `cm²`, `cm2`, `sqcm`, `square centimeter`, `square centimeters`        | `10 cm²` |
+| Square Meter      | `m²`, `m2`, `sqm`, `square meter`, `square meters`                     | `10 m²`  |
+| Square Kilometer  | `km²`, `km2`, `sqkm`, `square kilometer`, `square kilometers`          | `10 km²` |
+| Square Inch       | `in²`, `in2`, `sqin`, `square inch`, `square inches`                   | `10 in²` |
+| Square Feet       | `ft²`, `ft2`, `sqft`, `square foot`, `square feet`                     | `10 ft²` |
+| Square Yard       | `yd²`, `yd2`, `sqyd`, `square yard`, `square yards`                    | `10 yd²` |
+| Square Mile       | `mi²`, `mi2`, `sqmi`, `square mile`, `square miles`                    | `10 mi²` |
+| Acre              | `ac`, `acre`, `acres`                                                  | `10 ac`  |
+| Hectare           | `ha`, `hectare`, `hectares`                                            | `10 ha`  |
 
 ### Volume
 
@@ -607,12 +607,12 @@ cos(60 degree) # 0.5
 | Liter                  | `L`, `l`, `liter`, `liters`                                         | `10 L`         |
 | Kiloliter              | `kL`, `kl`, `kiloliter`, `kiloliters`                               | `10 kL`        |
 | Megaliter              | `ML`, `megaliter`, `megaliters`                                     | `10 ML`        |
-| Cubic Centimeter       | `cm³`, `cm^3`, `cm3`, `cc`, `cubic centimeter`, `cubic centimeters` | `10 cm³`       |
-| Cubic Meter            | `m³`, `m^3`, `m3`, `cubic meter`, `cubic meters`                    | `10 m³`        |
+| Cubic Centimeter       | `cm³`, `cm3`, `cc`, `cubic centimeter`, `cubic centimeters`         | `10 cm³`       |
+| Cubic Meter            | `m³`, `m3`, `cubic meter`, `cubic meters`                           | `10 m³`        |
 | Deciliter              | `dL`, `dl`, `deciliter`, `deciliters`                               | `10 dL`        |
 | Centiliter             | `cL`, `cl`, `centiliter`, `centiliters`                             | `10 cL`        |
 | Microliter             | `µL`, `uL`, `µl`, `ul`, `microliter`, `microliters`                 | `10 µL`        |
-| Cubic Millimeter       | `mm³`, `mm^3`, `mm3`, `cubic millimeter`, `cubic millimeters`       | `10 mm³`       |
+| Cubic Millimeter       | `mm³`, `mm3`, `cubic millimeter`, `cubic millimeters`               | `10 mm³`       |
 | Gallon                 | `gal`, `gallon`, `gallons`, `US gallon`, `US gallons`               | `10 gal`       |
 | Quart                  | `qt`, `quart`, `quarts`, `US quarts`                                | `10 qt`        |
 | Pint                   | `pint`, `pints`, `US pints`                                         | `10 pint`      |
@@ -626,8 +626,8 @@ cos(60 degree) # 0.5
 | Gill (Imperial)        | `gi_imp`, `imperial gill`, `imperial gills`                         | `10 gi_imp`    |
 | Tablespoon             | `tbsp`, `tablespoon`, `tablespoons`                                 | `10 tbsp`      |
 | Teaspoon               | `tsp`, `teaspoon`, `teaspoons`                                      | `10 tsp`       |
-| Cubic Inch             | `in³`, `in^3`, `in3`, `cubic inch`, `cubic inches`                  | `10 in³`       |
-| Cubic Feet             | `ft³`, `ft^3`, `ft3`, `cuft`, `cubic foot`, `cubic feet`            | `10 ft³`       |
+| Cubic Inch             | `in³`, `in3`, `cubic inch`, `cubic inches`                          | `10 in³`       |
+| Cubic Feet             | `ft³`, `ft3`, `cuft`, `cubic foot`, `cubic feet`                    | `10 ft³`       |
 
 ### Mass
 

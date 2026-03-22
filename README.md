@@ -41,12 +41,12 @@ IzzyOnDroid">](https://apt.izzysoft.de/packages/com.vishaltelangre.nerdcalci)
 
 ## Features
 
-### Smart Calculations
+### Smart calculations
 
 > [!NOTE]
 > All supported operators, functions, and advanced syntax is extensively explained and documented in the [reference guide](REFERENCE.md).
 
-- **Variable Support**
+- #### Variable support
 
   ```text
   a = 100
@@ -54,7 +54,7 @@ IzzyOnDroid">](https://apt.izzysoft.de/packages/com.vishaltelangre.nerdcalci)
   total = a + b  # 300
   ```
 
-- **Composite Operations**
+- #### Composite operations
 
   ```text
   score = 10
@@ -63,7 +63,7 @@ IzzyOnDroid">](https://apt.izzysoft.de/packages/com.vishaltelangre.nerdcalci)
   score /= 4     # 4
   ```
 
-- **Percentage Calculations**
+- #### Percentage calculations
 
   ```text
   20% of 50000    # 10000
@@ -72,7 +72,7 @@ IzzyOnDroid">](https://apt.izzysoft.de/packages/com.vishaltelangre.nerdcalci)
   50000 - 5%      # 47500
   ```
 
-- **Dynamic variables**
+- #### Dynamic variables
 
   ```text
   groceries = 45.50
@@ -85,7 +85,7 @@ IzzyOnDroid">](https://apt.izzysoft.de/packages/com.vishaltelangre.nerdcalci)
   avg             # 250
   ```
 
-- **Unit Conversions & Arithmetic**
+- #### Unit conversions & arithmetic
 
   ```text
   10km + 500m    # 10500 m
@@ -93,21 +93,21 @@ IzzyOnDroid">](https://apt.izzysoft.de/packages/com.vishaltelangre.nerdcalci)
   100 °C as °F    # 212 °F
   ```
 
-- **Numeral Systems**
+- #### Numeral systems
 
   ```text
   5 million       # 5000000
   1.5 crore       # 15000000
   ```
 
-- **Comments**
+- #### Comments
 
   ```text
   price = 1000  # base price
   tax = 18% of price  # 180
   ```
 
-- **User-defined functions**
+- #### User-defined functions
 
   ```text
   sq(x) = x ^ 2
@@ -118,7 +118,7 @@ IzzyOnDroid">](https://apt.izzysoft.de/packages/com.vishaltelangre.nerdcalci)
   salary(160)    # 8800
   ```
 
-- **Cross-file References**
+- #### Cross-file references
 
   ```text
   f = file("Summary")
@@ -128,7 +128,7 @@ IzzyOnDroid">](https://apt.izzysoft.de/packages/com.vishaltelangre.nerdcalci)
   file("Calculations").taxFunc(1000)
   ```
 
-- **Mathematical Functions**
+- #### Mathematical functions
 
   ```text
   sqrt(16)           # 4
@@ -137,30 +137,30 @@ IzzyOnDroid">](https://apt.izzysoft.de/packages/com.vishaltelangre.nerdcalci)
   sin(45°)           # 0.7071 (supports degrees)
   ```
 
-### Editor Features
-- **Syntax Highlighting**: Color-coded variables, numbers, operators, and comments
-- **Smart Error Diagnostics**: See human-friendly explanation of math or syntax errors
+### Editor features
+- **Syntax highlighting**: Color-coded variables, numbers, operators, and comments
+- **Smart error diagnostics**: See human-friendly explanation of math or syntax errors
 - **Auto-completion**: Smart variable suggestions as you type
-- **Line Numbers**: Easy reference and navigation
+- **Line numbers**: Easy reference and navigation
 
-### File Management
-- **Multiple Files**: Create and manage separate calculation files
+### File management
+- **Multiple files**: Create and manage separate calculation files
 - **Auto-save**: Changes are saved automatically
-- **Pin Files**: Keep important files at the top (max 10 pinned files)
+- **Pin files**: Keep important files at the top (max 10 pinned files)
 - **Search**: Search files easily
-- **Duplicate Files**: Create a copy of a file with a new name
+- **Duplicate files**: Create a copy of a file with a new name
 - **Backups**: Automatically or manually backup your files to app storage or a custom folder
 - **Restore from backups**: Restore your files safely with support for conflict resolution (Keep local, replace, or keep both)
-- **Copy with Results**: Copy file content with calculated results to clipboard
+- **Copy with results**: Copy file content with calculated results to clipboard
 - **Export**: Share your calculations as a PNG image or a multi-page PDF
 
-### And More...
+### And more...
 - **Offline**: Works without internet
 - **Undo/Redo**: Up to 30 steps per file
-- **Dark/Light Theme**: System, dark, or light mode
-- **Real-time Results**: See calculations update as you type
+- **Dark/light theme**: System, dark, or light mode
+- **Real-time results**: See calculations update as you type
 
-## Built With
+## Built with
 
 - [**Kotlin**](https://kotlinlang.org/) - Primary programming language
 - [**Jetpack Compose**](https://developer.android.com/compose) - Modern UI toolkit
@@ -178,7 +178,7 @@ A heartfelt thank you to the brilliant creators behind these incredible text-bas
 
 ## Development
 
-### Running Tests
+### Running tests
 
 Run all unit tests:
 

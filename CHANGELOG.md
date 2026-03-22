@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added the degree symbol (`°`) to the shortcut bar for easy entry.
 
 ### Changed
-- The builtin trigonometric functions now accept arguments like `45°` or `45 deg`; by default, the arguments are treated as radians.
+- The built-in trigonometric functions now accept arguments like `45°` or `45 deg`; by default, the arguments are treated as radians.
 
 ## [2.8.0] - 2026-03-20
 ### Added

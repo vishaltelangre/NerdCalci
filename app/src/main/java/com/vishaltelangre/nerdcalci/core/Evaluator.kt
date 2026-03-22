@@ -180,9 +180,7 @@ class Evaluator(
             }
 
             is Statement.ExprStatement -> {
-                val res = evaluate(statement.expr)
-                val unit = if (statement.expr is Expr.Quantity) statement.expr.unit else null
-                EvaluationResult(res.value, res.unit ?: unit)
+                evaluate(statement.expr)
             }
 
             is Statement.Assignment -> {

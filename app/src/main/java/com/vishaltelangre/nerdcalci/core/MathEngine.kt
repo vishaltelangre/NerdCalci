@@ -351,7 +351,7 @@ object MathEngine {
         val safePrecision = precision.coerceIn(Constants.MIN_PRECISION, Constants.MAX_PRECISION)
 
         val trimmedUnit = unitStr.trim().lowercase()
-        val isNumeralSystem = trimmedUnit in listOf("bin", "hex", "oct", "dec")
+        val isNumeralSystem = UnitConverter.isNumeralSystemSymbol(trimmedUnit)
 
         val formattedResult = if (isNumeralSystem) {
             if (value % 1.0 != 0.0) return "Err"

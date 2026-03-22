@@ -414,4 +414,9 @@ object UnitConverter {
         val to = findUnit(toToken) ?: throw EvalException("Unknown unit `$toToken`")
         return convert(value, from, to, variables)
     }
+
+    fun isNumeralSystemSymbol(symbol: String): Boolean {
+        val unit = findUnit(symbol)
+        return unit != null && unit.category == UnitCategory.NUMERAL_SYSTEM
+    }
 }

@@ -217,27 +217,16 @@ class Evaluator(
                 if (target !is Expr.Variable) throw EvalException("Invalid assignment target")
                 val name = target.name
                 validateVariableOrFunctionName(name)
-                val current = context.variables[name]
-                    ?: throw UndefinedVariableException(name)
-                val rhs = evaluate(statement.expr)
 
-                val curVal = current.value ?: 0.0
-                val rhsVal = rhs.value ?: 0.0
-
-                val result = when (statement.op) {
-                    TokenKind.PLUS_EQUALS    -> EvaluationResult(curVal + rhsVal, current.unit)
-                    TokenKind.MINUS_EQUALS   -> EvaluationResult(curVal - rhsVal, current.unit)
-                    TokenKind.STAR_EQUALS    -> EvaluationResult(curVal * rhsVal, current.unit)
-                    TokenKind.SLASH_EQUALS   -> {
-                        if (rhsVal == 0.0) throw DivisionByZeroException()
-                        EvaluationResult(curVal / rhsVal, current.unit)
-                    }
-                    TokenKind.PERCENT_EQUALS -> {
-                        if (rhsVal == 0.0) throw DivisionByZeroException()
-                        EvaluationResult(curVal % rhsVal, current.unit)
-                    }
+                val standardOp = when (statement.op) {
+                    TokenKind.PLUS_EQUALS    -> TokenKind.PLUS
+                    TokenKind.MINUS_EQUALS   -> TokenKind.MINUS
+                    TokenKind.STAR_EQUALS    -> TokenKind.STAR
+                    TokenKind.SLASH_EQUALS   -> TokenKind.SLASH
+                    TokenKind.PERCENT_EQUALS -> TokenKind.PERCENT
                     else -> throw EvalException("Unknown compound operator: `${statement.op}`")
                 }
+                val result = evaluateBinaryOp(Expr.BinaryOp(target, standardOp, statement.expr))
                 context.fileVariables.remove(name)
                 context.variables[name] = result
                 result
@@ -248,9 +237,8 @@ class Evaluator(
                 if (target !is Expr.Variable) throw EvalException("Invalid assignment target")
                 val name = target.name
                 validateVariableOrFunctionName(name)
-                val current = context.variables[name]
-                    ?: throw UndefinedVariableException(name)
-                val result = EvaluationResult((current.value ?: 0.0) + 1.0, current.unit)
+
+                val result = evaluateBinaryOp(Expr.BinaryOp(target, TokenKind.PLUS, Expr.NumberLiteral(1.0)))
                 context.fileVariables.remove(name)
                 context.variables[name] = result
                 result
@@ -261,9 +249,8 @@ class Evaluator(
                 if (target !is Expr.Variable) throw EvalException("Invalid assignment target")
                 val name = target.name
                 validateVariableOrFunctionName(name)
-                val current = context.variables[name]
-                    ?: throw UndefinedVariableException(name)
-                val result = EvaluationResult((current.value ?: 0.0) - 1.0, current.unit)
+
+                val result = evaluateBinaryOp(Expr.BinaryOp(target, TokenKind.MINUS, Expr.NumberLiteral(1.0)))
                 context.fileVariables.remove(name)
                 context.variables[name] = result
                 result

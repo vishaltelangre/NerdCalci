@@ -2245,4 +2245,24 @@ class MathEngineTest {
         assertTrue(err?.contains("Cannot convert unitless number to `Centimeter`") == true)
     }
 
+    @Test
+    fun `compound assignment is quantity aware`() = runBlocking {
+        val lines = listOf(
+            createLine("distance = 10 km"),
+            createLine("distance += 1")
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("11.0 km", result[1].result)
+    }
+
+    @Test
+    fun `increment is quantity aware`() = runBlocking {
+        val lines = listOf(
+            createLine("distance = 10 km"),
+            createLine("distance++")
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("11.0 km", result[1].result)
+    }
+
 }

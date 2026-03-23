@@ -53,7 +53,6 @@ object Builtins {
         "e"  to E,
     )
 
-
     val functionNames: Set<String> get() = functions.keys
 
     val constantNames: Set<String> get() = constants.keys

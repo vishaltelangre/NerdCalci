@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.1] - 2026-03-23
+### Added
+-   Added `pi` and `π` as aliases for the `PI` constant.
+-   Added `e` as an alias for `E`.
+-   Added `π` symbol to the shortcuts bar for quick access.
+
 ## [3.0.0] - 2026-03-22
 ### Added
 - Added support for converting between 100+ units across Time, Length, Weight, Temperature, Data, and more!

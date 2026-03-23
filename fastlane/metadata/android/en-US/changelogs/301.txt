@@ -1,0 +1,3 @@
+- Added `pi` and `π` as aliases for the `PI` constant.
+- Added `e` as an alias for `E`.
+- Added `π` symbol to the shortcuts bar for quick access.

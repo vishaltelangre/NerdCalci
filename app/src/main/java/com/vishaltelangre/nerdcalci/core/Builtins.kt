@@ -47,8 +47,12 @@ object Builtins {
     /** Built-in constants accessible as bare identifiers. */
     private val constants: Map<String, Double> = mapOf(
         "PI" to PI,
+        "pi" to PI,
+        "π"  to PI,
         "E"  to E,
+        "e"  to E,
     )
+
 
     val functionNames: Set<String> get() = functions.keys
 

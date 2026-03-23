@@ -240,10 +240,10 @@ Trigonometric functions expect angles in **radians** by default, but also native
 
 NerdCalci provides common mathematical constants.
 
-| Constant | Value | Description                                                     |
-| -------- | ----- | --------------------------------------------------------------- |
-| `PI`     | 3.14  | The ratio of a circle's circumference to its diameter, i.e. `π` |
-| `E`      | 2.72  | Euler's number, i.e. `e`                                        |
+| Constant        | Value | Description                                 |
+| --------------- | ----- | ------------------------------------------- |
+| `PI`, `pi`, `π` | 3.14  | Ratio of circle's circumference to diameter |
+| `E`, `e`        | 2.72  | Euler's number                              |
 
 ## 6. Comments
 
@@ -839,6 +839,4 @@ NerdCalci supports converting decimal numbers to/from other number bases using t
 | Octal       | `oct`, `octal`       | 8    | `64 in oct`     | `0o100`  |
 | Decimal     | `dec`, `decimal`     | 10   | `10.5 in dec`   | `10`     |
 
-> **💡 Note**: Conversion to other bases casts the value to an Integer (`Long`) before formatting. Floating-point fractions are truncated.
->
 > **⚠️ Important**: NerdCalci currently only supports decimal literals as numerical inputs in expressions. While you can convert **to** Hex/Binary representations for display, you cannot directly use hex literals like `0x10` or `0b1101` in calculation inputs.

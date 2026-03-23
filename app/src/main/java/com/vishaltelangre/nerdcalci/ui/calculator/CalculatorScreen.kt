@@ -783,7 +783,8 @@ fun CalculatorScreen(
                                 .padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 4.dp),
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            val symbols = listOf(".", "_", "(", ")", "#", "=", "+", "-", "×", "÷", "%", "^", "\"", "°")
+                            val symbols = listOf(".", "_", "(", ")", "#", "=", "+", "-", "×", "÷", "%", "^", "\"", "°", "π")
+
                             symbols.forEach { symbol ->
                                 ShortcutButton(text = symbol) {
                                     currentlyFocusedLineId?.let { lineId ->

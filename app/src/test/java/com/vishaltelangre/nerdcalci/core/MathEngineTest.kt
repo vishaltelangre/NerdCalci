@@ -753,7 +753,11 @@ class MathEngineTest {
             createLine("PI", sortOrder = 0),
             createLine("E", sortOrder = 1),
             createLine("PI * 2", sortOrder = 2),
-            createLine("E + 1", sortOrder = 3)
+            createLine("E + 1", sortOrder = 3),
+            createLine("pi", sortOrder = 4),
+            createLine("π", sortOrder = 5),
+            createLine("e", sortOrder = 6)
+
         )
         val result = MathEngine.calculate(lines)
 
@@ -772,7 +776,20 @@ class MathEngineTest {
         val ePlusOne = result[3].result.toDoubleOrNull()
         assertNotNull("E + 1 should return a number, got: ${result[3].result}", ePlusOne)
         assertTrue("E + 1 should be ~3.71, got: $ePlusOne", ePlusOne!! >= 3.71 && ePlusOne <= 3.73)
+
+        val piValueLower = result[4].result.toDoubleOrNull()
+        assertNotNull("pi should return a number, got: ${result[4].result}", piValueLower)
+        assertTrue("pi should be ~3.14, got: $piValueLower", piValueLower!! >= 3.14 && piValueLower <= 3.15)
+
+        val piValueSymbol = result[5].result.toDoubleOrNull()
+        assertNotNull("π should return a number, got: ${result[5].result}", piValueSymbol)
+        assertTrue("π should be ~3.14, got: $piValueSymbol", piValueSymbol!! >= 3.14 && piValueSymbol <= 3.15)
+
+        val eValueLower = result[6].result.toDoubleOrNull()
+        assertNotNull("e should return a number, got: ${result[6].result}", eValueLower)
+        assertTrue("e should be ~2.72, got: $eValueLower", eValueLower!! >= 2.71 && eValueLower <= 2.73)
     }
+
 
     @Test
     fun `functions can be used with variables`() = runBlocking {
@@ -1611,6 +1628,56 @@ class MathEngineTest {
 
         val err = MathEngine.getErrorDetails(lines, 0)
         assertEquals("`_` is a reserved name and cannot be changed", err)
+    }
+
+    @Test
+    fun `assignment to constant PI is not allowed`() = runBlocking {
+        val lines = listOf(createLine("PI = 4", sortOrder = 0))
+        val result = MathEngine.calculate(lines)
+        assertEquals("Err", result[0].result)
+
+        val err = MathEngine.getErrorDetails(lines, 0)
+        assertEquals("`PI` is a reserved name and cannot be changed", err)
+    }
+
+    @Test
+    fun `assignment to constant pi is not allowed`() = runBlocking {
+        val lines = listOf(createLine("pi = 4", sortOrder = 0))
+        val result = MathEngine.calculate(lines)
+        assertEquals("Err", result[0].result)
+
+        val err = MathEngine.getErrorDetails(lines, 0)
+        assertEquals("`pi` is a reserved name and cannot be changed", err)
+    }
+
+    @Test
+    fun `assignment to constant π is not allowed`() = runBlocking {
+        val lines = listOf(createLine("π = 4", sortOrder = 0))
+        val result = MathEngine.calculate(lines)
+        assertEquals("Err", result[0].result)
+
+        val err = MathEngine.getErrorDetails(lines, 0)
+        assertEquals("`π` is a reserved name and cannot be changed", err)
+    }
+
+    @Test
+    fun `assignment to constant E is not allowed`() = runBlocking {
+        val lines = listOf(createLine("E = 4", sortOrder = 0))
+        val result = MathEngine.calculate(lines)
+        assertEquals("Err", result[0].result)
+
+        val err = MathEngine.getErrorDetails(lines, 0)
+        assertEquals("`E` is a reserved name and cannot be changed", err)
+    }
+
+    @Test
+    fun `assignment to constant e is not allowed`() = runBlocking {
+        val lines = listOf(createLine("e = 4", sortOrder = 0))
+        val result = MathEngine.calculate(lines)
+        assertEquals("Err", result[0].result)
+
+        val err = MathEngine.getErrorDetails(lines, 0)
+        assertEquals("`e` is a reserved name and cannot be changed", err)
     }
 
     @Test

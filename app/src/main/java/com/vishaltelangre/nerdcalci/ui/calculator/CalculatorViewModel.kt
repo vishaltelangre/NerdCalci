@@ -36,6 +36,8 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
+import com.vishaltelangre.nerdcalci.utils.FileUtils
+import com.vishaltelangre.nerdcalci.data.sync.SyncManager
 
 sealed class HomeUiEvent {
     data class ShowMessage(val message: String) : HomeUiEvent()
@@ -154,6 +156,24 @@ class CalculatorViewModel(
     )
     val autoBackupEnabled: StateFlow<Boolean> = _autoBackupEnabled
 
+    private val _syncEnabled = MutableStateFlow(
+        prefs?.getBoolean(SyncManager.PREF_SYNC_ENABLED, false) ?: false
+    )
+    val syncEnabled: StateFlow<Boolean> = _syncEnabled
+
+    private val _syncFolderUri = MutableStateFlow(
+        prefs?.getString(SyncManager.PREF_SYNC_FOLDER_URI, null)
+    )
+    val syncFolderUri: StateFlow<String?> = _syncFolderUri
+
+    private val _lastSyncAt = MutableStateFlow(
+        prefs?.getLong(SyncManager.PREF_LAST_SYNC_AT, 0L)?.takeIf { it > 0L }
+    )
+    val lastSyncAt: StateFlow<Long?> = _lastSyncAt
+
+    private val _isSyncing = MutableStateFlow(false)
+    val isSyncing: StateFlow<Boolean> = _isSyncing
+
     private val _backupFrequency = MutableStateFlow(
         BackupFrequency.fromPrefValue(
             prefs?.getString(
@@ -270,6 +290,39 @@ class CalculatorViewModel(
         AutoBackupScheduler.sync(context, prefs ?: BackupManager.prefs(context))
         refreshBackups(context)
     }
+
+    fun setSyncEnabled(context: Context, enabled: Boolean) {
+        _syncEnabled.value = enabled
+        prefs?.edit()?.putBoolean(SyncManager.PREF_SYNC_ENABLED, enabled)?.apply()
+        if (enabled) syncFiles(context)
+    }
+
+    fun setSyncFolder(context: Context, uri: Uri) {
+        _syncFolderUri.value = uri.toString()
+        prefs?.edit()?.putString(SyncManager.PREF_SYNC_FOLDER_URI, uri.toString())?.apply()
+        _syncEnabled.value = true
+        prefs?.edit()?.putBoolean(SyncManager.PREF_SYNC_ENABLED, true)?.apply()
+        syncFiles(context)
+    }
+
+    fun syncFiles(context: Context) {
+        if (_isSyncing.value) return
+        // Do not sync if disabled or no folder
+        if (!_syncEnabled.value || _syncFolderUri.value.isNullOrBlank()) return
+
+        viewModelScope.launch {
+            _isSyncing.value = true
+            val result = SyncManager.performSync(context, dao)
+            _isSyncing.value = false
+            _lastSyncAt.value = System.currentTimeMillis()
+            if (result.isFailure) {
+                _uiEvents.emit(HomeUiEvent.ShowMessage("Sync failed: ${result.exceptionOrNull()?.message}"))
+            } else {
+                refreshBackups(context) // refresh if backups were updated
+            }
+        }
+    }
+
 
     fun refreshBackups(context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -431,32 +484,6 @@ class CalculatorViewModel(
         }
     }
 
-    // Format lines with intelligent result display
-    private fun formatFileContent(lines: List<LineEntity>, precision: Int): String {
-        return lines.joinToString("\n") { line ->
-            val expr = line.expression.trim()
-            val rawResult = line.result.trim()
-            val displayResult = MathEngine.formatDisplayResult(rawResult, precision)
-
-            // Don't show result if:
-            // - Expression is empty or result is empty/error
-            // - It's a comment line (starts with #)
-            // - It's a simple assignment like "a = 5" where result is just "5"
-            when {
-                expr.isEmpty() || rawResult.isBlank() || rawResult == "Err" -> expr
-                expr.trimStart().startsWith("#") -> expr // Full comment line
-                shouldShowResult(expr) -> "$expr # $displayResult"
-                else -> expr
-            }
-        }
-    }
-
-    private fun shouldShowResult(expression: String): Boolean {
-        val hasOperators = expression.any { it in "+-*/%^" }
-        val simpleAssignmentRegex = Regex("""^\s*[a-zA-Z][a-zA-Z0-9\s]*\s*=\s*[\d.]+\s*$""")
-        if (simpleAssignmentRegex.matches(expression)) return false
-        return hasOperators || !expression.contains("=")
-    }
 
     // Update a line and recalculate everything from it downward
     fun updateLine(updatedLine: LineEntity) {
@@ -567,12 +594,14 @@ class CalculatorViewModel(
         }
     }
 
-    fun deleteFile(fileId: Long) {
+    fun deleteFile(context: Context, fileId: Long) {
         viewModelScope.launch(Dispatchers.IO) {
             calculationMutex.withLock {
                 val file = dao.getFileById(fileId)
                 if (file != null) {
                     dao.deleteFile(file)
+                    // Delete external file in sync folder too
+                    SyncManager.deleteExternalFile(context, file.name)
                     // Purge history for this file
                     undoStacks.remove(fileId)
                     redoStacks.remove(fileId)
@@ -647,7 +676,7 @@ class CalculatorViewModel(
         }
     }
 
-    suspend fun renameFile(fileId: Long, newName: String): Boolean {
+    suspend fun renameFile(context: Context, fileId: Long, newName: String): Boolean {
         return withContext(Dispatchers.IO) {
             val trimmedName = newName.trim()
             if (trimmedName.isBlank()) return@withContext false
@@ -664,6 +693,8 @@ class CalculatorViewModel(
             if (dao.doesFileExist(finalName, fileId)) return@withContext false
             val file = dao.getFileById(fileId)
             if (file != null) {
+                // Delete old external file in sync folder to prevent re-import as foreign file
+                SyncManager.deleteExternalFile(context, file.name)
                 dao.updateFile(file.copy(name = finalName))
                 true
             } else {
@@ -738,7 +769,7 @@ class CalculatorViewModel(
         return withContext(Dispatchers.IO) {
             try {
                 val lines = dao.getLinesForFileSync(fileId)
-                val content = formatFileContent(lines, precision.value)
+                val content = FileUtils.formatFileContent(lines, precision.value)
                 withContext(Dispatchers.Main) { copyToClipboard(context, content, "NerdCalci File") }
                 Result.success("Copied to clipboard")
             } catch (e: Exception) {

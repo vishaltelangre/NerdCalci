@@ -13,6 +13,7 @@ import com.vishaltelangre.nerdcalci.data.local.CalculatorDao
 import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
 import com.vishaltelangre.nerdcalci.utils.FilenameUtils
+import com.vishaltelangre.nerdcalci.utils.FileUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -375,7 +376,7 @@ object BackupManager {
             val precision = prefs(context).getInt("precision", Constants.DEFAULT_PRECISION)
             filesList.forEach { file ->
                 val lines = dao.getLinesForFileSync(file.id)
-                val content = formatFileContent(lines, precision)
+                val content = FileUtils.formatFileContent(lines, precision)
 
                 val entry = ZipEntry("${file.name}${Constants.EXPORT_FILE_EXTENSION}")
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -470,7 +471,7 @@ object BackupManager {
                                         val potentialResult = line.substring(lastHashIndex + 1).trim()
                                         val isResult = potentialResult == "Err" || potentialResult.toDoubleOrNull() != null
 
-                                        if (isResult && shouldShowResult(exprCandidate)) {
+                                         if (isResult && FileUtils.shouldShowResult(exprCandidate)) {
                                             exprCandidate
                                         } else {
                                             line.trim()
@@ -592,29 +593,6 @@ object BackupManager {
         return RestoreResult(addedCount + overwrittenCount + skippedCount, overwrittenCount, skippedCount, addedCount)
     }
 
-    private fun formatFileContent(lines: List<LineEntity>, precision: Int): String {
-        return lines.joinToString("\n") { line ->
-            val expr = line.expression.trim()
-            val rawResult = line.result.trim()
-            val displayResult = MathEngine.formatDisplayResult(rawResult, precision)
-
-            when {
-                expr.isEmpty() || rawResult.isBlank() || rawResult == "Err" -> expr
-                expr.trimStart().startsWith("#") -> expr
-                shouldShowResult(expr) -> "$expr # $displayResult"
-                else -> expr
-            }
-        }
-    }
-
-    private fun shouldShowResult(expression: String): Boolean {
-        val hasOperators = expression.any { it in "+-*/%^" }
-        val simpleAssignmentRegex = Regex("""^\s*[a-zA-Z][a-zA-Z0-9\s]*\s*=\s*[\d.]+\s*$""")
-        if (simpleAssignmentRegex.matches(expression)) {
-            return false
-        }
-        return hasOperators || !expression.contains("=")
-    }
 
     private fun generateBackupFileName(): String {
         val formatter = SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.getDefault())

@@ -34,8 +34,10 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.RssFeed
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.getValue
@@ -107,6 +109,10 @@ fun HomeScreen(
     // Handle UI events like Undo Snackbars and other messages
     val excludedFileIds by viewModel.excludedFileIds.collectAsState(initial = emptySet())
 
+    val syncEnabled by viewModel.syncEnabled.collectAsState()
+    val isSyncing by viewModel.isSyncing.collectAsState()
+    val lastSyncAt by viewModel.lastSyncAt.collectAsState()
+
     // Cleanup "Deleted" items when the user interact with the list or navigates away
     DisposableEffect(Unit) {
         onDispose {
@@ -141,6 +147,18 @@ fun HomeScreen(
                     }
                 },
                 actions = {
+                    if (syncEnabled) {
+                        IconButton(
+                            onClick = { viewModel.syncFiles(context) },
+                            enabled = !isSyncing
+                        ) {
+                            Icon(
+                                Icons.Default.Sync,
+                                contentDescription = "Sync files",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
                     IconButton(
                         onClick = onSearchClick,
                         enabled = files.isNotEmpty()
@@ -267,44 +285,50 @@ fun HomeScreen(
                     .fillMaxSize()
                     .padding(padding)
             ) {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 96.dp)
+                PullToRefreshBox(
+                    isRefreshing = isSyncing,
+                    onRefresh = { viewModel.syncFiles(context) },
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    if (visiblePinnedFiles.isNotEmpty()) {
-                        item { SectionHeader(title = "Pinned") }
-                        addDismissibleFileItems(
-                            files = visiblePinnedFiles,
-                            excludedIds = excludedFileIds,
-                            onFileClick = onFileClick,
-                            onRename = { id, name -> coroutineScope.launch { viewModel.renameFile(id, name) } },
-                            onDuplicate = { id -> viewModel.duplicateFile(id) { onFileClick(it) } },
-                            onDelete = { id -> viewModel.deleteFile(id) },
-                            onTogglePin = { id -> viewModel.togglePinFile(id) },
-                            onUndo = { viewModel.undoHideFile(it) },
-                            onDismiss = { viewModel.hideFile(it) },
-                            viewModel = viewModel
-                        )
-                    }
-
-                    if (visibleUnpinnedFiles.isNotEmpty()) {
-                        item {
-                            SectionHeader(
-                                title = if (visiblePinnedFiles.isNotEmpty()) "All files" else "Files"
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 96.dp)
+                    ) {
+                        if (visiblePinnedFiles.isNotEmpty()) {
+                            item { SectionHeader(title = "Pinned") }
+                            addDismissibleFileItems(
+                                files = visiblePinnedFiles,
+                                excludedIds = excludedFileIds,
+                                onFileClick = onFileClick,
+                                onRename = { id, name -> coroutineScope.launch { viewModel.renameFile(context, id, name) } },
+                                onDuplicate = { id -> viewModel.duplicateFile(id) { onFileClick(it) } },
+                                onDelete = { id -> viewModel.deleteFile(context, id) },
+                                onTogglePin = { id -> viewModel.togglePinFile(id) },
+                                onUndo = { viewModel.undoHideFile(it) },
+                                onDismiss = { viewModel.hideFile(it) },
+                                viewModel = viewModel
                             )
                         }
-                        addDismissibleFileItems(
-                            files = visibleUnpinnedFiles,
-                            excludedIds = excludedFileIds,
-                            onFileClick = onFileClick,
-                            onRename = { id, name -> coroutineScope.launch { viewModel.renameFile(id, name) } },
-                            onDuplicate = { id -> viewModel.duplicateFile(id) { onFileClick(it) } },
-                            onDelete = { id -> viewModel.deleteFile(id) },
-                            onTogglePin = { id -> viewModel.togglePinFile(id) },
-                            onUndo = { viewModel.undoHideFile(it) },
-                            onDismiss = { viewModel.hideFile(it) },
-                            viewModel = viewModel
-                        )
+
+                        if (visibleUnpinnedFiles.isNotEmpty()) {
+                            item {
+                                SectionHeader(
+                                    title = if (visiblePinnedFiles.isNotEmpty()) "All files" else "Files"
+                                )
+                            }
+                            addDismissibleFileItems(
+                                files = visibleUnpinnedFiles,
+                                excludedIds = excludedFileIds,
+                                onFileClick = onFileClick,
+                                onRename = { id, name -> coroutineScope.launch { viewModel.renameFile(context, id, name) } },
+                                onDuplicate = { id -> viewModel.duplicateFile(id) { onFileClick(it) } },
+                                onDelete = { id -> viewModel.deleteFile(context, id) },
+                                onTogglePin = { id -> viewModel.togglePinFile(id) },
+                                onUndo = { viewModel.undoHideFile(it) },
+                                onDismiss = { viewModel.hideFile(it) },
+                                viewModel = viewModel
+                            )
+                        }
                     }
                 }
             }

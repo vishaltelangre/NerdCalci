@@ -156,10 +156,10 @@ object BackupManager {
                         ?: throw Exception("Could not open input stream")
                 }, onProgress, onConflict)
 
-                Log.d(TAG, "Imported ${stats.processedCount} file(s), ${stats.overwrittenCount} overwritten from ${inputUri.lastPathSegment}")
+                Log.d(TAG, "Imported ${stats.processedCount} file(s), ${stats.overwrittenCount} overwritten from ${FileUtils.formatPathForDisplay(inputUri.lastPathSegment ?: "")}")
                 Result.success(stats)
             } catch (e: Exception) {
-                Log.e(TAG, "Import failed from ${inputUri.lastPathSegment}", e)
+                Log.e(TAG, "Import failed from ${FileUtils.formatPathForDisplay(inputUri.lastPathSegment ?: "")}", e)
                 Result.failure(e)
             }
         }

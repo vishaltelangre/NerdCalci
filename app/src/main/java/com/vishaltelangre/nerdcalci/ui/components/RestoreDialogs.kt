@@ -406,22 +406,6 @@ fun formatBackupLocationText(
     return if (mode == BackupLocationMode.APP_STORAGE) {
         "Default app storage"
     } else {
-        "Custom folder (${shortenPath(customFolderSummary)})"
+        "Custom folder ($customFolderSummary)"
     }
-}
-
-private fun shortenPath(path: String): String {
-    val trimmed = path.trim()
-    if (trimmed.isEmpty()) return path
-
-    val segments = trimmed.split("/").filter { it.isNotBlank() }
-    if (segments.size > 3) {
-        return "${segments[0]}/${segments[1]}/.../${segments.last()}"
-    }
-
-    if (trimmed.length > 40) {
-        return "${trimmed.take(18)}...${trimmed.takeLast(16)}"
-    }
-
-    return trimmed
 }

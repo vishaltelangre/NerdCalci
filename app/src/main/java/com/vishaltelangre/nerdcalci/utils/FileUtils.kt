@@ -1,5 +1,7 @@
 package com.vishaltelangre.nerdcalci.utils
 
+import android.net.Uri
+import android.os.Environment
 import com.vishaltelangre.nerdcalci.core.MathEngine
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
 import org.json.JSONObject
@@ -98,5 +100,30 @@ object FileUtils {
         val simpleAssignmentRegex = Regex("""^\s*[a-zA-Z][a-zA-Z0-9\s]*\s*=\s*[\d.]+\s*$""")
         if (simpleAssignmentRegex.matches(expression)) return false
         return hasOperators || !expression.contains("=")
+    }
+
+    /**
+     * Translates SAF-specific path prefixes (e.g., "primary:") into human-readable absolute paths.
+     *
+     * IMPORTANT: This is intended for DISPLAY PURPOSES ONLY (UI, logs).
+     * Do NOT use the returned path for actual file I/O logic, as direct file access
+     * is restricted on modern Android versions (Scoped Storage). Always use [Uri]
+     * and [android.content.ContentResolver] for file operations.
+     */
+    fun formatPathForDisplay(path: String?): String {
+        if (path == null || path.isBlank()) return ""
+
+        return if (path.startsWith("primary:")) {
+            val root = Environment.getExternalStorageDirectory().absolutePath
+            "$root/${path.removePrefix("primary:")}"
+        } else {
+            val parts = path.split(":", limit = 2)
+            if (parts.size == 2) {
+                // Secondary storage (SD card)
+                "/storage/${parts[0]}/${parts[1]}"
+            } else {
+                path
+            }
+        }
     }
 }

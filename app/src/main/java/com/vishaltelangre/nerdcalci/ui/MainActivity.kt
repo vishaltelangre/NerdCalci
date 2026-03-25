@@ -62,6 +62,7 @@ import com.vishaltelangre.nerdcalci.ui.settings.SettingsScreen
 import com.vishaltelangre.nerdcalci.ui.changelog.ChangelogScreen
 import com.vishaltelangre.nerdcalci.ui.search.SearchScreen
 import com.vishaltelangre.nerdcalci.ui.theme.NerdCalciTheme
+import com.vishaltelangre.nerdcalci.utils.FileUtils
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -138,11 +139,16 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
     val syncFolderUri by viewModel.syncFolderUri.collectAsState()
     val lastSyncAt by viewModel.lastSyncAt.collectAsState()
     val customBackupFolderSummary = remember(customBackupFolderUri) {
-        customBackupFolderUri?.let { uriString ->
+        val uriString = customBackupFolderUri
+        if (uriString != null) {
             val parsed = Uri.parse(uriString)
-            Uri.decode(parsed.lastPathSegment ?: "")
-                .ifBlank { "Custom folder selected" }
-        } ?: "Not selected"
+            val segment = parsed.lastPathSegment ?: ""
+            val decoded = Uri.decode(segment) ?: ""
+            val formatted = FileUtils.formatPathForDisplay(decoded)
+            if (formatted.isBlank()) "Custom folder selected" else formatted
+        } else {
+            "Not selected"
+        }
     }
     val currentLocationText = formatBackupLocationText(
         mode = backupLocationMode,

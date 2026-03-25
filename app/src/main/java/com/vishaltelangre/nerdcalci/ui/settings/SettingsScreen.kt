@@ -78,6 +78,7 @@ import com.vishaltelangre.nerdcalci.core.Constants
 import com.vishaltelangre.nerdcalci.data.backup.BackupFileInfo
 import com.vishaltelangre.nerdcalci.data.backup.BackupFrequency
 import com.vishaltelangre.nerdcalci.data.backup.BackupLocationMode
+import com.vishaltelangre.nerdcalci.utils.FileUtils
 import com.vishaltelangre.nerdcalci.ui.components.RestoreBackupListDialog
 import com.vishaltelangre.nerdcalci.ui.components.RestoreSourceDialog
 import com.vishaltelangre.nerdcalci.ui.components.formatBackupLocationText
@@ -365,7 +366,7 @@ fun SettingsScreen(
                 SettingsItem(
                     icon = Icons.Default.Folder,
                     title = "Sync location",
-                    subtitle = syncFolderUri?.let { Uri.parse(it).lastPathSegment } ?: "Choose folder",
+                    subtitle = syncFolderUri?.let { FileUtils.formatPathForDisplay(Uri.decode(Uri.parse(it).lastPathSegment ?: "")) } ?: "Choose folder",
                     onClick = onChooseSyncFolder
                 )
 

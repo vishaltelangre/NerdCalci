@@ -13,6 +13,8 @@ import com.vishaltelangre.nerdcalci.data.local.CalculatorDao
 import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
 import com.vishaltelangre.nerdcalci.utils.FileUtils
+import com.vishaltelangre.nerdcalci.utils.FileMetadata
+import com.vishaltelangre.nerdcalci.utils.ParsedFileContent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -50,7 +52,7 @@ object SyncManager {
                     ?: return@withContext Result.failure(Exception("Sync folder unavailable"))
 
                 val roomFiles = dao.getAllFiles().first()
-                val safFiles = folder.listFiles()
+                val safFiles = (folder.listFiles() ?: emptyArray())
                     .filter { it.isFile && (it.name?.endsWith(Constants.EXPORT_FILE_EXTENSION) == true) }
                     .associateBy { it.name ?: "" }
 
@@ -110,20 +112,25 @@ object SyncManager {
         var safFile = folder.findFile(fileNameWithExtension)
 
         if (safFile == null) {
-            safFile = folder.createFile("text/plain", fileNameWithExtension)
+            safFile = folder.createFile("application/octet-stream", fileNameWithExtension)
                 ?: throw Exception("Could not create file $fileNameWithExtension")
         }
 
         val lines = dao.getLinesForFileSync(file.id)
         val precision = prefs(context).getInt("precision", Constants.DEFAULT_PRECISION)
-        val content = FileUtils.formatFileContent(lines, precision)
+        val content = FileUtils.formatFileContent(
+            lines = lines,
+            precision = precision,
+            metadata = FileMetadata(isPinned = file.isPinned, lastModified = file.lastModified)
+        )
 
         context.contentResolver.openOutputStream(safFile.uri)?.use { output ->
              output.write(content.toByteArray())
         }
         // Force timestamp match to avoid loop sync trigger
-        // DocumentFile doesn't support setting lastModified directly, usually sets to "now"
-        dao.touchFile(file.id, safFile.lastModified())
+        // Using System.currentTimeMillis() is close to the SAF file's "now" timestamp and settles inside our
+        // 2-second offset buffer safely, while safFile.lastModified() sometimes reads a cached stale value.
+        dao.touchFile(file.id, System.currentTimeMillis())
     }
 
     private suspend fun importFromSaf(context: Context, safFile: DocumentFile, dao: CalculatorDao) {
@@ -134,14 +141,17 @@ object SyncManager {
              BufferedReader(InputStreamReader(input)).readText()
         } ?: return
 
-        val expressions = parseExpressions(content)
-        val safModified = safFile.lastModified()
+        val parsed = FileUtils.parseFileContent(content)
+        val expressions = parsed.expressions
+        val metadata = parsed.metadata
+        val safModified = if (metadata.lastModified != -1L) metadata.lastModified else safFile.lastModified()
 
         // Sync updates or insertions
         val existingFile = dao.getFileByName(fileName)
         val fileId = if (existingFile != null) {
             // Update existing
             dao.restoreLines(existingFile.id, emptyList()) // clear lines or use proper replace
+            dao.updateFileFromSync(existingFile.copy(isPinned = metadata.isPinned, lastModified = safModified))
             existingFile.id
         } else {
             // Create new
@@ -149,7 +159,8 @@ object SyncManager {
                 FileEntity(
                     name = fileName,
                     lastModified = safModified,
-                    createdAt = safModified
+                    createdAt = safModified,
+                    isPinned = metadata.isPinned
                 )
             )
         }
@@ -194,22 +205,4 @@ object SyncManager {
         }
     }
 
-    private fun parseExpressions(content: String): List<String> {
-        return content.lines().map { line ->
-            val lastHashIndex = line.lastIndexOf('#')
-            if (lastHashIndex > 0) {
-                val exprCandidate = line.substring(0, lastHashIndex).trim()
-                val potentialResult = line.substring(lastHashIndex + 1).trim()
-                val isResult = potentialResult == "Err" || potentialResult.toDoubleOrNull() != null
-
-                if (isResult && FileUtils.shouldShowResult(exprCandidate)) {
-                    exprCandidate
-                } else {
-                    line.trim()
-                }
-            } else {
-                line.trim()
-            }
-        }
-    }
 }

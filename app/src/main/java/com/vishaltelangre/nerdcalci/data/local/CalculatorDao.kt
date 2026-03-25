@@ -115,6 +115,11 @@ abstract class CalculatorDao {
     }
 
     @Transaction
+    open suspend fun updateFileFromSync(file: FileEntity) {
+        internalUpdateFile(file)
+    }
+
+    @Transaction
     open suspend fun createNewFile(baseName: String, createdAt: Long): Long {
         val uniqueName = FilenameUtils.generateUniqueFileName(baseName) { name ->
             doesFileExist(name)

@@ -14,6 +14,8 @@ import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
 import com.vishaltelangre.nerdcalci.utils.FilenameUtils
 import com.vishaltelangre.nerdcalci.utils.FileUtils
+import com.vishaltelangre.nerdcalci.utils.FileMetadata
+import com.vishaltelangre.nerdcalci.utils.ParsedFileContent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -376,7 +378,11 @@ object BackupManager {
             val precision = prefs(context).getInt("precision", Constants.DEFAULT_PRECISION)
             filesList.forEach { file ->
                 val lines = dao.getLinesForFileSync(file.id)
-                val content = FileUtils.formatFileContent(lines, precision)
+                val content = FileUtils.formatFileContent(
+                    lines = lines,
+                    precision = precision,
+                    metadata = FileMetadata(isPinned = file.isPinned, lastModified = file.lastModified)
+                )
 
                 val entry = ZipEntry("${file.name}${Constants.EXPORT_FILE_EXTENSION}")
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -463,23 +469,9 @@ object BackupManager {
 
                             val content = BufferedReader(InputStreamReader(zipIn)).readText()
 
-                            val expressions = content.lines()
-                                .map { line ->
-                                    val lastHashIndex = line.lastIndexOf('#')
-                                    if (lastHashIndex > 0) {
-                                        val exprCandidate = line.substring(0, lastHashIndex).trim()
-                                        val potentialResult = line.substring(lastHashIndex + 1).trim()
-                                        val isResult = potentialResult == "Err" || potentialResult.toDoubleOrNull() != null
-
-                                         if (isResult && FileUtils.shouldShowResult(exprCandidate)) {
-                                            exprCandidate
-                                        } else {
-                                            line.trim()
-                                        }
-                                    } else {
-                                        line.trim()
-                                    }
-                                }
+                             val parsed = FileUtils.parseFileContent(content)
+                             val expressions = parsed.expressions
+                             val metadata = parsed.metadata
 
                             var isOverwrite = false
                             val finalFileName = if (existingNames.contains(fileName)) {
@@ -539,7 +531,8 @@ object BackupManager {
                                 FileEntity(
                                     name = finalFileName,
                                     lastModified = finalModifiedTime,
-                                    createdAt = finalCreateTime
+                                    createdAt = finalCreateTime,
+                                    isPinned = metadata.isPinned
                                 )
                             )
                             currentInsertedFile = FileEntity(

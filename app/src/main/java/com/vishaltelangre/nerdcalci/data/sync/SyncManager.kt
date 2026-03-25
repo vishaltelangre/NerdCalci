@@ -31,6 +31,7 @@ object SyncManager {
     const val PREF_SYNC_ENABLED = "sync_enabled"
     const val PREF_SYNC_FOLDER_URI = "sync_folder_uri"
     const val PREF_LAST_SYNC_AT = "last_sync_at"
+    const val PREF_LAST_SYNC_FILES = "last_sync_files"
 
     fun prefs(context: Context): SharedPreferences {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -51,6 +52,9 @@ object SyncManager {
                 val folder = DocumentFile.fromTreeUri(context, treeUri)
                     ?: return@withContext Result.failure(Exception("Sync folder unavailable"))
 
+                val lastSyncFiles = prefs.getStringSet(PREF_LAST_SYNC_FILES, emptySet()) ?: emptySet()
+                val currentSyncSnapshot = mutableSetOf<String>()
+
                 val roomFiles = dao.getAllFiles().first()
                 val safFiles = (folder.listFiles() ?: emptyArray())
                     .filter { it.isFile && (it.name?.endsWith(Constants.EXPORT_FILE_EXTENSION) == true) }
@@ -68,6 +72,7 @@ object SyncManager {
 
                     if (safFile != null) {
                         processedSafNames.add(expectedName)
+                        currentSyncSnapshot.add(expectedName)
                         val safModified = safFile.lastModified()
                         val roomModified = roomFile.lastModified
 
@@ -84,21 +89,39 @@ object SyncManager {
                             inboundCount++
                         }
                     } else {
-                        // File not in SAF -> Outboundsync creation
-                        writeToSaf(context, folder, roomFile, dao)
-                        outboundCount++
+                        if (lastSyncFiles.contains(expectedName)) {
+                            // File was present in last sync, now missing in SAF -> Remote Delete
+                            dao.deleteFile(roomFile)
+                            inboundCount++
+                        } else {
+                            // File not in SAF and not in last sync -> Local creation
+                            writeToSaf(context, folder, roomFile, dao)
+                            currentSyncSnapshot.add(expectedName)
+                            outboundCount++
+                        }
                     }
                 }
 
                 // Inbound sync for files only in SAF
                 safFiles.forEach { (name, safFile) ->
                     if (!processedSafNames.contains(name)) {
-                        importFromSaf(context, safFile, dao)
-                        inboundCount++
+                        if (lastSyncFiles.contains(name)) {
+                            // File in SAF, not in Room, but was in last sync -> Local Delete
+                            safFile.delete()
+                            outboundCount++
+                        } else {
+                            // File in SAF, not in Room, not in last sync -> Remote Creation
+                            importFromSaf(context, safFile, dao)
+                            currentSyncSnapshot.add(name)
+                            inboundCount++
+                        }
                     }
                 }
 
-                prefs.edit().putLong(PREF_LAST_SYNC_AT, System.currentTimeMillis()).apply()
+                prefs.edit()
+                    .putLong(PREF_LAST_SYNC_AT, System.currentTimeMillis())
+                    .putStringSet(PREF_LAST_SYNC_FILES, currentSyncSnapshot)
+                    .apply()
                 Result.success("Synced: Inbound $inboundCount, Outbound $outboundCount")
             } catch (e: Exception) {
                 Log.e(TAG, "Sync failed", e)

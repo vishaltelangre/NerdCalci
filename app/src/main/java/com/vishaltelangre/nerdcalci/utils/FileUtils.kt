@@ -6,7 +6,8 @@ import org.json.JSONObject
 
 data class FileMetadata(
     val isPinned: Boolean = false,
-    val lastModified: Long = -1L
+    val lastModified: Long = -1L,
+    val createdAt: Long = -1L
 )
 
 data class ParsedFileContent(
@@ -22,10 +23,11 @@ object FileUtils {
         val sb = StringBuilder()
 
         metadata?.let {
-            if (it.isPinned || it.lastModified != -1L) {
+            if (it.isPinned || it.lastModified != -1L || it.createdAt != -1L) {
                 val json = JSONObject()
                 if (it.isPinned) json.put("isPinned", true)
                 if (it.lastModified != -1L) json.put("lastModified", it.lastModified)
+                if (it.createdAt != -1L) json.put("createdAt", it.createdAt)
                 sb.append("# @metadata ").append(json.toString()).append("\n")
             }
         }
@@ -53,6 +55,7 @@ object FileUtils {
         val lines = content.lines()
         var isPinned = false
         var lastModified = -1L
+        var createdAt = -1L
         val dataLines = mutableListOf<String>()
 
         for (line in lines) {
@@ -63,6 +66,7 @@ object FileUtils {
                     val json = JSONObject(jsonStr)
                     isPinned = json.optBoolean("isPinned", false)
                     lastModified = json.optLong("lastModified", -1L)
+                    createdAt = json.optLong("createdAt", -1L)
                 } catch (_: Exception) {}
             } else {
                 dataLines.add(line)
@@ -86,7 +90,7 @@ object FileUtils {
             }
         }
 
-        return ParsedFileContent(expressions, FileMetadata(isPinned, lastModified))
+        return ParsedFileContent(expressions, FileMetadata(isPinned, lastModified, createdAt))
     }
 
     fun shouldShowResult(expression: String): Boolean {

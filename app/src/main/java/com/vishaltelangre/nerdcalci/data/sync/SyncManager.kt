@@ -144,7 +144,11 @@ object SyncManager {
         val content = FileUtils.formatFileContent(
             lines = lines,
             precision = precision,
-            metadata = FileMetadata(isPinned = file.isPinned, lastModified = file.lastModified)
+            metadata = FileMetadata(
+                isPinned = file.isPinned, 
+                lastModified = file.lastModified,
+                createdAt = file.createdAt
+            )
         )
 
         context.contentResolver.openOutputStream(safFile.uri)?.use { output ->
@@ -174,7 +178,12 @@ object SyncManager {
         val fileId = if (existingFile != null) {
             // Update existing
             dao.restoreLines(existingFile.id, emptyList()) // clear lines or use proper replace
-            dao.updateFileFromSync(existingFile.copy(isPinned = metadata.isPinned, lastModified = safModified))
+            val updatedFile = existingFile.copy(
+                isPinned = metadata.isPinned,
+                lastModified = safModified,
+                createdAt = if (metadata.createdAt != -1L) metadata.createdAt else existingFile.createdAt
+            )
+            dao.updateFileFromSync(updatedFile)
             existingFile.id
         } else {
             // Create new
@@ -182,7 +191,7 @@ object SyncManager {
                 FileEntity(
                     name = fileName,
                     lastModified = safModified,
-                    createdAt = safModified,
+                    createdAt = if (metadata.createdAt != -1L) metadata.createdAt else safModified,
                     isPinned = metadata.isPinned
                 )
             )

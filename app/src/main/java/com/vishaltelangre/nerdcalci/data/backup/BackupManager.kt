@@ -381,7 +381,11 @@ object BackupManager {
                 val content = FileUtils.formatFileContent(
                     lines = lines,
                     precision = precision,
-                    metadata = FileMetadata(isPinned = file.isPinned, lastModified = file.lastModified)
+                    metadata = FileMetadata(
+                        isPinned = file.isPinned,
+                        lastModified = file.lastModified,
+                        createdAt = file.createdAt
+                    )
                 )
 
                 val entry = ZipEntry("${file.name}${Constants.EXPORT_FILE_EXTENSION}")
@@ -511,21 +515,29 @@ object BackupManager {
                                 fileName
                             }
 
-                            val modifiedTime = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            val entryModifiedTime = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                                 entry.lastModifiedTime?.toMillis() ?: entry.time
                             } else {
                                 entry.time
                             }
-                            val createTime = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                entry.creationTime?.toMillis() ?: modifiedTime
+                            val entryCreatedTime = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                entry.creationTime?.toMillis() ?: -1L
                             } else {
-                                modifiedTime
+                                -1L
                             }
 
-                    // ZipEntry.time defaults to -1 if no time info is present.
-                    // We only use System.currentTimeMillis() as a final fallback.
-                            val finalModifiedTime = if (modifiedTime != -1L) modifiedTime else System.currentTimeMillis()
-                            val finalCreateTime = if (createTime != -1L) createTime else finalModifiedTime
+                            // Priority: embedded metadata -> ZIP entry time -> System.currentTimeMillis()
+                            val finalModifiedTime = when {
+                                metadata.lastModified != -1L -> metadata.lastModified
+                                entryModifiedTime != -1L -> entryModifiedTime
+                                else -> System.currentTimeMillis()
+                            }
+                            // Priority: embedded metadata -> ZIP creation time fallback -> finalModifiedTime fallback
+                            val finalCreateTime = when {
+                                metadata.createdAt != -1L -> metadata.createdAt
+                                entryCreatedTime != -1L -> entryCreatedTime
+                                else -> finalModifiedTime
+                            }
 
                             val fileId = dao.insertFile(
                                 FileEntity(

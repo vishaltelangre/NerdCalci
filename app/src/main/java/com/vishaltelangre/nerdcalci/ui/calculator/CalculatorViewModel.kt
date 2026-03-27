@@ -38,6 +38,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import com.vishaltelangre.nerdcalci.utils.FileUtils
+import java.util.concurrent.atomic.AtomicBoolean
 import com.vishaltelangre.nerdcalci.data.sync.SyncManager
 
 sealed class HomeUiEvent {
@@ -173,6 +174,7 @@ class CalculatorViewModel(
     )
     val lastSyncAt: StateFlow<Long?> = _lastSyncAt
 
+    private val syncInProgress = AtomicBoolean(false)
     private val _isSyncing = MutableStateFlow(false)
     val isSyncing: StateFlow<Boolean> = _isSyncing
 
@@ -308,19 +310,23 @@ class CalculatorViewModel(
     }
 
     fun syncFiles(context: Context) {
-        if (_isSyncing.value) return
         // Do not sync if disabled or no folder
         if (!_syncEnabled.value || _syncFolderUri.value.isNullOrBlank()) return
+        if (!syncInProgress.compareAndSet(false, true)) return
 
         viewModelScope.launch {
             _isSyncing.value = true
-            val result = SyncManager.performSync(context, dao)
-            _isSyncing.value = false
-            if (result.isFailure) {
-                _uiEvents.emit(HomeUiEvent.ShowMessage("Sync failed: ${result.exceptionOrNull()?.message}"))
-            } else {
-                _lastSyncAt.value = System.currentTimeMillis()
-                refreshBackups(context) // refresh if backups were updated
+            try {
+                val result = SyncManager.performSync(context, dao)
+                if (result.isFailure) {
+                    _uiEvents.emit(HomeUiEvent.ShowMessage("Sync failed: ${result.exceptionOrNull()?.message}"))
+                } else {
+                    _lastSyncAt.value = System.currentTimeMillis()
+                    refreshBackups(context) // refresh if backups were updated
+                }
+            } finally {
+                _isSyncing.value = false
+                syncInProgress.set(false)
             }
         }
     }
@@ -595,37 +601,38 @@ class CalculatorViewModel(
         }
     }
 
-    fun deleteFile(context: Context, fileId: Long) {
-        viewModelScope.launch(Dispatchers.IO) {
+    private suspend fun performSyncAwareDelete(context: Context, fileId: Long): Boolean {
+        val file = dao.getFileById(fileId) ?: return false
+
+        val deleteError: Throwable? = try {
+            SyncManager.deleteExternalFile(context, file.name)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to delete external file before local delete", e)
+            e
+        }
+
+        if (deleteError != null) {
+            Log.e(TAG, "Aborting local delete because external delete failed: ${deleteError.message}")
+            _uiEvents.emit(
+                HomeUiEvent.ShowMessage(
+                    deleteError.message ?: "Failed to delete external file"
+                )
+            )
+            return false
+        }
+
+        dao.deleteFile(file)
+        undoStacks.remove(fileId)
+        redoStacks.remove(fileId)
+        updateUndoRedoState(fileId)
+        _excludedFileIds.value = _excludedFileIds.value - fileId
+        return true
+    }
+
+    suspend fun deleteFile(context: Context, fileId: Long): Boolean {
+        return withContext(Dispatchers.IO) {
             calculationMutex.withLock {
-                val file = dao.getFileById(fileId)
-                if (file != null) {
-                    // Delete external file in sync folder too
-                    val deleteError: Throwable? = try {
-                        SyncManager.deleteExternalFile(context, file.name)
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Failed to delete external file before local delete", e)
-                        e
-                    }
-
-                    if (deleteError != null) {
-                        Log.e(TAG, "Aborting local delete because external delete failed: ${deleteError.message}")
-                        _uiEvents.emit(
-                            HomeUiEvent.ShowMessage(
-                                deleteError.message
-                                    ?: "Failed to delete external file"
-                            )
-                        )
-                        return@withLock
-                    }
-
-                    dao.deleteFile(file)
-                    // Purge history for this file
-                    undoStacks.remove(fileId)
-                    redoStacks.remove(fileId)
-                    updateUndoRedoState(fileId)
-                    _excludedFileIds.value = _excludedFileIds.value - fileId
-                }
+                performSyncAwareDelete(context, fileId)
             }
         }
     }
@@ -648,20 +655,14 @@ class CalculatorViewModel(
         }
     }
 
-    fun permanentDeleteExclusions() {
+    fun permanentDeleteExclusions(context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
             calculationMutex.withLock {
                 val idsToDelete = _excludedFileIds.value
                 if (idsToDelete.isEmpty()) return@withLock
                 idsToDelete.forEach { fileId ->
-                    val file = dao.getFileById(fileId)
-                    if (file != null) {
-                        dao.deleteFile(file)
-                        undoStacks.remove(fileId)
-                        redoStacks.remove(fileId)
-                    }
+                    performSyncAwareDelete(context, fileId)
                 }
-                _excludedFileIds.value = _excludedFileIds.value - idsToDelete
             }
         }
     }
@@ -712,13 +713,8 @@ class CalculatorViewModel(
             val file = dao.getFileById(fileId)
             if (file != null) {
                 // Delete old external file in sync folder to prevent re-import as foreign file
-                val deleteError = try {
-                    SyncManager.deleteExternalFile(context, file.name)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to delete external file before rename", e)
-                    e
-                }
-                if (deleteError != null) return@withContext false
+                val deleteError = SyncManager.deleteExternalFile(context, file.name)
+                if (deleteError != null) throw deleteError
                 dao.updateFile(file.copy(name = finalName))
                 true
             } else {

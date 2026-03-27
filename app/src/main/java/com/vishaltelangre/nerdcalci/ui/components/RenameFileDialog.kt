@@ -14,6 +14,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -22,16 +23,16 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
-
 import com.vishaltelangre.nerdcalci.core.Constants
 import com.vishaltelangre.nerdcalci.ui.calculator.CalculatorViewModel
+import kotlinx.coroutines.launch
 
 /**
  * Reusable dialog for renaming a file.
  *
  * @param currentName Current file name to show in the text field
  * @param onDismiss Callback when dialog is dismissed without renaming
- * @param onConfirm Callback with new name when rename is confirmed
+ * @param onConfirm Callback with new name when rename is confirmed. Returns true on success.
  */
 @Composable
 fun RenameFileDialog(
@@ -39,7 +40,7 @@ fun RenameFileDialog(
     fileId: Long,
     currentName: String,
     onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit
+    onConfirm: suspend (String) -> Boolean
 ) {
     var textFieldValue by remember {
         mutableStateOf(
@@ -50,10 +51,13 @@ fun RenameFileDialog(
         )
     }
     var isNameTaken by remember { mutableStateOf(false) }
+    var renameError by remember { mutableStateOf<String?>(null) }
     val focusRequester = remember { FocusRequester() }
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(textFieldValue.text) {
         val trimmedText = textFieldValue.text.trim()
+        renameError = null
         if (trimmedText.isNotEmpty() && trimmedText != currentName) {
             isNameTaken = viewModel.doesFileExist(trimmedText, fileId)
         } else {
@@ -62,8 +66,18 @@ fun RenameFileDialog(
     }
 
     fun confirmRename() {
-        if (textFieldValue.text.isNotBlank() && !isNameTaken) {
-            onConfirm(textFieldValue.text.trim())
+        if (textFieldValue.text.isBlank() || isNameTaken) return
+        coroutineScope.launch {
+            val success = runCatching { onConfirm(textFieldValue.text.trim()) }
+                .getOrElse { throwable ->
+                    renameError = throwable.message ?: "Failed to rename file"
+                    false
+                }
+            if (success) {
+                onDismiss()
+            } else if (renameError == null) {
+                renameError = "Failed to rename file"
+            }
         }
     }
 
@@ -91,6 +105,14 @@ fun RenameFileDialog(
                 if (isNameTaken) {
                     Text(
                         text = "A file with this name already exists",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+                if (renameError != null) {
+                    Text(
+                        text = renameError ?: "",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.padding(top = 4.dp)

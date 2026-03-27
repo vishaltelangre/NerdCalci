@@ -112,18 +112,17 @@ class BackupManagerTest {
 
         override suspend fun duplicateFile(fileId: Long, newName: String, newSyncId: String, lastModified: Long?): Long {
             val original = files.find { it.id == fileId } ?: return -1L
-            val nextId = (files.maxOfOrNull { it.id } ?: 0L) + 1L
+            val nextId = nextFileId++
             val copy = original.copy(
-                id = nextId, 
-                name = newName, 
-                syncId = newSyncId, 
+                id = nextId,
+                name = newName,
+                syncId = newSyncId,
                 lastModified = lastModified ?: System.currentTimeMillis()
             )
             files.add(copy)
-            
+
             val originalLines = lines.filter { it.fileId == fileId }
-            var lineId = (lines.maxOfOrNull { l -> l.id } ?: 0L) + 1L
-            val newLines = originalLines.map { it.copy(id = lineId++, fileId = nextId) }
+            val newLines = originalLines.map { it.copy(id = nextLineId++, fileId = nextId) }
             lines.addAll(newLines)
             return nextId
         }

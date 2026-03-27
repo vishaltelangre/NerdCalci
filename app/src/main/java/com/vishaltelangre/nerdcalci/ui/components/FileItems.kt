@@ -285,7 +285,7 @@ internal fun FileItem(
             onDismiss = { showRenameDialog = false },
             onConfirm = { newName ->
                 onRename(newName.take(Constants.MAX_FILE_NAME_LENGTH))
-                showRenameDialog = false
+                true
             }
         )
     }

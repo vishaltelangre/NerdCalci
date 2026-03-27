@@ -116,7 +116,7 @@ fun HomeScreen(
     // Cleanup "Deleted" items when the user interact with the list or navigates away
     DisposableEffect(Unit) {
         onDispose {
-            viewModel.permanentDeleteExclusions()
+            viewModel.permanentDeleteExclusions(context)
         }
     }
 
@@ -295,10 +295,11 @@ fun HomeScreen(
                             visiblePinnedFiles = visiblePinnedFiles,
                             visibleUnpinnedFiles = visibleUnpinnedFiles,
                             excludedFileIds = excludedFileIds,
-                            onFileClick = onFileClick,
-                            coroutineScope = coroutineScope,
-                            context = context,
-                            viewModel = viewModel
+                onFileClick = onFileClick,
+                coroutineScope = coroutineScope,
+                snackbarHostState = snackbarHostState,
+                context = context,
+                viewModel = viewModel
                         )
                     }
                 } else {
@@ -306,10 +307,11 @@ fun HomeScreen(
                         visiblePinnedFiles = visiblePinnedFiles,
                         visibleUnpinnedFiles = visibleUnpinnedFiles,
                         excludedFileIds = excludedFileIds,
-                        onFileClick = onFileClick,
-                        coroutineScope = coroutineScope,
-                        context = context,
-                        viewModel = viewModel
+                onFileClick = onFileClick,
+                coroutineScope = coroutineScope,
+                snackbarHostState = snackbarHostState,
+                context = context,
+                viewModel = viewModel
                     )
                 }
             }
@@ -324,6 +326,7 @@ private fun HomeFileList(
     excludedFileIds: Set<Long>,
     onFileClick: (Long) -> Unit,
     coroutineScope: CoroutineScope,
+    snackbarHostState: SnackbarHostState,
     context: android.content.Context,
     viewModel: CalculatorViewModel
 ) {
@@ -337,9 +340,21 @@ private fun HomeFileList(
                 files = visiblePinnedFiles,
                 excludedIds = excludedFileIds,
                 onFileClick = onFileClick,
-                onRename = { id, name -> coroutineScope.launch { viewModel.renameFile(context, id, name) } },
+                onRename = { id, name ->
+                    coroutineScope.launch {
+                        if (!viewModel.renameFile(context, id, name)) {
+                            snackbarHostState.showSnackbar("Failed to rename file")
+                        }
+                    }
+                },
                 onDuplicate = { id -> viewModel.duplicateFile(id) { onFileClick(it) } },
-                onDelete = { id -> viewModel.deleteFile(context, id) },
+                onDelete = { id ->
+                    coroutineScope.launch {
+                        if (!viewModel.deleteFile(context, id)) {
+                            snackbarHostState.showSnackbar("Failed to delete file")
+                        }
+                    }
+                },
                 onTogglePin = { id -> viewModel.togglePinFile(id) },
                 onUndo = { viewModel.undoHideFile(it) },
                 onDismiss = { viewModel.hideFile(it) },
@@ -357,9 +372,21 @@ private fun HomeFileList(
                 files = visibleUnpinnedFiles,
                 excludedIds = excludedFileIds,
                 onFileClick = onFileClick,
-                onRename = { id, name -> coroutineScope.launch { viewModel.renameFile(context, id, name) } },
+                onRename = { id, name ->
+                    coroutineScope.launch {
+                        if (!viewModel.renameFile(context, id, name)) {
+                            snackbarHostState.showSnackbar("Failed to rename file")
+                        }
+                    }
+                },
                 onDuplicate = { id -> viewModel.duplicateFile(id) { onFileClick(it) } },
-                onDelete = { id -> viewModel.deleteFile(context, id) },
+                onDelete = { id ->
+                    coroutineScope.launch {
+                        if (!viewModel.deleteFile(context, id)) {
+                            snackbarHostState.showSnackbar("Failed to delete file")
+                        }
+                    }
+                },
                 onTogglePin = { id -> viewModel.togglePinFile(id) },
                 onUndo = { viewModel.undoHideFile(it) },
                 onDismiss = { viewModel.hideFile(it) },

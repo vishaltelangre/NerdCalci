@@ -999,10 +999,11 @@ fun CalculatorScreen(
             currentName = fileName,
             onDismiss = { showRenameDialog = false },
             onConfirm = { newName ->
-                coroutineScope.launch {
-                    viewModel.renameFile(context, fileId, newName)
+                val success = viewModel.renameFile(context, fileId, newName)
+                if (success) {
+                    showRenameDialog = false
                 }
-                showRenameDialog = false
+                success
             }
         )
     }
@@ -1045,9 +1046,11 @@ fun CalculatorScreen(
             fileName = fileName,
             onDismiss = { showDeleteConfirmDialog = false },
             onConfirm = {
-                showDeleteConfirmDialog = false
-                viewModel.deleteFile(context, fileId)
-                onBack()
+                val fileDeleted = viewModel.deleteFile(context, fileId)
+                if (fileDeleted) {
+                    onBack()
+                }
+                fileDeleted
             }
         )
     }

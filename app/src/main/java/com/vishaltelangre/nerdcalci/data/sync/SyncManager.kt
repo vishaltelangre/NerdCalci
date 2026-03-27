@@ -31,6 +31,8 @@ private const val TAG = "SyncManager"
 private const val SYNC_TIMESTAMP_TOLERANCE_MS = 2000L
 private const val SAF_METADATA_RETRY_DELAY_MS = 150L
 private const val SAF_METADATA_MAX_RETRIES = 5
+private const val MAX_CONFLICT_FILENAME_ATTEMPTS = 100
+private const val MAX_REMOTE_HASH_FILE_SIZE_BYTES = 5L * 1024L * 1024L // 5MB
 
 object SyncManager {
     const val PREFS_NAME = "nerdcalci_prefs"
@@ -333,10 +335,17 @@ object SyncManager {
             val lines = dao.getLinesForFileSync(roomFile.id)
             val body = FileUtils.formatFileBody(lines, precision)
             val computedHash = FileUtils.calculateHash(body)
-            val remoteHash = safFile.contentHash ?: context.contentResolver.openInputStream(safFile.documentFile.uri)?.use { input ->
-                val text = BufferedReader(InputStreamReader(input)).readText()
-                FileUtils.calculateHash(text)
-            } ?: ""
+            val remoteHash = safFile.contentHash ?: run {
+                val fileSize = safFile.documentFile.length()
+                if (fileSize <= 0L || fileSize > MAX_REMOTE_HASH_FILE_SIZE_BYTES) {
+                    Log.w(TAG, "Skipping remote hash for $filename due to size=$fileSize")
+                    ""
+                } else {
+                    context.contentResolver.openInputStream(safFile.documentFile.uri)?.use { input ->
+                        FileUtils.calculateHash(input)
+                    } ?: ""
+                }
+            }
             if (computedHash == remoteHash && roomFile.isPinned == safFile.isPinned) {
                 Log.d(TAG, "DECISION: LOCAL_METADATA_ONLY_UPDATE for ${roomFile.name} (hashes and pin match)")
                 currentSyncSnapshot[syncId] = LastSyncInfo(roomFile.name + EXPORT_FILE_EXTENSION, safFile.osLastModified, safFile.lastModified, roomFile.isPinned, computedHash)
@@ -376,7 +385,7 @@ object SyncManager {
         val existingNames = dao.getAllFilesSync().map { it.name }.toHashSet()
         var suffix = 0
 
-        while (true) {
+        while (suffix < MAX_CONFLICT_FILENAME_ATTEMPTS) {
             val conflictName = if (suffix == 0) {
                 "$baseName (conflict copy)"
             } else {
@@ -389,6 +398,7 @@ object SyncManager {
 
             suffix++
         }
+        throw Exception("Could not generate unique conflict filename after $MAX_CONFLICT_FILENAME_ATTEMPTS attempts")
     }
 
     private suspend fun handleLocalOnlyFile(
@@ -437,7 +447,7 @@ object SyncManager {
         currentSyncSnapshot: MutableMap<String, LastSyncInfo>,
         stats: SyncStats
     ) {
-        val syncId = safFile.syncId ?: return
+        val syncId = safFile.syncId
         val filename = safFile.name
 
         if (lastInfo != null && !isFirstSync) {

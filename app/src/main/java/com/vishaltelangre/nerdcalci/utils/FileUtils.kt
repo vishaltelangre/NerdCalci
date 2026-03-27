@@ -6,8 +6,6 @@ import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStream
-import java.io.InputStreamReader
-
 import java.security.MessageDigest
 
 data class FileMetadata(
@@ -32,6 +30,20 @@ object FileUtils {
         val digest = MessageDigest.getInstance("SHA-256")
         val hashBytes = digest.digest(content.toByteArray())
         return hashBytes.joinToString("") { "%02x".format(it) }
+    }
+
+    /**
+     * Calculates a SHA-256 hash by streaming the content from an [InputStream].
+     */
+    fun calculateHash(inputStream: InputStream): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        while (true) {
+            val read = inputStream.read(buffer)
+            if (read <= 0) break
+            digest.update(buffer, 0, read)
+        }
+        return digest.digest().joinToString("") { "%02x".format(it) }
     }
 
     /**

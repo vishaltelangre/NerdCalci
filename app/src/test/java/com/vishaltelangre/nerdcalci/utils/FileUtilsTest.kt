@@ -1,5 +1,6 @@
 package com.vishaltelangre.nerdcalci.utils
 
+import java.io.ByteArrayInputStream
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -113,5 +114,14 @@ class FileUtilsTest {
         
         val relative = "relative/path"
         assertEquals(relative, FileUtils.formatPathForDisplayInternal(relative, root))
+    }
+
+    @Test
+    fun `calculateHash streams input without reading all text`() {
+        val input = ByteArrayInputStream("streamed content".toByteArray())
+
+        val hash = FileUtils.calculateHash(input)
+
+        assertEquals("d9f93d83f082633feac23f4e3d5dea332ca698ba7b00dd6ef8a9e93bae65aa6b", hash)
     }
 }

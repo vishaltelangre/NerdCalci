@@ -1,6 +1,5 @@
 package com.vishaltelangre.nerdcalci.utils
 
-import android.net.Uri
 import android.os.Environment
 import com.vishaltelangre.nerdcalci.core.MathEngine
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity

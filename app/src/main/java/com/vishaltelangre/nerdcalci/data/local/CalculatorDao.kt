@@ -84,6 +84,11 @@ abstract class CalculatorDao {
         touchFile(fileId)
     }
 
+    @Transaction
+    open suspend fun renameFileFromSync(fileId: Long, name: String) {
+        internalRenameFile(fileId, name)
+    }
+
     @Query("UPDATE files SET name = :name WHERE id = :fileId")
     protected abstract suspend fun internalRenameFile(fileId: Long, name: String)
 
@@ -143,11 +148,14 @@ abstract class CalculatorDao {
     @Transaction
     open suspend fun duplicateFile(fileId: Long, newName: String, newSyncId: String, lastModified: Long? = null): Long {
         val originalFile = getFileById(fileId) ?: throw Exception("Original file not found")
+        val now = System.currentTimeMillis()
         val newFile = originalFile.copy(
             id = 0L,
             name = newName,
+            createdAt = now,
+            isPinned = false,
             syncId = newSyncId,
-            lastModified = lastModified ?: System.currentTimeMillis()
+            lastModified = lastModified ?: now
         )
         val newFileId = insertFile(newFile)
         val originalLines = getLinesForFileSync(fileId)

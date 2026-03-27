@@ -270,7 +270,7 @@ object SyncManager {
 
             if (remoteRenamed && !localRenamed) {
                 Log.d(TAG, "RENAME DETECTED (Remote win): Local ${roomFile.name} -> Remote $filename")
-                dao.renameFile(roomFile.id, filename.removeSuffix(EXPORT_FILE_EXTENSION))
+                dao.renameFileFromSync(roomFile.id, filename.removeSuffix(EXPORT_FILE_EXTENSION))
             } else if (localRenamed && !remoteRenamed) {
                 Log.d(TAG, "RENAME DETECTED (Local win): Remote $filename -> $localNameWithExt")
                 if (safFile.documentFile.renameTo(localNameWithExt)) {
@@ -280,7 +280,7 @@ object SyncManager {
                 }
             } else if (localRenamed && remoteRenamed) {
                 Log.d(TAG, "RENAME CONFLICT: Local ${roomFile.name} vs Remote $filename. Remote name wins for simplicity.")
-                dao.renameFile(roomFile.id, filename.removeSuffix(EXPORT_FILE_EXTENSION))
+                dao.renameFileFromSync(roomFile.id, filename.removeSuffix(EXPORT_FILE_EXTENSION))
             }
         }
 
@@ -536,7 +536,7 @@ object SyncManager {
             // Check if name collision exists for a DIFFERENT syncId (should be rare)
             dao.getFileByName(fileName)?.let { existingFile ->
                 val conflictName = "$fileName (local)"
-                dao.renameFile(existingFile.id, conflictName)
+                dao.renameFileFromSync(existingFile.id, conflictName)
                 Log.w(TAG, "Name collision: Renamed existing local file to $conflictName")
             }
 

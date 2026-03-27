@@ -162,6 +162,10 @@ class SyncManagerTest {
             if (idx != -1) files[idx] = file
         }
 
+        override suspend fun internalUpdateFiles(files: List<FileEntity>) {
+            files.forEach { internalUpdateFile(it) }
+        }
+
         override suspend fun deleteFile(file: FileEntity) {
             files.removeIf { it.id == file.id }
             internalDeleteLinesForFile(file.id)

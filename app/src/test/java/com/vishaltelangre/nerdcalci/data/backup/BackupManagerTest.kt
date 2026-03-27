@@ -83,6 +83,10 @@ class BackupManagerTest {
             lines.forEach { internalUpdateLine(it) }
         }
 
+        override suspend fun internalUpdateFiles(files: List<FileEntity>) {
+            files.forEach { internalUpdateFile(it) }
+        }
+
         override suspend fun internalDeleteLine(line: LineEntity) {
             lines.removeAll { it.id == line.id }
         }

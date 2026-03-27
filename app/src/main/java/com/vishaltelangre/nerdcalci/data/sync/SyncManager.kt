@@ -584,22 +584,29 @@ object SyncManager {
         return SyncResult(safFile.lastModified(), parsed.metadata.lastModified, computedHash, parsed.metadata.isPinned)
     }
 
-    suspend fun deleteExternalFile(context: Context, fileName: String) {
-        withContext(Dispatchers.IO) {
+    suspend fun deleteExternalFile(context: Context, fileName: String): Throwable? {
+        return withContext(Dispatchers.IO) {
             try {
                 val prefs = prefs(context)
-                val folderUri = prefs.getString(PREF_SYNC_FOLDER_URI, null) ?: return@withContext
-                val folder = DocumentFile.fromTreeUri(context, Uri.parse(folderUri)) ?: return@withContext
+                val folderUri = prefs.getString(PREF_SYNC_FOLDER_URI, null)
+                    ?: return@withContext IllegalStateException("Sync folder not set")
+                val folder = DocumentFile.fromTreeUri(context, Uri.parse(folderUri))
+                    ?: return@withContext IllegalStateException("Sync folder unavailable")
 
                 val fileNameWithExtension = "$fileName$EXPORT_FILE_EXTENSION"
                 val safFile = folder.findFile(fileNameWithExtension)
+                    ?: return@withContext IllegalStateException("External file not found: $fileNameWithExtension")
 
                 // Get syncId from file before deleting it so we can clean up snapshot
-                val syncId = context.contentResolver.openInputStream(safFile?.uri ?: return@withContext)?.use {
+                val syncId = context.contentResolver.openInputStream(safFile.uri)?.use {
                     FileUtils.readMetadataHeader(it.bufferedReader())?.id
                 }
 
-                safFile.delete()
+                val deleted = safFile.delete()
+                if (!deleted) {
+                    Log.e(TAG, "Failed to delete external file: $fileNameWithExtension")
+                    return@withContext IllegalStateException("Failed to delete external file: $fileNameWithExtension")
+                }
 
                 if (syncId != null) {
                     val encodedMap = prefs.getString(PREF_LAST_SYNC_FILES, null)
@@ -610,8 +617,10 @@ object SyncManager {
                             .apply()
                     }
                 }
+                null
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to delete external file", e)
+                e
             }
         }
     }

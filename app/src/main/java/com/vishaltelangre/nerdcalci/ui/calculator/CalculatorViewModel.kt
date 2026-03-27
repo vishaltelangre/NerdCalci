@@ -7,6 +7,7 @@ import android.content.SharedPreferences
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.util.Log
 import com.vishaltelangre.nerdcalci.core.Constants
 import com.vishaltelangre.nerdcalci.core.MathEngine
 import com.vishaltelangre.nerdcalci.core.FileContextLoader
@@ -42,6 +43,8 @@ import com.vishaltelangre.nerdcalci.data.sync.SyncManager
 sealed class HomeUiEvent {
     data class ShowMessage(val message: String) : HomeUiEvent()
 }
+
+private const val TAG = "CalculatorViewModel"
 
 data class FileSnapshot(
     val lines: List<LineEntity>
@@ -597,15 +600,32 @@ class CalculatorViewModel(
             calculationMutex.withLock {
                 val file = dao.getFileById(fileId)
                 if (file != null) {
-                    dao.deleteFile(file)
                     // Delete external file in sync folder too
-                    SyncManager.deleteExternalFile(context, file.name)
+                    val deleteError: Throwable? = try {
+                        SyncManager.deleteExternalFile(context, file.name)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to delete external file before local delete", e)
+                        e
+                    }
+
+                    if (deleteError != null) {
+                        Log.e(TAG, "Aborting local delete because external delete failed: ${deleteError.message}")
+                        _uiEvents.emit(
+                            HomeUiEvent.ShowMessage(
+                                deleteError.message
+                                    ?: "Failed to delete external file"
+                            )
+                        )
+                        return@withLock
+                    }
+
+                    dao.deleteFile(file)
                     // Purge history for this file
                     undoStacks.remove(fileId)
                     redoStacks.remove(fileId)
                     updateUndoRedoState(fileId)
+                    _excludedFileIds.value = _excludedFileIds.value - fileId
                 }
-                _excludedFileIds.value = _excludedFileIds.value - fileId
             }
         }
     }
@@ -692,7 +712,13 @@ class CalculatorViewModel(
             val file = dao.getFileById(fileId)
             if (file != null) {
                 // Delete old external file in sync folder to prevent re-import as foreign file
-                SyncManager.deleteExternalFile(context, file.name)
+                val deleteError = try {
+                    SyncManager.deleteExternalFile(context, file.name)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to delete external file before rename", e)
+                    e
+                }
+                if (deleteError != null) return@withContext false
                 dao.updateFile(file.copy(name = finalName))
                 true
             } else {

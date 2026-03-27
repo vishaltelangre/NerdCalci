@@ -69,6 +69,9 @@ abstract class CalculatorDao {
     @Update
     protected abstract suspend fun internalUpdateFile(file: FileEntity)
 
+    @Update
+    protected abstract suspend fun internalUpdateFiles(files: List<FileEntity>)
+
     @Delete
     abstract suspend fun deleteFile(file: FileEntity)
 
@@ -130,6 +133,13 @@ abstract class CalculatorDao {
     open suspend fun updateFileFromSync(file: FileEntity) {
         internalUpdateFile(file)
     }
+
+    @Transaction
+    open suspend fun updateFilesFromSync(files: List<FileEntity>) {
+        if (files.isEmpty()) return
+        internalUpdateFiles(files)
+    }
+
     @Transaction
     open suspend fun duplicateFile(fileId: Long, newName: String, newSyncId: String, lastModified: Long? = null): Long {
         val originalFile = getFileById(fileId) ?: throw Exception("Original file not found")

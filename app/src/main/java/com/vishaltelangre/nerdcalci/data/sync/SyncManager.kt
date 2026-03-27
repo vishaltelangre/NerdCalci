@@ -25,9 +25,12 @@ import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.util.UUID
+import kotlin.math.abs
 
 private const val TAG = "SyncManager"
 private const val SYNC_TIMESTAMP_TOLERANCE_MS = 2000L
+private const val SAF_METADATA_RETRY_DELAY_MS = 150L
+private const val SAF_METADATA_MAX_RETRIES = 5
 
 object SyncManager {
     const val PREFS_NAME = "nerdcalci_prefs"
@@ -116,12 +119,18 @@ object SyncManager {
             val stats = SyncStats()
 
             // 1. Gather Room Files and ensure they have a syncId
-            val roomFiles = dao.getAllFiles().first().map { file ->
-                if (file.syncId.isEmpty()) {
-                    val updated = file.copy(syncId = UUID.randomUUID().toString())
-                    dao.updateFileFromSync(updated)
-                    updated
-                } else file
+            val roomFilesSnapshot = dao.getAllFiles().first()
+            val filesToUpdate = roomFilesSnapshot.mapNotNull { file ->
+                if (file.syncId.isEmpty()) file.copy(syncId = UUID.randomUUID().toString()) else null
+            }
+            if (filesToUpdate.isNotEmpty()) {
+                dao.updateFilesFromSync(filesToUpdate)
+            }
+            val roomFiles = if (filesToUpdate.isEmpty()) {
+                roomFilesSnapshot
+            } else {
+                val updatedById = filesToUpdate.associateBy { it.id }
+                roomFilesSnapshot.map { file -> updatedById[file.id] ?: file }
             }
             val roomFilesById = roomFiles.associateBy { it.syncId }
 
@@ -145,7 +154,7 @@ object SyncManager {
                     var isPinned: Boolean = false
 
                     val cachedEntry = snapshotByFilename[name]
-                    if (cachedEntry != null && Math.abs(cachedEntry.value.osTimestamp - osTime) < SYNC_TIMESTAMP_TOLERANCE_MS) {
+                    if (cachedEntry != null && abs(cachedEntry.value.osTimestamp - osTime) < SYNC_TIMESTAMP_TOLERANCE_MS) {
                         syncId = cachedEntry.key
                         metadataLastModified = cachedEntry.value.metadataTimestamp
                         contentHash = cachedEntry.value.contentHash
@@ -291,7 +300,7 @@ object SyncManager {
             }
 
             if (localChanged && remoteChanged) {
-                val conflictName = "${roomFile.name} (conflict copy)"
+                val conflictName = createConflictFilename(roomFile.name, dao)
                 Log.d(TAG, "CONFLICT: $filename. Duplicating local version to $conflictName.")
                 stats.conflicts++
 
@@ -316,6 +325,25 @@ object SyncManager {
             }
         } else {
             currentSyncSnapshot[syncId] = LastSyncInfo(filename, safFile.osLastModified, safFile.lastModified, safFile.isPinned, safFile.contentHash)
+        }
+    }
+
+    private suspend fun createConflictFilename(baseName: String, dao: CalculatorDao): String {
+        val existingNames = dao.getAllFilesSync().map { it.name }.toHashSet()
+        var suffix = 0
+
+        while (true) {
+            val conflictName = if (suffix == 0) {
+                "$baseName (conflict copy)"
+            } else {
+                "$baseName (conflict copy ${suffix + 1})"
+            }
+
+            if (conflictName !in existingNames && dao.getFileByName(conflictName) == null) {
+                return conflictName
+            }
+
+            suffix++
         }
     }
 
@@ -439,19 +467,32 @@ object SyncManager {
                 Log.w(TAG, "Secondary rename failed for $fileNameWithExtension, fallback to fresh recreate")
                 // Re-create if rename failed (some providers don't support it well)
                 val safFile = folder.createFile("application/octet-stream", fileNameWithExtension)
-                    ?: throw Exception("Could not recreate file $fileNameWithExtension")
-                context.contentResolver.openOutputStream(safFile.uri)?.use { output ->
-                     output.write(content.toByteArray())
+                if (safFile == null) {
+                    tempFile.delete()
+                    throw Exception("Could not recreate file $fileNameWithExtension")
                 }
-                tempFile.delete()
+                try {
+                    context.contentResolver.openOutputStream(safFile.uri)?.use { output ->
+                        output.write(content.toByteArray())
+                    }
+                } finally {
+                    tempFile.delete()
+                }
             }
         }
 
-        // Allow OS to flush metadata. Some SAF providers (especially network/WebDAV)
-        // may not immediately reflect the updated lastModified() after write.
-        delay(150)
+        val expectedMetadataTimestamp = file.lastModified
+        var finalFile = folder.findFile(fileNameWithExtension) ?: tempFile
+        for (attempt in 0 until SAF_METADATA_MAX_RETRIES) {
+            if (finalFile.lastModified() == expectedMetadataTimestamp) break
+            if (attempt < SAF_METADATA_MAX_RETRIES - 1) {
+                // Allow OS to flush metadata. Some SAF providers (especially network/WebDAV)
+                // may not immediately reflect the updated lastModified() after write.
+                delay(SAF_METADATA_RETRY_DELAY_MS)
+                finalFile = folder.findFile(fileNameWithExtension) ?: finalFile
+            }
+        }
 
-        val finalFile = folder.findFile(fileNameWithExtension) ?: tempFile
         return SyncResult(finalFile.lastModified(), file.lastModified, contentHash, file.isPinned)
     }
 

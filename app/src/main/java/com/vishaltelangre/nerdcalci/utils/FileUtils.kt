@@ -128,7 +128,9 @@ object FileUtils {
             if (lastHashIndex > 0) {
                 val exprCandidate = line.substring(0, lastHashIndex).trim()
                 val potentialResult = line.substring(lastHashIndex + 1).trim()
-                val isResult = potentialResult == "Err" || potentialResult.toDoubleOrNull() != null
+                // Results may have unit suffixes like "10.5 kg" or scientific notation
+                val resultValue = potentialResult.split(" ").firstOrNull()
+                val isResult = potentialResult == "Err" || resultValue?.toDoubleOrNull() != null
 
                 if (isResult && shouldShowResult(exprCandidate)) {
                     exprCandidate

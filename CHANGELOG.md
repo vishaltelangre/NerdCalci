@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Exported files now embed `syncId`, `isPinned`, `lastModified`, and `createdAt` timestamps for perfect restoration.
 - Backup and sync locations now show human-readable absolute paths.
 
+### Fixed
+- Calculator display results now respect the device's locale (e.g., correct decimal separators) while exports remain locale-independent for stability.
+
 ## [3.0.1] - 2026-03-23
 ### Added
 -   Added `pi` and `π` as aliases for the `PI` constant.

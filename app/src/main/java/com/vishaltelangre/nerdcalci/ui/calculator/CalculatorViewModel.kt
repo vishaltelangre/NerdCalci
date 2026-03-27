@@ -313,15 +313,14 @@ class CalculatorViewModel(
             _isSyncing.value = true
             val result = SyncManager.performSync(context, dao)
             _isSyncing.value = false
-            _lastSyncAt.value = System.currentTimeMillis()
             if (result.isFailure) {
                 _uiEvents.emit(HomeUiEvent.ShowMessage("Sync failed: ${result.exceptionOrNull()?.message}"))
             } else {
+                _lastSyncAt.value = System.currentTimeMillis()
                 refreshBackups(context) // refresh if backups were updated
             }
         }
     }
-
 
     fun refreshBackups(context: Context) {
         viewModelScope.launch(Dispatchers.IO) {

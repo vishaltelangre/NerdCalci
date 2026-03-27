@@ -366,7 +366,7 @@ fun SettingsScreen(
                 SettingsItem(
                     icon = Icons.Default.Folder,
                     title = "Sync location",
-                    subtitle = syncFolderUri?.let { FileUtils.formatPathForDisplay(Uri.decode(Uri.parse(it).lastPathSegment ?: "")) } ?: "Choose folder",
+                    subtitle = formatSyncFolderSubtitle(syncFolderUri) ?: "Choose folder",
                     onClick = onChooseSyncFolder
                 )
 
@@ -827,6 +827,21 @@ private fun formatRelativeTime(value: Long): String {
         System.currentTimeMillis(),
         DateUtils.MINUTE_IN_MILLIS
     ).toString()
+}
+
+private fun formatSyncFolderSubtitle(syncFolderUri: String?): String? {
+    if (syncFolderUri.isNullOrBlank()) return null
+
+    return try {
+        val decoded = Uri.decode(Uri.parse(syncFolderUri).lastPathSegment ?: "")
+        if (decoded.isBlank()) {
+            FileUtils.formatPathForDisplay(syncFolderUri)
+        } else {
+            FileUtils.formatPathForDisplay(decoded)
+        }
+    } catch (_: Exception) {
+        FileUtils.formatPathForDisplay(syncFolderUri)
+    }
 }
 
 private fun labelValueText(label: String, value: String) = buildAnnotatedString {

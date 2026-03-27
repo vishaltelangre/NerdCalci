@@ -152,7 +152,7 @@ object SyncManager {
                         isPinned = cachedEntry.value.isPinned
                     } else {
                         context.contentResolver.openInputStream(file.uri)?.use { inputStream: java.io.InputStream ->
-                            val metadata = FileUtils.readMetadataHeader(inputStream)
+                            val metadata = FileUtils.readMetadataHeader(inputStream.bufferedReader())
                             syncId = metadata?.id
                             metadataLastModified = metadata?.lastModified ?: -1L
                             contentHash = metadata?.contentHash
@@ -447,7 +447,10 @@ object SyncManager {
             }
         }
 
-        delay(150) // Allow OS to flush
+        // Allow OS to flush metadata. Some SAF providers (especially network/WebDAV)
+        // may not immediately reflect the updated lastModified() after write.
+        delay(150)
+
         val finalFile = folder.findFile(fileNameWithExtension) ?: tempFile
         return SyncResult(finalFile.lastModified(), file.lastModified, contentHash, file.isPinned)
     }
@@ -490,7 +493,11 @@ object SyncManager {
             existingFile.id
         } else {
             // Check if name collision exists for a DIFFERENT syncId (should be rare)
-            dao.getFileByName(fileName)?.let { dao.deleteFile(it) }
+            dao.getFileByName(fileName)?.let { existingFile ->
+                val conflictName = "$fileName (local)"
+                dao.renameFile(existingFile.id, conflictName)
+                Log.w(TAG, "Name collision: Renamed existing local file to $conflictName")
+            }
 
             // Create new
             val newFile = FileEntity(
@@ -548,7 +555,7 @@ object SyncManager {
 
                 // Get syncId from file before deleting it so we can clean up snapshot
                 val syncId = context.contentResolver.openInputStream(safFile?.uri ?: return@withContext)?.use {
-                    FileUtils.readMetadataHeader(it)?.id
+                    FileUtils.readMetadataHeader(it.bufferedReader())?.id
                 }
 
                 safFile.delete()

@@ -20,15 +20,16 @@ android {
         ksp {
             arg("room.schemaLocation", "$projectDir/schemas")
         }
-        
-        testOptions {
-            unitTests.isReturnDefaultValues = true
-            unitTests.all {
-                it.testLogging {
-                    showStandardStreams = true
-                    events("passed", "skipped", "failed", "standardOut", "standardError")
-                    exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
-                }
+
+    }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+        unitTests.all {
+            it.testLogging {
+                showStandardStreams = true
+                events("passed", "skipped", "failed", "standardOut", "standardError")
+                exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
             }
         }
     }
@@ -90,7 +91,7 @@ dependencies {
     implementation("io.noties.markwon:ext-tables:4.6.2")
 
     testImplementation(libs.junit)
-    testImplementation(libs.json)
+    implementation(libs.json)
     testImplementation("io.mockk:mockk:1.13.8")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
     androidTestImplementation(libs.androidx.junit)

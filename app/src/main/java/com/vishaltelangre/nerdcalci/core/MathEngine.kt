@@ -1,6 +1,7 @@
 package com.vishaltelangre.nerdcalci.core
 
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
+import java.util.Locale
 
 /** A user-defined function local to a specific file. */
 data class LocalFunction(val name: String, val params: List<String>, val body: List<Statement>)
@@ -337,7 +338,7 @@ object MathEngine {
     }
 
     /** Format a numeric result for display based on user-defined precision. */
-    fun formatDisplayResult(rawResult: String, precision: Int): String {
+    fun formatDisplayResult(rawResult: String, precision: Int, locale: Locale = Locale.getDefault()): String {
         if (rawResult.isBlank() || rawResult == "Err") return rawResult
 
         val spaceIndex = rawResult.indexOf(' ')
@@ -369,10 +370,10 @@ object MathEngine {
                 value >= Long.MIN_VALUE && value <= Long.MAX_VALUE ->
                     value.toLong().toString()
                 else ->
-                    "%.${safePrecision}e".format(java.util.Locale.ROOT, value)
+                    "%.${safePrecision}e".format(locale, value)
             }
         } else {
-            "%.${safePrecision}f".format(java.util.Locale.ROOT, value)
+            "%.${safePrecision}f".format(locale, value)
         }
 
         return if (isNumeralSystem) formattedResult else formattedResult + unitStr

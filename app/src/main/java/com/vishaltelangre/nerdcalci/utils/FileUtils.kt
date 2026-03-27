@@ -36,11 +36,10 @@ object FileUtils {
     }
 
     /**
-     * Reads only the metadata header from an input stream if it exists.
-     * This is much faster than parsing the entire file.
+     * Reads only the metadata header from a [reader] relative to the current position.
+     * Consumes one line from the reader. This is much faster than parsing the entire file.
      */
-    fun readMetadataHeader(input: InputStream): FileMetadata? {
-        val reader = BufferedReader(InputStreamReader(input))
+    fun readMetadataHeader(reader: BufferedReader): FileMetadata? {
         val firstLine = reader.readLine() ?: return null
         return parseMetadataHeader(firstLine)
     }
@@ -91,7 +90,7 @@ object FileUtils {
         return lines.joinToString("\n") { line ->
             val expr = line.expression.trim()
             val rawResult = line.result.trim()
-            val displayResult = MathEngine.formatDisplayResult(rawResult, precision)
+            val displayResult = MathEngine.formatDisplayResult(rawResult, precision, java.util.Locale.ROOT)
 
             when {
                 expr.isEmpty() || rawResult.isBlank() || rawResult == "Err" -> expr
@@ -108,12 +107,16 @@ object FileUtils {
     fun parseFileContent(content: String): ParsedFileContent {
         val lines = content.lines()
         var currentMetadata = FileMetadata()
+        var metadataSet = false
         val dataLines = mutableListOf<String>()
 
         for (line in lines) {
             if (line.trim().startsWith("# @metadata ")) {
-                parseMetadataHeader(line)?.let { 
-                    currentMetadata = it 
+                if (!metadataSet) {
+                    parseMetadataHeader(line)?.let {
+                        currentMetadata = it
+                        metadataSet = true
+                    }
                 }
             } else {
                 dataLines.add(line)

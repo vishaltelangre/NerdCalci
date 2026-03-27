@@ -1,2 +1,3 @@
 - Sync your calculations files across devices using your preferred sync method (Syncthing, WebDAV, etc.).
 - Synchronization of file pinning status across devices.
+- Calculator display results now respect the device's locale (decimal separators).

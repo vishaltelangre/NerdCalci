@@ -42,7 +42,7 @@ class SyncManagerTest {
         mockkStatic(Log::class)
         mockkObject(MathEngine)
         mockkObject(FileUtils)
-        every { FileUtils.readMetadataHeader(any()) } answers { callOriginal() }
+        every { FileUtils.readMetadataHeader(any<java.io.BufferedReader>()) } answers { callOriginal() }
         every { FileUtils.formatFileContent(any(), any(), any()) } answers { callOriginal() }
         every { FileUtils.parseFileContent(any()) } answers { callOriginal() }
         // Keep calculateHash mocked for speed/determinism
@@ -228,7 +228,7 @@ class SyncManagerTest {
         every { safFile.lastModified() } returns 9999L
         every { folder.listFiles() } returns arrayOf(safFile)
         
-        every { FileUtils.readMetadataHeader(any()) } returns FileMetadata(
+        every { FileUtils.readMetadataHeader(any<java.io.BufferedReader>()) } returns FileMetadata(
             id = syncId, 
             lastModified = 5000L, 
             contentHash = hash
@@ -262,7 +262,7 @@ class SyncManagerTest {
         every { safFile.name } returns filename
         every { folder.listFiles() } returns arrayOf(safFile)
         
-        every { FileUtils.readMetadataHeader(any()) } returns FileMetadata(id = null, lastModified = 1000L)
+        every { FileUtils.readMetadataHeader(any<java.io.BufferedReader>()) } returns FileMetadata(id = null, lastModified = 1000L)
         
         every { FileUtils.parseFileContent(any()) } returns ParsedFileContent(
             expressions = listOf("1+1"),
@@ -292,7 +292,7 @@ class SyncManagerTest {
         every { folder.listFiles() } returns arrayOf(safFile)
         
         // Remote has isPinned = true
-        every { FileUtils.readMetadataHeader(any()) } returns FileMetadata(
+        every { FileUtils.readMetadataHeader(any<java.io.BufferedReader>()) } returns FileMetadata(
             id = syncId, 
             lastModified = 5000L, 
             isPinned = true,
@@ -314,13 +314,6 @@ class SyncManagerTest {
         
         val result = SyncManager.performSync(context, dao)
         val stats = result.getOrNull()
-        if (stats != "Synced: Inbound 0, Outbound 1") {
-            println("FAILED: Expected 'Synced: Inbound 0, Outbound 1' but got '$stats'")
-            if (result.isFailure) {
-                println("EXCEPTION: ${result.exceptionOrNull()}")
-                result.exceptionOrNull()?.printStackTrace()
-            }
-        }
         
         // Since local changed (pin changed), it should trigger a write (LOCAL_NEWER)
         assertEquals("Synced: Inbound 0, Outbound 1", stats)
@@ -358,7 +351,7 @@ class SyncManagerTest {
         dao.insertFile(FileEntity(name = "new-name", syncId = syncId, lastModified = 9000L))
         
         // Mock remote file content/metadata
-        every { FileUtils.readMetadataHeader(any()) } returns FileMetadata(
+        every { FileUtils.readMetadataHeader(any<java.io.BufferedReader>()) } returns FileMetadata(
             id = syncId,
             lastModified = 5000L,
             isPinned = false,

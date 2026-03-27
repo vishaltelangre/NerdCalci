@@ -1701,8 +1701,20 @@ class MathEngineTest {
 
     @Test
     fun `formatDisplayResult handles scientific notation`() = runBlocking {
-        assertEquals("1.00e+20", MathEngine.formatDisplayResult("1.0E20", 2))
-        assertEquals("1e+20", MathEngine.formatDisplayResult("1.0E20", 0))
+        assertEquals("1.00e+20", MathEngine.formatDisplayResult("1.0E20", 2, java.util.Locale.ROOT))
+        assertEquals("1e+20", MathEngine.formatDisplayResult("1.0E20", 0, java.util.Locale.ROOT))
+    }
+
+    @Test
+    fun `formatDisplayResult respects explicit locales`() = runBlocking {
+        val raw = "1234.567"
+        // Locale.ROOT uses dot
+        assertEquals("1234.57", MathEngine.formatDisplayResult(raw, 2, java.util.Locale.ROOT))
+        // Locale.GERMANY uses comma
+        assertEquals("1234,57", MathEngine.formatDisplayResult(raw, 2, java.util.Locale.GERMANY))
+        // Scientific notation with Locale.GERMANY
+        val largeRaw = "1.23E30"
+        assertEquals("1,23e+30", MathEngine.formatDisplayResult(largeRaw, 2, java.util.Locale.GERMANY))
     }
 
     @Test

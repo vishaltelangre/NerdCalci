@@ -53,6 +53,13 @@ object DatabaseMigrations {
     val MIGRATION_3_4 = object : Migration(3, 4) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("ALTER TABLE files ADD COLUMN syncId TEXT NOT NULL DEFAULT ''")
+            db.execSQL(
+                """
+                UPDATE files
+                SET syncId = lower(hex(randomblob(16))) || '-' || id
+                WHERE syncId = ''
+                """.trimIndent()
+            )
             db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_files_syncId ON files(syncId)")
         }
     }

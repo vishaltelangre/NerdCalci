@@ -43,6 +43,50 @@ object SyncManager {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
 
+    fun isSyncActive(context: Context): Boolean {
+        val prefs = prefs(context)
+        return prefs.safeGetBoolean(PREF_SYNC_ENABLED, false) &&
+            !prefs.getString(PREF_SYNC_FOLDER_URI, null).isNullOrBlank()
+    }
+
+    private fun SharedPreferences.safeGetString(key: String, defaultValue: String? = null): String? {
+        val rawValue = getAll()[key]
+        return when (rawValue) {
+            null -> defaultValue
+            is String -> rawValue
+            is Set<*> -> {
+                val stringValues = rawValue.filterIsInstance<String>()
+                when {
+                    stringValues.isEmpty() -> {
+                        Log.w(TAG, "Ignoring malformed preference type for $key")
+                        defaultValue
+                    }
+                    stringValues.size == 1 -> {
+                        Log.w(TAG, "Recovered legacy string set preference for $key")
+                        stringValues.first()
+                    }
+                    else -> {
+                        Log.w(TAG, "Ignoring malformed preference type for $key")
+                        defaultValue
+                    }
+                }
+            }
+            else -> {
+                Log.w(TAG, "Ignoring malformed preference type for $key")
+                defaultValue
+            }
+        }
+    }
+
+    private fun SharedPreferences.safeGetBoolean(key: String, defaultValue: Boolean = false): Boolean {
+        return try {
+            getBoolean(key, defaultValue)
+        } catch (e: ClassCastException) {
+            Log.w(TAG, "Ignoring malformed preference type for $key", e)
+            defaultValue
+        }
+    }
+
     private data class SyncFile(
         val name: String,
         val isFile: Boolean,
@@ -104,7 +148,7 @@ object SyncManager {
     suspend fun performSync(context: Context, dao: CalculatorDao): Result<String> = withContext(Dispatchers.IO) {
         try {
             val prefs = prefs(context)
-            if (!prefs.getBoolean(PREF_SYNC_ENABLED, false)) return@withContext Result.success("Sync disabled")
+            if (!isSyncActive(context)) return@withContext Result.success("Sync disabled")
 
             val folderUriString = prefs.getString(PREF_SYNC_FOLDER_URI, null)
                 ?: return@withContext Result.failure(Exception("Sync folder not set"))
@@ -113,7 +157,7 @@ object SyncManager {
             val folder = DocumentFile.fromTreeUri(context, treeUri)
                 ?: return@withContext Result.failure(Exception("Sync folder unavailable"))
 
-            val lastSyncMap = decodeLastSyncMap(prefs.getString(PREF_LAST_SYNC_FILES, null))
+            val lastSyncMap = decodeLastSyncMap(prefs.safeGetString(PREF_LAST_SYNC_FILES, null))
             val isFirstSync = lastSyncMap.isEmpty()
             val currentSyncSnapshot = mutableMapOf<String, LastSyncInfo>()
             val stats = SyncStats()
@@ -587,6 +631,9 @@ object SyncManager {
     suspend fun deleteExternalFile(context: Context, fileName: String): Throwable? {
         return withContext(Dispatchers.IO) {
             try {
+                if (!isSyncActive(context)) {
+                    return@withContext IllegalStateException("Sync is disabled")
+                }
                 val prefs = prefs(context)
                 val folderUri = prefs.getString(PREF_SYNC_FOLDER_URI, null)
                     ?: return@withContext IllegalStateException("Sync folder not set")
@@ -609,7 +656,7 @@ object SyncManager {
                 }
 
                 if (syncId != null) {
-                    val encodedMap = prefs.getString(PREF_LAST_SYNC_FILES, null)
+                    val encodedMap = prefs.safeGetString(PREF_LAST_SYNC_FILES, null)
                     val syncMap = decodeLastSyncMap(encodedMap).toMutableMap()
                     if (syncMap.remove(syncId) != null) {
                         prefs.edit()

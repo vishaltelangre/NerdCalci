@@ -101,7 +101,7 @@ fun HomeScreen(
     val appName = context.getString(R.string.app_name)
 
     fun createFile() {
-        viewModel.createNewFile { fileId ->
+        viewModel.createNewFile(context) { fileId ->
             onFileClick(fileId)
         }
     }

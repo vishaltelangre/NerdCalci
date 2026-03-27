@@ -298,7 +298,7 @@ class CalculatorViewModel(
     fun setSyncEnabled(context: Context, enabled: Boolean) {
         _syncEnabled.value = enabled
         prefs?.edit()?.putBoolean(SyncManager.PREF_SYNC_ENABLED, enabled)?.apply()
-        if (enabled) syncFiles(context)
+        if (enabled && SyncManager.isSyncActive(context)) syncFiles(context)
     }
 
     fun setSyncFolder(context: Context, uri: Uri) {
@@ -306,12 +306,12 @@ class CalculatorViewModel(
         prefs?.edit()?.putString(SyncManager.PREF_SYNC_FOLDER_URI, uri.toString())?.apply()
         _syncEnabled.value = true
         prefs?.edit()?.putBoolean(SyncManager.PREF_SYNC_ENABLED, true)?.apply()
-        syncFiles(context)
+        if (SyncManager.isSyncActive(context)) syncFiles(context)
     }
 
     fun syncFiles(context: Context) {
         // Do not sync if disabled or no folder
-        if (!_syncEnabled.value || _syncFolderUri.value.isNullOrBlank()) return
+        if (!SyncManager.isSyncActive(context)) return
         if (!syncInProgress.compareAndSet(false, true)) return
 
         viewModelScope.launch {
@@ -525,9 +525,12 @@ class CalculatorViewModel(
         }
     }
 
-    fun createNewFile(onCreated: (Long) -> Unit = {}) {
+    fun createNewFile(context: Context, onCreated: (Long) -> Unit = {}) {
         viewModelScope.launch(Dispatchers.IO) {
             val fileId = dao.createNewFile("Untitled", System.currentTimeMillis())
+            if (SyncManager.isSyncActive(context)) {
+                syncFiles(context)
+            }
             withContext(Dispatchers.Main) { onCreated(fileId) }
         }
     }
@@ -604,21 +607,23 @@ class CalculatorViewModel(
     private suspend fun performSyncAwareDelete(context: Context, fileId: Long): Boolean {
         val file = dao.getFileById(fileId) ?: return false
 
-        val deleteError: Throwable? = try {
-            SyncManager.deleteExternalFile(context, file.name)
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to delete external file before local delete", e)
-            e
-        }
+        if (SyncManager.isSyncActive(context)) {
+            val deleteError: Throwable? = try {
+                SyncManager.deleteExternalFile(context, file.name)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to delete external file before local delete", e)
+                e
+            }
 
-        if (deleteError != null) {
-            Log.e(TAG, "Aborting local delete because external delete failed: ${deleteError.message}")
-            _uiEvents.emit(
-                HomeUiEvent.ShowMessage(
-                    deleteError.message ?: "Failed to delete external file"
+            if (deleteError != null) {
+                Log.e(TAG, "Aborting local delete because external delete failed: ${deleteError.message}")
+                _uiEvents.emit(
+                    HomeUiEvent.ShowMessage(
+                        deleteError.message ?: "Failed to delete external file"
+                    )
                 )
-            )
-            return false
+                return false
+            }
         }
 
         dao.deleteFile(file)
@@ -712,9 +717,14 @@ class CalculatorViewModel(
             if (dao.doesFileExist(finalName, fileId)) return@withContext false
             val file = dao.getFileById(fileId)
             if (file != null) {
-                // Delete old external file in sync folder to prevent re-import as foreign file
-                val deleteError = SyncManager.deleteExternalFile(context, file.name)
-                if (deleteError != null) throw deleteError
+                if (SyncManager.isSyncActive(context)) {
+                    // Delete old external file in sync folder to prevent re-import as foreign file
+                    val deleteError = SyncManager.deleteExternalFile(context, file.name)
+                    if (deleteError != null) {
+                        val missingExternalFile = deleteError.message?.startsWith("External file not found:") == true
+                        if (!missingExternalFile) throw deleteError
+                    }
+                }
                 dao.updateFile(file.copy(name = finalName))
                 true
             } else {

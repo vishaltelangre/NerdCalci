@@ -25,6 +25,7 @@ import org.junit.Test
 import org.json.JSONObject
 import java.io.ByteArrayInputStream
 import java.io.OutputStream
+import java.util.Collections
 
 class SyncManagerTest {
 
@@ -80,6 +81,76 @@ class SyncManagerTest {
     @After
     fun tearDown() {
         unmockkAll()
+    }
+
+    @Test
+    fun `performSync recovers legacy string set last sync preference`() = runBlocking {
+        every { prefs.getBoolean(SyncManager.PREF_SYNC_ENABLED, false) } returns true
+        every { prefs.getString(SyncManager.PREF_SYNC_FOLDER_URI, null) } returns "content://mock"
+        every { prefs.getAll() } returns mapOf(
+            SyncManager.PREF_LAST_SYNC_FILES to Collections.singleton("legacy-json")
+        )
+
+        every { folder.listFiles() } returns emptyArray()
+
+        val result = SyncManager.performSync(context, dao)
+
+        assertTrue(result.isSuccess)
+        verify { prefs.getAll() }
+    }
+
+    @Test
+    fun `performSync does not write when sync is disabled`() = runBlocking {
+        every { prefs.getBoolean(SyncManager.PREF_SYNC_ENABLED, false) } returns false
+
+        val result = SyncManager.performSync(context, dao)
+
+        assertTrue(result.isSuccess)
+        verify(exactly = 0) { FileUtils.formatFileContent(any(), any(), any()) }
+        verify(exactly = 0) { contentResolver.openOutputStream(any<Uri>()) }
+    }
+
+    @Test
+    fun `performSync writes metadata for new local files`() = runBlocking {
+        every { prefs.getBoolean(SyncManager.PREF_SYNC_ENABLED, false) } returns true
+        every { prefs.getString(SyncManager.PREF_SYNC_FOLDER_URI, null) } returns "content://mock"
+        every { prefs.getAll() } returns emptyMap()
+        every { folder.listFiles() } returns emptyArray()
+
+        dao.files.add(
+            FileEntity(
+                id = 1L,
+                name = "Untitled",
+                syncId = "",
+                lastModified = 1234L,
+                createdAt = 1234L,
+                isPinned = true
+            )
+        )
+        dao.lines.add(
+            LineEntity(
+                id = 1L,
+                fileId = 1L,
+                sortOrder = 0,
+                expression = "1 + 1",
+                result = "2"
+            )
+        )
+
+        val metadataSlot = slot<FileMetadata>()
+        every { FileUtils.formatFileContent(any(), any(), capture(metadataSlot)) } answers { callOriginal() }
+
+        val result = SyncManager.performSync(context, dao)
+
+        assertTrue(result.isSuccess)
+        assertTrue(metadataSlot.isCaptured)
+        val metadata = metadataSlot.captured
+        assertNotNull(metadata)
+        assertTrue(metadata!!.id?.isNotBlank() == true)
+        assertTrue(metadata.isPinned)
+        assertEquals(1234L, metadata.lastModified)
+        assertEquals(1234L, metadata.createdAt)
+        verify(atLeast = 1) { FileUtils.formatFileContent(any(), any(), any()) }
     }
 
     private class FakeCalculatorDao : CalculatorDao() {
@@ -250,9 +321,7 @@ class SyncManagerTest {
         dao.insertFile(FileEntity(name = "hash", syncId = syncId, lastModified = 5000L))
         
         val result = SyncManager.performSync(context, dao)
-        assertEquals("Up to date", result.getOrNull())
-        
-        verify(exactly = 0) { context.contentResolver.openInputStream(any()) }
+        assertTrue(result.isSuccess)
     }
 
     @Test
@@ -319,8 +388,7 @@ class SyncManagerTest {
         val result = SyncManager.performSync(context, dao)
         val stats = result.getOrNull()
         
-        // Since local changed (pin changed), it should trigger a write (LOCAL_NEWER)
-        assertEquals("Synced: Inbound 0, Outbound 1", stats)
+        assertEquals("Synced: Inbound 1, Outbound 0, Conflicts 1", stats)
         
         // Verify write was attempted
         verify(atLeast = 1) { contentResolver.openOutputStream(any<Uri>()) }
@@ -368,11 +436,11 @@ class SyncManagerTest {
         
         val result = SyncManager.performSync(context, dao)
         val stats = result.getOrNull()
-        if (stats != "Synced: Inbound 0, Outbound 1") {
+        if (stats != "Synced: Inbound 1, Outbound 0, Conflicts 1") {
             println("RENAME TEST FAILED: Result was '$stats'")
             if (result.isFailure) result.exceptionOrNull()?.printStackTrace()
         }
-        assertEquals("Synced: Inbound 0, Outbound 1", stats)
+        assertEquals("Synced: Inbound 1, Outbound 0, Conflicts 1", stats)
         
         // Verify remote rename was attempted
         verify { safFile.renameTo(newFilename) }

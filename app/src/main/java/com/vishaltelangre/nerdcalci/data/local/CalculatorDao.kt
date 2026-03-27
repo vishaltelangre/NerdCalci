@@ -16,11 +16,17 @@ abstract class CalculatorDao {
     @Query("SELECT * FROM files ORDER BY isPinned DESC, lastModified DESC")
     abstract fun getAllFiles(): Flow<List<FileEntity>>
 
+    @Query("SELECT * FROM files ORDER BY isPinned DESC, lastModified DESC")
+    abstract suspend fun getAllFilesSync(): List<FileEntity>
+
     @Query("SELECT * FROM files WHERE id = :fileId")
     abstract suspend fun getFileById(fileId: Long): FileEntity?
 
     @Query("SELECT * FROM files WHERE name = :name")
     abstract suspend fun getFileByName(name: String): FileEntity?
+
+    @Query("SELECT * FROM files WHERE syncId = :syncId")
+    abstract suspend fun getFileBySyncId(syncId: String): FileEntity?
 
     @Query("SELECT COUNT(*) FROM files WHERE isPinned = 1")
     abstract suspend fun getPinnedFilesCount(): Int
@@ -69,10 +75,16 @@ abstract class CalculatorDao {
     @Query("UPDATE files SET lastModified = :timestamp WHERE id = :fileId")
     protected abstract suspend fun updateFileTimestamp(fileId: Long, timestamp: Long)
 
-    @Query("UPDATE files SET name = :name WHERE id = :fileId")
-    abstract suspend fun renameFile(fileId: Long, name: String)
+    @Transaction
+    open suspend fun renameFile(fileId: Long, name: String) {
+        internalRenameFile(fileId, name)
+        touchFile(fileId)
+    }
 
-    suspend fun touchFile(fileId: Long, timestamp: Long = System.currentTimeMillis()) {
+    @Query("UPDATE files SET name = :name WHERE id = :fileId")
+    protected abstract suspend fun internalRenameFile(fileId: Long, name: String)
+
+    open suspend fun touchFile(fileId: Long, timestamp: Long = System.currentTimeMillis()) {
         updateFileTimestamp(fileId, timestamp)
     }
 
@@ -118,6 +130,24 @@ abstract class CalculatorDao {
     open suspend fun updateFileFromSync(file: FileEntity) {
         internalUpdateFile(file)
     }
+    @Transaction
+    open suspend fun duplicateFile(fileId: Long, newName: String, newSyncId: String, lastModified: Long? = null): Long {
+        val originalFile = getFileById(fileId) ?: throw Exception("Original file not found")
+        val newFile = originalFile.copy(
+            id = 0L,
+            name = newName,
+            syncId = newSyncId,
+            lastModified = lastModified ?: System.currentTimeMillis()
+        )
+        val newFileId = insertFile(newFile)
+        val originalLines = getLinesForFileSync(fileId)
+        val newLines = originalLines.map { it.copy(id = 0L, fileId = newFileId) }
+        internalInsertLines(newLines)
+        return newFileId
+    }
+
+    @Query("UPDATE files SET syncId = :newSyncId WHERE id = :fileId")
+    abstract suspend fun updateSyncId(fileId: Long, newSyncId: String)
 
     @Transaction
     open suspend fun createNewFile(baseName: String, createdAt: Long): Long {
@@ -168,7 +198,7 @@ abstract class CalculatorDao {
      * Ensures all lines are correctly attributed to the file and IDs are reset for insertion.
      */
     @Transaction
-    open suspend fun restoreLines(fileId: Long, lines: List<LineEntity>) {
+    open suspend fun restoreLines(fileId: Long, lines: List<LineEntity>, updateTimestamp: Boolean = true) {
         internalDeleteLinesForFile(fileId)
         val toInsert = lines.mapIndexed { index, line ->
             line.copy(id = 0, fileId = fileId, sortOrder = index)
@@ -179,7 +209,9 @@ abstract class CalculatorDao {
             // Ensure at least one empty line if the list was empty
             internalInsertLine(LineEntity(fileId = fileId, sortOrder = 0, expression = "", result = ""))
         }
-        touchFile(fileId)
+        if (updateTimestamp) {
+            touchFile(fileId)
+        }
     }
 
     @Query("DELETE FROM lines WHERE fileId = :fileId")

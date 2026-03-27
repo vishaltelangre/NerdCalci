@@ -369,10 +369,10 @@ object MathEngine {
                 value >= Long.MIN_VALUE && value <= Long.MAX_VALUE ->
                     value.toLong().toString()
                 else ->
-                    String.format("%.${safePrecision}e", value)
+                    "%.${safePrecision}e".format(java.util.Locale.ROOT, value)
             }
         } else {
-            String.format("%.${safePrecision}f", value)
+            "%.${safePrecision}f".format(java.util.Locale.ROOT, value)
         }
 
         return if (isNumeralSystem) formattedResult else formattedResult + unitStr

@@ -25,6 +25,7 @@ androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "u
 androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
+json = { group = "org.json", name = "json", version = "20230227" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

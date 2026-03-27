@@ -131,7 +131,6 @@ class CalculatorViewModel(
 
 
     companion object {
-        private const val PREF_PRECISION = "precision"
         private const val PREF_THEME = "theme"
         private const val PREF_SHOW_LINE_NUMBERS = "show_line_numbers"
         private const val PREF_SHOW_SUGGESTIONS = "show_suggestions"
@@ -146,7 +145,7 @@ class CalculatorViewModel(
     val currentTheme: StateFlow<String> = _currentTheme
 
     private val _precision = MutableStateFlow(
-        (prefs?.getInt(PREF_PRECISION, Constants.DEFAULT_PRECISION) ?: Constants.DEFAULT_PRECISION)
+        (prefs?.getInt(Constants.SYNC_ENGINE_PRECISION, Constants.DEFAULT_PRECISION) ?: Constants.DEFAULT_PRECISION)
             .coerceIn(Constants.MIN_PRECISION, Constants.MAX_PRECISION)
     )
     val precision: StateFlow<Int> = _precision
@@ -234,7 +233,7 @@ class CalculatorViewModel(
     fun setPrecision(precision: Int) {
         val clampedPrecision = precision.coerceIn(Constants.MIN_PRECISION, Constants.MAX_PRECISION)
         _precision.value = clampedPrecision
-        prefs?.edit()?.putInt(PREF_PRECISION, clampedPrecision)?.apply()
+        prefs?.edit()?.putInt(Constants.SYNC_ENGINE_PRECISION, clampedPrecision)?.apply()
     }
 
     fun setShowLineNumbers(enabled: Boolean) {

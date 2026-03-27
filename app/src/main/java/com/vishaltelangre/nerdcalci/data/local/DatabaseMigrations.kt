@@ -44,11 +44,26 @@ object DatabaseMigrations {
     }
 
     /**
+     * Migration from version 3 to 4.
+     *
+     * Changes:
+     * - Added syncId column to files table for robust two-way sync
+     * - Added unique index on syncId for efficient lookups
+     */
+    val MIGRATION_3_4 = object : Migration(3, 4) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE files ADD COLUMN syncId TEXT NOT NULL DEFAULT ''")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_files_syncId ON files(syncId)")
+        }
+    }
+
+    /**
      * All migrations in order.
      * Add new migrations to this array as the database evolves.
      */
     val ALL_MIGRATIONS = arrayOf(
         MIGRATION_1_2,
-        MIGRATION_2_3
+        MIGRATION_2_3,
+        MIGRATION_3_4
     )
 }

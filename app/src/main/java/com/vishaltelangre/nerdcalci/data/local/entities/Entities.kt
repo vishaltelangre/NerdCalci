@@ -5,13 +5,19 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "files")
+import java.util.UUID
+
+@Entity(
+    tableName = "files",
+    indices = [Index(value = ["syncId"], unique = true)]
+)
 data class FileEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
     val lastModified: Long = System.currentTimeMillis(),
     val createdAt: Long = System.currentTimeMillis(),
-    val isPinned: Boolean = false
+    val isPinned: Boolean = false,
+    val syncId: String = UUID.randomUUID().toString()
 )
 
 @Entity(

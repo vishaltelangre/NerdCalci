@@ -12,6 +12,7 @@ import com.vishaltelangre.nerdcalci.core.MathContext
 import com.vishaltelangre.nerdcalci.data.local.CalculatorDao
 import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
+import com.vishaltelangre.nerdcalci.data.sync.SyncManager
 import com.vishaltelangre.nerdcalci.utils.FilenameUtils
 import com.vishaltelangre.nerdcalci.utils.FileUtils
 import com.vishaltelangre.nerdcalci.utils.FileMetadata
@@ -151,7 +152,7 @@ object BackupManager {
     ): Result<RestoreResult> {
         return withContext(Dispatchers.IO) {
             try {
-                val stats = importFromZip(dao, {
+                val stats = importFromZip(context, dao, {
                     context.contentResolver.openInputStream(inputUri)
                         ?: throw Exception("Could not open input stream")
                 }, onProgress, onConflict)
@@ -230,12 +231,12 @@ object BackupManager {
                 Log.d(TAG, "Restoring from backup: ${backup.displayName}")
                 val stats = when (backup.source) {
                     BackupSource.APP_STORAGE -> {
-                        importFromZip(dao, { FileInputStream(File(backup.pathOrUri)) }, onProgress, onConflict)
+                        importFromZip(context, dao, { FileInputStream(File(backup.pathOrUri)) }, onProgress, onConflict)
                     }
 
                     BackupSource.CUSTOM_FOLDER -> {
                         val uri = Uri.parse(backup.pathOrUri)
-                        importFromZip(dao, {
+                        importFromZip(context, dao, {
                             context.contentResolver.openInputStream(uri)
                                 ?: throw Exception("Could not open backup file")
                         }, onProgress, onConflict)
@@ -378,13 +379,17 @@ object BackupManager {
             val precision = prefs(context).getInt("precision", Constants.DEFAULT_PRECISION)
             filesList.forEach { file ->
                 val lines = dao.getLinesForFileSync(file.id)
+                val body = FileUtils.formatFileBody(lines, precision)
+                val contentHash = FileUtils.calculateHash(body)
                 val content = FileUtils.formatFileContent(
                     lines = lines,
                     precision = precision,
                     metadata = FileMetadata(
+                        id = file.syncId,
                         isPinned = file.isPinned,
                         lastModified = file.lastModified,
-                        createdAt = file.createdAt
+                        createdAt = file.createdAt,
+                        contentHash = contentHash
                     )
                 )
 
@@ -407,6 +412,7 @@ object BackupManager {
     }
 
     internal suspend fun importFromZip(
+        context: Context,
         dao: CalculatorDao,
         streamSupplier: () -> InputStream,
         onProgress: suspend (current: Int, total: Int, fileName: String) -> Unit,
@@ -526,11 +532,17 @@ object BackupManager {
                                 -1L
                             }
 
-                            // Priority: embedded metadata -> ZIP entry time -> System.currentTimeMillis()
-                            val finalModifiedTime = when {
-                                metadata.lastModified != -1L -> metadata.lastModified
-                                entryModifiedTime != -1L -> entryModifiedTime
-                                else -> System.currentTimeMillis()
+                            val isSyncEnabled = SyncManager.prefs(context).getBoolean(SyncManager.PREF_SYNC_ENABLED, false)
+
+                            // Priority: Sync-enabled (force now) -> embedded metadata -> ZIP entry time -> System.currentTimeMillis()
+                            val finalModifiedTime = if (isSyncEnabled) {
+                                System.currentTimeMillis()
+                            } else {
+                                when {
+                                    metadata.lastModified != -1L -> metadata.lastModified
+                                    entryModifiedTime != -1L -> entryModifiedTime
+                                    else -> System.currentTimeMillis()
+                                }
                             }
                             // Priority: embedded metadata -> ZIP creation time fallback -> finalModifiedTime fallback
                             val finalCreateTime = when {
@@ -539,19 +551,22 @@ object BackupManager {
                                 else -> finalModifiedTime
                             }
 
+                            val syncId = metadata.id ?: java.util.UUID.randomUUID().toString()
                             val fileId = dao.insertFile(
                                 FileEntity(
                                     name = finalFileName,
                                     lastModified = finalModifiedTime,
                                     createdAt = finalCreateTime,
-                                    isPinned = metadata.isPinned
+                                    isPinned = metadata.isPinned,
+                                    syncId = syncId
                                 )
                             )
                             currentInsertedFile = FileEntity(
                                 id = fileId,
                                 name = finalFileName,
                                 lastModified = finalModifiedTime,
-                                createdAt = finalCreateTime
+                                createdAt = finalCreateTime,
+                                syncId = syncId
                             )
                             insertedFiles.add(currentInsertedFile)
                             existingNames.add(finalFileName)
@@ -573,12 +588,12 @@ object BackupManager {
                     // Final touch to ensure the timestamp is exactly as intended,
                     // even after updateLines might have moved it to "now".
                             dao.touchFile(fileId, finalModifiedTime)
-                            
+
                             if (fileToDelete != null) {
                                 dao.deleteFile(fileToDelete)
                                 dao.renameFile(fileId, fileName)
                             }
-                            
+
                             currentInsertedFile?.let { insertedFiles.remove(it) }
                         }
 

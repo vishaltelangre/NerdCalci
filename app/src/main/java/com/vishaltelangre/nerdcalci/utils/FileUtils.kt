@@ -5,11 +5,19 @@ import android.os.Environment
 import com.vishaltelangre.nerdcalci.core.MathEngine
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
 import org.json.JSONObject
+import java.io.BufferedReader
+import java.io.InputStream
+import java.io.InputStreamReader
+
+import java.security.MessageDigest
 
 data class FileMetadata(
+    val version: Int = 1,
+    val id: String? = null,
     val isPinned: Boolean = false,
     val lastModified: Long = -1L,
-    val createdAt: Long = -1L
+    val createdAt: Long = -1L,
+    val contentHash: String? = null
 )
 
 data class ParsedFileContent(
@@ -19,22 +27,68 @@ data class ParsedFileContent(
 
 object FileUtils {
     /**
+     * Calculates a SHA-256 hash of the given content.
+     */
+    fun calculateHash(content: String): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        val hashBytes = digest.digest(content.toByteArray())
+        return hashBytes.joinToString("") { "%02x".format(it) }
+    }
+
+    /**
+     * Reads only the metadata header from an input stream if it exists.
+     * This is much faster than parsing the entire file.
+     */
+    fun readMetadataHeader(input: InputStream): FileMetadata? {
+        val reader = BufferedReader(InputStreamReader(input))
+        val firstLine = reader.readLine() ?: return null
+        return parseMetadataHeader(firstLine)
+    }
+
+    private fun parseMetadataHeader(line: String): FileMetadata? {
+        val trimmed = line.trim()
+        if (!trimmed.startsWith("# @metadata ")) return null
+        return try {
+            val jsonStr = trimmed.removePrefix("# @metadata ").trim()
+            val json = JSONObject(jsonStr)
+            FileMetadata(
+                version = json.optInt("version", 1),
+                id = if (json.has("id")) json.getString("id") else null,
+                isPinned = json.optBoolean("isPinned", false),
+                lastModified = json.optLong("lastModified", -1L),
+                createdAt = json.optLong("createdAt", -1L),
+                contentHash = if (json.has("contentHash")) json.getString("contentHash") else null
+            )
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /**
      * Formats lines into a plain text string, appending results as comments and inserting metadata headers if provided.
      */
     fun formatFileContent(lines: List<LineEntity>, precision: Int, metadata: FileMetadata? = null): String {
         val sb = StringBuilder()
+        val body = formatFileBody(lines, precision)
 
-        metadata?.let {
-            if (it.isPinned || it.lastModified != -1L || it.createdAt != -1L) {
-                val json = JSONObject()
-                if (it.isPinned) json.put("isPinned", true)
-                if (it.lastModified != -1L) json.put("lastModified", it.lastModified)
-                if (it.createdAt != -1L) json.put("createdAt", it.createdAt)
-                sb.append("# @metadata ").append(json.toString()).append("\n")
+        metadata?.let { meta ->
+            val json = JSONObject().apply {
+                put("version", meta.version)
+                meta.id?.let { put("id", it) }
+                if (meta.isPinned) put("isPinned", true)
+                if (meta.lastModified != -1L) put("lastModified", meta.lastModified)
+                if (meta.createdAt != -1L) put("createdAt", meta.createdAt)
+                meta.contentHash?.let { put("contentHash", it) }
             }
+            sb.append("# @metadata ").append(json.toString()).append("\n")
         }
 
-        val body = lines.joinToString("\n") { line ->
+        sb.append(body)
+        return sb.toString()
+    }
+
+    fun formatFileBody(lines: List<LineEntity>, precision: Int): String {
+        return lines.joinToString("\n") { line ->
             val expr = line.expression.trim()
             val rawResult = line.result.trim()
             val displayResult = MathEngine.formatDisplayResult(rawResult, precision)
@@ -46,8 +100,6 @@ object FileUtils {
                 else -> expr
             }
         }
-        sb.append(body)
-        return sb.toString()
     }
 
     /**
@@ -55,21 +107,14 @@ object FileUtils {
      */
     fun parseFileContent(content: String): ParsedFileContent {
         val lines = content.lines()
-        var isPinned = false
-        var lastModified = -1L
-        var createdAt = -1L
+        var currentMetadata = FileMetadata()
         val dataLines = mutableListOf<String>()
 
         for (line in lines) {
-            val trimmed = line.trim()
-            if (trimmed.startsWith("# @metadata ")) {
-                try {
-                    val jsonStr = trimmed.removePrefix("# @metadata ").trim()
-                    val json = JSONObject(jsonStr)
-                    isPinned = json.optBoolean("isPinned", false)
-                    lastModified = json.optLong("lastModified", -1L)
-                    createdAt = json.optLong("createdAt", -1L)
-                } catch (_: Exception) {}
+            if (line.trim().startsWith("# @metadata ")) {
+                parseMetadataHeader(line)?.let { 
+                    currentMetadata = it 
+                }
             } else {
                 dataLines.add(line)
             }
@@ -92,7 +137,7 @@ object FileUtils {
             }
         }
 
-        return ParsedFileContent(expressions, FileMetadata(isPinned, lastModified, createdAt))
+        return ParsedFileContent(expressions, currentMetadata)
     }
 
     fun shouldShowResult(expression: String): Boolean {
@@ -111,11 +156,14 @@ object FileUtils {
      * and [android.content.ContentResolver] for file operations.
      */
     fun formatPathForDisplay(path: String?): String {
+        return formatPathForDisplayInternal(path, Environment.getExternalStorageDirectory().absolutePath)
+    }
+
+    internal fun formatPathForDisplayInternal(path: String?, rootPath: String): String {
         if (path == null || path.isBlank()) return ""
 
         return if (path.startsWith("primary:")) {
-            val root = Environment.getExternalStorageDirectory().absolutePath
-            "$root/${path.removePrefix("primary:")}"
+            "$rootPath/${path.removePrefix("primary:")}"
         } else {
             val parts = path.split(":", limit = 2)
             if (parts.size == 2) {

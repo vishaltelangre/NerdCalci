@@ -15,13 +15,17 @@ class EntitiesTest {
             id = 1L,
             name = "Test File",
             lastModified = 1234567890L,
-            isPinned = true
+            createdAt = 1234567890L,
+            isPinned = true,
+            syncId = "test-sync-id"
         )
 
         assertEquals(1L, file.id)
         assertEquals("Test File", file.name)
         assertEquals(1234567890L, file.lastModified)
+        assertEquals(1234567890L, file.createdAt)
         assertTrue(file.isPinned)
+        assertEquals("test-sync-id", file.syncId)
     }
 
     @Test
@@ -38,13 +42,15 @@ class EntitiesTest {
 
     @Test
     fun `FileEntity copy updates only specified fields`() {
-        val original = FileEntity(id = 1L, name = "Original", lastModified = 1000L, isPinned = false)
+        val original = FileEntity(id = 1L, name = "Original", lastModified = 1000L, createdAt = 1000L, isPinned = false, syncId = "orig-id")
         val updated = original.copy(name = "Updated", isPinned = true)
 
         assertEquals(1L, updated.id)
         assertEquals("Updated", updated.name)
         assertEquals(1000L, updated.lastModified) // unchanged
+        assertEquals(1000L, updated.createdAt)   // unchanged
         assertTrue(updated.isPinned)
+        assertEquals("orig-id", updated.syncId)  // unchanged
     }
 
     @Test
@@ -188,8 +194,8 @@ class EntitiesTest {
 
     @Test
     fun `FileEntity equality based on all fields`() {
-        val file1 = FileEntity(id = 1L, name = "Test", lastModified = 1000L, isPinned = false)
-        val file2 = FileEntity(id = 1L, name = "Test", lastModified = 1000L, isPinned = false)
+        val file1 = FileEntity(id = 1L, name = "Test", lastModified = 1000L, createdAt = 1000L, isPinned = false, syncId = "id")
+        val file2 = FileEntity(id = 1L, name = "Test", lastModified = 1000L, createdAt = 1000L, isPinned = false, syncId = "id")
         assertEquals(file1, file2)
     }
 

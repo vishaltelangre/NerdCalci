@@ -1,12 +1,18 @@
 package com.vishaltelangre.nerdcalci.data.backup
 
+import android.content.Context
+import android.content.SharedPreferences
 import com.vishaltelangre.nerdcalci.data.local.CalculatorDao
 import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
+import com.vishaltelangre.nerdcalci.data.sync.SyncManager
+import io.mockk.every
+import io.mockk.mockk
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -14,6 +20,14 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
 class BackupManagerTest {
+    
+    private val mockContext = mockk<Context>(relaxed = true)
+    private val mockPrefs = mockk<SharedPreferences>(relaxed = true)
+
+    init {
+        every { mockContext.getSharedPreferences(SyncManager.PREFS_NAME, any()) } returns mockPrefs
+        every { mockPrefs.getBoolean(SyncManager.PREF_SYNC_ENABLED, any()) } returns false
+    }
 
     // Fake DAO Implementation
     class FakeCalculatorDao : CalculatorDao() {
@@ -22,16 +36,12 @@ class BackupManagerTest {
         var nextFileId = 1L
         var nextLineId = 1L
 
-        override fun getAllFiles(): Flow<List<FileEntity>> = flowOf(files)
-
+        override fun getAllFiles(): Flow<List<FileEntity>> = flowOf(files.toList())
         override suspend fun getFileById(fileId: Long): FileEntity? = files.find { it.id == fileId }
-
-        override suspend fun getPinnedFilesCount(): Int = files.count { it.isPinned }
-
         override suspend fun getFileByName(name: String): FileEntity? = files.find { it.name == name }
-
+        override suspend fun getFileBySyncId(syncId: String): FileEntity? = files.find { it.syncId == syncId }
+        override suspend fun getPinnedFilesCount(): Int = files.count { it.isPinned }
         override suspend fun doesFileExist(name: String): Boolean = files.any { it.name == name }
-
         override suspend fun doesFileExist(name: String, excludeId: Long): Boolean =
             files.any { it.name == name && it.id != excludeId }
 
@@ -82,9 +92,36 @@ class BackupManagerTest {
             if (idx >= 0) files[idx] = file
         }
 
-        override suspend fun renameFile(fileId: Long, name: String) {
+        override suspend fun updateFileFromSync(file: FileEntity) {
+            internalUpdateFile(file)
+        }
+
+        override suspend fun internalRenameFile(fileId: Long, name: String) {
             val idx = files.indexOfFirst { it.id == fileId }
             if (idx >= 0) files[idx] = files[idx].copy(name = name)
+        }
+
+        override suspend fun updateSyncId(fileId: Long, newSyncId: String) {
+            val idx = files.indexOfFirst { it.id == fileId }
+            if (idx >= 0) files[idx] = files[idx].copy(syncId = newSyncId)
+        }
+
+        override suspend fun duplicateFile(fileId: Long, newName: String, newSyncId: String, lastModified: Long?): Long {
+            val original = files.find { it.id == fileId } ?: return -1L
+            val nextId = (files.maxOfOrNull { it.id } ?: 0L) + 1L
+            val copy = original.copy(
+                id = nextId, 
+                name = newName, 
+                syncId = newSyncId, 
+                lastModified = lastModified ?: System.currentTimeMillis()
+            )
+            files.add(copy)
+            
+            val originalLines = lines.filter { it.fileId == fileId }
+            var lineId = (lines.maxOfOrNull { l -> l.id } ?: 0L) + 1L
+            val newLines = originalLines.map { it.copy(id = lineId++, fileId = nextId) }
+            lines.addAll(newLines)
+            return nextId
         }
 
         override suspend fun deleteFile(file: FileEntity) {
@@ -93,13 +130,15 @@ class BackupManagerTest {
         }
 
         override suspend fun updateFileTimestamp(fileId: Long, timestamp: Long) {
-            // Simplified for test
+            val idx = files.indexOfFirst { it.id == fileId }
+            if (idx >= 0) files[idx] = files[idx].copy(lastModified = timestamp)
         }
-
 
         override suspend fun internalDeleteLinesForFile(fileId: Long) {
             lines.removeAll { it.fileId == fileId }
         }
+
+        override suspend fun getAllFilesSync(): List<FileEntity> = files.toList()
     }
 
     private fun createMockZip(fileName: String, content: String): ByteArray {
@@ -119,7 +158,7 @@ class BackupManagerTest {
         val content = "10+10 # 20\n\n# this is a dedicated comment\na = 10 # my comment\nb = 20 + 5 # another comment\nsum # this is total # 35"
         val zipBytes = createMockZip("test_file", content)
 
-        BackupManager.importFromZip(dao, { ByteArrayInputStream(zipBytes) }, { _, _, _ -> }, { _, _, _ -> ConflictResolution.KEEP_LOCAL_FILE })
+        BackupManager.importFromZip(mockContext, dao, { ByteArrayInputStream(zipBytes) }, { _, _, _ -> }, { _, _, _ -> ConflictResolution.KEEP_LOCAL_FILE })
 
         val importedLines = dao.getLinesForFileSync(1)
         assertEquals(6, importedLines.size)
@@ -140,6 +179,7 @@ class BackupManagerTest {
         val zipBytes = createMockZip("test_file", "zip expression")
 
         val result = BackupManager.importFromZip(
+            mockContext,
             dao,
             { ByteArrayInputStream(zipBytes) },
             onProgress = { _, _, _ -> },
@@ -165,6 +205,7 @@ class BackupManagerTest {
         val zipBytes = createMockZip("test_file", "zip expression")
 
         val result = BackupManager.importFromZip(
+            mockContext,
             dao,
             { ByteArrayInputStream(zipBytes) },
             onProgress = { _, _, _ -> },
@@ -193,6 +234,7 @@ class BackupManagerTest {
         val zipBytes = createMockZip("test_file", "zip expression")
 
         val result = BackupManager.importFromZip(
+            mockContext,
             dao,
             { ByteArrayInputStream(zipBytes) },
             onProgress = { _, _, _ -> },
@@ -218,5 +260,53 @@ class BackupManagerTest {
         val newLines = dao.getLinesForFileSync(newFile.id)
         assertEquals(1, newLines.size)
         assertEquals("zip expression", newLines[0].expression)
+    }
+
+    @Test
+    fun `test import with embedded metadata priority`() = runBlocking {
+        val dao = FakeCalculatorDao()
+        val metadataJson = """{"isPinned":true,"lastModified":999111,"createdAt":888222}"""
+        val content = "# @metadata $metadataJson\n10 + 20"
+        val zipBytes = createMockZip("meta_file", content)
+
+        BackupManager.importFromZip(
+            mockContext,
+            dao,
+            { ByteArrayInputStream(zipBytes) },
+            onProgress = { _, _, _ -> },
+            onConflict = { _, _, _ -> ConflictResolution.REPLACE_WITH_FILE_FROM_ZIP }
+        )
+
+        val importedFile = dao.files.find { it.name == "meta_file" }!!
+        assertTrue(importedFile.isPinned)
+        // lastModified should be preserved from metadata when sync is off
+        assertEquals(999111L, importedFile.lastModified)
+        assertEquals(888222L, importedFile.createdAt)
+        
+        val lines = dao.getLinesForFileSync(importedFile.id)
+        assertEquals(1, lines.size)
+        assertEquals("10 + 20", lines[0].expression)
+    }
+
+    @Test
+    fun `test import with sync enabled forces now timestamp`() = runBlocking {
+        every { mockPrefs.getBoolean(SyncManager.PREF_SYNC_ENABLED, any()) } returns true
+        
+        val dao = FakeCalculatorDao()
+        val metadataJson = """{"lastModified":999111}"""
+        val content = "# @metadata $metadataJson\n10 + 20"
+        val zipBytes = createMockZip("sync_file", content)
+
+        BackupManager.importFromZip(
+            mockContext,
+            dao,
+            { ByteArrayInputStream(zipBytes) },
+            onProgress = { _, _, _ -> },
+            onConflict = { _, _, _ -> ConflictResolution.REPLACE_WITH_FILE_FROM_ZIP }
+        )
+
+        val importedFile = dao.files.find { it.name == "sync_file" }!!
+        // lastModified should be "now" when sync is on
+        assertTrue(Math.abs(System.currentTimeMillis() - importedFile.lastModified) < 2000L)
     }
 }

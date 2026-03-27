@@ -346,7 +346,7 @@ fun SettingsScreen(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Spacer(modifier = Modifier.height(8.dp))
 
-            SettingsSection(title = "Sync")
+            SettingsSection(title = "Sync (Experimental)")
 
             SettingsToggleItem(
                 icon = Icons.Default.Sync,

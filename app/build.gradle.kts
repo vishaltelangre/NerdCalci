@@ -20,6 +20,17 @@ android {
         ksp {
             arg("room.schemaLocation", "$projectDir/schemas")
         }
+        
+        testOptions {
+            unitTests.isReturnDefaultValues = true
+            unitTests.all {
+                it.testLogging {
+                    showStandardStreams = true
+                    events("passed", "skipped", "failed", "standardOut", "standardError")
+                    exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+                }
+            }
+        }
     }
 
     // Disable dependency metadata for F-Droid compatibility

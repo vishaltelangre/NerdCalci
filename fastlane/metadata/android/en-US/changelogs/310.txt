@@ -1,0 +1,2 @@
+- Sync your calculations files across devices using your preferred sync method (Syncthing, WebDAV, etc.).
+- Synchronization of file pinning status across devices.

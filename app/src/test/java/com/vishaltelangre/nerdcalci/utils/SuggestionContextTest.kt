@@ -13,7 +13,7 @@ class SuggestionContextTest {
         val beforeCursor = "10k"
         val context = getSuggestionContext(beforeCursor, text, cursorPos, emptyMap())
         assertEquals("k", context.word)
-        assertEquals(SuggestionType.VARIABLE, context.type)
+        assertEquals(SuggestionType.CONVERSION, context.type)
         assertEquals(2, context.replaceStart)
     }
 
@@ -36,7 +36,7 @@ class SuggestionContextTest {
         val beforeCursor = "10 kg t"
         val context = getSuggestionContext(beforeCursor, text, cursorPos, emptyMap())
         assertEquals("t", context.word)
-        assertEquals(SuggestionType.KEYWORD, context.type)
+        assertEquals(SuggestionType.CONVERSION, context.type)
     }
 
     @Test

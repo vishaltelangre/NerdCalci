@@ -215,9 +215,11 @@ fun getSuggestionContext(
 
 
             // Check if last tokens form a quantity (Number + [Unit])
-            
+
             // 1. Full composite unit detection (e.g. "kilometers per hour ")
             val (compositeUnitStart, category) = detectCompositeUnit(beforeCursor)
+            val lastToken = cleanTokens.last()
+            
             if (compositeUnitStart != -1) {
                 // If cursor is right after the unit and there's a space, suggest keywords
                 if (beforeCursor.endsWith(" ")) {
@@ -229,9 +231,20 @@ fun getSuggestionContext(
                         unitCategory = category
                     )
                 }
+
+                // If typing an identifier after a unit (e.g. "10 kg t"), it's still a conversion context
+                if (lastToken.kind == TokenKind.IDENTIFIER && lastToken.position > compositeUnitStart) {
+                    return SuggestionContextInfo(
+                        word = lastToken.lexeme,
+                        type = SuggestionType.CONVERSION,
+                        isExplicitTrigger = false,
+                        unitStart = compositeUnitStart,
+                        unitCategory = category,
+                        replaceStart = lastToken.position
+                    )
+                }
             }
 
-            val lastToken = cleanTokens.last()
             val tokenBeforeLast = if (cleanTokens.size >= 2) cleanTokens[cleanTokens.size - 2] else null
 
             // 2. Typing unit after number: "15 new"
@@ -242,7 +255,8 @@ fun getSuggestionContext(
                     type = SuggestionType.CONVERSION,
                     isExplicitTrigger = false,
                     unitStart = lastToken.position,
-                    unitCategory = found?.category
+                    unitCategory = found?.category,
+                    replaceStart = lastToken.position
                 )
             }
 
@@ -356,7 +370,7 @@ private fun detectCompositeUnit(text: String): Pair<Int, UnitCategory?> {
         for (j in i until cleanTokens.size) {
             val t = cleanTokens[j]
             currentUnitStr = if (currentUnitStr.isEmpty()) t.lexeme else "$currentUnitStr ${t.lexeme}"
-            
+
             val unit = UnitConverter.findUnit(currentUnitStr)
             if (unit != null) {
                 val fullSuffix = currentUnitStr.trim()

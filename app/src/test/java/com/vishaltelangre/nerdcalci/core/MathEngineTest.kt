@@ -2376,7 +2376,7 @@ class MathEngineTest {
         assertTrue(result[2].result.startsWith("128066.4"))
         assertTrue(result[3].result.startsWith("6.403319"))
         assertTrue(result[3].result.endsWith(" ft²"))
-        assertTrue(result[4].result.contains("463932000"))
+        assertEquals(463932000.0, result[4].result.toDouble(), 0.01)
     }
 
     @Test

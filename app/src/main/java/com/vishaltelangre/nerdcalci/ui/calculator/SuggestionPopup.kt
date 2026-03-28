@@ -83,7 +83,8 @@ fun SuggestionPopup(
     functionColor: Color,
     variableColor: Color,
     replaceStart: Int? = null,
-    argumentIndex: Int? = null
+    argumentIndex: Int? = null,
+    needsSpace: Boolean = false
 ) {
     // Only show if there are suggestions, field is focused, and it hasn't been manually dismissed.
     if (suggestions.isEmpty() || !isFocused || forceDismissSuggestions) return
@@ -216,7 +217,8 @@ fun SuggestionPopup(
                                 onTextFieldValueChange = onTextFieldValueChange,
                                 onValueChange = onValueChange,
                                 contextReplaceStart = replaceStart,
-                                contextArgumentIndex = argumentIndex
+                                contextArgumentIndex = argumentIndex,
+                                contextNeedsSpace = needsSpace
                             )
                         }
                     )
@@ -362,7 +364,8 @@ private fun handleSuggestionClick(
     onTextFieldValueChange: (TextFieldValue) -> Unit,
     onValueChange: (String) -> Unit,
     contextReplaceStart: Int? = null,
-    contextArgumentIndex: Int? = null
+    contextArgumentIndex: Int? = null,
+    contextNeedsSpace: Boolean = false
 ) {
     val text = textFieldValue.text
     val cursorPos = textFieldValue.selection.start
@@ -462,7 +465,7 @@ private fun handleSuggestionClick(
         }
         sb.toString()
     } else {
-        suggestion.name
+        if (contextNeedsSpace) " " + suggestion.name else suggestion.name
     }
 
     val newText = text.substring(0, wordStart) + replacementText + text.substring(wordEnd)

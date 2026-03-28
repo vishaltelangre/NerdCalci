@@ -543,16 +543,16 @@ class SyntaxUtilsTest {
     @Test
     fun `calculateFuzzyMatch applies type-based bonuses`() {
         val query = "s"
-        
+
         // Local variable score
         val varScore = "split".calculateFuzzyMatch(query, SuggestionType.VARIABLE)?.score ?: 0
         // Global function score
         val funcScore = "sin".calculateFuzzyMatch(query, SuggestionType.GLOBAL_FUNCTION)?.score ?: 0
-        
+
         // "split" is longer than "sin", so without bonus "sin" would win.
         // But with +200 bonus, "split" should win.
         assertTrue("Variable 'split' ($varScore) should outrank Function 'sin' ($funcScore)", varScore > funcScore)
-        
+
         // Dynamic variable vs Global function
         val dynamicScore = "sum".calculateFuzzyMatch(query, SuggestionType.DYNAMIC_VARIABLE)?.score ?: 0
         assertTrue("Dynamic 'sum' ($dynamicScore) should outrank Global 'sin' ($funcScore)", dynamicScore > funcScore)
@@ -560,12 +560,46 @@ class SyntaxUtilsTest {
     }
 
     @Test
-    fun `getSuggestionContext handles multiple spaces after keyword`() {
-        val beforeCursor = "10 kg to  "
+    fun `getSuggestionContext populates unitStart for quantity with space`() {
+        val beforeCursor = "15 kilometers "
+        val result = getSuggestionContext(beforeCursor, beforeCursor, beforeCursor.length, emptyMap())
+        assertEquals(SuggestionType.KEYWORD, result.type)
+        assertEquals(3, result.unitStart)
+    }
+
+    @Test
+    fun `getSuggestionContext handles conversion keyword after unit`() {
+        val beforeCursor = "15 kmph in "
         val result = getSuggestionContext(beforeCursor, beforeCursor, beforeCursor.length, emptyMap())
         assertEquals(SuggestionType.UNIT, result.type)
-        assertEquals("", result.word)
-        assertEquals(10, result.replaceStart)
-        assertEquals(UnitCategory.MASS, result.unitCategory)
+        assertEquals(UnitCategory.SPEED, result.unitCategory)
+        assertEquals(11, result.replaceStart)
+    }
+
+    @Test
+    fun `getSuggestionContext handles conversion keyword after long unit name`() {
+        val beforeCursor = "15 kilometers per hour in "
+        val result = getSuggestionContext(beforeCursor, beforeCursor, beforeCursor.length, emptyMap())
+        assertEquals(SuggestionType.UNIT, result.type)
+        assertEquals(UnitCategory.SPEED, result.unitCategory)
+        assertEquals(26, result.replaceStart)
+    }
+
+    @Test
+    fun `getSuggestionContext sets needsSpace when space is missing after keyword`() {
+        val beforeCursor = "15 kmph to"
+        val result = getSuggestionContext(beforeCursor, beforeCursor, beforeCursor.length, emptyMap())
+        assertEquals(SuggestionType.UNIT, result.type)
+        assertEquals(UnitCategory.SPEED, result.unitCategory)
+        assertEquals(true, result.needsSpace)
+    }
+
+    @Test
+    fun `getSuggestionContext does not set needsSpace when space is present after keyword`() {
+        val beforeCursor = "15 kmph to "
+        val result = getSuggestionContext(beforeCursor, beforeCursor, beforeCursor.length, emptyMap())
+        assertEquals(SuggestionType.UNIT, result.type)
+        assertEquals(UnitCategory.SPEED, result.unitCategory)
+        assertEquals(false, result.needsSpace)
     }
 }

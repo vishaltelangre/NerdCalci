@@ -4,6 +4,7 @@ import com.vishaltelangre.nerdcalci.core.Token
 import com.vishaltelangre.nerdcalci.core.TokenKind
 import com.vishaltelangre.nerdcalci.core.Lexer
 import com.vishaltelangre.nerdcalci.core.UnitConverter
+import com.vishaltelangre.nerdcalci.core.Unit
 
 enum class TokenType {
     Number, Variable, Keyword, Operator, Percent, Comment, Function, StringLiteral, Default
@@ -176,9 +177,22 @@ fun getSuggestionContext(
                     TokenKind.KW_AS
                 )
             }
-            if (kwIndex >= 1) {
-                val prevToken = cleanTokens[kwIndex - 1]
-                val unit = if (prevToken.kind == TokenKind.IDENTIFIER) UnitConverter.findUnit(prevToken.lexeme) else null
+            if (kwIndex >= 0) {
+                var unit: Unit? = null
+                var currentUnitStr = ""
+                for (i in (kwIndex - 1) downTo 0) {
+                    val t = cleanTokens[i]
+                    if (t.kind == TokenKind.IDENTIFIER || t.kind == TokenKind.KW_OF || t.kind == TokenKind.KW_TO || t.kind == TokenKind.KW_IN || t.kind == TokenKind.KW_AS) {
+                        currentUnitStr = if (currentUnitStr.isEmpty()) t.lexeme else "${t.lexeme} $currentUnitStr"
+                        val found = UnitConverter.findUnit(currentUnitStr)
+                        if (found != null) {
+                            unit = found
+                        }
+                    } else {
+                        break
+                    }
+                }
+
                 val kwToken = cleanTokens[kwIndex]
                 val endPos = kwToken.position + kwToken.lexeme.length
                 var replaceStart = endPos
@@ -189,7 +203,8 @@ fun getSuggestionContext(
                     beforeCursor.substring(replaceStart)
                 } else ""
                 val isExplicit = kwIndex == cleanTokens.size - 1
-                return SuggestionContextInfo(currentWord, SuggestionType.UNIT, isExplicit, unit?.category, replaceStart = replaceStart)
+                val needsSpace = replaceStart == endPos && (replaceStart == beforeCursor.length || !beforeCursor[replaceStart].isWhitespace())
+                return SuggestionContextInfo(currentWord, SuggestionType.UNIT, isExplicit, unit?.category, replaceStart = replaceStart, needsSpace = needsSpace)
             }
 
             // Check for convert() function arguments context (e.g. convert(10, "km", "m"))
@@ -198,15 +213,39 @@ fun getSuggestionContext(
                 return convertContext
             }
 
-            val lastToken = cleanTokens.last()
-            val prevToken = cleanTokens.getOrNull(cleanTokens.size - 2)
-            val prevPrevToken = cleanTokens.getOrNull(cleanTokens.size - 3)
 
-            if (lastToken.kind == TokenKind.IDENTIFIER &&
-                prevToken?.kind == TokenKind.IDENTIFIER) {
-                if (prevPrevToken?.kind == TokenKind.NUMBER &&
-                    UnitConverter.findUnit(prevToken.lexeme) != null) {
-                    return SuggestionContextInfo(lastToken.lexeme, SuggestionType.KEYWORD, true)
+            // Check if last tokens form a quantity (Number + [Unit])
+            var lastUnitIdx = -1
+            var currentUnitStr = ""
+            for (i in (cleanTokens.size - 1) downTo 0) {
+                val t = cleanTokens[i]
+                if (t.kind == TokenKind.IDENTIFIER || t.kind == TokenKind.KW_OF) {
+                    currentUnitStr = if (currentUnitStr.isEmpty()) t.lexeme else "${t.lexeme} $currentUnitStr"
+                    val found = UnitConverter.findUnit(currentUnitStr)
+                    if (found != null) {
+                        lastUnitIdx = i
+                    }
+                } else {
+                    break
+                }
+            }
+
+            val numIdx = if (lastUnitIdx >= 0) lastUnitIdx - 1 else cleanTokens.size - 1
+            if (numIdx >= 0 && cleanTokens[numIdx].kind == TokenKind.NUMBER) {
+                // It's a quantity!
+                // If cursor is right after the unit and there's a space, suggest keywords
+                if (beforeCursor.endsWith(" ")) {
+                    val lastToken = cleanTokens.last()
+                    val wordEnd = lastToken.position + lastToken.lexeme.length
+                    if (beforeCursor.substring(0, wordEnd).trim() == beforeCursor.trim()) {
+                        val unitStart = if (lastUnitIdx >= 0) cleanTokens[lastUnitIdx].position else -1
+                        return SuggestionContextInfo(
+                            word = "",
+                            type = SuggestionType.KEYWORD,
+                            isExplicitTrigger = true,
+                            unitStart = if (unitStart >= 0) unitStart else null
+                        )
+                    }
                 }
             }
         }

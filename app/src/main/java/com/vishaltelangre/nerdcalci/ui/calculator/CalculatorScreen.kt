@@ -1287,12 +1287,32 @@ private fun LineRow(
                     } else null
                 }.sortedByDescending { it.score }
             } else if (contextType == SuggestionType.KEYWORD) {
-                listOf("to", "in", "as").map { Suggestion(name = it, type = SuggestionType.KEYWORD) }.mapNotNull {
+                val keywords = listOf("to", "in", "as").map { Suggestion(name = it, type = SuggestionType.KEYWORD) }.mapNotNull {
                     val match = it.name.calculateFuzzyMatch(currentWord, SuggestionType.KEYWORD)
                     if (match != null && it.name != currentWord) {
                         it.copy(matchIndices = match.matchIndices, score = match.score)
                     } else null
-                }.sortedByDescending { it.score }
+                }
+
+                val unitSuggestions = if (suggestionContext.unitStart != null) {
+                    val unitQuery = beforeCursor.substring(suggestionContext.unitStart, cursorPos)
+                    UnitConverter.UNITS.flatMap { unit ->
+                        unit.symbols.map { symbol ->
+                            val match = symbol.calculateFuzzyMatch(unitQuery, SuggestionType.UNIT)
+                            if (match != null && symbol != unitQuery.trim()) {
+                                Suggestion(
+                                    name = symbol,
+                                    type = SuggestionType.UNIT,
+                                    matchIndices = match.matchIndices,
+                                    score = match.score,
+                                    replaceStart = suggestionContext.unitStart
+                                )
+                            } else null
+                        }
+                    }.filterNotNull()
+                } else emptyList()
+
+                (keywords + unitSuggestions).sortedByDescending { it.score }
             } else {
                 if (currentWord.isEmpty() || (currentWord.any { char -> char.isLetter() || char == '_' } &&
                     currentWord.all { char -> char.isLetterOrDigit() || char == '_' })) {
@@ -1561,7 +1581,8 @@ private fun LineRow(
                     functionColor = functionColor,
                     variableColor = variableColor,
                     replaceStart = suggestionContext.replaceStart,
-                    argumentIndex = suggestionContext.argumentIndex
+                    argumentIndex = suggestionContext.argumentIndex,
+                    needsSpace = suggestionContext.needsSpace
                 )
             }
         }

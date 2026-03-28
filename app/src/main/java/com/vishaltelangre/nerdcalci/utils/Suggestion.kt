@@ -21,5 +21,7 @@ data class SuggestionContextInfo(
     val isExplicitTrigger: Boolean,
     val unitCategory: UnitCategory? = null,
     val replaceStart: Int? = null,
-    val argumentIndex: Int? = null
+    val argumentIndex: Int? = null,
+    val unitStart: Int? = null,
+    val needsSpace: Boolean = false
 )

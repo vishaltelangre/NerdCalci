@@ -41,6 +41,7 @@
   - [Dimension-safe arithmetic](#dimension-safe-arithmetic)
   - [Conversion operations](#conversion-operations)
   - [The `convert()` function](#the-convert-function)
+  - [Extracting numerical values](#extracting-numerical-values)
   - [Quantities inside Trigonometry](#quantities-inside-trigonometry)
   - [Time](#time)
   - [Length](#length)
@@ -467,7 +468,7 @@ A **circular reference** happens when File A loads File B, while File B (or its 
 
 ## 10. Unit conversions
 
-NerdCalci supports dimensionally-safe arithmetic and conversions out of the box for over 100 units across various categories like Length, Mass, Time, Temperature, Data, and more.
+NerdCalci handles math with units automatically. You can add, subtract, and convert between over 100 different units across categories like Length, Mass, Time, and more.
 
 ### Creating quantities
 
@@ -482,7 +483,7 @@ Simply attach the unit name or symbol suffix to any number:
 
 ### Dimension-safe arithmetic
 
-For mixed-unit arithmetic (like addition or subtraction), NerdCalci normalizes the result using the unit that has the **smaller scale (most granular)**. If factors are identical (e.g., Temperature), it preserves the unit of the **right-hand operand**. You can override this display unit using the `in <unit>` suffix anywhere:
+When you mix different units (like adding meters to kilometers), NerdCalci automatically picks the most precise unit for the result. For temperature, it uses the unit from the right-hand side. You can always override this by adding `in <unit>` at the end:
 
 ```text
 10km + 500m                        # 10500 m
@@ -504,7 +505,7 @@ dist + 500m                        # 10.5 km
 
 ### Conversion operations
 
-Use standard connectors `to`, `in`, or `as` to scale values securely:
+Use `to`, `in`, or `as` to convert a value to a different unit:
 
 ```text
 10 km to m          # 10000 m
@@ -518,7 +519,7 @@ Use standard connectors `to`, `in`, or `as` to scale values securely:
 
 ### The `convert()` function
 
-Alternatively, you can use the built-in `convert()` function for programmatic conversions.
+Alternatively, you can use the `convert()` function if you prefer a more traditional function style.
 
 **Syntax**: `convert(value, "fromUnit", "toUnit")`
 
@@ -528,6 +529,20 @@ The second and third arguments MUST be quoted strings.
 convert(10, "km", "m")       # 10000 m
 convert(100, "°C", "°F")     # 212 °F
 ```
+
+### Extracting numerical values
+
+Use `value()`, `dropUnit()`, or `raw()` to extract just the number from a quantity. This is useful when you want to 'strip' the unit label and use the plain number in other calculations.
+
+```text
+dist = 10 km
+val = value(dist)             # evaluates to 10
+
+area = 4.2 acres in sqft      # evaluates to 182952 ft²
+numeric_area = dropUnit(area) # evaluates to 182952
+```
+
+These functions are strictly reserved and generate an explicit "unitless" result, meaning they can be freely combined with other numbers without unit-safety errors.
 
 ### Quantities inside Trigonometry
 

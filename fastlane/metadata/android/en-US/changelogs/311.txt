@@ -1,0 +1,4 @@
+- Added value(), dropUnit(), and raw() functions to extract numeric values from quantities.
+- Improved unit conversion autocomplete with support for multi-word units.
+- Added syntax highlighting for conversion keywords (to/in/as).
+- Fixed a bug during unit autocomplete which inserted the unit name right after conversion keyword without inserting space in between.

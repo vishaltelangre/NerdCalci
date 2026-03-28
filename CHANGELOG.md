@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.1] - 2026-03-29
+### Added
+- Added `value()`, `dropUnit()`, and `raw()` functions to extract the numeric value from quantities (e.g. `value(10km)` returns `10`).
+- Improved unit conversion autocomplete with support for multi-word units (e.g., "kilometers per hour").
+
+### Changed
+- Refined syntax highlighting for conversion keywords (`to`, `in`, `as`).
+
+### Fixed
+- Fixed a bug during unit autocomplete which inserted the unit name right after conversion keyword without inserting space in between.
+
 ## [3.1.0] - 2026-03-27
 ### Added
 - Sync your calculations files across devices using your preferred sync method (Syncthing, WebDAV, etc.).

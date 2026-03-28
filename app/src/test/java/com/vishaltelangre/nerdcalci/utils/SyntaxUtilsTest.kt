@@ -563,7 +563,7 @@ class SyntaxUtilsTest {
     fun `getSuggestionContext populates unitStart for quantity with space`() {
         val beforeCursor = "15 kilometers "
         val result = getSuggestionContext(beforeCursor, beforeCursor, beforeCursor.length, emptyMap())
-        assertEquals(SuggestionType.KEYWORD, result.type)
+        assertEquals(SuggestionType.CONVERSION, result.type)
         assertEquals(3, result.unitStart)
     }
 

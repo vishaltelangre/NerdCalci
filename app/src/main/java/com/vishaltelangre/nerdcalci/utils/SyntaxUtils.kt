@@ -7,7 +7,7 @@ import com.vishaltelangre.nerdcalci.core.UnitConverter
 import com.vishaltelangre.nerdcalci.core.Unit
 
 enum class TokenType {
-    Number, Variable, Keyword, Operator, Percent, Comment, Function, StringLiteral, Default
+    Number, Variable, Keyword, Conversion, Operator, Percent, Comment, Function, StringLiteral, Default
 }
 
 data class SyntaxToken(val start: Int, val end: Int, val type: TokenType)
@@ -61,12 +61,11 @@ object SyntaxUtils {
                     while (j < text.length && text[j].isWhitespace()) j++
                     val isFunction = j < text.length && text[j] == '('
 
-                    val type = if (word in KEYWORD_NAMES) {
-                        TokenType.Keyword
-                    } else if (isFunction) {
-                        TokenType.Function
-                    } else {
-                        TokenType.Variable
+                    val type = when {
+                        word.lowercase() in setOf("to", "in", "as") -> TokenType.Conversion
+                        word in KEYWORD_NAMES -> TokenType.Keyword
+                        isFunction -> TokenType.Function
+                        else -> TokenType.Variable
                     }
                     tokens.add(SyntaxToken(start, i, type))
                     continue
@@ -241,7 +240,7 @@ fun getSuggestionContext(
                         val unitStart = if (lastUnitIdx >= 0) cleanTokens[lastUnitIdx].position else -1
                         return SuggestionContextInfo(
                             word = "",
-                            type = SuggestionType.KEYWORD,
+                            type = SuggestionType.CONVERSION,
                             isExplicitTrigger = true,
                             unitStart = if (unitStart >= 0) unitStart else null
                         )

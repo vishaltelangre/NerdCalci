@@ -82,6 +82,7 @@ fun SuggestionPopup(
     keywordColor: Color,
     functionColor: Color,
     variableColor: Color,
+    conversionColor: Color,
     replaceStart: Int? = null,
     argumentIndex: Int? = null,
     needsSpace: Boolean = false
@@ -210,6 +211,7 @@ fun SuggestionPopup(
                         keywordColor = keywordColor,
                         functionColor = functionColor,
                         variableColor = variableColor,
+                        conversionColor = conversionColor,
                         onClick = {
                             handleSuggestionClick(
                                 suggestion = suggestion,
@@ -218,7 +220,11 @@ fun SuggestionPopup(
                                 onValueChange = onValueChange,
                                 contextReplaceStart = replaceStart,
                                 contextArgumentIndex = argumentIndex,
-                                contextNeedsSpace = needsSpace
+                                contextNeedsSpace = needsSpace,
+                                contextKeywordColor = keywordColor,
+                                contextFunctionColor = functionColor,
+                                contextVariableColor = variableColor,
+                                contextConversionColor = conversionColor
                             )
                         }
                     )
@@ -234,6 +240,7 @@ private fun SuggestionItem(
     keywordColor: Color,
     functionColor: Color,
     variableColor: Color,
+    conversionColor: Color,
     onClick: () -> Unit
 ) {
     Row(
@@ -252,6 +259,7 @@ private fun SuggestionItem(
             SuggestionType.FILE -> "FILE"
             SuggestionType.UNIT -> "UNIT"
             SuggestionType.KEYWORD -> "KEY"
+            SuggestionType.CONVERSION -> "CONV"
         }
 
         val (itemColor, isItalic) = when (suggestion.type) {
@@ -259,6 +267,7 @@ private fun SuggestionItem(
             SuggestionType.LOCAL_FUNCTION, SuggestionType.GLOBAL_FUNCTION -> functionColor to true
             SuggestionType.VARIABLE, SuggestionType.CONSTANT -> variableColor to true
             SuggestionType.FILE, SuggestionType.UNIT, SuggestionType.KEYWORD -> keywordColor to false
+            SuggestionType.CONVERSION -> conversionColor to false
         }
 
         val isMultiline = typeLabel.contains("\n")
@@ -350,7 +359,8 @@ private fun isItalicType(type: SuggestionType): Boolean {
         SuggestionType.GLOBAL_FUNCTION,
         SuggestionType.VARIABLE,
         SuggestionType.CONSTANT -> true
-        SuggestionType.FILE, SuggestionType.UNIT, SuggestionType.KEYWORD -> false
+        SuggestionType.FILE, SuggestionType.UNIT, SuggestionType.KEYWORD,
+        SuggestionType.CONVERSION -> false
     }
 }
 
@@ -365,7 +375,11 @@ private fun handleSuggestionClick(
     onValueChange: (String) -> Unit,
     contextReplaceStart: Int? = null,
     contextArgumentIndex: Int? = null,
-    contextNeedsSpace: Boolean = false
+    contextNeedsSpace: Boolean = false,
+    contextKeywordColor: Color = Color.Unspecified,
+    contextFunctionColor: Color = Color.Unspecified,
+    contextVariableColor: Color = Color.Unspecified,
+    contextConversionColor: Color = Color.Unspecified
 ) {
     val text = textFieldValue.text
     val cursorPos = textFieldValue.selection.start

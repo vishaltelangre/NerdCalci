@@ -255,6 +255,7 @@ val file = File(exportDir, "$fileNameWithDate.pdf")
         val percentColor = SyntaxColors.PercentColorLight.toArgb()
         val commentColor = SyntaxColors.CommentColorLight.toArgb()
         val functionColor = SyntaxColors.FunctionColorLight.toArgb()
+        val conversionColor = SyntaxColors.ConversionColorLight.toArgb()
 
         for (token in tokens) {
             when (token.type) {
@@ -279,6 +280,10 @@ val file = File(exportDir, "$fileNameWithDate.pdf")
                 }
                 TokenType.StringLiteral -> {
                     spannable.setSpan(ForegroundColorSpan(keywordColor), token.start, token.end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                }
+                TokenType.Conversion -> {
+                    spannable.setSpan(ForegroundColorSpan(conversionColor), token.start, token.end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                    spannable.setSpan(StyleSpan(android.graphics.Typeface.BOLD), token.start, token.end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
                 }
                 TokenType.Default -> {} // Do nothing
             }

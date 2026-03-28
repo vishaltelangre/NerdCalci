@@ -25,6 +25,7 @@ object SyntaxColors {
   val OperatorColorDark = Color.White // White for operators (=, +, -, etc)
   val PercentColorDark = Color(0xFFFFAB40) // Bright amber for percentages
   val CommentColorDark = Color(0xFF607D8B) // Dimmer blue-gray for comments
+  val ConversionColorDark = Color(0xFF82B1FF) // Bright blue for to/in/as
 
   // Light mode
   val NumberColorLight = Color(0xFF09885A) // Bright green for numbers
@@ -34,4 +35,5 @@ object SyntaxColors {
   val OperatorColorLight = Color(0xFF000000) // Black for operators (=, +, -, etc)
   val PercentColorLight = Color(0xFFA31515) // Bright red for percentages
   val CommentColorLight = Color(0xFF5A7A5A) // Dimmer but readable green
+  val ConversionColorLight = Color(0xFF2979FF) // Deep vibrant blue for to/in/as
 }

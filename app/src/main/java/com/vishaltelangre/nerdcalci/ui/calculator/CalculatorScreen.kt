@@ -1252,7 +1252,7 @@ private fun LineRow(
         val text = textFieldValue.text
         val beforeCursor = if (cursorPos > 0) text.substring(0, cursorPos) else ""
 
-        if (!forceDismissSuggestions && showSuggestions && (currentWord.isNotEmpty() || isExplicitTrigger)) {
+        if (!forceDismissSuggestions && showSuggestions && (currentWord.isNotEmpty() || isExplicitTrigger || contextType == SuggestionType.UNIT || contextType == SuggestionType.CONVERSION)) {
             val tokens = runCatching { 
                 Lexer(beforeCursor).tokenize() 
             }.getOrElse { emptyList() }
@@ -1303,16 +1303,27 @@ private fun LineRow(
                 }
 
                 val unitSuggestions = if (suggestionContext.unitStart != null) {
-                    val unitQuery = beforeCursor.substring(suggestionContext.unitStart, cursorPos)
-                    UnitConverter.UNITS.flatMap { unit ->
+                    val unitQuery = (beforeCursor.substring(suggestionContext.unitStart, cursorPos)).trim()
+                    val category = suggestionContext.unitCategory
+                    val unitsForCategory = if (category != null) {
+                        UnitConverter.UNITS.filter { u ->
+                            u.category == category ||
+                                    (category == UnitCategory.SCALAR && u.category == UnitCategory.NUMERAL_SYSTEM) ||
+                                    (category == UnitCategory.NUMERAL_SYSTEM && u.category == UnitCategory.SCALAR)
+                        }
+                    } else {
+                        UnitConverter.UNITS
+                    }
+
+                    unitsForCategory.flatMap { unit ->
                         unit.symbols.map { symbol ->
                             val match = symbol.calculateFuzzyMatch(unitQuery, SuggestionType.UNIT)
-                            if (match != null && symbol != unitQuery.trim()) {
+                            if (match != null && symbol != unitQuery) {
                                 Suggestion(
                                     name = symbol,
                                     type = SuggestionType.UNIT,
                                     matchIndices = match.matchIndices,
-                                    score = match.score,
+                                    score = if (unitQuery.isEmpty()) 99 - UnitConverter.UNITS.indexOf(unit) % 100 else match.score,
                                     replaceStart = suggestionContext.unitStart
                                 )
                             } else null

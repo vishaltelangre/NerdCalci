@@ -1,6 +1,7 @@
 package com.vishaltelangre.nerdcalci.utils
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import com.vishaltelangre.nerdcalci.core.UnitCategory
@@ -565,6 +566,16 @@ class SyntaxUtilsTest {
         val result = getSuggestionContext(beforeCursor, beforeCursor, beforeCursor.length, emptyMap())
         assertEquals(SuggestionType.CONVERSION, result.type)
         assertEquals(3, result.unitStart)
+        assertEquals(UnitCategory.LENGTH, result.unitCategory)
+    }
+
+    @Test
+    fun `getSuggestionContext populates unitStart for number with space`() {
+        val beforeCursor = "15 "
+        val result = getSuggestionContext(beforeCursor, beforeCursor, beforeCursor.length, emptyMap())
+        assertEquals(SuggestionType.CONVERSION, result.type)
+        assertEquals(3, result.unitStart)
+        assertNull(result.unitCategory)
     }
 
     @Test
@@ -583,6 +594,15 @@ class SyntaxUtilsTest {
         assertEquals(SuggestionType.UNIT, result.type)
         assertEquals(UnitCategory.SPEED, result.unitCategory)
         assertEquals(26, result.replaceStart)
+    }
+
+    @Test
+    fun `getSuggestionContext handles unit completion after number`() {
+        val beforeCursor = "15 n"
+        val result = getSuggestionContext(beforeCursor, beforeCursor, beforeCursor.length, emptyMap())
+        assertEquals("n", result.word)
+        assertEquals(SuggestionType.CONVERSION, result.type)
+        assertEquals(3, result.unitStart)
     }
 
     @Test

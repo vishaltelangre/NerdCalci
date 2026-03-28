@@ -5,6 +5,7 @@ import com.vishaltelangre.nerdcalci.core.TokenKind
 import com.vishaltelangre.nerdcalci.core.Lexer
 import com.vishaltelangre.nerdcalci.core.UnitConverter
 import com.vishaltelangre.nerdcalci.core.Unit
+import com.vishaltelangre.nerdcalci.core.UnitCategory
 
 enum class TokenType {
     Number, Variable, Keyword, Conversion, Operator, Percent, Comment, Function, StringLiteral, Default
@@ -214,37 +215,46 @@ fun getSuggestionContext(
 
 
             // Check if last tokens form a quantity (Number + [Unit])
-            var lastUnitIdx = -1
-            var currentUnitStr = ""
-            for (i in (cleanTokens.size - 1) downTo 0) {
-                val t = cleanTokens[i]
-                if (t.kind == TokenKind.IDENTIFIER || t.kind == TokenKind.KW_OF) {
-                    currentUnitStr = if (currentUnitStr.isEmpty()) t.lexeme else "${t.lexeme} $currentUnitStr"
-                    val found = UnitConverter.findUnit(currentUnitStr)
-                    if (found != null) {
-                        lastUnitIdx = i
-                    }
-                } else {
-                    break
+            
+            // 1. Full composite unit detection (e.g. "kilometers per hour ")
+            val (compositeUnitStart, category) = detectCompositeUnit(beforeCursor)
+            if (compositeUnitStart != -1) {
+                // If cursor is right after the unit and there's a space, suggest keywords
+                if (beforeCursor.endsWith(" ")) {
+                    return SuggestionContextInfo(
+                        word = "",
+                        type = SuggestionType.CONVERSION,
+                        isExplicitTrigger = true,
+                        unitStart = compositeUnitStart,
+                        unitCategory = category
+                    )
                 }
             }
 
-            val numIdx = if (lastUnitIdx >= 0) lastUnitIdx - 1 else cleanTokens.size - 1
-            if (numIdx >= 0 && cleanTokens[numIdx].kind == TokenKind.NUMBER) {
-                // It's a quantity!
-                // If cursor is right after the unit and there's a space, suggest keywords
+            val lastToken = cleanTokens.last()
+            val tokenBeforeLast = if (cleanTokens.size >= 2) cleanTokens[cleanTokens.size - 2] else null
+
+            // 2. Typing unit after number: "15 new"
+            if (lastToken.kind == TokenKind.IDENTIFIER && tokenBeforeLast?.kind == TokenKind.NUMBER) {
+                val found = UnitConverter.findUnit(lastToken.lexeme)
+                return SuggestionContextInfo(
+                    word = lastToken.lexeme,
+                    type = SuggestionType.CONVERSION,
+                    isExplicitTrigger = false,
+                    unitStart = lastToken.position,
+                    unitCategory = found?.category
+                )
+            }
+
+            // 3. Simple number followed by space: "15 "
+            if (lastToken.kind == TokenKind.NUMBER) {
                 if (beforeCursor.endsWith(" ")) {
-                    val lastToken = cleanTokens.last()
-                    val wordEnd = lastToken.position + lastToken.lexeme.length
-                    if (beforeCursor.substring(0, wordEnd).trim() == beforeCursor.trim()) {
-                        val unitStart = if (lastUnitIdx >= 0) cleanTokens[lastUnitIdx].position else -1
-                        return SuggestionContextInfo(
-                            word = "",
-                            type = SuggestionType.CONVERSION,
-                            isExplicitTrigger = true,
-                            unitStart = if (unitStart >= 0) unitStart else null
-                        )
-                    }
+                    return SuggestionContextInfo(
+                        word = "",
+                        type = SuggestionType.CONVERSION,
+                        isExplicitTrigger = true,
+                        unitStart = lastToken.position + lastToken.lexeme.length + 1
+                    )
                 }
             }
         }
@@ -323,6 +333,43 @@ private fun getConvertSuggestionContext(cleanTokens: List<Token>, cursorPos: Int
         scanIdx--
     }
     return null
+}
+
+private fun detectCompositeUnit(text: String): Pair<Int, UnitCategory?> {
+    val tokens = try { Lexer(text).tokenize() } catch (e: Exception) { return -1 to null }
+    val cleanTokens = tokens.filter { it.kind != TokenKind.EOF && it.kind != TokenKind.SEMICOLON }
+    if (cleanTokens.isEmpty()) return -1 to null
+
+    val lastNumberIndex = cleanTokens.indexOfLast { it.kind == TokenKind.NUMBER }
+    if (lastNumberIndex == -1) return -1 to null
+
+    val startTokenIndex = lastNumberIndex + 1
+    if (startTokenIndex >= cleanTokens.size) return -1 to null
+
+    // We look for the LONGEST matching unit starting after the number.
+    var bestStart = -1
+    var bestCategory: UnitCategory? = null
+    var maxLength = -1
+
+    for (i in startTokenIndex until cleanTokens.size) {
+        var currentUnitStr = ""
+        for (j in i until cleanTokens.size) {
+            val t = cleanTokens[j]
+            currentUnitStr = if (currentUnitStr.isEmpty()) t.lexeme else "$currentUnitStr ${t.lexeme}"
+            
+            val unit = UnitConverter.findUnit(currentUnitStr)
+            if (unit != null) {
+                val fullSuffix = currentUnitStr.trim()
+                if (fullSuffix.length > maxLength) {
+                    bestStart = cleanTokens[i].position
+                    bestCategory = unit.category
+                    maxLength = fullSuffix.length
+                }
+            }
+        }
+    }
+
+    return bestStart to bestCategory
 }
 
 /**

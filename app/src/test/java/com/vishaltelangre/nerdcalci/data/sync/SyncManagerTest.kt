@@ -24,6 +24,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.json.JSONObject
+import org.json.JSONTokener
 import java.io.ByteArrayInputStream
 import java.io.OutputStream
 import java.util.Collections
@@ -109,6 +110,7 @@ class SyncManagerTest {
         assertTrue(result.isSuccess)
         verify(exactly = 0) { FileUtils.formatFileContent(any(), any(), any()) }
         verify(exactly = 0) { contentResolver.openOutputStream(any<Uri>()) }
+        verify(exactly = 0) { contentResolver.openOutputStream(any<Uri>(), any()) }
     }
 
     @Test
@@ -423,8 +425,8 @@ class SyncManagerTest {
 
         assertEquals("Synced: Inbound 1, Outbound 0, Conflicts 1", stats)
 
-        // Verify write was attempted
-        verify(atLeast = 1) { contentResolver.openOutputStream(any<Uri>()) }
+        // Verify write was attempted (using 2-arg variant for overwrites)
+        verify(atLeast = 1) { contentResolver.openOutputStream(any<Uri>(), eq("wt")) }
     }
 
     @Test
@@ -503,12 +505,20 @@ class SyncManagerTest {
         // Local has a newer edit (20000L > 10000L)
         dao.insertFile(FileEntity(name = "file", syncId = syncId, lastModified = 20000L))
 
+        val tempFile = mockk<DocumentFile>(relaxed = true)
+        var fileExistsInSaf = false
+        every { folder.findFile(filename) } answers { if (fileExistsInSaf) tempFile else null }
+        every { folder.findFile(filename + ".tmp") } returns null
+        every { folder.createFile(any(), filename + ".tmp") } returns tempFile
+        every { tempFile.renameTo(filename) } answers { fileExistsInSaf = true; true }
+
         val result = SyncManager.performSync(context, dao)
         val stats = result.getOrThrow()
         assertEquals("Synced: Inbound 0, Outbound 1", stats)
 
-        // Verify it was re-uploaded (createFile called)
-        verify { folder.createFile(any(), filename) }
+        // Verify it was re-uploaded via temp file
+        verify { folder.createFile(any(), filename + ".tmp") }
+        verify { tempFile.renameTo(filename) }
     }
 
     @Test
@@ -727,5 +737,53 @@ class SyncManagerTest {
         } finally {
             // cleanup if needed
         }
+    }
+
+    @Test
+    fun `test duplicate syncId found in SAF prioritizing matching name`() = runBlocking {
+        every { prefs.getBoolean(SyncManager.PREF_SYNC_ENABLED, false) } returns true
+        every { prefs.getString(SyncManager.PREF_SYNC_FOLDER_URI, null) } returns "content://mock"
+
+        val syncId = "dup-id"
+        val ext = EXPORT_FILE_EXTENSION
+        val originalName = "file$ext"
+        val suffixName = "file (1)$ext"
+
+        // Snapshot says we are on "file.nerdcalci"
+        val snapshotJson = org.json.JSONObject().put(syncId, org.json.JSONObject().apply {
+            put("filename", originalName)
+            put("osTimestamp", 10000L)
+            put("metadataTimestamp", 10000L)
+            put("isPinned", false)
+            put("contentHash", "empty-hash")
+        }).toString()
+        every { prefs.getString(SyncManager.PREF_LAST_SYNC_FILES, null) } returns snapshotJson
+
+        // SAF has BOTH "file.nerdcalci" (older) and "file (1).nerdcalci" (newer)
+        val fileOriginal = mockk<DocumentFile>(relaxed = true)
+        val fileSuffix = mockk<DocumentFile>(relaxed = true)
+
+        every { fileOriginal.isFile } returns true
+        every { fileOriginal.name } returns originalName
+        every { fileOriginal.lastModified() } returns 10000L
+        every { fileOriginal.uri } returns Uri.parse("content://mock/orig")
+
+        every { fileSuffix.isFile } returns true
+        every { fileSuffix.name } returns suffixName
+        every { fileSuffix.lastModified() } returns 20000L // Newer!
+        every { fileSuffix.uri } returns Uri.parse("content://mock/suffix")
+
+        every { folder.listFiles() } returns arrayOf(fileOriginal, fileSuffix)
+
+        // Metadata for both is the same
+        val metadata = FileMetadata(id = syncId, lastModified = 10000L, contentHash = "empty-hash")
+        val content = FileUtils.formatFileContent(emptyList(), 2, metadata)
+        every { contentResolver.openInputStream(any()) } answers { java.io.ByteArrayInputStream(content.toByteArray()) }
+
+        // Local State
+        dao.insertFile(FileEntity(name = "file", syncId = syncId, lastModified = 10000L))
+
+        val result = SyncManager.performSync(context, dao)
+        org.junit.Assert.assertTrue("Sync failed: ${result.exceptionOrNull()?.message}", result.isSuccess)
     }
 }

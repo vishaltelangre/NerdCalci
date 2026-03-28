@@ -230,7 +230,24 @@ object SyncManager {
                 }
             }.awaitAll()
 
-            val safFilesById = safFiles.associateBy { it.syncId }
+            val safFilesById = safFiles.groupBy { it.syncId }.mapValues { (syncId, files) ->
+                if (files.size > 1) {
+                    val roomFile = roomFilesById[syncId]
+                    val lastInfo = lastSyncMap[syncId]
+                    val expectedLocalName = if (roomFile != null) "${roomFile.name}${EXPORT_FILE_EXTENSION}" else null
+                    val lastKnownName = lastInfo?.filename
+
+                    // Prioritize name match to prevent "RENAME DETECTED" loops caused by SAF suffixes
+                    val bestMatch = files.find { it.name == expectedLocalName }
+                        ?: files.find { it.name == lastKnownName }
+                        ?: files.maxByOrNull { if (it.lastModified > 0) it.lastModified else it.osLastModified }!!
+
+                    Log.w(TAG, "Duplicate syncId $syncId in SAF. Picking ${bestMatch.name} (Priority Match). Others: ${files.filter { it != bestMatch }.map { it.name }}")
+                    bestMatch
+                } else {
+                    files.first()
+                }
+            }
 
             // 3. Process Union of Sync IDs
             val allSyncIds = (roomFilesById.keys + safFilesById.keys + lastSyncMap.keys).toSet()
@@ -306,10 +323,13 @@ object SyncManager {
 
         val syncId = roomFile.syncId
         var filename = safFile.name
+        Log.d(TAG, "Sync state for $filename: localTime=$localTime, lastMeta=$lastMetadataTimestamp, remoteTime=$remoteTime, lastSync=$lastSyncTimestamp, localChanged=$localChanged, remoteChanged=$remoteChanged")
 
         // Detect Rename
         val lastFilename = lastInfo?.filename ?: filename
         val localNameWithExt = roomFile.name + EXPORT_FILE_EXTENSION
+        var currentFilenameForSnapshot = filename
+
         if (localNameWithExt != filename) {
             val localRenamed = localNameWithExt != lastFilename
             val remoteRenamed = filename != lastFilename
@@ -317,15 +337,16 @@ object SyncManager {
             if (remoteRenamed && !localRenamed) {
                 Log.d(TAG, "RENAME DETECTED (Remote win): Local ${roomFile.name} -> Remote $filename")
                 dao.renameFileFromSync(roomFile.id, filename.removeSuffix(EXPORT_FILE_EXTENSION))
+                // Note: roomFile.name is still the old one, but we use filename for snapshot below
             } else if (localRenamed && !remoteRenamed) {
                 Log.d(TAG, "RENAME DETECTED (Local win): Remote $filename -> $localNameWithExt")
                 if (safFile.documentFile.renameTo(localNameWithExt)) {
-                    filename = localNameWithExt
+                    currentFilenameForSnapshot = localNameWithExt
                 } else {
-                    Log.w(TAG, "Remote rename failed for $filename -> $localNameWithExt")
+                    Log.w(TAG, "Remote rename failed for $filename -> $localNameWithExt. Will attempt overwrite via writeToSaf.")
                 }
             } else if (localRenamed && remoteRenamed) {
-                Log.d(TAG, "RENAME CONFLICT: Local ${roomFile.name} vs Remote $filename. Remote name wins for simplicity.")
+                Log.d(TAG, "RENAME CONFLICT: Local ${roomFile.name} vs Remote $filename. Remote name wins.")
                 dao.renameFileFromSync(roomFile.id, filename.removeSuffix(EXPORT_FILE_EXTENSION))
             }
         }
@@ -347,14 +368,14 @@ object SyncManager {
                 }
             }
             if (computedHash == remoteHash && roomFile.isPinned == safFile.isPinned) {
-                Log.d(TAG, "DECISION: LOCAL_METADATA_ONLY_UPDATE for ${roomFile.name} (hashes and pin match)")
-                currentSyncSnapshot[syncId] = LastSyncInfo(roomFile.name + EXPORT_FILE_EXTENSION, safFile.osLastModified, safFile.lastModified, roomFile.isPinned, computedHash)
+                Log.d(TAG, "DECISION: LOCAL_METADATA_ONLY_UPDATE for $currentFilenameForSnapshot (hashes and pin match)")
+                currentSyncSnapshot[syncId] = LastSyncInfo(currentFilenameForSnapshot, safFile.osLastModified, safFile.lastModified, roomFile.isPinned, computedHash)
                 return
             }
 
             if (localChanged && remoteChanged) {
                 val conflictName = createConflictFilename(roomFile.name, dao)
-                Log.d(TAG, "CONFLICT: $filename. Duplicating local version to $conflictName.")
+                Log.d(TAG, "CONFLICT: $currentFilenameForSnapshot. Duplicating local version to $conflictName.")
                 stats.conflicts++
 
                 // 1. Preserve local version as a separate conflict copy with a NEW identity
@@ -363,21 +384,21 @@ object SyncManager {
 
                 // 2. Overwrite the original local file with the remote SAF entry
                 val result = importFromSaf(context, safFile.documentFile, dao)
-                currentSyncSnapshot[syncId] = LastSyncInfo(filename, result.osTimestamp, result.metadataTimestamp, result.isPinned, result.contentHash)
+                currentSyncSnapshot[syncId] = LastSyncInfo(currentFilenameForSnapshot, result.osTimestamp, result.metadataTimestamp, result.isPinned, result.contentHash)
                 stats.inbound++
             } else if (localChanged || roomFile.isPinned != safFile.isPinned) {
-                Log.d(TAG, "DECISION: LOCAL_NEWER for $filename")
+                Log.d(TAG, "DECISION: LOCAL_NEWER for $currentFilenameForSnapshot")
                 val result = writeToSaf(context, folder, roomFile, dao)
-                currentSyncSnapshot[syncId] = LastSyncInfo(filename, result.osTimestamp, roomFile.lastModified, roomFile.isPinned, result.contentHash)
+                currentSyncSnapshot[syncId] = LastSyncInfo(currentFilenameForSnapshot, result.osTimestamp, roomFile.lastModified, roomFile.isPinned, result.contentHash)
                 stats.outbound++
             } else {
-                Log.d(TAG, "DECISION: REMOTE_NEWER for $filename")
+                Log.d(TAG, "DECISION: REMOTE_NEWER for $currentFilenameForSnapshot")
                 val result = importFromSaf(context, safFile.documentFile, dao)
-                currentSyncSnapshot[syncId] = LastSyncInfo(filename, result.osTimestamp, result.metadataTimestamp, result.isPinned, result.contentHash)
+                currentSyncSnapshot[syncId] = LastSyncInfo(currentFilenameForSnapshot, result.osTimestamp, result.metadataTimestamp, result.isPinned, result.contentHash)
                 stats.inbound++
             }
         } else {
-            currentSyncSnapshot[syncId] = LastSyncInfo(filename, safFile.osLastModified, safFile.lastModified, safFile.isPinned, safFile.contentHash)
+            currentSyncSnapshot[syncId] = LastSyncInfo(currentFilenameForSnapshot, safFile.osLastModified, safFile.lastModified, safFile.isPinned, safFile.contentHash)
         }
     }
 
@@ -485,10 +506,6 @@ object SyncManager {
         val fileNameWithExtension = "${file.name}$EXPORT_FILE_EXTENSION"
         val tempFileName = "$fileNameWithExtension.tmp"
 
-        // 1. Write to temp file
-        var tempFile = folder.findFile(tempFileName) ?: folder.createFile("application/octet-stream", tempFileName)
-            ?: throw Exception("Could not create temp file $tempFileName")
-
         val lines = dao.getLinesForFileSync(file.id)
         val precision = prefs(context).getInt("precision", 2)
 
@@ -507,36 +524,40 @@ object SyncManager {
             )
         )
 
-        context.contentResolver.openOutputStream(tempFile.uri)?.use { output ->
-             output.write(content.toByteArray())
-        }
+        val originalFile = folder.findFile(fileNameWithExtension)
+        if (originalFile != null) {
+            // Pre-delete any stale .tmp to avoid leaving clutter
+            folder.findFile(tempFileName)?.delete()
 
-        // 2. Atomic-like swap
-        if (!tempFile.renameTo(fileNameWithExtension)) {
-            Log.d(TAG, "Initial rename failed for $fileNameWithExtension (likely exists), checking for original file to delete")
-            val originalFile = folder.findFile(fileNameWithExtension)
-            originalFile?.delete()
-
-            if (!tempFile.renameTo(fileNameWithExtension)) {
-                Log.w(TAG, "Secondary rename failed for $fileNameWithExtension, fallback to fresh recreate")
-                // Re-create if rename failed (some providers don't support it well)
-                val safFile = folder.createFile("application/octet-stream", fileNameWithExtension)
-                if (safFile == null) {
-                    tempFile.delete()
-                    throw Exception("Could not recreate file $fileNameWithExtension")
+            // Overwrite existing file directly. 
+            // This is the ONLY way to be sure SAF doesn't create a suffix duplicate.
+            context.contentResolver.openOutputStream(originalFile.uri, "wt")?.use { output ->
+                output.write(content.toByteArray())
+            }
+        } else {
+            // New file: use temp file + rename
+            folder.findFile(tempFileName)?.delete()
+            val tempFile = folder.createFile("application/octet-stream", tempFileName)
+                ?: throw Exception("Could not create temp file $tempFileName")
+            
+            try {
+                context.contentResolver.openOutputStream(tempFile.uri)?.use { output ->
+                    output.write(content.toByteArray())
                 }
-                try {
-                    context.contentResolver.openOutputStream(safFile.uri)?.use { output ->
-                        output.write(content.toByteArray())
-                    }
-                } finally {
+                if (!tempFile.renameTo(fileNameWithExtension)) {
+                    // Fallback if rename failed (though originalFile was null above)
+                    Log.w(TAG, "Rename failed even though originalFile was null. Deleting temp.")
                     tempFile.delete()
+                    throw Exception("Failed to rename $tempFileName to $fileNameWithExtension")
                 }
+            } catch (e: Exception) {
+                tempFile.delete()
+                throw e
             }
         }
 
         val expectedMetadataTimestamp = file.lastModified
-        var finalFile = folder.findFile(fileNameWithExtension) ?: tempFile
+        var finalFile = folder.findFile(fileNameWithExtension) ?: throw Exception("Could not find file after write")
         for (attempt in 0 until SAF_METADATA_MAX_RETRIES) {
             if (finalFile.lastModified() == expectedMetadataTimestamp) break
             if (attempt < SAF_METADATA_MAX_RETRIES - 1) {

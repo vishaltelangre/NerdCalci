@@ -218,6 +218,8 @@ object MathEngine {
                         val displayValue = UnitConverter.fromBase(result.value, u, isolatedContext.variables)
                         "$displayValue ${result.unit}"
                     }
+                } else if (result.explicitUnitless && result.value % 1.0 == 0.0) {
+                    result.value.toLong().toString()
                 } else {
                     result.value.toString()
                 }

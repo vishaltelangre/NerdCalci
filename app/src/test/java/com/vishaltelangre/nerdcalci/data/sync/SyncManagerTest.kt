@@ -8,6 +8,7 @@ import androidx.documentfile.provider.DocumentFile
 import com.vishaltelangre.nerdcalci.data.local.CalculatorDao
 import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
+import com.vishaltelangre.nerdcalci.core.Constants.EXPORT_FILE_EXTENSION
 import com.vishaltelangre.nerdcalci.core.MathEngine
 import com.vishaltelangre.nerdcalci.core.MathContext
 import com.vishaltelangre.nerdcalci.utils.FileUtils
@@ -160,7 +161,7 @@ class SyncManagerTest {
         every { prefs.getAll() } returns emptyMap()
 
         val syncId = "large-file-id"
-        val filename = "large${com.vishaltelangre.nerdcalci.core.Constants.EXPORT_FILE_EXTENSION}"
+        val filename = "large${EXPORT_FILE_EXTENSION}"
         val safUri = Uri.parse("content://mock/large")
 
         val safFile = mockk<DocumentFile>(relaxed = true)
@@ -326,7 +327,7 @@ class SyncManagerTest {
         every { prefs.getString(SyncManager.PREF_SYNC_FOLDER_URI, null) } returns "content://mock"
 
         val syncId = "hash-id"
-        val filename = "hash${com.vishaltelangre.nerdcalci.core.Constants.EXPORT_FILE_EXTENSION}"
+        val filename = "hash${EXPORT_FILE_EXTENSION}"
         val hash = "abcd-1234"
 
         val safFile = mockk<DocumentFile>(relaxed = true)
@@ -361,7 +362,7 @@ class SyncManagerTest {
         every { prefs.getBoolean(SyncManager.PREF_SYNC_ENABLED, false) } returns true
         every { prefs.getString(SyncManager.PREF_SYNC_FOLDER_URI, null) } returns "content://mock"
 
-        val filename = "legacy${com.vishaltelangre.nerdcalci.core.Constants.EXPORT_FILE_EXTENSION}"
+        val filename = "legacy${EXPORT_FILE_EXTENSION}"
         val safFile = mockk<DocumentFile>(relaxed = true)
         every { safFile.isFile } returns true
         every { safFile.name } returns filename
@@ -387,7 +388,7 @@ class SyncManagerTest {
         every { prefs.getString(SyncManager.PREF_SYNC_FOLDER_URI, null) } returns "content://mock"
 
         val syncId = "pin-change-id"
-        val filename = "pin${com.vishaltelangre.nerdcalci.core.Constants.EXPORT_FILE_EXTENSION}"
+        val filename = "pin${EXPORT_FILE_EXTENSION}"
         val hash = "same-hash"
 
         val safFile = mockk<DocumentFile>(relaxed = true)
@@ -432,8 +433,8 @@ class SyncManagerTest {
         every { prefs.getString(SyncManager.PREF_SYNC_FOLDER_URI, null) } returns "content://mock"
 
         val syncId = "rename-id"
-        val oldFilename = "old-name${com.vishaltelangre.nerdcalci.core.Constants.EXPORT_FILE_EXTENSION}"
-        val newFilename = "new-name${com.vishaltelangre.nerdcalci.core.Constants.EXPORT_FILE_EXTENSION}"
+        val oldFilename = "old-name${EXPORT_FILE_EXTENSION}"
+        val newFilename = "new-name${EXPORT_FILE_EXTENSION}"
 
         val safFile = mockk<DocumentFile>(relaxed = true)
         every { safFile.isFile } returns true
@@ -484,7 +485,7 @@ class SyncManagerTest {
         every { prefs.getString(SyncManager.PREF_SYNC_FOLDER_URI, null) } returns "content://mock"
 
         val syncId = "del-edit-id"
-        val filename = "file${com.vishaltelangre.nerdcalci.core.Constants.EXPORT_FILE_EXTENSION}"
+        val filename = "file${EXPORT_FILE_EXTENSION}"
 
         // Snapshot: both were at 10000L
         val snapshotJson = JSONObject().put(syncId, JSONObject().apply {
@@ -517,7 +518,7 @@ class SyncManagerTest {
             every { prefs.getString(SyncManager.PREF_SYNC_FOLDER_URI, null) } returns "content://mock"
 
             val syncId = "ren-edit-id"
-            val ext = com.vishaltelangre.nerdcalci.core.Constants.EXPORT_FILE_EXTENSION
+            val ext = EXPORT_FILE_EXTENSION
             val oldFilename = "old$ext"
             val newFilename = "new$ext"
 
@@ -580,7 +581,7 @@ class SyncManagerTest {
             every { prefs.getString(SyncManager.PREF_SYNC_FOLDER_URI, null) } returns "content://mock"
 
             val syncId = "conflict-id"
-            val ext = com.vishaltelangre.nerdcalci.core.Constants.EXPORT_FILE_EXTENSION
+            val ext = EXPORT_FILE_EXTENSION
             val filename = "file$ext"
 
             // Snapshot: both were at 10000L
@@ -642,7 +643,7 @@ class SyncManagerTest {
             every { prefs.getString(SyncManager.PREF_SYNC_FOLDER_URI, null) } returns "content://mock"
 
             val syncId = "crash-id"
-            val ext = com.vishaltelangre.nerdcalci.core.Constants.EXPORT_FILE_EXTENSION
+            val ext = EXPORT_FILE_EXTENSION
             val filename = "file$ext"
 
             // Local is newer
@@ -685,7 +686,7 @@ class SyncManagerTest {
             every { prefs.getString(SyncManager.PREF_SYNC_FOLDER_URI, null) } returns "content://mock"
 
             val syncId = "zero-id"
-            val ext = com.vishaltelangre.nerdcalci.core.Constants.EXPORT_FILE_EXTENSION
+            val ext = EXPORT_FILE_EXTENSION
             val filename = "file$ext"
 
             // Snapshot was at 10000L

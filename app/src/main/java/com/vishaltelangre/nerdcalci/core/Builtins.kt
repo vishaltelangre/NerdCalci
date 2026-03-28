@@ -13,6 +13,11 @@ object Builtins {
     private data class BuiltinFn(val arity: Int, val body: (List<Double>) -> Double)
 
     private val functions: Map<String, BuiltinFn> = mapOf(
+        // Unit-stripping placeholder helpers
+        "value" to BuiltinFn(1) { it[0] },
+        "dropUnit" to BuiltinFn(1) { it[0] },
+        "raw" to BuiltinFn(1) { it[0] },
+
         // Trigonometric
         "sin"    to BuiltinFn(1) { sin(it[0]) },
         "cos"    to BuiltinFn(1) { cos(it[0]) },

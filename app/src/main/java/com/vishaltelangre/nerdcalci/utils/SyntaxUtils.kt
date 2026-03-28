@@ -88,7 +88,7 @@ object SyntaxUtils {
 }
 /**
  * Returns the range of the identifier at the given index.
- * Matches the definition of an identifier in [com.vishaltelangre.nerdcalci.core.Lexer].
+ * Matches the definition of an identifier in [Lexer].
  */
 fun String.getIdentifierRangeAt(index: Int): IntRange {
     var start = index

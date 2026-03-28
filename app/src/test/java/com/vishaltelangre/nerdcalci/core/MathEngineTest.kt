@@ -354,6 +354,19 @@ class MathEngineTest {
     }
 
     @Test
+    fun `percentage of quantity preserves unit`() = runBlocking {
+        val lines = listOf(
+            createLine("10000g", sortOrder = 0),
+            createLine("10% of _", sortOrder = 1),
+            createLine("_ + 9kg", sortOrder = 2)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("10000.0 g", result[0].result)
+        assertEquals("1000.0 g", result[1].result)
+        assertEquals("10000.0 g", result[2].result)
+    }
+
+    @Test
     fun `percentage off reduces value`() = runBlocking {
         val lines = listOf(createLine("20% off 100"))
         val result = MathEngine.calculate(lines)
@@ -898,8 +911,8 @@ class MathEngineTest {
     @Test
     fun `compound division assignment`() = runBlocking {
         val lines = listOf(
-            createLine("value = 100", sortOrder = 0),
-            createLine("value /= 5", sortOrder = 1)
+            createLine("amount = 100", sortOrder = 0),
+            createLine("amount /= 5", sortOrder = 1)
         )
         val result = MathEngine.calculate(lines)
         assertEquals("100.0", result[0].result)
@@ -909,8 +922,8 @@ class MathEngineTest {
     @Test
     fun `compound modulo (remainder) assignment`() = runBlocking {
         val lines = listOf(
-            createLine("value = 10", sortOrder = 0),
-            createLine("value %= 3", sortOrder = 1)
+            createLine("amount = 10", sortOrder = 0),
+            createLine("amount %= 3", sortOrder = 1)
         )
         val result = MathEngine.calculate(lines)
         assertEquals("10.0", result[0].result)
@@ -2313,6 +2326,76 @@ class MathEngineTest {
         )
         val result = MathEngine.calculate(lines)
         assertEquals("10.0 kg", result[0].result)
+    }
+
+    @Test
+    fun `quantity can be stripped to unitless value`() = runBlocking {
+        val lines = listOf(
+            createLine("area = 4.20", sortOrder = 0),
+            createLine("cost = area * 4.2 crores", sortOrder = 1),
+            createLine("saleable = area * (1 acre as sqft) * 70%", sortOrder = 2),
+            createLine("revenue = saleable * 5000", sortOrder = 3),
+            createLine("value(10 kg)", sortOrder = 4),
+            createLine("dropUnit(10 kg)", sortOrder = 5),
+            createLine("raw(10 kg)", sortOrder = 6),
+            createLine("value(128066.6 sqft)", sortOrder = 7),
+            createLine("value(12 million)", sortOrder = 8),
+            createLine("value(12 kg)", sortOrder = 9),
+            createLine("value(128066.6 sqft) - 1", sortOrder = 10),
+            createLine("value(12 kg) - 1 kg", sortOrder = 11),
+            createLine("value(revenue) - cost", sortOrder = 12),
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("4.2", result[0].result)
+        assertTrue(result[1].result.startsWith("1.764E8"))
+        assertTrue(result[2].result.startsWith("128066.4"))
+        assertTrue(result[3].result.startsWith("6.403319"))
+        assertTrue(result[3].result.endsWith(" ft²"))
+        assertEquals("10", result[4].result)
+        assertEquals("10", result[5].result)
+        assertEquals("10", result[6].result)
+        assertTrue(result[7].result.startsWith("128066.6"))
+        assertEquals("12000000", result[8].result)
+        assertEquals("12", result[9].result)
+        assertTrue(result[10].result.startsWith("128065.6"))
+        assertEquals("11.0", result[11].result)
+    }
+
+    @Test
+    fun `unit conversion calculation chain works as expected between different units by dropping units`() = runBlocking {
+        val lines = listOf(
+            createLine("area = 4.20", sortOrder = 0),
+            createLine("cost = area * 4.2 crores", sortOrder = 1),
+            createLine("saleable = area * (1 acre as sqft) * 70%", sortOrder = 2),
+            createLine("revenue = saleable * 5000", sortOrder = 3),
+            createLine("value(revenue) - cost", sortOrder = 4),
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("4.2", result[0].result)
+        assertTrue(result[1].result.startsWith("1.764E8"))
+        assertTrue(result[2].result.startsWith("128066.4"))
+        assertTrue(result[3].result.startsWith("6.403319"))
+        assertTrue(result[3].result.endsWith(" ft²"))
+        assertTrue(result[4].result.contains("463932000"))
+    }
+
+    @Test
+    fun `unit stripping helpers cannot be reassigned`() = runBlocking {
+        val lines = listOf(
+            createLine("value = 1"),
+            createLine("dropUnit = 1"),
+            createLine("raw = 1")
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("Err", result[0].result)
+        val err0 = MathEngine.getErrorDetails(lines, 0)
+        assertTrue(err0?.contains("`value` is a reserved name and cannot be changed") == true)
+        assertEquals("Err", result[1].result)
+        val err1 = MathEngine.getErrorDetails(lines, 1)
+        assertTrue(err1?.contains("`dropUnit` is a reserved name and cannot be changed") == true)
+        assertEquals("Err", result[2].result)
+        val err2 = MathEngine.getErrorDetails(lines, 2)
+        assertTrue(err2?.contains("`raw` is a reserved name and cannot be changed") == true)
     }
 
     @Test

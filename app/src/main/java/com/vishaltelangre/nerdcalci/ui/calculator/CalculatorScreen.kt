@@ -4,6 +4,8 @@ import com.vishaltelangre.nerdcalci.core.Builtins
 import com.vishaltelangre.nerdcalci.core.MathEngine
 import com.vishaltelangre.nerdcalci.core.UnitCategory
 import com.vishaltelangre.nerdcalci.core.UnitConverter
+import com.vishaltelangre.nerdcalci.core.Lexer
+import com.vishaltelangre.nerdcalci.core.TokenKind
 import androidx.compose.foundation.background
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
@@ -142,6 +144,7 @@ import com.vishaltelangre.nerdcalci.ui.components.FileInfoDialog
 import com.vishaltelangre.nerdcalci.ui.theme.FiraCodeFamily
 import com.vishaltelangre.nerdcalci.utils.ExportUtils
 import com.vishaltelangre.nerdcalci.utils.SyntaxUtils
+import com.vishaltelangre.nerdcalci.utils.getSuggestionContext
 import com.vishaltelangre.nerdcalci.utils.TokenType
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -150,6 +153,7 @@ import com.vishaltelangre.nerdcalci.utils.calculateFuzzyMatch
 import com.vishaltelangre.nerdcalci.utils.Suggestion
 import com.vishaltelangre.nerdcalci.utils.SuggestionType
 import com.vishaltelangre.nerdcalci.utils.getIdentifierRangeAt
+import com.vishaltelangre.nerdcalci.ui.theme.ResultSuccess
 import android.content.res.Configuration
 
 import com.vishaltelangre.nerdcalci.ui.theme.SyntaxColors
@@ -1171,7 +1175,7 @@ private fun LineRow(
         val cursorPos = textFieldValue.selection.start
         val text = textFieldValue.text
         val beforeCursor = if (cursorPos > 0) text.substring(0, cursorPos) else ""
-        com.vishaltelangre.nerdcalci.utils.getSuggestionContext(
+        getSuggestionContext(
             beforeCursor,
             text,
             cursorPos,
@@ -1242,9 +1246,9 @@ private fun LineRow(
 
         if (!forceDismissSuggestions && showSuggestions && (currentWord.isNotEmpty() || isExplicitTrigger)) {
             val tokens = runCatching { 
-                com.vishaltelangre.nerdcalci.core.Lexer(beforeCursor).tokenize() 
+                Lexer(beforeCursor).tokenize() 
             }.getOrElse { emptyList() }
-            val cleanTokens = tokens.filter { it.kind != com.vishaltelangre.nerdcalci.core.TokenKind.EOF }
+            val cleanTokens = tokens.filter { it.kind != TokenKind.EOF }
 
             if (loadingSuggestions && combinedVariables.isEmpty()) {
                 return@remember listOf(Suggestion("Loading...", SuggestionType.VARIABLE))
@@ -1293,7 +1297,7 @@ private fun LineRow(
                 if (currentWord.isEmpty() || (currentWord.any { char -> char.isLetter() || char == '_' } &&
                     currentWord.all { char -> char.isLetterOrDigit() || char == '_' })) {
                     val prevToken = cleanTokens.getOrNull(cleanTokens.size - 2)
-                    val showUnits = prevToken?.kind == com.vishaltelangre.nerdcalci.core.TokenKind.NUMBER
+                    val showUnits = prevToken?.kind == TokenKind.NUMBER
                     val unitsList = if (showUnits) {
                         UnitConverter.UNITS.flatMap { u -> u.symbols.map { Suggestion(it, SuggestionType.UNIT) } }
                     } else emptyList()
@@ -1576,7 +1580,7 @@ private fun LineRow(
             val resultColor = if (isError) {
                 MaterialTheme.colorScheme.error
             } else {
-                com.vishaltelangre.nerdcalci.ui.theme.ResultSuccess
+                ResultSuccess
             }
 
             var showTooltip by remember(line.id) { mutableStateOf(false) }

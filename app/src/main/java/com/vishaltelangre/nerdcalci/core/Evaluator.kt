@@ -1,12 +1,14 @@
 package com.vishaltelangre.nerdcalci.core
 
 import kotlin.math.pow
+import com.vishaltelangre.nerdcalci.core.Unit as NerdUnit
 
 const val ERR_FRACTIONAL_NUMERAL_SYSTEM = "Fractional value cannot be converted to numeral system"
 
 data class EvaluationResult(
     val value: Double?,
-    val unit: String? = null
+    val unit: String? = null,
+    val explicitUnitless: Boolean = false
 )
 
 /**
@@ -31,12 +33,18 @@ class Evaluator(
         is Expr.NumberLiteral  -> EvaluationResult(expr.value)
         is Expr.PercentLiteral -> EvaluationResult(expr.value / 100.0)
         is Expr.PercentOf      -> {
-            val base = evaluate(expr.base).value ?: throw EvalException("Cannot apply percentage to a non-numeric value")
-            EvaluationResult(base * expr.percent / 100.0)
+            val baseEval = evaluate(expr.base)
+            val base = baseEval.value ?: throw EvalException("Cannot apply percentage to a non-numeric value")
+            val baseUnit = baseEval.unit?.let { UnitConverter.findUnit(it) }
+            val resultUnit = if (baseUnit != null && baseUnit.category != UnitCategory.SCALAR) baseEval.unit else null
+            EvaluationResult(base * expr.percent / 100.0, resultUnit)
         }
         is Expr.PercentOff     -> {
-            val base = evaluate(expr.base).value ?: throw EvalException("Cannot apply percentage to a non-numeric value")
-            EvaluationResult(base * (1.0 - expr.percent / 100.0))
+            val baseEval = evaluate(expr.base)
+            val base = baseEval.value ?: throw EvalException("Cannot apply percentage to a non-numeric value")
+            val baseUnit = baseEval.unit?.let { UnitConverter.findUnit(it) }
+            val resultUnit = if (baseUnit != null && baseUnit.category != UnitCategory.SCALAR) baseEval.unit else null
+            EvaluationResult(base * (1.0 - expr.percent / 100.0), resultUnit)
         }
         is Expr.UnaryMinus     -> {
             val operand = evaluate(expr.operand).value ?: throw EvalException("Cannot negate a non-numeric value")
@@ -134,6 +142,22 @@ class Evaluator(
 
         if (name == "file") {
             throw EvalException("The `file()` function either needs to be assigned like `f = file(\"FileName\")` or used in dot notation like `file(\"FileName\").variable`")
+        }
+
+        if (name == "value" || name == "dropUnit" || name == "raw") {
+            if (argExprs.size != 1) throw ArityMismatchException(name, 1, argExprs.size)
+            val evaluated = evaluate(argExprs[0])
+            val unit = evaluated.unit?.let { UnitConverter.findUnit(it) }
+            val strippedValue = if (unit != null) {
+                if (unit.category == UnitCategory.SCALAR) {
+                    evaluated.value
+                } else {
+                    UnitConverter.fromBase(evaluated.value ?: 0.0, unit, variables)
+                }
+            } else {
+                evaluated.value
+            }
+            return EvaluationResult(strippedValue, explicitUnitless = true)
         }
 
         if (name == "convert") {
@@ -274,6 +298,19 @@ class Evaluator(
         }
     }
 
+    private fun scalarValue(
+        result: EvaluationResult,
+        unit: NerdUnit?,
+        forceDisplayValue: Boolean
+    ): Double {
+        if (unit == null) return result.value ?: 0.0
+        return when {
+            unit.category == UnitCategory.SCALAR -> result.value ?: 0.0
+            forceDisplayValue || result.explicitUnitless -> UnitConverter.fromBase(result.value ?: 0.0, unit, variables)
+            else -> result.value ?: 0.0
+        }
+    }
+
     private suspend fun evaluateBinaryOp(expr: Expr.BinaryOp): EvaluationResult {
         val leftEval = evaluate(expr.left)
         val rightEval = evaluate(expr.right)
@@ -294,9 +331,15 @@ class Evaluator(
 
         val leftUnit = leftEval.unit?.let { UnitConverter.findUnit(it) }
         val rightUnit = rightEval.unit?.let { UnitConverter.findUnit(it) }
+        val forceDisplayValue = leftEval.explicitUnitless || rightEval.explicitUnitless
+        val leftScalar = scalarValue(leftEval, leftUnit, forceDisplayValue)
+        val rightScalar = scalarValue(rightEval, rightUnit, forceDisplayValue)
 
         if (expr.op == TokenKind.PLUS || expr.op == TokenKind.MINUS) {
             if (leftUnit != null && rightUnit != null) {
+                if (leftUnit.category == UnitCategory.SCALAR || rightUnit.category == UnitCategory.SCALAR) {
+                    return EvaluationResult(applyOp(leftScalar, expr.op, rightScalar))
+                }
                 if (leftUnit.category != rightUnit.category) {
                     throw EvalException("Cannot calculate ${leftUnit.name} and ${rightUnit.name}: dimension mismatch")
                 }
@@ -316,20 +359,23 @@ class Evaluator(
 
                 val pickedUnit = if (leftUnit.factor < rightUnit.factor) leftUnit else rightUnit
                 return EvaluationResult(applyOp(leftVal, expr.op, rightDelta), pickedUnit.symbols.first())
-            } else if (leftUnit != null && rightUnit == null) {
+            } else if (leftUnit != null && rightUnit == null && !rightEval.explicitUnitless && leftUnit.category != UnitCategory.SCALAR) {
                 val scaledRight = UnitConverter.toBase(rightVal, leftUnit, variables)
                 return EvaluationResult(applyOp(leftVal, expr.op, scaledRight), leftUnit.symbols.first())
-            } else if (leftUnit == null && rightUnit != null) {
+            } else if (leftUnit == null && rightUnit != null && !leftEval.explicitUnitless && rightUnit.category != UnitCategory.SCALAR) {
                 val scaledLeft = UnitConverter.toBase(leftVal, rightUnit, variables)
                 return EvaluationResult(applyOp(scaledLeft, expr.op, rightVal), rightUnit.symbols.first())
             }
         }
 
-        val resultVal = applyOp(leftVal, expr.op, rightVal)
+        val resultVal = applyOp(leftScalar, expr.op, rightScalar)
 
         // Handle scaling multiplication/division inheritance
         val resultUnit = if (expr.op == TokenKind.STAR || expr.op == TokenKind.SLASH) {
-            if (leftUnit != null && rightUnit == null) {
+            if (leftEval.explicitUnitless || rightEval.explicitUnitless ||
+                leftUnit?.category == UnitCategory.SCALAR || rightUnit?.category == UnitCategory.SCALAR) {
+                null
+            } else if (leftUnit != null && rightUnit == null) {
                 leftEval.unit
             } else if (leftUnit == null && rightUnit != null && expr.op == TokenKind.STAR) {
                 rightEval.unit
@@ -337,7 +383,12 @@ class Evaluator(
                 null
             }
         } else {
-            leftEval.unit ?: rightEval.unit
+            if (leftEval.explicitUnitless || rightEval.explicitUnitless ||
+                leftUnit?.category == UnitCategory.SCALAR || rightUnit?.category == UnitCategory.SCALAR) {
+                null
+            } else {
+                leftEval.unit ?: rightEval.unit
+            }
         }
 
         return EvaluationResult(resultVal, resultUnit)

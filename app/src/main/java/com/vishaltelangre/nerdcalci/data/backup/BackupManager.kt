@@ -460,7 +460,7 @@ object BackupManager {
                             return context
                         }
                     }
-                    val insertedFiles = mutableListOf<com.vishaltelangre.nerdcalci.data.local.entities.FileEntity>()
+                    val insertedFiles = mutableListOf<FileEntity>()
                     try {
                         var entry: ZipEntry? = zipIn.nextEntry
                         var currentProgress = 0

@@ -1,6 +1,7 @@
 package com.vishaltelangre.nerdcalci.core
 
 import java.math.BigDecimal
+import java.math.BigInteger
 import java.math.MathContext as JavaMathContext
 import kotlin.math.*
 
@@ -13,6 +14,7 @@ import kotlin.math.*
 object Builtins {
 
     private val mc = JavaMathContext.DECIMAL128
+    private const val MAX_FACTORIAL_INPUT = 1000
 
     private data class BuiltinFn(val arity: Int, val body: (List<BigDecimal>) -> BigDecimal)
 
@@ -45,6 +47,8 @@ object Builtins {
         "pow"    to BuiltinFn(2) { BigDecimal(it[0].toDouble().pow(it[1].toDouble()), mc) },
         "exp"    to BuiltinFn(1) { BigDecimal(exp(it[0].toDouble()), mc) },
         "expm1"  to BuiltinFn(1) { BigDecimal(expm1(it[0].toDouble()), mc) },
+        "factorial" to BuiltinFn(1) { factorial(it[0]) },
+        "fact"      to BuiltinFn(1) { factorial(it[0]) },
 
         // Rounding / sign
         "abs"    to BuiltinFn(1) { it[0].abs() },
@@ -95,4 +99,28 @@ object Builtins {
 
     /** Returns true if [name] is any built-in (function or constant). */
     fun isBuiltin(name: String): Boolean = isFunction(name) || isConstant(name)
+
+    private fun factorial(value: BigDecimal): BigDecimal {
+        val integerValue = try {
+            value.toBigIntegerExact()
+        } catch (_: ArithmeticException) {
+            throw EvalException("Factorial is only defined for whole numbers")
+        }
+
+        if (integerValue.signum() < 0) {
+            throw EvalException("Factorial is only defined for non-negative whole numbers")
+        }
+
+        if (integerValue > BigInteger.valueOf(MAX_FACTORIAL_INPUT.toLong())) {
+            throw EvalException("Factorial is only supported up to $MAX_FACTORIAL_INPUT")
+        }
+
+        var result = BigInteger.ONE
+        var current = BigInteger.valueOf(2)
+        while (current <= integerValue) {
+            result = result.multiply(current)
+            current = current.add(BigInteger.ONE)
+        }
+        return BigDecimal(result)
+    }
 }

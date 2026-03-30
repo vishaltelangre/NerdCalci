@@ -18,6 +18,7 @@
   - [Power \& Roots](#power--roots)
   - [Rounding \& Signs](#rounding--signs)
   - [Logarithmic \& Exponential](#logarithmic--exponential)
+  - [Factorial](#factorial)
   - [Trigonometry](#trigonometry)
 - [5. Built-in constants](#5-built-in-constants)
 - [6. Comments](#6-comments)
@@ -220,6 +221,13 @@ NerdCalci includes a wide array of built-in math functions.
 | `log1p(x)` | `log1p(x)`   | `ln(1 + x)` | Natural logarithm of 1 + x   |
 | `exp(x)`   | `exp(1)`     | 2.72        | Exponential function         |
 | `expm1(x)` | `expm1(x)`   | `e^x - 1`   | Exponential function minus 1 |
+
+### Factorial
+
+| Function          | Example        | Result | Description                                  |
+| ----------------- | -------------- | ------ | -------------------------------------------- |
+| `factorial(x)`    | `factorial(5)` | 120    | Factorial for non-negative whole numbers     |
+| `fact(x)`         | `fact(6)`      | 720    | Short alias for `factorial(x)`               |
 
 ### Trigonometry
 
@@ -425,7 +433,7 @@ You can access variables and functions from other calculation files using the `f
 
 ### Referencing a file
 
-Use `file("FileName")` to load the context of another file. The file name must be inside quotes. Alternatively, you can use the file name directly if it doesn't contain spaces or special characters.
+Use `file("FileName")` to load the context of another file. The file name must be inside quotes.
 
 ```text
 f = file("Summary")

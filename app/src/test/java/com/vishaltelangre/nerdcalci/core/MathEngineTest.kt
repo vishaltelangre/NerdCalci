@@ -765,6 +765,19 @@ class MathEngineTest {
     }
 
     @Test
+    fun `factorial functions work`() = runBlocking {
+        val lines = listOf(
+            createLine("factorial(0)", sortOrder = 0),
+            createLine("factorial(5)", sortOrder = 1),
+            createLine("fact(6)", sortOrder = 2)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("1.0", result[0].result)
+        assertEquals("120.0", result[1].result)
+        assertEquals("720.0", result[2].result)
+    }
+
+    @Test
     fun `rounding functions work`() = runBlocking {
         val lines = listOf(
             createLine("abs(-42)", sortOrder = 0),
@@ -1888,6 +1901,27 @@ class MathEngineTest {
         val lines = listOf(createLine("sinh(1, unknown_var)"))
         val err = MathEngine.getErrorDetails(lines, 0)
         assertEquals("Function `sinh()` expects 1 argument, but got 2", err)
+    }
+
+    @Test
+    fun `factorial rejects fractional input`() = runBlocking {
+        val lines = listOf(createLine("factorial(4.5)"))
+        val err = MathEngine.getErrorDetails(lines, 0)
+        assertEquals("Factorial is only defined for whole numbers", err)
+    }
+
+    @Test
+    fun `factorial rejects negative input`() = runBlocking {
+        val lines = listOf(createLine("fact(-3)"))
+        val err = MathEngine.getErrorDetails(lines, 0)
+        assertEquals("Factorial is only defined for non-negative whole numbers", err)
+    }
+
+    @Test
+    fun `factorial rejects inputs beyond supported limit`() = runBlocking {
+        val lines = listOf(createLine("factorial(1001)"))
+        val err = MathEngine.getErrorDetails(lines, 0)
+        assertEquals("Factorial is only supported up to 1000", err)
     }
 
     @Test

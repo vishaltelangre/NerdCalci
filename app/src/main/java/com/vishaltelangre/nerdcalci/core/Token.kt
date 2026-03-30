@@ -1,5 +1,7 @@
 package com.vishaltelangre.nerdcalci.core
 
+import java.math.BigDecimal
+
 /** Every distinct lexeme kind produced by [Lexer]. */
 enum class TokenKind(val display: String) {
     // Literals
@@ -62,6 +64,6 @@ private val LINE_NUMBER_ALIAS_KINDS = setOf(
 data class Token(
     val kind: TokenKind,
     val lexeme: String,
-    val value: Double = 0.0,
+    val value: BigDecimal = BigDecimal.ZERO,
     val position: Int = 0
 )

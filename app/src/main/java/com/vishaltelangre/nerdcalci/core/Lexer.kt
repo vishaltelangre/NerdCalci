@@ -1,5 +1,7 @@
 package com.vishaltelangre.nerdcalci.core
 
+import java.math.BigDecimal
+
 /**
  * Single-pass character scanner that converts a raw expression string into a
  * list of [Token]s.
@@ -78,7 +80,11 @@ class Lexer(private val source: String) {
         }
 
         val lexeme = source.substring(start, pos)
-        val value = lexeme.toDouble()
+        val value = try {
+            BigDecimal(lexeme)
+        } catch (e: Exception) {
+            BigDecimal.ZERO
+        }
         return Token(TokenKind.NUMBER, lexeme, value, start)
     }
 

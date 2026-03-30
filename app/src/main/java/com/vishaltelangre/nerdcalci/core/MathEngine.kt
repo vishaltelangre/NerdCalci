@@ -1,6 +1,8 @@
 package com.vishaltelangre.nerdcalci.core
 
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
+import java.math.BigDecimal
+import java.math.MathContext as JavaMathContext
 import java.util.Locale
 
 /** A user-defined function local to a specific file. */
@@ -213,16 +215,17 @@ object MathEngine {
                 val u = if (result.unit != null) UnitConverter.findUnit(result.unit) else null
                 val resultString = if (u != null) {
                     if (u.category == UnitCategory.NUMERAL_SYSTEM) {
-                        if (result.value % 1.0 != 0.0) throw IllegalArgumentException(ERR_FRACTIONAL_NUMERAL_SYSTEM)
+                        if (result.value.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) != 0) throw IllegalArgumentException(ERR_FRACTIONAL_NUMERAL_SYSTEM)
                         formatNumeralSystem(result.value.toLong(), u.factor.toInt())
                     } else {
                         val displayValue = UnitConverter.fromBase(result.value, u, isolatedContext.variables)
-                        "$displayValue ${result.unit}"
+                        val formattedValue = formatBigDecimal(displayValue)
+                        "$formattedValue ${result.unit}"
                     }
-                } else if (result.explicitUnitless && result.value % 1.0 == 0.0) {
+                } else if (result.explicitUnitless && result.value.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) == 0) {
                     result.value.toLong().toString()
                 } else {
-                    result.value.toString()
+                    formatBigDecimal(result.value)
                 }
                 line.copy(result = resultString)
             } catch (e: Exception) {
@@ -279,7 +282,7 @@ object MathEngine {
             blockResults.add(0, result)
         }
 
-        if (blockResults.isEmpty()) return EvaluationResult(0.0)
+        if (blockResults.isEmpty()) return EvaluationResult(BigDecimal.ZERO)
 
         // Identify the target unit for this block (the unit of the last line with a unit)
         var targetUnit: Unit? = null
@@ -293,25 +296,26 @@ object MathEngine {
             }
         }
 
-        var sumValue = 0.0
+        var sumValue = BigDecimal.ZERO
         for (result in blockResults) {
+            val resultValue = result.value ?: BigDecimal.ZERO
             val resultUnit = result.unit?.let { UnitConverter.findUnit(it) }
             if (targetUnit != null) {
                 if (resultUnit != null) {
                     if (resultUnit.category != targetUnit.category && resultUnit.category != UnitCategory.SCALAR) {
                         throw EvalException("Cannot sum ${resultUnit.name} and ${targetUnit.name}: dimension mismatch")
                     }
-                    sumValue += result.value ?: 0.0
+                    sumValue = sumValue.add(resultValue)
                 } else {
                     // Result is unitless. Treat as "targetUnit" same as '+' operator.
-                    sumValue += UnitConverter.toBase(result.value ?: 0.0, targetUnit, variables)
+                    sumValue = sumValue.add(UnitConverter.toBase(resultValue, targetUnit, variables))
                 }
             } else {
                 if (resultUnit != null && resultUnit.category != UnitCategory.SCALAR) {
                     // This shouldn't happen given how we pick targetUnit, but for safety:
                     return EvaluationResult(null)
                 }
-                sumValue += result.value ?: 0.0
+                sumValue = sumValue.add(resultValue)
             }
         }
 
@@ -325,7 +329,7 @@ object MathEngine {
             blockResults.add(0, result)
         }
 
-        if (blockResults.isEmpty()) return EvaluationResult(0.0)
+        if (blockResults.isEmpty()) return EvaluationResult(BigDecimal.ZERO)
 
         // Identify the target unit for this block (the unit of the last line with a unit)
         var targetUnit: Unit? = null
@@ -339,26 +343,27 @@ object MathEngine {
             }
         }
 
-        var sumValue = 0.0
+        var sumValue = BigDecimal.ZERO
         var count = 0
         for (result in blockResults) {
+            val resultValue = result.value ?: BigDecimal.ZERO
             val resultUnit = result.unit?.let { UnitConverter.findUnit(it) }
             if (targetUnit != null) {
                 if (resultUnit != null) {
                     if (resultUnit.category != targetUnit.category && resultUnit.category != UnitCategory.SCALAR) {
                         throw EvalException("Cannot average ${resultUnit.name} and ${targetUnit.name}: dimension mismatch")
                     }
-                    sumValue += result.value ?: 0.0
+                    sumValue = sumValue.add(resultValue)
                 } else {
-                    sumValue += UnitConverter.toBase(result.value ?: 0.0, targetUnit, variables)
+                    sumValue = sumValue.add(UnitConverter.toBase(resultValue, targetUnit, variables))
                 }
             } else {
-                sumValue += result.value ?: 0.0
+                sumValue = sumValue.add(resultValue)
             }
             count++
         }
 
-        val avgValue = if (count > 0) sumValue / count else 0.0
+        val avgValue = if (count > 0) sumValue.divide(BigDecimal(count), JavaMathContext.DECIMAL128) else BigDecimal.ZERO
         return EvaluationResult(avgValue, targetUnitSymbol)
     }
 
@@ -367,14 +372,14 @@ object MathEngine {
      * was blank, a comment, or an error.
      */
     private fun computePreviousLineResult(lineResults: List<EvaluationResult?>): EvaluationResult {
-        return lineResults.lastOrNull() ?: EvaluationResult(0.0)
+        return lineResults.lastOrNull() ?: EvaluationResult(BigDecimal.ZERO)
     }
 
     /**
      * Returns the 1-based index of the line currently being evaluated.
      */
     private fun computeCurrentLineNumber(lineResults: List<EvaluationResult?>): EvaluationResult {
-        return EvaluationResult((lineResults.size + 1).toDouble())
+        return EvaluationResult(BigDecimal(lineResults.size + 1))
     }
 
     /**
@@ -419,14 +424,14 @@ object MathEngine {
             rawResult to ""
         }
 
-        val value = numStr.toDoubleOrNull() ?: return rawResult
+        val value = numStr.toBigDecimalOrNull() ?: return rawResult
         val safePrecision = precision.coerceIn(Constants.MIN_PRECISION, Constants.MAX_PRECISION)
 
         val trimmedUnit = unitStr.trim().lowercase()
         val isNumeralSystem = UnitConverter.isNumeralSystemSymbol(trimmedUnit)
 
         val formattedResult = if (isNumeralSystem) {
-            if (value % 1.0 != 0.0) return "Err"
+            if (value.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) != 0) return "Err"
             val radix = when (trimmedUnit) {
                 "bin" -> 2
                 "hex" -> 16
@@ -434,20 +439,42 @@ object MathEngine {
                 else -> 10
             }
             formatNumeralSystem(value.toLong(), radix)
-        } else if (value % 1.0 == 0.0) {
+        } else if (value.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) == 0) {
+            val longVal = value.toLong()
             when {
-                value >= Int.MIN_VALUE && value <= Int.MAX_VALUE ->
-                    value.toInt().toString()
-                value >= Long.MIN_VALUE && value <= Long.MAX_VALUE ->
-                    value.toLong().toString()
+                value.compareTo(BigDecimal(Int.MIN_VALUE)) >= 0 && value.compareTo(BigDecimal(Int.MAX_VALUE)) <= 0 ->
+                    longVal.toInt().toString()
+                value.compareTo(BigDecimal(Long.MIN_VALUE)) >= 0 && value.compareTo(BigDecimal(Long.MAX_VALUE)) <= 0 ->
+                    longVal.toString()
                 else ->
-                    "%.${safePrecision}e".format(locale, value)
+                    "%.${safePrecision}e".format(locale, value.toDouble())
             }
         } else {
-            "%.${safePrecision}f".format(locale, value)
+            "%.${safePrecision}f".format(locale, value.toDouble())
         }
 
         return if (isNumeralSystem) formattedResult else formattedResult + unitStr
+    }
+
+    /** Helper to format BigDecimal like Double for integers but with BigDecimal's precision for decimals. */
+    internal fun formatBigDecimal(value: BigDecimal): String {
+        val stz = value.stripTrailingZeros()
+        val absoluteValue = stz.abs()
+
+        if (absoluteValue >= BigDecimal("10000000") || (absoluteValue < BigDecimal("0.001") && absoluteValue > BigDecimal.ZERO)) {
+            // High-precision scientific notation
+            val scale = stz.precision() - stz.scale() - 1
+            val unscaled = stz.movePointLeft(scale).stripTrailingZeros()
+            var s = unscaled.toPlainString()
+            if (!s.contains('.')) s += ".0"
+            return s + "E" + scale
+        }
+
+        var s = stz.toPlainString()
+        if (!s.contains('.') && !s.contains('E')) {
+            s += ".0"
+        }
+        return s
     }
 
     private fun formatNumeralSystem(value: Long, radix: Int): String {

@@ -1,5 +1,7 @@
 package com.vishaltelangre.nerdcalci.core
 
+import java.math.BigDecimal
+
 /**
  * Converts a list of [Token]s into an AST (Abstract Syntax Tree).
  * Implements Pratt (precedence climbing) parser.
@@ -578,15 +580,15 @@ class Parser(private val tokens: List<Token>) {
     private fun isUnitOperator(kind: TokenKind): Boolean =
         kind == TokenKind.KW_TO || kind == TokenKind.KW_IN || kind == TokenKind.KW_AS
 
-    private fun getNumeralMultiplier(word: String): Double? {
+    private fun getNumeralMultiplier(word: String): BigDecimal? {
         return when (word.lowercase()) {
-            "hundred" -> 100.0
-            "thousand" -> 1_000.0
-            "lakh" -> 100_000.0
-            "million" -> 1_000_000.0
-            "crore" -> 10_000_000.0
-            "billion" -> 1_000_000_000.0
-            "trillion" -> 1_000_000_000_000.0
+            "hundred" -> BigDecimal("100")
+            "thousand" -> BigDecimal("1000")
+            "lakh" -> BigDecimal("100000")
+            "million" -> BigDecimal("1000000")
+            "crore" -> BigDecimal("10000000")
+            "billion" -> BigDecimal("1000000000")
+            "trillion" -> BigDecimal("1000000000000")
             else -> null
         }
     }

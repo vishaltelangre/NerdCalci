@@ -1,5 +1,7 @@
 package com.vishaltelangre.nerdcalci.core
 
+import java.math.BigDecimal
+
 /**
  * Top-level AST node: what a single calculator line parses into.
  */
@@ -31,16 +33,16 @@ sealed class Statement {
  */
 sealed class Expr {
     /** Numeric literal: `42`, `3.14` */
-    data class NumberLiteral(val value: Double) : Expr()
+    data class NumberLiteral(val value: BigDecimal) : Expr()
 
     /** Percentage literal: `20%` — a bare percentage without `of`/`off` context. */
-    data class PercentLiteral(val value: Double) : Expr()
+    data class PercentLiteral(val value: BigDecimal) : Expr()
 
     /** Percentage-of: `20% of price` → `price * 0.20` */
-    data class PercentOf(val percent: Double, val base: Expr) : Expr()
+    data class PercentOf(val percent: BigDecimal, val base: Expr) : Expr()
 
     /** Percentage-off: `15% off price` → `price * (1 - 0.15)` */
-    data class PercentOff(val percent: Double, val base: Expr) : Expr()
+    data class PercentOff(val percent: BigDecimal, val base: Expr) : Expr()
 
     /** Unary negation: `-expr` */
     data class UnaryMinus(val operand: Expr) : Expr()

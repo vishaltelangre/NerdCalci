@@ -1,18 +1,21 @@
 package com.vishaltelangre.nerdcalci.core
 
+import java.math.BigDecimal
+import java.math.MathContext as JavaMathContext
+import java.math.RoundingMode
 import kotlin.math.pow
 import com.vishaltelangre.nerdcalci.core.Unit as NerdUnit
 
 const val ERR_FRACTIONAL_NUMERAL_SYSTEM = "Fractional value cannot be converted to numeral system"
 
 data class EvaluationResult(
-    val value: Double?,
+    val value: BigDecimal?,
     val unit: String? = null,
     val explicitUnitless: Boolean = false
 )
 
 /**
- * Recursive tree-walk evaluator that computes a [Double] result from an [Expr] AST.
+ * Recursive tree-walk evaluator that computes a [BigDecimal] result from an [Expr] AST.
  *
  * Variables are resolved from the provided [variables] map.
  * User-defined functions are resolved from [localFunctions].
@@ -29,27 +32,29 @@ class Evaluator(
     private val fileContextLoader: FileContextLoader? = null,
     private val loadingStack: Set<String> = emptySet()
 ) {
+    private val mc = JavaMathContext.DECIMAL128
 
     suspend fun evaluate(expr: Expr): EvaluationResult = when (expr) {
         is Expr.NumberLiteral  -> EvaluationResult(expr.value)
-        is Expr.PercentLiteral -> EvaluationResult(expr.value / 100.0)
+        is Expr.PercentLiteral -> EvaluationResult(expr.value.divide(BigDecimal("100"), mc))
         is Expr.PercentOf      -> {
             val baseEval = evaluate(expr.base)
             val base = baseEval.value ?: throw EvalException("Cannot apply percentage to a non-numeric value")
             val baseUnit = baseEval.unit?.let { UnitConverter.findUnit(it) }
             val resultUnit = if (baseUnit != null && baseUnit.category != UnitCategory.SCALAR) baseEval.unit else null
-            EvaluationResult(base * expr.percent / 100.0, resultUnit)
+            EvaluationResult(base.multiply(expr.percent).divide(BigDecimal("100"), mc), resultUnit)
         }
         is Expr.PercentOff     -> {
             val baseEval = evaluate(expr.base)
             val base = baseEval.value ?: throw EvalException("Cannot apply percentage to a non-numeric value")
             val baseUnit = baseEval.unit?.let { UnitConverter.findUnit(it) }
             val resultUnit = if (baseUnit != null && baseUnit.category != UnitCategory.SCALAR) baseEval.unit else null
-            EvaluationResult(base * (1.0 - expr.percent / 100.0), resultUnit)
+            val factor = BigDecimal.ONE.subtract(expr.percent.divide(BigDecimal("100"), mc))
+            EvaluationResult(base.multiply(factor), resultUnit)
         }
         is Expr.UnaryMinus     -> {
             val operand = evaluate(expr.operand).value ?: throw EvalException("Cannot negate a non-numeric value")
-            EvaluationResult(-operand)
+            EvaluationResult(operand.negate())
         }
         is Expr.Variable       -> resolveVariable(expr.name)
         is Expr.FunctionCall   -> evaluateFunction(expr.name, expr.args)
@@ -58,10 +63,10 @@ class Evaluator(
         is Expr.MemberAccess   -> resolveMemberAccess(expr)
         is Expr.MemberFunctionCall -> resolveMemberFunctionCall(expr)
         is Expr.Quantity -> {
-            val rawValue = evaluate(expr.value).value ?: 0.0
+            val rawValue = evaluate(expr.value).value ?: BigDecimal.ZERO
             val unit = UnitConverter.findUnit(expr.unit)
                 ?: throw EvalException("Unknown unit `${expr.unit}`")
-            if (unit.category == UnitCategory.NUMERAL_SYSTEM && rawValue % 1.0 != 0.0) {
+            if (unit.category == UnitCategory.NUMERAL_SYSTEM && rawValue.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) != 0) {
                 throw EvalException(ERR_FRACTIONAL_NUMERAL_SYSTEM)
             }
             EvaluationResult(UnitConverter.toBase(rawValue, unit, variables), unit.symbols.first())
@@ -71,7 +76,7 @@ class Evaluator(
                 ?: throw EvalException("Unknown unit `${expr.toUnit}`")
 
             val evaluatedExpr = evaluate(expr.expr)
-            val baseValue = evaluatedExpr.value ?: 0.0
+            val baseValue = evaluatedExpr.value ?: BigDecimal.ZERO
             val fromUnit = evaluatedExpr.unit?.let { UnitConverter.findUnit(it) }
 
             if (fromUnit != null) {
@@ -87,7 +92,7 @@ class Evaluator(
                 }
             }
 
-            if (toUnit.category == UnitCategory.NUMERAL_SYSTEM && baseValue % 1.0 != 0.0) {
+            if (toUnit.category == UnitCategory.NUMERAL_SYSTEM && baseValue.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) != 0) {
                 throw EvalException(ERR_FRACTIONAL_NUMERAL_SYSTEM)
             }
 
@@ -132,7 +137,7 @@ class Evaluator(
                 loadingStack = loadingStack
             )
             val localContext = MathContext(variables = localVars)
-            var lastResult = EvaluationResult(0.0)
+            var lastResult = EvaluationResult(BigDecimal.ZERO)
             for (stmt in localFunc.body) {
                 val res = innerEvaluator.evaluateStatement(stmt, localContext)
                 if (res.value != null) {
@@ -154,7 +159,7 @@ class Evaluator(
                 if (unit.category == UnitCategory.SCALAR) {
                     evaluated.value
                 } else {
-                    UnitConverter.fromBase(evaluated.value ?: 0.0, unit, variables)
+                    UnitConverter.fromBase(evaluated.value ?: BigDecimal.ZERO, unit, variables)
                 }
             } else {
                 evaluated.value
@@ -164,7 +169,7 @@ class Evaluator(
 
         if (name == "convert") {
             if (argExprs.size != 3) throw ArityMismatchException("convert", 3, argExprs.size)
-            val value = evaluate(argExprs[0]).value ?: 0.0
+            val value = evaluate(argExprs[0]).value ?: BigDecimal.ZERO
             val from = (argExprs[1] as? Expr.StringLiteral)?.value
                 ?: throw EvalException("`convert()` second argument must be a unit string, e.g., \"km\"")
             val to = (argExprs[2] as? Expr.StringLiteral)?.value
@@ -186,7 +191,7 @@ class Evaluator(
             throw ArityMismatchException(name, builtinArity, argExprs.size)
         }
 
-        val args = argExprs.map { evaluate(it).value ?: 0.0 }
+        val args = argExprs.map { evaluate(it).value ?: BigDecimal.ZERO }
         return EvaluationResult(Builtins.call(name, args))
     }
 
@@ -271,7 +276,7 @@ class Evaluator(
                 val name = target.name
                 validateVariableOrFunctionName(name)
 
-                val result = evaluateBinaryOp(Expr.BinaryOp(target, TokenKind.PLUS, Expr.NumberLiteral(1.0)))
+                val result = evaluateBinaryOp(Expr.BinaryOp(target, TokenKind.PLUS, Expr.NumberLiteral(BigDecimal.ONE)))
                 context.fileVariables.remove(name)
                 context.variables[name] = result
                 result
@@ -283,7 +288,7 @@ class Evaluator(
                 val name = target.name
                 validateVariableOrFunctionName(name)
 
-                val result = evaluateBinaryOp(Expr.BinaryOp(target, TokenKind.MINUS, Expr.NumberLiteral(1.0)))
+                val result = evaluateBinaryOp(Expr.BinaryOp(target, TokenKind.MINUS, Expr.NumberLiteral(BigDecimal.ONE)))
                 context.fileVariables.remove(name)
                 context.variables[name] = result
                 result
@@ -304,12 +309,12 @@ class Evaluator(
         result: EvaluationResult,
         unit: NerdUnit?,
         forceDisplayValue: Boolean
-    ): Double {
-        if (unit == null) return result.value ?: 0.0
+    ): BigDecimal {
+        if (unit == null) return result.value ?: BigDecimal.ZERO
         return when {
-            unit.category == UnitCategory.SCALAR -> result.value ?: 0.0
-            forceDisplayValue || result.explicitUnitless -> UnitConverter.fromBase(result.value ?: 0.0, unit, variables)
-            else -> result.value ?: 0.0
+            unit.category == UnitCategory.SCALAR -> result.value ?: BigDecimal.ZERO
+            forceDisplayValue || result.explicitUnitless -> UnitConverter.fromBase(result.value ?: BigDecimal.ZERO, unit, variables)
+            else -> result.value ?: BigDecimal.ZERO
         }
     }
 
@@ -320,16 +325,16 @@ class Evaluator(
         // Percentage addition/subtraction
         if (expr.right is Expr.PercentLiteral) {
             val pct = expr.right.value
-            val leftVal = leftEval.value ?: 0.0
+            val leftVal = leftEval.value ?: BigDecimal.ZERO
             return EvaluationResult(when (expr.op) {
-                TokenKind.PLUS  -> leftVal * (1.0 + pct / 100.0)
-                TokenKind.MINUS -> leftVal * (1.0 - pct / 100.0)
-                else -> applyOp(leftVal, expr.op, rightEval.value ?: 0.0)
+                TokenKind.PLUS  -> leftVal.multiply(BigDecimal.ONE.add(pct.divide(BigDecimal("100"), mc)))
+                TokenKind.MINUS -> leftVal.multiply(BigDecimal.ONE.subtract(pct.divide(BigDecimal("100"), mc)))
+                else -> applyOp(leftVal, expr.op, rightEval.value ?: BigDecimal.ZERO)
             }, leftEval.unit)
         }
 
-        val leftVal = leftEval.value ?: 0.0
-        val rightVal = rightEval.value ?: 0.0
+        val leftVal = leftEval.value ?: BigDecimal.ZERO
+        val rightVal = rightEval.value ?: BigDecimal.ZERO
 
         val leftUnit = leftEval.unit?.let { UnitConverter.findUnit(it) }
         val rightUnit = rightEval.unit?.let { UnitConverter.findUnit(it) }
@@ -351,15 +356,15 @@ class Evaluator(
                     // (e.g., 10 degF difference) rather than an absolute temperature.
                     // This enables expressions like 35 °C + 10 degF to behave sensibly.
                     val rawRight = UnitConverter.fromBase(rightVal, rightUnit, variables)
-                    val slope = UnitConverter.toBase(1.0, rightUnit, variables) - UnitConverter.toBase(0.0, rightUnit, variables)
-                    rawRight * slope
+                    val slope = UnitConverter.toBase(BigDecimal.ONE, rightUnit, variables).subtract(UnitConverter.toBase(BigDecimal.ZERO, rightUnit, variables))
+                    rawRight.multiply(slope)
                 } else {
                     // Pick the smaller unit (smaller factor values translate to smaller absolute unit
                     // definitions)
                     rightVal
                 }
 
-                val pickedUnit = if (leftUnit.factor < rightUnit.factor) leftUnit else rightUnit
+                val pickedUnit = if (leftUnit.factor.compareTo(rightUnit.factor) < 0) leftUnit else rightUnit
                 return EvaluationResult(applyOp(leftVal, expr.op, rightDelta), pickedUnit.symbols.first())
             } else if (leftUnit != null && rightUnit == null && !rightEval.explicitUnitless && leftUnit.category != UnitCategory.SCALAR) {
                 val scaledRight = UnitConverter.toBase(rightVal, leftUnit, variables)
@@ -396,19 +401,25 @@ class Evaluator(
         return EvaluationResult(resultVal, resultUnit)
     }
 
-    private fun applyOp(left: Double, op: TokenKind, right: Double): Double = when (op) {
-        TokenKind.PLUS    -> left + right
-        TokenKind.MINUS   -> left - right
-        TokenKind.STAR    -> left * right
+    private fun applyOp(left: BigDecimal, op: TokenKind, right: BigDecimal): BigDecimal = when (op) {
+        TokenKind.PLUS    -> left.add(right)
+        TokenKind.MINUS   -> left.subtract(right)
+        TokenKind.STAR    -> left.multiply(right, mc)
         TokenKind.SLASH   -> {
-            if (right == 0.0) throw DivisionByZeroException()
-            left / right
+            if (right.compareTo(BigDecimal.ZERO) == 0) throw DivisionByZeroException()
+            left.divide(right, mc)
         }
         TokenKind.PERCENT -> {
-            if (right == 0.0) throw DivisionByZeroException()
-            left % right
+            if (right.compareTo(BigDecimal.ZERO) == 0) throw DivisionByZeroException()
+            left.remainder(right, mc)
         }
-        TokenKind.CARET   -> left.pow(right)
+        TokenKind.CARET   -> {
+            try {
+                left.pow(right.intValueExact(), mc)
+            } catch (e: Exception) {
+                BigDecimal(left.toDouble().pow(right.toDouble()), mc)
+            }
+        }
         else -> throw EvalException("Unknown operator: `$op`")
     }
 
@@ -459,7 +470,7 @@ class Evaluator(
 
         val args = argExprs.map { evaluate(it) }
         val evaluatedArgs = args.map {
-            val baseValue = it.value ?: 0.0
+            val baseValue = it.value ?: BigDecimal.ZERO
             if (it.unit != null) {
                 val unit = UnitConverter.findUnit(it.unit)
                 if (unit != null) {

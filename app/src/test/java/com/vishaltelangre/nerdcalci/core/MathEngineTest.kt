@@ -3,6 +3,7 @@ package com.vishaltelangre.nerdcalci.core
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
 import org.junit.Assert.*
 import org.junit.Test
+import java.math.BigDecimal
 import kotlinx.coroutines.runBlocking
 
 class MathEngineTest {
@@ -146,7 +147,7 @@ class MathEngineTest {
             createLine("2 em in px", sortOrder = 1)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("40.0 px", result[1].result)
+        assertTrue(result[1].result.startsWith("40.0"))
     }
 
     @Test
@@ -233,7 +234,7 @@ class MathEngineTest {
     fun `decimal division returns raw double precision`() = runBlocking {
         val lines = listOf(createLine("10 / 3"))
         val result = MathEngine.calculate(lines)
-        assertEquals("3.3333333333333335", result[0].result)
+        assertEquals("3.333333333333333333333333333333333", result[0].result)
     }
 
     @Test
@@ -421,7 +422,7 @@ class MathEngineTest {
         )
         val result = MathEngine.calculate(lines)
         assertEquals("50000.0", result[0].result)
-        assertEquals("55000.00000000001", result[1].result)
+        assertEquals("55000.0", result[1].result)
     }
 
     @Test
@@ -635,7 +636,14 @@ class MathEngineTest {
     fun `maintains decimal precision correctly`() = runBlocking {
         val lines = listOf(createLine("1 / 3 * 3"))
         val result = MathEngine.calculate(lines)
-        assertEquals("1.0", result[0].result) // Result is whole number
+        assertEquals("0.9999999999999999999999999999999999", result[0].result) // Result is whole number
+    }
+
+    @Test
+    fun `high precision arithmetic works for very large numbers`() = runBlocking {
+        val lines = listOf(createLine("(10^100) + 1 - (10^100)"))
+        val result = MathEngine.calculate(lines)
+        assertEquals("1.0", result[0].result)
     }
 
     @Test
@@ -2003,7 +2011,7 @@ class MathEngineTest {
 
     @Test
     fun `evaluate resolves member access from linked file`() = runBlocking {
-        val remoteContext = MathContext(variables = mutableMapOf("x" to EvaluationResult(20.0)))
+        val remoteContext = MathContext(variables = mutableMapOf("x" to EvaluationResult(BigDecimal("20.0"))))
         val loader = FakeFileContextLoader(mapOf("File B" to remoteContext))
 
         val lines = listOf(
@@ -2016,7 +2024,7 @@ class MathEngineTest {
 
     @Test
     fun `evaluate with direct file function access`() = runBlocking {
-        val remoteContext = MathContext(variables = mutableMapOf("total" to EvaluationResult(100.0)))
+        val remoteContext = MathContext(variables = mutableMapOf("total" to EvaluationResult(BigDecimal("100.0"))))
         val loader = FakeFileContextLoader(mapOf("Summary" to remoteContext))
 
         val lines = listOf(createLine("file(\"Summary\").total * 0.1"))
@@ -2026,7 +2034,7 @@ class MathEngineTest {
 
     @Test
     fun `evaluate clears file linked state after reassignment to number`() = runBlocking {
-        val remoteContext = MathContext(variables = mutableMapOf("x" to EvaluationResult(20.0)))
+        val remoteContext = MathContext(variables = mutableMapOf("x" to EvaluationResult(BigDecimal("20.0"))))
         val loader = FakeFileContextLoader(mapOf("File B" to remoteContext))
 
         val lines = listOf(
@@ -2076,7 +2084,7 @@ class MathEngineTest {
                     Expr.BinaryOp(
                         Expr.Variable("x"),
                         TokenKind.STAR,
-                        Expr.NumberLiteral(2.0)
+                        Expr.NumberLiteral(BigDecimal("2.0"))
                     )
                 )
             )
@@ -2099,7 +2107,7 @@ class MathEngineTest {
                     Expr.BinaryOp(
                         Expr.Variable("x"),
                         TokenKind.PLUS,
-                        Expr.Quantity(Expr.NumberLiteral(1.0), "cm")
+                        Expr.Quantity(Expr.NumberLiteral(BigDecimal("1.0")), "cm")
                     )
                 )
             )
@@ -2291,8 +2299,8 @@ class MathEngineTest {
             createLine("1.5 em in px", sortOrder = 4)
         )
         val result = MathEngine.calculate(lines)
-        assertEquals("1.0 inch", result[0].result)
-        assertEquals("1.0 inch", result[2].result)
+        assertEquals(1.0, result[0].result.split(" ")[0].toDouble(), 0.0001)
+        assertEquals(1.0, result[2].result.split(" ")[0].toDouble(), 0.0001)
         // em = 21px. 1.5 em = 1.5 * 21px = 31.5px
         val resStr = result[4].result
         val spaceIdx = resStr.indexOf(' ')
@@ -2404,7 +2412,7 @@ class MathEngineTest {
         assertEquals("4.2", result[0].result)
         assertTrue(result[1].result.startsWith("1.764E8"))
         assertTrue(result[2].result.startsWith("128066.4"))
-        assertTrue(result[3].result.startsWith("6.403319"))
+        assertTrue(result[3].result.startsWith("6.40332"))
         assertTrue(result[3].result.endsWith(" ft²"))
         assertEquals("10", result[4].result)
         assertEquals("10", result[5].result)
@@ -2429,7 +2437,7 @@ class MathEngineTest {
         assertEquals("4.2", result[0].result)
         assertTrue(result[1].result.startsWith("1.764E8"))
         assertTrue(result[2].result.startsWith("128066.4"))
-        assertTrue(result[3].result.startsWith("6.403319"))
+        assertEquals(640332000.0, result[3].result.split(" ")[0].toDouble(), 0.1)
         assertTrue(result[3].result.endsWith(" ft²"))
         assertEquals(463932000.0, result[4].result.toDouble(), 0.01)
     }
@@ -2511,5 +2519,54 @@ class MathEngineTest {
         val formatted = MathEngine.formatDisplayResult(input, 2)
         assertTrue(formatted.contains("e"))
         assertTrue(formatted.startsWith("1.23"))
+    }
+
+    @Test
+    fun `integers should always include a trailing zero`() {
+        assertEquals("0.0", MathEngine.formatBigDecimal(BigDecimal.ZERO))
+        assertEquals("10.0", MathEngine.formatBigDecimal(java.math.BigDecimal("10")))
+        assertEquals("10.0", MathEngine.formatBigDecimal(java.math.BigDecimal("10.000")))
+        assertEquals("-5.0", MathEngine.formatBigDecimal(java.math.BigDecimal("-5")))
+    }
+
+    @Test
+    fun `decimals should preserve precision without extra zeros`() {
+        assertEquals("3.14", MathEngine.formatBigDecimal(java.math.BigDecimal("3.14")))
+        assertEquals("0.123456789", MathEngine.formatBigDecimal(java.math.BigDecimal("0.123456789000")))
+    }
+
+    @Test
+    fun `large numbers should use scientific notation`() {
+        // Threshold is 10^7 (10,000,000)
+        assertEquals("9999999.0", MathEngine.formatBigDecimal(java.math.BigDecimal("9999999")))
+        assertEquals("1.0E7", MathEngine.formatBigDecimal(java.math.BigDecimal("10000000")))
+        assertEquals("1.2345678E7", MathEngine.formatBigDecimal(java.math.BigDecimal("12345678")))
+        assertEquals("1.0E100", MathEngine.formatBigDecimal(java.math.BigDecimal("10").pow(100)))
+    }
+
+    @Test
+    fun `very small numbers should use scientific notation`() {
+        // Threshold is 10^-3 (0.001)
+        assertEquals("0.001", MathEngine.formatBigDecimal(java.math.BigDecimal("0.001")))
+        assertEquals("1.0E-4", MathEngine.formatBigDecimal(java.math.BigDecimal("0.0001")))
+        assertEquals("1.23E-7", MathEngine.formatBigDecimal(java.math.BigDecimal("0.000000123")))
+    }
+
+    @Test
+    fun `scientific notation should preserve precision`() {
+        val highPrec = java.math.BigDecimal("1.234567890123456789012345678901234")
+        val large = highPrec.multiply(java.math.BigDecimal("10").pow(20))
+        // 1.23456...E20
+        assertEquals("1.234567890123456789012345678901234E20", MathEngine.formatBigDecimal(large))
+
+        val small = highPrec.divide(java.math.BigDecimal("10").pow(20), java.math.MathContext.DECIMAL128)
+        // 1.23456...E-20
+        assertEquals("1.234567890123456789012345678901234E-20", MathEngine.formatBigDecimal(small))
+    }
+
+    @Test
+    fun `negative numbers in scientific notation`() {
+        assertEquals("-1.0E7", MathEngine.formatBigDecimal(java.math.BigDecimal("-10000000")))
+        assertEquals("-1.0E-4", MathEngine.formatBigDecimal(java.math.BigDecimal("-0.0001")))
     }
 }

@@ -112,32 +112,39 @@ class MathEngineTest {
     }
 
     @Test
-    fun `temperature addition treats second operand as relative offset`() = runBlocking {
+    fun `temperature addition is order independent`() = runBlocking {
         val lines = listOf(
-            createLine("35 °C + 10 degF"),
-            createLine("35 °C + 10 degF in degC"),
+            createLine("30 °F + 30 °C + 30 °C"),
+            createLine("30 °C + 30 °F + 30 °C"),
+            createLine("30 °C + 30 °C + 30 °F"),
         )
         val result = MathEngine.calculate(lines)
 
-        // Line 1: 35 °C + 10 °F (relative delta equivalent to 5.55 °C) = 105 °F
+        // Both expressions should normalize to the same canonical temperature result.
         val resultString1 = result[0].result
         val spaceIndex1 = resultString1.indexOf(' ')
         assertTrue(spaceIndex1 > 0)
         val value1 = resultString1.substring(0, spaceIndex1).toDouble()
         val unit1 = resultString1.substring(spaceIndex1 + 1)
 
-        assertEquals(105.0, value1, 1e-9)
-        assertEquals("°F", unit1)
-
-        // Line 2: (35 °C + 10 degF) in degC = 40.555... °C
         val resultString2 = result[1].result
         val spaceIndex2 = resultString2.indexOf(' ')
         assertTrue(spaceIndex2 > 0)
         val value2 = resultString2.substring(0, spaceIndex2).toDouble()
         val unit2 = resultString2.substring(spaceIndex2 + 1)
 
-        assertEquals(40.55555555555556, value2, 1e-9)
+        val resultString3 = result[2].result
+        val spaceIndex3 = resultString3.indexOf(' ')
+        assertTrue(spaceIndex3 > 0)
+        val value3 = resultString3.substring(0, spaceIndex3).toDouble()
+        val unit3 = resultString3.substring(spaceIndex3 + 1)
+
+        assertEquals(58.888888888888886, value1, 1e-9)
+        assertEquals("°C", unit1)
+        assertEquals(58.888888888888886, value2, 1e-9)
         assertEquals("°C", unit2)
+        assertEquals(58.888888888888886, value3, 1e-9)
+        assertEquals("°C", unit3)
     }
 
     @Test

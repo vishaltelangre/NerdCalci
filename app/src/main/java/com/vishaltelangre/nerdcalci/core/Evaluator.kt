@@ -351,21 +351,20 @@ class Evaluator(
                     throw EvalException("Cannot calculate ${leftUnit.name} and ${rightUnit.name}: dimension mismatch")
                 }
 
-                val rightDelta = if (leftUnit.category == UnitCategory.TEMPERATURE) {
-                    // Extract slope factor so right operand is treated as a temperature "delta"
-                    // (e.g., 10 degF difference) rather than an absolute temperature.
-                    // This enables expressions like 35 °C + 10 degF to behave sensibly.
-                    val rawRight = UnitConverter.fromBase(rightVal, rightUnit, variables)
-                    val slope = UnitConverter.toBase(BigDecimal.ONE, rightUnit, variables).subtract(UnitConverter.toBase(BigDecimal.ZERO, rightUnit, variables))
-                    rawRight.multiply(slope)
-                } else {
-                    // Pick the smaller unit (smaller factor values translate to smaller absolute unit
-                    // definitions)
-                    rightVal
+                if (leftUnit.category == UnitCategory.TEMPERATURE) {
+                    val canonicalUnit = UnitConverter.findUnit("degC")
+                        ?: throw EvalException("Temperature conversion is unavailable")
+                    val leftCanonical = UnitConverter.fromBase(leftVal, canonicalUnit, variables)
+                    val rightCanonical = UnitConverter.fromBase(rightVal, canonicalUnit, variables)
+                    val resultCanonical = applyOp(leftCanonical, expr.op, rightCanonical)
+                    return EvaluationResult(
+                        UnitConverter.toBase(resultCanonical, canonicalUnit, variables),
+                        canonicalUnit.symbols.first()
+                    )
                 }
 
                 val pickedUnit = if (leftUnit.factor.compareTo(rightUnit.factor) < 0) leftUnit else rightUnit
-                return EvaluationResult(applyOp(leftVal, expr.op, rightDelta), pickedUnit.symbols.first())
+                return EvaluationResult(applyOp(leftVal, expr.op, rightVal), pickedUnit.symbols.first())
             } else if (leftUnit != null && rightUnit == null && !rightEval.explicitUnitless && leftUnit.category != UnitCategory.SCALAR) {
                 val scaledRight = UnitConverter.toBase(rightVal, leftUnit, variables)
                 return EvaluationResult(applyOp(leftVal, expr.op, scaledRight), leftUnit.symbols.first())

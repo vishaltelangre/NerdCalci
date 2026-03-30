@@ -12,7 +12,8 @@ data class MathContext(
     val localFunctions: MutableMap<String, LocalFunction> = mutableMapOf(),
     val lineResults: MutableList<EvaluationResult?> = mutableListOf(),
     val userAssignedDynamicVariables: MutableSet<String> = mutableSetOf(),
-    val fileVariables: MutableMap<String, String> = mutableMapOf() // varName -> fileName
+    val fileVariables: MutableMap<String, String> = mutableMapOf(), // varName -> fileName
+    val injectionErrors: MutableMap<String, Exception> = mutableMapOf()
 )
 
 object MathEngine {
@@ -23,22 +24,22 @@ object MathEngine {
      * Each entry maps a keyword name to a function that computes its value based on
      * the current block's line results.
      */
-    private val DYNAMIC_VARIABLES: Map<String, (List<EvaluationResult?>) -> EvaluationResult> = mapOf(
-        "sum"               to ::computeBlockSum,
-        "total"             to ::computeBlockSum,
+    private val DYNAMIC_VARIABLES: Map<String, (List<EvaluationResult?>, Map<String, EvaluationResult>) -> EvaluationResult> = mapOf(
+        "sum"               to { results, vars -> computeBlockSum(results, vars) },
+        "total"             to { results, vars -> computeBlockSum(results, vars) },
 
-        "avg"               to ::computeBlockAverage,
-        "average"           to ::computeBlockAverage,
+        "avg"               to { results, vars -> computeBlockAverage(results, vars) },
+        "average"           to { results, vars -> computeBlockAverage(results, vars) },
 
-        "last"              to ::computePreviousLineResult,
-        "prev"              to ::computePreviousLineResult,
-        "previous"          to ::computePreviousLineResult,
-        "above"             to ::computePreviousLineResult,
-        "_"                 to ::computePreviousLineResult,
+        "last"              to { results, _ -> computePreviousLineResult(results) },
+        "prev"              to { results, _ -> computePreviousLineResult(results) },
+        "previous"          to { results, _ -> computePreviousLineResult(results) },
+        "above"             to { results, _ -> computePreviousLineResult(results) },
+        "_"                 to { results, _ -> computePreviousLineResult(results) },
 
-        "lineno"            to ::computeCurrentLineNumber,
-        "linenumber"        to ::computeCurrentLineNumber,
-        "currentLineNumber" to ::computeCurrentLineNumber
+        "lineno"            to { results, _ -> computeCurrentLineNumber(results) },
+        "linenumber"        to { results, _ -> computeCurrentLineNumber(results) },
+        "currentLineNumber" to { results, _ -> computeCurrentLineNumber(results) }
     )
 
     val EXCLUDED_DOT_NOTATION_VARIABLES = setOf("lineno", "linenumber", "currentLineNumber")
@@ -260,38 +261,105 @@ object MathEngine {
     private fun injectDynamicVariables(context: MathContext) {
         for ((name, compute) in DYNAMIC_VARIABLES) {
             if (name !in context.userAssignedDynamicVariables) {
-                context.variables[name] = compute(context.lineResults)
+                context.variables.remove(name)
+                context.injectionErrors.remove(name)
+                try {
+                    context.variables[name] = compute(context.lineResults, context.variables)
+                } catch (e: Exception) {
+                    context.injectionErrors[name] = e
+                }
             }
         }
     }
 
-    /**
-     * Sum the current block's line results, scanning backward from the end of
-     * [lineResults] until a null entry (blank line / comment / error) or the start.
-     */
-    private fun computeBlockSum(lineResults: List<EvaluationResult?>): EvaluationResult {
-        var sum = 0.0
+    private fun computeBlockSum(lineResults: List<EvaluationResult?>, variables: Map<String, EvaluationResult>): EvaluationResult {
+        val blockResults = mutableListOf<EvaluationResult>()
         for (i in lineResults.indices.reversed()) {
             val result = lineResults[i] ?: break
-            sum += result.value ?: 0.0
+            blockResults.add(0, result)
         }
-        return EvaluationResult(sum)
+
+        if (blockResults.isEmpty()) return EvaluationResult(0.0)
+
+        // Identify the target unit for this block (the unit of the last line with a unit)
+        var targetUnit: Unit? = null
+        var targetUnitSymbol: String? = null
+        for (i in blockResults.indices.reversed()) {
+            val u = blockResults[i].unit?.let { UnitConverter.findUnit(it) }
+            if (u != null && u.category != UnitCategory.SCALAR) {
+                targetUnit = u
+                targetUnitSymbol = blockResults[i].unit
+                break
+            }
+        }
+
+        var sumValue = 0.0
+        for (result in blockResults) {
+            val resultUnit = result.unit?.let { UnitConverter.findUnit(it) }
+            if (targetUnit != null) {
+                if (resultUnit != null) {
+                    if (resultUnit.category != targetUnit.category && resultUnit.category != UnitCategory.SCALAR) {
+                        throw EvalException("Cannot sum ${resultUnit.name} and ${targetUnit.name}: dimension mismatch")
+                    }
+                    sumValue += result.value ?: 0.0
+                } else {
+                    // Result is unitless. Treat as "targetUnit" same as '+' operator.
+                    sumValue += UnitConverter.toBase(result.value ?: 0.0, targetUnit, variables)
+                }
+            } else {
+                if (resultUnit != null && resultUnit.category != UnitCategory.SCALAR) {
+                    // This shouldn't happen given how we pick targetUnit, but for safety:
+                    return EvaluationResult(null)
+                }
+                sumValue += result.value ?: 0.0
+            }
+        }
+
+        return EvaluationResult(sumValue, targetUnitSymbol)
     }
 
-    /**
-     * Average the current block's line results, scanning backward from the end of
-     * [lineResults] until a null entry (blank line / comment / error) or the start.
-     */
-    private fun computeBlockAverage(lineResults: List<EvaluationResult?>): EvaluationResult {
-        var sum = 0.0
-        var count = 0
+    private fun computeBlockAverage(lineResults: List<EvaluationResult?>, variables: Map<String, EvaluationResult>): EvaluationResult {
+        val blockResults = mutableListOf<EvaluationResult>()
         for (i in lineResults.indices.reversed()) {
             val result = lineResults[i] ?: break
-            sum += result.value ?: 0.0
+            blockResults.add(0, result)
+        }
+
+        if (blockResults.isEmpty()) return EvaluationResult(0.0)
+
+        // Identify the target unit for this block (the unit of the last line with a unit)
+        var targetUnit: Unit? = null
+        var targetUnitSymbol: String? = null
+        for (i in blockResults.indices.reversed()) {
+            val u = blockResults[i].unit?.let { UnitConverter.findUnit(it) }
+            if (u != null && u.category != UnitCategory.SCALAR) {
+                targetUnit = u
+                targetUnitSymbol = blockResults[i].unit
+                break
+            }
+        }
+
+        var sumValue = 0.0
+        var count = 0
+        for (result in blockResults) {
+            val resultUnit = result.unit?.let { UnitConverter.findUnit(it) }
+            if (targetUnit != null) {
+                if (resultUnit != null) {
+                    if (resultUnit.category != targetUnit.category && resultUnit.category != UnitCategory.SCALAR) {
+                        throw EvalException("Cannot average ${resultUnit.name} and ${targetUnit.name}: dimension mismatch")
+                    }
+                    sumValue += result.value ?: 0.0
+                } else {
+                    sumValue += UnitConverter.toBase(result.value ?: 0.0, targetUnit, variables)
+                }
+            } else {
+                sumValue += result.value ?: 0.0
+            }
             count++
         }
-        val avg = if (count > 0) sum / count else 0.0
-        return EvaluationResult(avg)
+
+        val avgValue = if (count > 0) sumValue / count else 0.0
+        return EvaluationResult(avgValue, targetUnitSymbol)
     }
 
     /**
@@ -332,6 +400,7 @@ object MathEngine {
 
         return Evaluator(
             variables = context.variables,
+            injectionErrors = context.injectionErrors,
             localFunctions = context.localFunctions,
             fileVariables = context.fileVariables,
             fileContextLoader = loader,

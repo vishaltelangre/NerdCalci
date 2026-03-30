@@ -22,6 +22,7 @@ data class EvaluationResult(
  */
 class Evaluator(
     private val variables: Map<String, EvaluationResult>,
+    private val injectionErrors: Map<String, Exception> = emptyMap(),
     private val localFunctions: Map<String, LocalFunction> = emptyMap(),
     private val callStack: Set<String> = emptySet(),
     private val fileVariables: Map<String, String> = emptyMap(),
@@ -96,8 +97,9 @@ class Evaluator(
 
 
     private fun resolveVariable(name: String): EvaluationResult {
-        // Check user variables first, then built-in constants
+        // Check user variables first, then injection errors, then built-in constants
         variables[name]?.let { return it }
+        injectionErrors[name]?.let { throw it }
         Builtins.constantValue(name)?.let { return EvaluationResult(it) }
         throw UndefinedVariableException(name)
     }

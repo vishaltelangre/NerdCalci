@@ -54,6 +54,21 @@ class MathEngineTest {
     }
 
     @Test
+    fun `total throws dimensional mismatch error when accessed`() = runBlocking {
+        val lines = listOf(
+            createLine("4kg", sortOrder = 0),
+            createLine("5 hour", sortOrder = 1),
+            createLine("3 kph", sortOrder = 2),
+            createLine("total", sortOrder = 3)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("Err", result[3].result)
+
+        val errorMsg = MathEngine.getErrorDetails(lines, 3)
+        assertEquals("Cannot sum Kilogram and Kilometer per hour: dimension mismatch", errorMsg)
+    }
+
+    @Test
     fun `chained percentage expression works correctly`() = runBlocking {
         val lines = listOf(createLine("100 + 20% - 5"))
         val result = MathEngine.calculate(lines)
@@ -1289,6 +1304,46 @@ class MathEngineTest {
         )
         val result = MathEngine.calculate(lines)
         assertEquals("0.0", result[0].result)
+    }
+
+    @Test
+    fun `total preserves units and does not convert to base unit`() = runBlocking {
+        val lines = listOf(
+            createLine("1 acre to sqft", sortOrder = 0),
+            createLine("_/2", sortOrder = 1),
+            createLine("total", sortOrder = 2)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("43560.0 ft²", result[0].result)
+        assertEquals("21780.0 ft²", result[1].result)
+        assertEquals("65340.0 ft²", result[2].result)
+    }
+
+    @Test
+    fun `total handles unitless numbers as target unit`() = runBlocking {
+        val lines = listOf(
+            createLine("4 kg", sortOrder = 0),
+            createLine("5", sortOrder = 1),
+            createLine("total", sortOrder = 2)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("4.0 kg", result[0].result)
+        assertEquals("5.0", result[1].result)
+        assertEquals("9.0 kg", result[2].result)
+    }
+
+    @Test
+    fun `total with mixed categories returns error`() = runBlocking {
+        val lines = listOf(
+            createLine("10 m", sortOrder = 0),
+            createLine("20 s", sortOrder = 1),
+            createLine("total", sortOrder = 2)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("Err", result[2].result)
+
+        val errorMsg = MathEngine.getErrorDetails(lines, 2)
+        assertEquals("Cannot sum Meter and Second: dimension mismatch", errorMsg)
     }
 
     @Test

@@ -716,7 +716,7 @@ fun CalculatorScreen(
                                         showMenu = false
                                         val safeFileName = fileName.replace(Regex("[^a-zA-Z0-9.-]"), "_")
                                         coroutineScope.launch {
-                                            ExportUtils.exportAsPdf(context, safeFileName, lines)
+                                            ExportUtils.exportAsPdf(context, safeFileName, lines, precision)
                                         }
                                     }
                                 )
@@ -732,7 +732,7 @@ fun CalculatorScreen(
                                         showMenu = false
                                         val safeFileName = fileName.replace(Regex("[^a-zA-Z0-9.-]"), "_")
                                         coroutineScope.launch {
-                                            ExportUtils.exportAsImage(context, safeFileName, lines)
+                                            ExportUtils.exportAsImage(context, safeFileName, lines, precision)
                                         }
                                     }
                                 )

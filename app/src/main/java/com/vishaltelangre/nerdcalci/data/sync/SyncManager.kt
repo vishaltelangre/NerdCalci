@@ -352,7 +352,7 @@ object SyncManager {
         }
 
         if (localChanged || remoteChanged || roomFile.isPinned != safFile.isPinned) {
-            val precision = prefs(context).getInt("precision", 2)
+            val precision = prefs(context).getInt(Constants.SYNC_ENGINE_PRECISION, Constants.DEFAULT_PRECISION)
             val lines = dao.getLinesForFileSync(roomFile.id)
             val body = FileUtils.formatFileBody(lines, precision)
             val computedHash = FileUtils.calculateHash(body)
@@ -507,7 +507,7 @@ object SyncManager {
         val tempFileName = "$fileNameWithExtension.tmp"
 
         val lines = dao.getLinesForFileSync(file.id)
-        val precision = prefs(context).getInt("precision", 2)
+        val precision = prefs(context).getInt(Constants.SYNC_ENGINE_PRECISION, Constants.DEFAULT_PRECISION)
 
         val body = FileUtils.formatFileBody(lines, precision)
         val contentHash = FileUtils.calculateHash(body)

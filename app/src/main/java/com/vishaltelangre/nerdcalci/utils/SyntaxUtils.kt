@@ -228,7 +228,8 @@ fun getSuggestionContext(
                         type = SuggestionType.CONVERSION,
                         isExplicitTrigger = true,
                         unitStart = compositeUnitStart,
-                        unitCategory = category
+                        unitCategory = category,
+                        replaceStart = cursorPos
                     )
                 }
 
@@ -267,7 +268,8 @@ fun getSuggestionContext(
                         word = "",
                         type = SuggestionType.CONVERSION,
                         isExplicitTrigger = true,
-                        unitStart = lastToken.position + lastToken.lexeme.length + 1
+                        unitStart = lastToken.position + lastToken.lexeme.length + 1,
+                        replaceStart = cursorPos
                     )
                 }
             }

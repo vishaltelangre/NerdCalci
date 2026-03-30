@@ -121,4 +121,37 @@ class SuggestionContextTest {
         assertTrue(context.isExplicitTrigger)
         assertNull(context.unitCategory)
     }
+
+    @Test
+    fun `test suggestion after quantity and space sets replaceStart to cursor`() {
+        val text = "10 kmph "
+        val cursorPos = 8
+        val beforeCursor = "10 kmph "
+        val context = getSuggestionContext(beforeCursor, text, cursorPos, emptyMap())
+        assertEquals("", context.word)
+        assertEquals(SuggestionType.CONVERSION, context.type)
+        assertEquals(cursorPos, context.replaceStart)
+    }
+
+    @Test
+    fun `test suggestion after number and space sets replaceStart to cursor`() {
+        val text = "15 "
+        val cursorPos = 3
+        val beforeCursor = "15 "
+        val context = getSuggestionContext(beforeCursor, text, cursorPos, emptyMap())
+        assertEquals("", context.word)
+        assertEquals(SuggestionType.CONVERSION, context.type)
+        assertEquals(cursorPos, context.replaceStart)
+    }
+
+    @Test
+    fun `test suggestion after composite unit and space sets replaceStart to cursor`() {
+        val text = "10 kilometers per hour "
+        val cursorPos = text.length
+        val beforeCursor = text
+        val context = getSuggestionContext(beforeCursor, text, cursorPos, emptyMap())
+        assertEquals("", context.word)
+        assertEquals(SuggestionType.CONVERSION, context.type)
+        assertEquals(cursorPos, context.replaceStart)
+    }
 }

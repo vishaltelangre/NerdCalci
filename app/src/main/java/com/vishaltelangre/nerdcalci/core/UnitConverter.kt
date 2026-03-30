@@ -430,7 +430,11 @@ object UnitConverter {
     }
 
     fun fromBase(value: BigDecimal, unit: Unit, variables: Map<String, EvaluationResult>): BigDecimal {
-        return unit.customFromBase?.invoke(value, variables) ?: value.divide(unit.factor)
+        return unit.customFromBase?.invoke(value, variables) ?: try {
+            value.divide(unit.factor)
+        } catch (e: ArithmeticException) {
+            value.divide(unit.factor, JavaMathContext.DECIMAL128)
+        }
     }
 
     fun convert(value: BigDecimal, from: Unit, to: Unit, variables: Map<String, EvaluationResult>): BigDecimal {

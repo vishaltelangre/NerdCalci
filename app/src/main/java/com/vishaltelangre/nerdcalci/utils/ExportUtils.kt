@@ -295,7 +295,7 @@ val file = File(exportDir, "$fileNameWithDate.pdf")
 
     internal fun formatResultText(text: String, precision: Int): String {
         if (text.isBlank()) return ""
-        return MathEngine.formatDisplayResult(text, precision)
+        return MathEngine.formatDisplayResult(text, precision, Locale.US)
     }
 
     internal fun formatResult(text: String, precision: Int): CharSequence {

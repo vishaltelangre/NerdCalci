@@ -2541,23 +2541,23 @@ class MathEngineTest {
     @Test
     fun `formatDisplayResult honors precision`() {
         val input = "0.33333333333333335"
-        assertEquals("0.33", MathEngine.formatDisplayResult(input, 2))
-        assertEquals("0.3333", MathEngine.formatDisplayResult(input, 4))
-        assertEquals("0.333333", MathEngine.formatDisplayResult(input, 6))
+        assertEquals("0.33", MathEngine.formatDisplayResult(input, 2, java.util.Locale.US))
+        assertEquals("0.3333", MathEngine.formatDisplayResult(input, 4, java.util.Locale.US))
+        assertEquals("0.333333", MathEngine.formatDisplayResult(input, 6, java.util.Locale.US))
     }
 
     @Test
     fun `formatDisplayResult handles quantities with precision`() {
         val input = "0.33333333333333335 km"
-        assertEquals("0.33 km", MathEngine.formatDisplayResult(input, 2))
-        assertEquals("0.3333 km", MathEngine.formatDisplayResult(input, 4))
+        assertEquals("0.33 km", MathEngine.formatDisplayResult(input, 2, java.util.Locale.US))
+        assertEquals("0.3333 km", MathEngine.formatDisplayResult(input, 4, java.util.Locale.US))
     }
 
     @Test
     fun `formatDisplayResult handles large numbers with precision`() {
         val input = "12345678901234567890"
         // Should use scientific notation with precision
-        val formatted = MathEngine.formatDisplayResult(input, 2)
+        val formatted = MathEngine.formatDisplayResult(input, 2, java.util.Locale.US)
         assertTrue(formatted.contains("e"))
         assertTrue(formatted.startsWith("1.23"))
     }

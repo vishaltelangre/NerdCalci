@@ -228,18 +228,18 @@ object UnitConverter {
         Unit("Mebibyte", listOf("MiB", "mebibyte", "mebibytes"), UnitCategory.DATA, BigDecimal("1048576.0")),
         Unit("Gibibyte", listOf("GiB", "gibibyte", "gibibytes"), UnitCategory.DATA, BigDecimal("1073741824.0")),
 
-        Unit("Tebibyte", listOf("TiB", "tebibyte", "tebibytes"), UnitCategory.DATA, BigDecimal("1099511627776.0")),
-        Unit("Pebibyte", listOf("PiB", "pebibyte", "pebibytes"), UnitCategory.DATA, BigDecimal("1125899906842624.0")),
-        Unit("Exbibyte", listOf("EiB", "exbibyte", "exbibytes"), UnitCategory.DATA, BigDecimal("1.1529215046e18")),
+        Unit("Tebibyte", listOf("TiB", "tebibyte", "tebibytes"), UnitCategory.DATA, BigDecimal("1099511627776")),
+        Unit("Pebibyte", listOf("PiB", "pebibyte", "pebibytes"), UnitCategory.DATA, BigDecimal("1125899906842624")),
+        Unit("Exbibyte", listOf("EiB", "exbibyte", "exbibytes"), UnitCategory.DATA, BigDecimal("1152921504606846976")),
         Unit("Petabyte", listOf("PB", "petabyte", "petabytes"), UnitCategory.DATA, BigDecimal("1e15")),
         Unit("Exabyte", listOf("EB", "exabyte", "exabytes"), UnitCategory.DATA, BigDecimal("1e18")),
 
-        Unit("Kibibit", listOf("Kibit", "kibibit"), UnitCategory.DATA, BigDecimal("128.0")),
-        Unit("Mebibit", listOf("Mibit", "mebibit"), UnitCategory.DATA, BigDecimal("131072.0")),
-        Unit("Gibibit", listOf("Gibit", "gibibit"), UnitCategory.DATA, BigDecimal("1.34217728e8")),
-        Unit("Tebibit", listOf("Tibit", "tebibit"), UnitCategory.DATA, BigDecimal("1.37438953472e11")),
-        Unit("Pebibit", listOf("Pibit", "pebibit"), UnitCategory.DATA, BigDecimal("1.40737488355e14")),
-        Unit("Exbibit", listOf("Eibit", "exbibit"), UnitCategory.DATA, BigDecimal("1.44115188075e17")),
+        Unit("Kibibit", listOf("Kibit", "kibibit"), UnitCategory.DATA, BigDecimal("128")),
+        Unit("Mebibit", listOf("Mibit", "mebibit"), UnitCategory.DATA, BigDecimal("131072")),
+        Unit("Gibibit", listOf("Gibit", "gibibit"), UnitCategory.DATA, BigDecimal("134217728")),
+        Unit("Tebibit", listOf("Tibit", "tebibit"), UnitCategory.DATA, BigDecimal("137438953472")),
+        Unit("Pebibit", listOf("Pibit", "pebibit"), UnitCategory.DATA, BigDecimal("140737488355328")),
+        Unit("Exbibit", listOf("Eibit", "exbibit"), UnitCategory.DATA, BigDecimal("144115188075855872")),
 
         Unit("Kilobit", listOf("kb", "kilobit"), UnitCategory.DATA, BigDecimal("125.0")),
         Unit("Megabit", listOf("Mb", "megabit"), UnitCategory.DATA, BigDecimal("125000.0")),
@@ -304,11 +304,13 @@ object UnitConverter {
         // --- CSS/SCREEN --- (Uses LENGTH category with dynamic factors)
         Unit("Pixel", listOf("px", "pixel", "pixels"), UnitCategory.LENGTH, BigDecimal.ONE,
             customToBase = { v, vars ->
-                val ppi = vars["ppi"]?.value ?: BigDecimal("96.0")
+                val ppiValue = vars["ppi"]?.value ?: BigDecimal("96.0")
+                val ppi = if (ppiValue.compareTo(BigDecimal.ZERO) > 0) ppiValue else BigDecimal("96.0")
                 v.multiply(BigDecimal.ONE.divide(ppi, JavaMathContext.DECIMAL128)).multiply(BigDecimal("0.0254"))
             },
             customFromBase = { v, vars ->
-                val ppi = vars["ppi"]?.value ?: BigDecimal("96.0")
+                val ppiValue = vars["ppi"]?.value ?: BigDecimal("96.0")
+                val ppi = if (ppiValue.compareTo(BigDecimal.ZERO) > 0) ppiValue else BigDecimal("96.0")
                 v.divide(BigDecimal("0.0254").divide(ppi, JavaMathContext.DECIMAL128), JavaMathContext.DECIMAL128)
             }
         ),
@@ -316,16 +318,29 @@ object UnitConverter {
         Unit("Em", listOf("em"), UnitCategory.LENGTH, BigDecimal.ONE,
             customToBase = { v, vars ->
                 val emResult = vars["em"]
-                val ppi = vars["ppi"]?.value ?: BigDecimal("96.0")
+                val ppiValue = vars["ppi"]?.value ?: BigDecimal("96.0")
+                val ppi = if (ppiValue.compareTo(BigDecimal.ZERO) > 0) ppiValue else BigDecimal("96.0")
                 if (emResult != null) {
                     if (emResult.unit != null) {
                         // em was assigned with a unit (e.g., em = 21px), so its value
                         // is already stored in base meters. 1 em = emResult.value meters.
-                        v.multiply(emResult.value ?: BigDecimal.ZERO)
+                        val emValue = emResult.value ?: BigDecimal.ZERO
+                        if (emValue.compareTo(BigDecimal.ZERO) > 0) {
+                            v.multiply(emValue)
+                        } else {
+                            // Fall back to default 16px at ppi
+                            v.multiply(BigDecimal("16.0")).multiply(BigDecimal.ONE.divide(ppi, JavaMathContext.DECIMAL128)).multiply(BigDecimal("0.0254"))
+                        }
                     } else {
                         // em was assigned as a plain number (e.g., em = 20),
                         // treated as a pixel count at the current ppi.
-                        v.multiply(emResult.value ?: BigDecimal.ZERO).multiply(BigDecimal.ONE.divide(ppi, JavaMathContext.DECIMAL128)).multiply(BigDecimal("0.0254"))
+                        val emValue = emResult.value ?: BigDecimal.ZERO
+                        if (emValue.compareTo(BigDecimal.ZERO) > 0) {
+                            v.multiply(emValue).multiply(BigDecimal.ONE.divide(ppi, JavaMathContext.DECIMAL128)).multiply(BigDecimal("0.0254"))
+                        } else {
+                            // Fall back to default 16px at ppi
+                            v.multiply(BigDecimal("16.0")).multiply(BigDecimal.ONE.divide(ppi, JavaMathContext.DECIMAL128)).multiply(BigDecimal("0.0254"))
+                        }
                     }
                 } else {
                     // Default: 1em = 16px at 96ppi
@@ -334,12 +349,25 @@ object UnitConverter {
             },
             customFromBase = { v, vars ->
                 val emResult = vars["em"]
-                val ppi = vars["ppi"]?.value ?: BigDecimal("96.0")
+                val ppiValue = vars["ppi"]?.value ?: BigDecimal("96.0")
+                val ppi = if (ppiValue.compareTo(BigDecimal.ZERO) > 0) ppiValue else BigDecimal("96.0")
                 if (emResult != null) {
                     if (emResult.unit != null) {
-                        v.divide(emResult.value ?: BigDecimal.ONE, JavaMathContext.DECIMAL128)
+                        val emValue = emResult.value ?: BigDecimal.ONE
+                        if (emValue.compareTo(BigDecimal.ZERO) > 0) {
+                            v.divide(emValue, JavaMathContext.DECIMAL128)
+                        } else {
+                            // Fall back to default 16px at ppi
+                            v.divide(BigDecimal("16.0").multiply(BigDecimal.ONE.divide(ppi, JavaMathContext.DECIMAL128)).multiply(BigDecimal("0.0254")), JavaMathContext.DECIMAL128)
+                        }
                     } else {
-                        v.divide((emResult.value ?: BigDecimal("16.0")).multiply(BigDecimal.ONE.divide(ppi, JavaMathContext.DECIMAL128)).multiply(BigDecimal("0.0254")), JavaMathContext.DECIMAL128)
+                        val emValue = emResult.value ?: BigDecimal("16.0")
+                        if (emValue.compareTo(BigDecimal.ZERO) > 0) {
+                            v.divide(emValue.multiply(BigDecimal.ONE.divide(ppi, JavaMathContext.DECIMAL128)).multiply(BigDecimal("0.0254")), JavaMathContext.DECIMAL128)
+                        } else {
+                            // Fall back to default 16px at ppi
+                            v.divide(BigDecimal("16.0").multiply(BigDecimal.ONE.divide(ppi, JavaMathContext.DECIMAL128)).multiply(BigDecimal("0.0254")), JavaMathContext.DECIMAL128)
+                        }
                     }
                 } else {
                     v.divide(BigDecimal("16.0").multiply(BigDecimal.ONE.divide(ppi, JavaMathContext.DECIMAL128)).multiply(BigDecimal("0.0254")), JavaMathContext.DECIMAL128)
@@ -398,11 +426,11 @@ object UnitConverter {
     }
 
     fun toBase(value: BigDecimal, unit: Unit, variables: Map<String, EvaluationResult>): BigDecimal {
-        return unit.customToBase?.invoke(value, variables) ?: value.multiply(unit.factor, JavaMathContext.DECIMAL128)
+        return unit.customToBase?.invoke(value, variables) ?: value.multiply(unit.factor)
     }
 
     fun fromBase(value: BigDecimal, unit: Unit, variables: Map<String, EvaluationResult>): BigDecimal {
-        return unit.customFromBase?.invoke(value, variables) ?: value.divide(unit.factor, JavaMathContext.DECIMAL128)
+        return unit.customFromBase?.invoke(value, variables) ?: value.divide(unit.factor)
     }
 
     fun convert(value: BigDecimal, from: Unit, to: Unit, variables: Map<String, EvaluationResult>): BigDecimal {

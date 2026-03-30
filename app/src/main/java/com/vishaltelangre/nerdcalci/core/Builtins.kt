@@ -44,7 +44,19 @@ object Builtins {
         // Power / roots
         "sqrt"   to BuiltinFn(1) { BigDecimal(sqrt(it[0].toDouble()), mc) },
         "cbrt"   to BuiltinFn(1) { BigDecimal(cbrt(it[0].toDouble()), mc) },
-        "pow"    to BuiltinFn(2) { BigDecimal(it[0].toDouble().pow(it[1].toDouble()), mc) },
+        "pow"    to BuiltinFn(2) {
+            val base = it[0]
+            val exponent = it[1]
+            try {
+                // Check if exponent is an exact integer
+                val exponentInt = exponent.toBigIntegerExact().toInt()
+                // Use BigDecimal.pow for exact integer exponents
+                base.pow(exponentInt, mc)
+            } catch (_: ArithmeticException) {
+                // Exponent is not an exact integer, fall back to Double-based approach
+                BigDecimal(base.toDouble().pow(exponent.toDouble()), mc)
+            }
+        },
         "exp"    to BuiltinFn(1) { BigDecimal(exp(it[0].toDouble()), mc) },
         "expm1"  to BuiltinFn(1) { BigDecimal(expm1(it[0].toDouble()), mc) },
         "factorial" to BuiltinFn(1) { factorial(it[0]) },

@@ -216,7 +216,13 @@ object MathEngine {
                 val resultString = if (u != null) {
                     if (u.category == UnitCategory.NUMERAL_SYSTEM) {
                         if (result.value.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) != 0) throw IllegalArgumentException(ERR_FRACTIONAL_NUMERAL_SYSTEM)
-                        formatNumeralSystem(result.value.toLong(), u.factor.toInt())
+                        // Check if value is within Long range
+                        if (result.value.compareTo(BigDecimal(Long.MIN_VALUE)) < 0 || result.value.compareTo(BigDecimal(Long.MAX_VALUE)) > 0) {
+                            // Out of range, fall back to scientific notation
+                            formatBigDecimal(result.value)
+                        } else {
+                            formatNumeralSystem(result.value.toLong(), u.factor.toInt())
+                        }
                     } else {
                         val displayValue = UnitConverter.fromBase(result.value, u, isolatedContext.variables)
                         val formattedValue = formatBigDecimal(displayValue)

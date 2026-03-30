@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.2] - 2026-03-30
+### Added
+- Added `factorial()` and `fact()` built-in functions (Issue #69).
+
+### Fixed
+- Fixed an issue where the user-defined result precision was ignored during PDF and image exports (Issue #73).
+- Improved `total` and `average` variables to preserve units, enforce dimensional safety, and handle unitless quantities as scalars (Issue #74).
+- Fixed precision loss bugs for very large numbers (Issue #80).
+- Fixed temperature addition and subtraction so mixed-unit expressions normalize consistently before arithmetic (Issue #83).
+
 ## [3.1.1] - 2026-03-29
 ### Added
 - Added `value()`, `dropUnit()`, and `raw()` functions to extract the numeric value from quantities (e.g. `value(10km)` returns `10`).

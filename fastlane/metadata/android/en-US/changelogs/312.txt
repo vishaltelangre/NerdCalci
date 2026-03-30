@@ -1,0 +1,5 @@
+- Added `factorial()` and `fact()` built-in functions (Issue #69).
+- Fixed an issue where the user-defined result precision was ignored during PDF and image exports (Issue #73).
+- Improved `total` and `average` variables to preserve units and handle dimensional safety (Issue #74).
+- Fixed precision loss bugs for very large numbers (Issue #80).
+- Fixed mixed temperature addition and subtraction so values normalize consistently before arithmetic (Issue #83).

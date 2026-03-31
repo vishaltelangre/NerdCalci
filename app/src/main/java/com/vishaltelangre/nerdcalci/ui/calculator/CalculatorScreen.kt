@@ -1737,6 +1737,7 @@ private fun LineRow(
                     isFocused = isFocused,
                     forceDismissSuggestions = forceDismissSuggestions,
                     onDismissSuggestions = { forceDismissSuggestions = true },
+                    isNonFirstLine = lineNumber > 1,
                     textFieldValue = textFieldValue,
                     onTextFieldValueChange = { textFieldValue = it },
                     onValueChange = onValueChange,

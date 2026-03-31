@@ -366,20 +366,30 @@ private fun detectCompositeUnit(text: String): Pair<Int, UnitCategory?> {
     var bestStart = -1
     var bestCategory: UnitCategory? = null
     var maxLength = -1
-
     for (i in startTokenIndex until cleanTokens.size) {
         var currentUnitStr = ""
         for (j in i until cleanTokens.size) {
             val t = cleanTokens[j]
             currentUnitStr = if (currentUnitStr.isEmpty()) t.lexeme else "$currentUnitStr ${t.lexeme}"
+            val normalizedUnitStr = currentUnitStr.trim().lowercase()
 
             val unit = UnitConverter.findUnit(currentUnitStr)
-            if (unit != null) {
-                val fullSuffix = currentUnitStr.trim()
-                if (fullSuffix.length > maxLength) {
+            val prefixMatch = if (unit == null) {
+                UnitConverter.UNITS.firstOrNull { candidate ->
+                    candidate.symbols.any { symbol ->
+                        symbol.lowercase().startsWith(normalizedUnitStr)
+                    }
+                }
+            } else null
+
+            val matchedUnit = unit ?: prefixMatch
+            if (matchedUnit != null) {
+                val matchLength = normalizedUnitStr.length
+                val suffixFromStart = text.substring(cleanTokens[i].position).trim().lowercase()
+                if (matchLength > maxLength && suffixFromStart.startsWith(normalizedUnitStr)) {
                     bestStart = cleanTokens[i].position
-                    bestCategory = unit.category
-                    maxLength = fullSuffix.length
+                    bestCategory = matchedUnit.category
+                    maxLength = matchLength
                 }
             }
         }

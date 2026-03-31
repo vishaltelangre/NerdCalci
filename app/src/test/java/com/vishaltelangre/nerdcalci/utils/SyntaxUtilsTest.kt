@@ -597,6 +597,16 @@ class SyntaxUtilsTest {
     }
 
     @Test
+    fun `getSuggestionContext treats partial composite unit as conversion context`() {
+        val beforeCursor = "15 cubic f"
+        val result = getSuggestionContext(beforeCursor, beforeCursor, beforeCursor.length, emptyMap())
+        assertEquals(SuggestionType.CONVERSION, result.type)
+        assertEquals(3, result.unitStart)
+        assertEquals(UnitCategory.VOLUME, result.unitCategory)
+        assertEquals("f", result.word)
+    }
+
+    @Test
     fun `getSuggestionContext handles unit completion after number`() {
         val beforeCursor = "15 n"
         val result = getSuggestionContext(beforeCursor, beforeCursor, beforeCursor.length, emptyMap())

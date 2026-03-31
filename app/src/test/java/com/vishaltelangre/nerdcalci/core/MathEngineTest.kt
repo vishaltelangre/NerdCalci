@@ -1818,8 +1818,9 @@ class MathEngineTest {
 
     @Test
     fun `formatDisplayResult handles scientific notation`() = runBlocking {
-        assertEquals("1.00e+20", MathEngine.formatDisplayResult("1.0E20", 2, java.util.Locale.ROOT))
-        assertEquals("1e+20", MathEngine.formatDisplayResult("1.0E20", 0, java.util.Locale.ROOT))
+        assertEquals("1.00E20", MathEngine.formatDisplayResult("1.0E20", 2, java.util.Locale.ROOT))
+        assertEquals("1E20", MathEngine.formatDisplayResult("1.0E20", 0, java.util.Locale.ROOT))
+        assertEquals("1.00E1000", MathEngine.formatDisplayResult("1.0E1000", 2, java.util.Locale.ROOT))
     }
 
     @Test
@@ -1828,7 +1829,7 @@ class MathEngineTest {
         assertEquals("1,234.57", MathEngine.formatDisplayResult(raw, 2, java.util.Locale.ROOT))
         assertEquals("1.234,57", MathEngine.formatDisplayResult(raw, 2, java.util.Locale.GERMANY))
         val largeRaw = "1.23E30"
-        assertEquals("1,23e+30", MathEngine.formatDisplayResult(largeRaw, 2, java.util.Locale.GERMANY))
+        assertEquals("1,23E30", MathEngine.formatDisplayResult(largeRaw, 2, java.util.Locale.GERMANY))
     }
 
     @Test
@@ -2655,7 +2656,7 @@ class MathEngineTest {
         val input = "12345678901234567890"
         // Should use scientific notation with precision
         val formatted = MathEngine.formatDisplayResult(input, 2, java.util.Locale.US)
-        assertTrue(formatted.contains("e"))
+        assertTrue(formatted.contains("E"))
         assertTrue(formatted.startsWith("1.23"))
     }
 
@@ -2712,15 +2713,15 @@ class MathEngineTest {
     fun `formatDisplayResult preserves scientific notation for small numbers`() = runBlocking {
         // Small number without unit
         val result1 = MathEngine.formatDisplayResult("1.0E-4", 2)
-        assertEquals("1.00e-04", result1)
+        assertEquals("1.00E-4", result1)
 
         // Small number with unit
         val result2 = MathEngine.formatDisplayResult("1.0E-4 kg", 2)
-        assertEquals("1.00e-04 kg", result2)
+        assertEquals("1.00E-4 kg", result2)
 
         // Large number without unit
         val result3 = MathEngine.formatDisplayResult("1.0E10", 2)
-        assertEquals("1.00e+10", result3)
+        assertEquals("1.00E10", result3)
 
         // Plain decimal should still use decimal formatting
         val result4 = MathEngine.formatDisplayResult("1.2345", 2)

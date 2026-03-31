@@ -532,7 +532,25 @@ object MathEngine {
     }
 
     private fun formatScientific(value: BigDecimal, precision: Int, locale: Locale): String {
-        return "%.${precision}e".format(locale, value.toDouble())
+        val exponent = value.precision() - value.scale() - 1
+        val mantissaScale = precision.coerceAtLeast(0)
+        var mantissa = value.movePointLeft(exponent).setScale(mantissaScale, java.math.RoundingMode.HALF_UP)
+        var adjustedExponent = exponent
+
+        if (mantissa.abs() >= BigDecimal.TEN) {
+            mantissa = mantissa.movePointLeft(1).setScale(mantissaScale, java.math.RoundingMode.HALF_UP)
+            adjustedExponent += 1
+        }
+
+        val mantissaString = mantissa.toPlainString()
+        val decimalSeparator = java.text.DecimalFormatSymbols.getInstance(locale).decimalSeparator
+        val localizedMantissa = if (decimalSeparator == '.') {
+            mantissaString
+        } else {
+            mantissaString.replace('.', decimalSeparator)
+        }
+
+        return "${localizedMantissa}E$adjustedExponent"
     }
 
     private fun formatNumeralSystem(value: Long, radix: Int): String {

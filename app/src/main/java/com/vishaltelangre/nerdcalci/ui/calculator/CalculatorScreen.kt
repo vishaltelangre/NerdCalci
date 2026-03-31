@@ -88,6 +88,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalDensity
 import androidx.navigation.NavHostController
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
@@ -307,17 +308,35 @@ private fun applySyntaxHighlighting(
  * @return Set of Suggestions defined before the specified line
  */
 @OptIn(ExperimentalMaterial3Api::class)
-private fun extractSuggestions(lines: List<LineEntity>, upToSortOrder: Int): Pair<Set<Suggestion>, Map<String, String>> {
+/**
+ * Extracts suggestions from all lines in a single pass, returning a list where each element
+ * contains the available variables and file variables for the corresponding line.
+ */
+private fun extractAllSuggestions(lines: List<LineEntity>): List<Pair<Set<Suggestion>, Map<String, String>>> {
+    val result = mutableListOf<Pair<Set<Suggestion>, Map<String, String>>>()
+    
+    // Use a map to track suggestions by name for easy overwriting/updates
     val suggestionMap = mutableMapOf<String, Suggestion>()
-    val fileVariables = mutableMapOf<String, String>()
-
-    // Defaults (Dynamic variables, constants, global functions)
+    
+    // Initialize with defaults (Dynamic variables, constants, global functions)
     MathEngine.dynamicVariableNames.forEach { suggestionMap[it] = Suggestion(it, SuggestionType.DYNAMIC_VARIABLE) }
     Builtins.constantNames.forEach { suggestionMap[it] = Suggestion(it, SuggestionType.CONSTANT) }
     Builtins.functionNames.forEach { suggestionMap[it] = Suggestion(it, SuggestionType.GLOBAL_FUNCTION) }
     suggestionMap["file"] = Suggestion("file", SuggestionType.GLOBAL_FUNCTION)
     suggestionMap["convert"] = Suggestion("convert", SuggestionType.GLOBAL_FUNCTION)
-    lines.filter { it.sortOrder < upToSortOrder }.forEach { line ->
+
+    val currentFileVariables = mutableMapOf<String, String>()
+    val varFuncNamePattern = Constants.VAR_FUNC_NAME_PATTERN.removePrefix("^").removeSuffix("$")
+
+    var lastSet = suggestionMap.values.toSet()
+    var lastMap = currentFileVariables.toMap()
+
+    lines.forEach { line ->
+        // Add current state as the result for this line
+        // Optimization: Reuse the last set/map if no changes occurred in this line
+        result.add(lastSet to lastMap)
+
+        // Update state with variables/functions from THIS line for SUBSEQUENT lines
         // Strip comments first
         val hashIndex = line.expression.indexOf('#')
         val exprWithoutComment = if (hashIndex >= 0) {
@@ -326,32 +345,44 @@ private fun extractSuggestions(lines: List<LineEntity>, upToSortOrder: Int): Pai
             line.expression
         }
 
-        val varFuncNamePattern = Constants.VAR_FUNC_NAME_PATTERN.removePrefix("^").removeSuffix("$")
-        // Match both `var =` and `f(...) =`
-        val regex = Regex("""^\s*($varFuncNamePattern)(?:\s*\((.*?)\))?\s*=""")
-        val matchResult = regex.find(exprWithoutComment)
-        if (matchResult != null) {
-            val name = matchResult.groupValues[1].trim()
+        if (exprWithoutComment.contains("=")) {
+            // Match both `var =` and `f(...) =`
+            val regex = Regex("""^\s*($varFuncNamePattern)(?:\s*\((.*?)\))?\s*=""")
+            val matchResult = regex.find(exprWithoutComment)
+            if (matchResult != null) {
+                val name = matchResult.groupValues[1].trim()
+                
+                // If it matched the (...) part or if there is a '(' after it, it's a function
+                val afterIdentifier = exprWithoutComment.substring(matchResult.groups[1]!!.range.last + 1).trimStart()
+                val isFunction = afterIdentifier.startsWith("(")
 
-            // If it matched the (...) part, it's a function
-            val isFunction = exprWithoutComment.substring(matchResult.groups[1]!!.range.last + 1).trimStart().startsWith("(")
+                if (isFunction) {
+                    suggestionMap[name] = Suggestion(name, SuggestionType.LOCAL_FUNCTION)
+                    lastSet = suggestionMap.values.toSet()
+                } else {
+                    suggestionMap[name] = Suggestion(name, SuggestionType.VARIABLE)
+                    lastSet = suggestionMap.values.toSet()
+                    
+                    // Reset file variable if reassigned to something else
+                    val wasFileVariable = currentFileVariables.containsKey(name)
+                    currentFileVariables.remove(name)
 
-            if (isFunction) {
-                suggestionMap[name] = Suggestion(name, SuggestionType.LOCAL_FUNCTION)
-            } else {
-                suggestionMap[name] = Suggestion(name, SuggestionType.VARIABLE)
-                fileVariables.remove(name)
-
-                val rhs = exprWithoutComment.substring(matchResult.groups[0]!!.range.last + 1).trim()
-                val fileMatch = Regex("""file\(\s*"([^"]+)"\s*\)""").matchEntire(rhs)
-                when {
-                    fileMatch != null -> fileVariables[name] = fileMatch.groupValues[1]
-                    rhs in fileVariables -> fileVariables[name] = fileVariables.getValue(rhs)
+                    val rhs = exprWithoutComment.substring(matchResult.groups[0]!!.range.last + 1).trim()
+                    val fileMatch = Regex("""file\(\s*"([^"]+)"\s*\)""").matchEntire(rhs)
+                    when {
+                        fileMatch != null -> currentFileVariables[name] = fileMatch.groupValues[1]
+                        rhs in currentFileVariables -> currentFileVariables[name] = currentFileVariables.getValue(rhs)
+                    }
+                    
+                    // Only recreate map if it actually changed
+                    if (wasFileVariable || fileMatch != null || rhs in currentFileVariables) {
+                        lastMap = currentFileVariables.toMap()
+                    }
                 }
             }
         }
     }
-    return Pair(suggestionMap.values.toSet(), fileVariables)
+    return result
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -512,6 +543,11 @@ fun CalculatorScreen(
     val commentColor = if (isDarkTheme) SyntaxColors.CommentColorDark else SyntaxColors.CommentColorLight
     val functionColor = if (isDarkTheme) SyntaxColors.FunctionColorDark else SyntaxColors.FunctionColorLight
     val conversionColor = if (isDarkTheme) SyntaxColors.ConversionColorDark else SyntaxColors.ConversionColorLight
+
+    // Pre-calculate suggestions for all lines once per list update
+    val allSuggestionsByLine by remember(lines) {
+        derivedStateOf { extractAllSuggestions(lines) }
+    }
 
     Scaffold(
         modifier = Modifier
@@ -892,11 +928,10 @@ fun CalculatorScreen(
                 state = listState,
                 modifier = Modifier.fillMaxSize()
             ) {
+
                 itemsIndexed(lines, key = { _, line -> line.id }) { index, line ->
-                    // Compute available variables for this line (only from previous lines)
-                    val suggestionsResult = extractSuggestions(lines, line.sortOrder)
-                    val availableVariables = suggestionsResult.first
-                    val fileVariables = suggestionsResult.second
+                    // Get pre-calculated available variables for this line
+                    val (availableVariables, fileVariables) = allSuggestionsByLine.getOrElse(index) { emptySet<Suggestion>() to emptyMap<String, String>() }
 
                     LineRow(
                         line = line,
@@ -1166,6 +1201,10 @@ private fun LineRow(
         mutableStateOf(TextFieldValue(text = displayText))
     }
 
+    // Track the last expression sent to the ViewModel to prevent race conditions
+    // between local state and database updates during rapid typing.
+    var lastSentExpression by remember { mutableStateOf<String?>(null) }
+
     val syntaxHighlightingTransformation = remember(
         numberColor, variableColor, keywordColor, functionColor,
         operatorColor, percentColor, commentColor, conversionColor, defaultTextColor, fileVariables
@@ -1267,21 +1306,30 @@ private fun LineRow(
         }
     }
 
-    val suggestions = remember(suggestionContext, combinedVariables, allFiles, forceDismissSuggestions, showSuggestions, loadingSuggestions) {
+    var suggestions by remember { mutableStateOf<List<Suggestion>>(emptyList()) }
+
+    LaunchedEffect(suggestionContext, combinedVariables, allFiles, forceDismissSuggestions, showSuggestions, loadingSuggestions, textFieldValue.text, textFieldValue.selection) {
+        if (forceDismissSuggestions || !showSuggestions) {
+            suggestions = emptyList()
+            return@LaunchedEffect
+        }
+
+        // Debounce suggestion calculation to reduce UI lag during rapid typing
+        kotlinx.coroutines.delay(100)
+
         val cursorPos = textFieldValue.selection.start
         val text = textFieldValue.text
         val beforeCursor = if (cursorPos > 0) text.substring(0, cursorPos) else ""
 
-        if (!forceDismissSuggestions && showSuggestions && (currentWord.isNotEmpty() || isExplicitTrigger || contextType == SuggestionType.UNIT || contextType == SuggestionType.CONVERSION)) {
+        val newSuggestions = if (currentWord.isNotEmpty() || isExplicitTrigger || contextType == SuggestionType.UNIT || contextType == SuggestionType.CONVERSION) {
             val tokens = runCatching { 
                 Lexer(beforeCursor).tokenize() 
             }.getOrElse { emptyList() }
             val cleanTokens = tokens.filter { it.kind != TokenKind.EOF }
 
             if (loadingSuggestions && combinedVariables.isEmpty()) {
-                return@remember listOf(Suggestion("Loading...", SuggestionType.VARIABLE))
-            }
-            if (contextType == SuggestionType.FILE) {
+                listOf(Suggestion("Loading...", SuggestionType.VARIABLE))
+            } else if (contextType == SuggestionType.FILE) {
                 allFiles.filter { it.id != line.fileId }.mapNotNull { file ->
                     val match = file.name.calculateFuzzyMatch(currentWord, SuggestionType.FILE)
                     if (match != null && (currentWord.isEmpty() || file.name != currentWord)) {
@@ -1370,6 +1418,8 @@ private fun LineRow(
                 } else emptyList()
             }
         } else emptyList()
+        
+        suggestions = newSuggestions
     }
 
     // Handle back button to close suggestions first if they are open
@@ -1379,7 +1429,10 @@ private fun LineRow(
 
     // Sync with database updates
     LaunchedEffect(line.expression, lineNumber) {
-        if (textFieldValue.text != displayText) {
+        // Only update local state if the database version is different from what we last sent.
+        // This prevents "echo" updates from the database from overwriting the current text field
+        // during rapid typing, which is the root cause of cursor synchronization issues.
+        if (line.expression != lastSentExpression && textFieldValue.text != displayText) {
             val selection = TextRange(
                 textFieldValue.selection.start.coerceIn(0, displayText.length),
                 textFieldValue.selection.end.coerceIn(0, displayText.length)
@@ -1533,6 +1586,7 @@ private fun LineRow(
                             text = displayText,
                             selection = newSelection
                         )
+                        lastSentExpression = actualText
                         onValueChange(actualText)
                     },
                     modifier = Modifier

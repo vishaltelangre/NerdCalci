@@ -502,7 +502,11 @@ object UnitConverter {
                 findUnit("m²")?.symbols?.first()
             left?.category == UnitCategory.VOLUME && right?.category == UnitCategory.AREA ->
                 findUnit("m")?.symbols?.first()
-            left?.category == right?.category -> "unitless"
+            // Only categories that behave linearly from zero can cancel to unitless here.
+            // Affine/reciprocal categories need explicit handling and should fall through.
+            left?.category == right?.category &&
+                left?.category !in setOf(UnitCategory.TEMPERATURE, UnitCategory.FUEL_CONSUMPTION) ->
+                "unitless"
             else -> null
         }
     }

@@ -411,6 +411,23 @@ class MathEngineTest {
     }
 
     @Test
+    fun `non linear same category division returns error`() = runBlocking {
+        val lines = listOf(
+            createLine("20 C / 10 C", sortOrder = 0),
+            createLine("6 l100km / 2 l100km", sortOrder = 1)
+        )
+
+        val result = MathEngine.calculate(lines)
+        assertEquals("Err", result[0].result)
+        assertEquals("Err", result[1].result)
+
+        val err0 = MathEngine.getErrorDetails(lines, 0)
+        val err1 = MathEngine.getErrorDetails(lines, 1)
+        assertTrue(err0?.contains("unsupported multiplicative unit") == true)
+        assertTrue(err1?.contains("unsupported multiplicative unit") == true)
+    }
+
+    @Test
     fun `percentage off reduces value`() = runBlocking {
         val lines = listOf(createLine("20% off 100"))
         val result = MathEngine.calculate(lines)

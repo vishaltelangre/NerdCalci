@@ -1615,7 +1615,7 @@ private fun LineRow(
                         if (lineNumber > 1 && !filteredText.startsWith(" ")) {
                             if (!backspaceHandled) {
                                 backspaceHandled = true
-                                if (line.expression.isEmpty()) {
+                                if (filteredText.isEmpty()) {
                                     onDelete() // Line was empty, just delete it
                                 } else {
                                     onMergeWithPrevious() // Line has content, merge with previous
@@ -1690,7 +1690,7 @@ private fun LineRow(
                                         if (atStart && lineNumber > 1) {
                                             if (!backspaceHandled) {
                                                 backspaceHandled = true
-                                                if (line.expression.isEmpty()) {
+                                                if (textFieldValue.text.removePrefix(" ").isEmpty()) {
                                                     onDelete()
                                                 } else {
                                                     onMergeWithPrevious()

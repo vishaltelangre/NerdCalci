@@ -111,8 +111,6 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
@@ -425,6 +423,21 @@ fun CalculatorScreen(
     var focusLineId by remember { mutableStateOf<Long?>(null) }
     var focusCursorPosition by remember { mutableStateOf<Int?>(null) }
     var pendingScrollLineId by remember { mutableStateOf<Long?>(null) }
+
+    // Track if auto-focus has been tried for the current file to avoid repeating it
+    var hasAttemptedAutoFocus by rememberSaveable(fileId) { mutableStateOf(false) }
+
+    // Auto-focus the first line if the file is new/empty
+    LaunchedEffect(lines) {
+        if (!hasAttemptedAutoFocus && lines.isNotEmpty()) {
+            hasAttemptedAutoFocus = true
+            val firstLine = lines.firstOrNull() ?: return@LaunchedEffect
+            if (lines.size == 1 && firstLine.expression.isEmpty()) {
+                focusLineId = firstLine.id
+                focusCursorPosition = 0
+            }
+        }
+    }
 
     // Track which line is currently focused by the user
     var currentlyFocusedLineId by remember { mutableStateOf<Long?>(null) }

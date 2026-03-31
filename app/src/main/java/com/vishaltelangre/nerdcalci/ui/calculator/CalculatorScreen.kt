@@ -1030,9 +1030,9 @@ fun CalculatorScreen(
                                 }
                             }
                         },
-                        onEnter = { splitIndex ->
+                        onEnter = { expression, splitIndex ->
                             coroutineScope.launch {
-                                val newId = viewModel.splitLine(line.id, splitIndex)
+                                val newId = viewModel.splitLine(line.id, splitIndex, expression)
                                 focusLineId = newId
                                 // New lines created via Enter (splitting) have a leading space;
                                 // we want to focus at the very start of the moved text (pos 0).
@@ -1228,7 +1228,7 @@ private fun LineRow(
     onFocused: () -> Unit,
     onBlur: () -> Unit,
     onValueChange: (String, Long) -> Unit,
-    onEnter: (Int) -> Unit,
+    onEnter: (String, Int) -> Unit,
     onDelete: () -> Unit,
     onMergeWithPrevious: () -> Unit,
     onNavigateUp: () -> Unit,
@@ -1607,12 +1607,14 @@ private fun LineRow(
                         // selection.start can jump ahead after character insertion.
                         if (newValue.text.contains("\n")) {
                             val splitIndexInTransformed = newValue.text.indexOf('\n')
+                            val actualText = newValue.text.replace("\n", "")
+                            val normalizedText = if (lineNumber > 1) actualText.removePrefix(" ") else actualText
                             val splitIndex = if (lineNumber > 1) {
                                 (splitIndexInTransformed - 1).coerceAtLeast(0)
                             } else {
                                 splitIndexInTransformed
                             }
-                            onEnter(splitIndex)
+                            onEnter(normalizedText, splitIndex)
                             return@BasicTextField
                         }
 
@@ -1723,7 +1725,10 @@ private fun LineRow(
                     cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface),
                     visualTransformation = syntaxHighlightingTransformation,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = { onEnter(line.expression.length) }),
+                    keyboardActions = KeyboardActions(onDone = {
+                        val actualText = if (lineNumber > 1) textFieldValue.text.removePrefix(" ") else textFieldValue.text
+                        onEnter(actualText, actualText.length)
+                    }),
                     onTextLayout = { textLayoutResult = it },
                     decorationBox = { innerTextField ->
                         if (textFieldValue.text.trim().isEmpty() && lineNumber == 1) {

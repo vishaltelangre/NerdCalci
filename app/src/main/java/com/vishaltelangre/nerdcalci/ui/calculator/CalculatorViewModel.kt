@@ -604,14 +604,14 @@ class CalculatorViewModel(
      *
      * This operation is atomic and ensures consistent state between the split lines.
      */
-    suspend fun splitLine(lineId: Long, splitIndex: Int): Long {
+    suspend fun splitLine(lineId: Long, splitIndex: Int, currentExpression: String? = null): Long {
         return withContext(Dispatchers.IO) {
             calculationMutex.withLock {
                 val line = dao.getLineById(lineId) ?: return@withLock -1L
                 val fileId = line.fileId
                 saveStateForUndo(fileId)
 
-                val originalExpression = line.expression
+                val originalExpression = currentExpression ?: line.expression
                 val safeSplitIndex = splitIndex.coerceIn(0, originalExpression.length)
                 val keep = originalExpression.substring(0, safeSplitIndex)
                 val move = originalExpression.substring(safeSplitIndex)

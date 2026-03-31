@@ -97,6 +97,25 @@ class CalculatorViewModelTest {
     }
 
     @Test
+    fun `splitLine uses currentExpression when provided`() = runBlocking {
+        // Given a line with "a = 10" in DB
+        val line = LineEntity(id = 1L, fileId = 1L, expression = "a = 10", result = "10.0", sortOrder = 0)
+        fakeDao.insertLine(line)
+
+        // When splitting with "a = 10 + 20" (live buffer) at index 6 ("a = 10")
+        viewModel.splitLine(1L, 6, "a = 10 + 20")
+
+        val lines = fakeDao.lines.value
+        assertEquals(2, lines.size)
+
+        val originalLine = lines.find { it.id == 1L }!!
+        assertEquals("a = 10", originalLine.expression)
+
+        val newLine = lines.find { it.id != 1L }!!
+        assertEquals(" + 20", newLine.expression)
+    }
+
+    @Test
     fun `mergeLines appends content and deletes current line`() = runBlocking {
         // Given two lines
         val line1 = LineEntity(id = 1L, fileId = 1L, expression = "a = 10", result = "10.0", sortOrder = 0)

@@ -490,7 +490,6 @@ object UnitConverter {
             (left?.category == UnitCategory.AREA && right?.category == UnitCategory.LENGTH) ||
                 (left?.category == UnitCategory.LENGTH && right?.category == UnitCategory.AREA) ->
                 findUnit("m³")?.symbols?.first()
-            left?.category == right?.category -> "unitless"
             else -> null
         }
     }

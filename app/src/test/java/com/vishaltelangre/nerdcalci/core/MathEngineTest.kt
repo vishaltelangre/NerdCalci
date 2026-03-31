@@ -2467,6 +2467,23 @@ class MathEngineTest {
     }
 
     @Test
+    fun `same category multiplication without derivation returns error`() = runBlocking {
+        val lines = listOf(
+            createLine("2 kg * 3 kg", sortOrder = 0),
+            createLine("4 h * 2 h", sortOrder = 1)
+        )
+
+        val result = MathEngine.calculate(lines)
+        assertEquals("Err", result[0].result)
+        assertEquals("Err", result[1].result)
+
+        val err0 = MathEngine.getErrorDetails(lines, 0)
+        val err1 = MathEngine.getErrorDetails(lines, 1)
+        assertTrue(err0?.startsWith("unsupported multiplicative unit:") == true)
+        assertTrue(err1?.startsWith("unsupported multiplicative unit:") == true)
+    }
+
+    @Test
     fun `add scalar inherits unit`() = runBlocking {
         val lines = listOf(
             createLine("53 weeks", sortOrder = 0),

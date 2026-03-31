@@ -2761,4 +2761,42 @@ class MathEngineTest {
         val result4 = MathEngine.formatDisplayResult("1.2345", 2)
         assertEquals("1.23", result4)
     }
+    @Test
+    fun `variable as unit quantity anchor`() = runBlocking {
+        val lines = listOf(
+            createLine("a = 15", sortOrder = 0),
+            createLine("a km", sortOrder = 1),
+            createLine("a km in m", sortOrder = 2)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("15.0", result[0].result)
+        assertEquals("15.0 km", result[1].result)
+        assertEquals("15000.0 m", result[2].result)
+    }
+
+    @Test
+    fun `variable with composite unit conversion`() = runBlocking {
+        val lines = listOf(
+            createLine("a = 15", sortOrder = 0),
+            createLine("a kilometers per hour to mph", sortOrder = 1)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("15.0", result[0].result)
+        // 15 km/h to mph: 15 / 1.60934 = 9.32056788356...
+        assertTrue(result[1].result.contains("9.3205"))
+        assertTrue(result[1].result.endsWith(" mph"))
+    }
+
+    @Test
+    fun `multiple variables as unit quantities`() = runBlocking {
+        val lines = listOf(
+            createLine("v1 = 10", sortOrder = 0),
+            createLine("v2 = 500", sortOrder = 1),
+            createLine("v1 km + v2 m", sortOrder = 2)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("10.0", result[0].result)
+        assertEquals("500.0", result[1].result)
+        assertEquals("10500.0 m", result[2].result)
+    }
 }

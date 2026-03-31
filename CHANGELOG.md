@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for merging lines (Backspace) and splitting lines (Enter) for a more convenient editing experience.
 - Added automatic focus and keyboard activation for newly created or empty files (Issue #92).
 - Added locale-aware number formatting setting for separator and decimal styles (Issue #81).
+- Added support for variables as quantity anchors in unit conversions (e.g., `a = 15; a km to m`).
 
 ### Fixed
 - Fixed mixed unit multiplication and division so derived dimensions now preserve area and volume correctly (Issue #88).

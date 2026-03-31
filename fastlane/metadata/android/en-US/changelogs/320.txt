@@ -1,5 +1,6 @@
 - Added support for merging lines (Backspace) and splitting lines (Enter).
 - Added automatic focus and keyboard activation for newly created or empty files (Issue #92).
 - Added locale-aware number formatting setting for separator and decimal styles (Issue #81).
+- Added support for variables as quantity anchors in unit conversions.
 - Fixed mixed unit multiplication and division so derived dimensions now preserve area and volume correctly (Issue #88).
 - Fixed cursor jumping during rapid typing (Issue #84).

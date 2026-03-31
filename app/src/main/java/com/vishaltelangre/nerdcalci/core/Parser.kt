@@ -431,44 +431,7 @@ class Parser(private val tokens: List<Token>) {
                     }
                 }
 
-                val nextKind = peekKind()
-                if (nextKind == TokenKind.IDENTIFIER || isUnitOperator(nextKind) || nextKind == TokenKind.KW_OF) {
-                    val firstLexeme = peek().lexeme
-                    val savedPos = pos
-                    val t = advance() // consume first
-                    val combinedUnit = parseCombinedUnit(firstLexeme)
-                    
-                    var treatAsOperator = false
-                    if (combinedUnit == "in" && t.kind == TokenKind.KW_IN) {
-                        val ahead = peekKind()
-                        if (ahead == TokenKind.IDENTIFIER) {
-                            treatAsOperator = true
-                        }
-                    }
-
-                    if (!treatAsOperator && UnitConverter.findUnit(combinedUnit) != null) {
-                        return Expr.Quantity(Expr.NumberLiteral(numericValue), combinedUnit)
-                    }
-                    pos = savedPos // Backtrack!
-
-                    val firstUnit = UnitConverter.findUnit(firstLexeme)
-                    
-                    treatAsOperator = false
-                    if (firstLexeme == "in" && tokens[pos].kind == TokenKind.KW_IN) {
-                        val aheadPos = pos + 1
-                        val ahead = if (aheadPos < tokens.size) tokens[aheadPos].kind else TokenKind.EOF
-                        if (ahead == TokenKind.IDENTIFIER) {
-                            treatAsOperator = true
-                        }
-                    }
-
-                    if (!treatAsOperator && firstUnit != null) {
-                        advance() // consume first
-                        return Expr.Quantity(Expr.NumberLiteral(numericValue), firstLexeme)
-                    }
-                }
-
-                Expr.NumberLiteral(numericValue)
+                parseQuantityIfPossible(Expr.NumberLiteral(numericValue))
             }
 
 
@@ -483,7 +446,7 @@ class Parser(private val tokens: List<Token>) {
                     Expr.FunctionCall(name, args)
                 } else {
                     // e.g. price, total, PI
-                    Expr.Variable(name)
+                    parseQuantityIfPossible(Expr.Variable(name))
                 }
             }
 
@@ -541,6 +504,46 @@ class Parser(private val tokens: List<Token>) {
         kind == TokenKind.NUMBER || kind == TokenKind.LPAREN ||
                 kind == TokenKind.IDENTIFIER || kind.isPreviousLineAlias || kind.isLineNumberAlias ||
                 kind == TokenKind.STRING_LITERAL || kind == TokenKind.KW_FILE
+
+    private fun parseQuantityIfPossible(value: Expr): Expr {
+        val nextKind = peekKind()
+        if (nextKind == TokenKind.IDENTIFIER || isUnitOperator(nextKind) || nextKind == TokenKind.KW_OF) {
+            val firstLexeme = peek().lexeme
+            val savedPos = pos
+            val t = advance() // consume first
+            val combinedUnit = parseCombinedUnit(firstLexeme)
+
+            var treatAsOperator = false
+            if (combinedUnit == "in" && t.kind == TokenKind.KW_IN) {
+                val ahead = peekKind()
+                if (ahead == TokenKind.IDENTIFIER) {
+                    treatAsOperator = true
+                }
+            }
+
+            if (!treatAsOperator && UnitConverter.findUnit(combinedUnit) != null) {
+                return Expr.Quantity(value, combinedUnit)
+            }
+            pos = savedPos // Backtrack!
+
+            val firstUnit = UnitConverter.findUnit(firstLexeme)
+
+            treatAsOperator = false
+            if (firstLexeme == "in" && tokens[pos].kind == TokenKind.KW_IN) {
+                val aheadPos = pos + 1
+                val ahead = if (aheadPos < tokens.size) tokens[aheadPos].kind else TokenKind.EOF
+                if (ahead == TokenKind.IDENTIFIER) {
+                    treatAsOperator = true
+                }
+            }
+
+            if (!treatAsOperator && firstUnit != null) {
+                advance() // consume first
+                return Expr.Quantity(value, firstLexeme)
+            }
+        }
+        return value
+    }
 
     private fun parseCombinedUnit(startLexeme: String): String {
         var bestCombined = startLexeme

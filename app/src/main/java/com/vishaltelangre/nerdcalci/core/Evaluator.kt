@@ -388,19 +388,18 @@ class Evaluator(
                 null
             } else {
                 val derivedUnit = UnitConverter.deriveUnit(leftUnit, rightUnit, expr.op)
-                if (derivedUnit == null && leftUnit != null && rightUnit != null) {
-                    throw EvalException(
-                        "unsupported multiplicative unit: ${leftUnit.name} ${expr.op.display} ${rightUnit.name}"
-                    )
-                }
-                derivedUnit
-                    ?: if (leftUnit != null && rightUnit == null) {
-                        leftEval.unit
-                    } else if (leftUnit == null && rightUnit != null && expr.op == TokenKind.STAR) {
-                        rightEval.unit
-                    } else {
-                        null
+                when {
+                    derivedUnit == "unitless" -> null  // Units canceled out
+                    derivedUnit == null && leftUnit != null && rightUnit != null -> {
+                        throw EvalException(
+                            "unsupported multiplicative unit: ${leftUnit.name} ${expr.op.display} ${rightUnit.name}"
+                        )
                     }
+                    derivedUnit != null -> derivedUnit
+                    leftUnit != null && rightUnit == null -> leftEval.unit
+                    leftUnit == null && rightUnit != null && expr.op == TokenKind.STAR -> rightEval.unit
+                    else -> null
+                }
             }
         } else {
             if (leftEval.explicitUnitless || rightEval.explicitUnitless ||

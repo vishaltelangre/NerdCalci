@@ -493,8 +493,10 @@ object MathEngine {
     }
 
     private fun formatDecimal(value: BigDecimal, precision: Int, locale: Locale, settings: NumberFormatSettings): String {
-        val raw = "%.${precision}f".format(Locale.ROOT, value.toDouble())
-        val parts = raw.split('.', limit = 2)
+        // Use BigDecimal.setScale to avoid precision loss from toDouble()
+        val rounded = value.setScale(precision, java.math.RoundingMode.HALF_UP)
+        val plainString = rounded.toPlainString()
+        val parts = plainString.split('.', limit = 2)
         return formatDecimalParts(parts[0], parts.getOrNull(1), locale, settings, alwaysDecimal = false)
     }
 

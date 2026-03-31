@@ -1783,8 +1783,8 @@ class MathEngineTest {
         assertEquals("10", MathEngine.formatDisplayResult("10.0", 2)) // whole numbers are displayed without decimal points
         assertEquals("4", MathEngine.formatDisplayResult("4", 6)) // whole numbers are displayed without decimal points
         assertEquals("Err", MathEngine.formatDisplayResult("Err", 2))
-        assertEquals("1,234.57", MathEngine.formatDisplayResult("1234.5678", 2))
-        assertEquals("1,234.5678000000", MathEngine.formatDisplayResult("1234.5678", 10))
+        assertEquals("1,234.57", MathEngine.formatDisplayResult("1234.5678", 2, java.util.Locale.ROOT))
+        assertEquals("1,234.5678000000", MathEngine.formatDisplayResult("1234.5678", 10, java.util.Locale.ROOT))
     }
 
     @Test

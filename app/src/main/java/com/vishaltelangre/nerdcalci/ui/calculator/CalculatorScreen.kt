@@ -1231,6 +1231,14 @@ private fun LineRow(
     // between local state and database updates during rapid typing.
     var lastSentExpression by remember { mutableStateOf<String?>(null) }
 
+    // Guard flag to prevent double-triggering of backspace handlers
+    var backspaceHandled by remember { mutableStateOf(false) }
+
+    // Reset the backspace guard flag after a short delay or when the line expression changes
+    LaunchedEffect(line.expression, line.id) {
+        backspaceHandled = false
+    }
+
     val syntaxHighlightingTransformation = remember(
         numberColor, variableColor, keywordColor, functionColor,
         operatorColor, percentColor, commentColor, conversionColor, defaultTextColor, fileVariables, lineNumber
@@ -1587,10 +1595,13 @@ private fun LineRow(
                         // All non-first lines have a space at index 0 to reliably capture Backspace.
                         // If it's missing, the user pressed Backspace at the start of the line.
                         if (lineNumber > 1 && !filteredText.startsWith(" ")) {
-                            if (line.expression.isEmpty()) {
-                                onDelete() // Line was empty, just delete it
-                            } else {
-                                onMergeWithPrevious() // Line has content, merge with previous
+                            if (!backspaceHandled) {
+                                backspaceHandled = true
+                                if (line.expression.isEmpty()) {
+                                    onDelete() // Line was empty, just delete it
+                                } else {
+                                    onMergeWithPrevious() // Line has content, merge with previous
+                                }
                             }
                             return@BasicTextField
                         }
@@ -1659,10 +1670,13 @@ private fun LineRow(
                                             textFieldValue.selection.start <= 1
                                         }
                                         if (atStart && lineNumber > 1) {
-                                            if (line.expression.isEmpty()) {
-                                                onDelete()
-                                            } else {
-                                                onMergeWithPrevious()
+                                            if (!backspaceHandled) {
+                                                backspaceHandled = true
+                                                if (line.expression.isEmpty()) {
+                                                    onDelete()
+                                                } else {
+                                                    onMergeWithPrevious()
+                                                }
                                             }
                                             true // Consume the event to prevent default backspace behavior
                                         } else {

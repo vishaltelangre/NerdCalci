@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.0] - 2026-03-31
+### Added
+- Added support for merging lines (Backspace) and splitting lines (Enter) for a more convenient editing experience.
+- Added automatic focus and keyboard activation for newly created or empty files (Issue #92).
+- Added locale-aware number formatting setting for separator and decimal styles (Issue #81).
+
+### Fixed
+- Fixed mixed unit multiplication and division so derived dimensions now preserve area and volume correctly (Issue #88).
+- Fixed a cursor synchronization issue in the calculator editor where the cursor would jump during rapid typing or backspacing (Issue #84).
+
 ## [3.1.2] - 2026-03-30
 ### Added
 - Added `factorial()` and `fact()` built-in functions (Issue #69).

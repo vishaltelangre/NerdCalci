@@ -5,6 +5,7 @@ import org.junit.Assert.*
 import org.junit.Test
 import java.math.BigDecimal
 import kotlinx.coroutines.runBlocking
+import java.util.Locale
 
 class MathEngineTest {
 
@@ -2746,19 +2747,19 @@ class MathEngineTest {
     @Test
     fun `formatDisplayResult preserves scientific notation for small numbers`() = runBlocking {
         // Small number without unit
-        val result1 = MathEngine.formatDisplayResult("1.0E-4", 2)
+        val result1 = MathEngine.formatDisplayResult("1.0E-4", 2, Locale.ROOT)
         assertEquals("1.00E-4", result1)
 
         // Small number with unit
-        val result2 = MathEngine.formatDisplayResult("1.0E-4 kg", 2)
+        val result2 = MathEngine.formatDisplayResult("1.0E-4 kg", 2, Locale.ROOT)
         assertEquals("1.00E-4 kg", result2)
 
         // Large number without unit
-        val result3 = MathEngine.formatDisplayResult("1.0E10", 2)
+        val result3 = MathEngine.formatDisplayResult("1.0E10", 2, Locale.ROOT)
         assertEquals("1.00E10", result3)
 
         // Plain decimal should still use decimal formatting
-        val result4 = MathEngine.formatDisplayResult("1.2345", 2)
+        val result4 = MathEngine.formatDisplayResult("1.2345", 2, Locale.ROOT)
         assertEquals("1.23", result4)
     }
     @Test

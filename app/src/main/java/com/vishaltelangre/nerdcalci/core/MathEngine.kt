@@ -420,7 +420,12 @@ object MathEngine {
     }
 
     /** Format a numeric result for display based on user-defined precision. */
-    fun formatDisplayResult(rawResult: String, precision: Int, locale: Locale = Locale.getDefault()): String {
+    fun formatDisplayResult(
+        rawResult: String,
+        precision: Int,
+        locale: Locale = Locale.getDefault(),
+        settings: NumberFormatSettings = NumberFormatSettings()
+    ): String {
         if (rawResult.isBlank() || rawResult == "Err") return rawResult
 
         val spaceIndex = rawResult.indexOf(' ')
@@ -449,14 +454,14 @@ object MathEngine {
             val longVal = value.toLong()
             when {
                 value.compareTo(BigDecimal(Int.MIN_VALUE)) >= 0 && value.compareTo(BigDecimal(Int.MAX_VALUE)) <= 0 ->
-                    longVal.toInt().toString()
+                    formatInteger(longVal.toInt().toLong(), locale, settings)
                 value.compareTo(BigDecimal(Long.MIN_VALUE)) >= 0 && value.compareTo(BigDecimal(Long.MAX_VALUE)) <= 0 ->
-                    longVal.toString()
+                    formatInteger(longVal, locale, settings)
                 else ->
-                    "%.${safePrecision}e".format(locale, value.toDouble())
+                    formatScientific(value, safePrecision, locale)
             }
         } else {
-            "%.${safePrecision}f".format(locale, value.toDouble())
+            formatDecimal(value, safePrecision, locale, settings)
         }
 
         return if (isNumeralSystem) formattedResult else formattedResult + unitStr
@@ -481,6 +486,49 @@ object MathEngine {
             s += ".0"
         }
         return s
+    }
+
+    private fun formatInteger(value: Long, locale: Locale, settings: NumberFormatSettings): String {
+        return formatDecimalParts(value.toString(), null, locale, settings, alwaysDecimal = false)
+    }
+
+    private fun formatDecimal(value: BigDecimal, precision: Int, locale: Locale, settings: NumberFormatSettings): String {
+        val raw = "%.${precision}f".format(Locale.ROOT, value.toDouble())
+        val parts = raw.split('.', limit = 2)
+        return formatDecimalParts(parts[0], parts.getOrNull(1), locale, settings, alwaysDecimal = false)
+    }
+
+    private fun formatDecimalParts(
+        integerPart: String,
+        decimalPart: String?,
+        locale: Locale,
+        settings: NumberFormatSettings,
+        alwaysDecimal: Boolean
+    ): String {
+        val useGrouping = settings.separators != NumberSeparatorPreset.OFF
+
+        val groupingSeparator = when (settings.separators) {
+            NumberSeparatorPreset.LOCALE -> java.text.DecimalFormatSymbols.getInstance(locale).groupingSeparator
+            NumberSeparatorPreset.COMMA -> ','
+            NumberSeparatorPreset.DOT -> '.'
+            NumberSeparatorPreset.SPACE -> ' '
+            NumberSeparatorPreset.OFF -> java.text.DecimalFormatSymbols.getInstance(locale).groupingSeparator
+        }
+        val decimalSeparator = when (settings.decimal) {
+            NumberDecimalPreset.LOCALE -> java.text.DecimalFormatSymbols.getInstance(locale).decimalSeparator
+            NumberDecimalPreset.COMMA -> ','
+            NumberDecimalPreset.DOT -> '.'
+        }
+
+        val sign = if (integerPart.startsWith('-')) "-" else ""
+        val unsigned = integerPart.removePrefix("-")
+        val groupedInteger = if (useGrouping) unsigned.reversed().chunked(3).joinToString(groupingSeparator.toString()).reversed() else unsigned
+        val dec = decimalPart?.let { if (it.isNotEmpty()) "$decimalSeparator$it" else "" } ?: if (alwaysDecimal) "${decimalSeparator}0" else ""
+        return sign + groupedInteger + dec
+    }
+
+    private fun formatScientific(value: BigDecimal, precision: Int, locale: Locale): String {
+        return "%.${precision}e".format(locale, value.toDouble())
     }
 
     private fun formatNumeralSystem(value: Long, radix: Int): String {

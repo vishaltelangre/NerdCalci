@@ -10,6 +10,9 @@ import androidx.lifecycle.viewModelScope
 import android.util.Log
 import com.vishaltelangre.nerdcalci.core.Constants
 import com.vishaltelangre.nerdcalci.core.MathEngine
+import com.vishaltelangre.nerdcalci.core.NumberFormatSettings
+import com.vishaltelangre.nerdcalci.core.NumberDecimalPreset
+import com.vishaltelangre.nerdcalci.core.NumberSeparatorPreset
 import com.vishaltelangre.nerdcalci.core.FileContextLoader
 import com.vishaltelangre.nerdcalci.core.MathContext
 import com.vishaltelangre.nerdcalci.core.EvalException
@@ -140,6 +143,8 @@ class CalculatorViewModel(
         private const val PREF_SHOW_SUGGESTIONS = "show_suggestions"
         private const val PREF_SHOW_SYMBOLS_SHORTCUTS = "show_symbols_shortcuts"
         private const val PREF_SHOW_NUMBERS_SHORTCUTS = "show_numbers_shortcuts"
+        private const val PREF_NUMBER_SEPARATOR_PRESET = "number_format_separator_preset"
+        private const val PREF_NUMBER_DECIMAL_PRESET = "number_format_decimal_preset"
         private const val DEFAULT_THEME = "system"
     }
 
@@ -230,6 +235,14 @@ class CalculatorViewModel(
     )
     val showNumbersShortcuts: StateFlow<Boolean> = _showNumbersShortcuts
 
+    private val _numberFormatSettings = MutableStateFlow(
+        NumberFormatSettings(
+            separators = NumberSeparatorPreset.fromPrefValue(prefs?.getString(PREF_NUMBER_SEPARATOR_PRESET, NumberSeparatorPreset.LOCALE.prefValue)),
+            decimal = NumberDecimalPreset.fromPrefValue(prefs?.getString(PREF_NUMBER_DECIMAL_PRESET, NumberDecimalPreset.LOCALE.prefValue))
+        )
+    )
+    val numberFormatSettings: StateFlow<NumberFormatSettings> = _numberFormatSettings
+
     fun setTheme(theme: String) {
         _currentTheme.value = theme
         prefs?.edit()?.putString(PREF_THEME, theme)?.apply()
@@ -259,6 +272,14 @@ class CalculatorViewModel(
     fun setShowNumbersShortcuts(enabled: Boolean) {
         _showNumbersShortcuts.value = enabled
         prefs?.edit()?.putBoolean(PREF_SHOW_NUMBERS_SHORTCUTS, enabled)?.apply()
+    }
+
+    fun setNumberFormatSettings(settings: NumberFormatSettings) {
+        _numberFormatSettings.value = settings
+        prefs?.edit()
+            ?.putString(PREF_NUMBER_SEPARATOR_PRESET, settings.separators.prefValue)
+            ?.putString(PREF_NUMBER_DECIMAL_PRESET, settings.decimal.prefValue)
+            ?.apply()
     }
 
     fun setAutoBackupEnabled(context: Context, enabled: Boolean) {

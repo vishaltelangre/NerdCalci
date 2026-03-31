@@ -2,6 +2,7 @@ package com.vishaltelangre.nerdcalci.ui.calculator
 
 import com.vishaltelangre.nerdcalci.core.Builtins
 import com.vishaltelangre.nerdcalci.core.MathEngine
+import com.vishaltelangre.nerdcalci.core.NumberFormatSettings
 import com.vishaltelangre.nerdcalci.core.UnitCategory
 import com.vishaltelangre.nerdcalci.core.UnitConverter
 import com.vishaltelangre.nerdcalci.core.Lexer
@@ -369,6 +370,7 @@ private fun extractSuggestions(lines: List<LineEntity>, upToSortOrder: Int): Pai
 fun CalculatorScreen(
     fileId: Long,
     viewModel: CalculatorViewModel,
+    displayFormat: NumberFormatSettings,
     onBack: () -> Unit,
     onHelp: () -> Unit,
     onNavigateToFile: (Long) -> Unit = {}
@@ -376,7 +378,6 @@ fun CalculatorScreen(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
-
     val handleBack = {
         coroutineScope.launch {
             viewModel.deleteFileIfEmptyAndRecent(fileId)
@@ -716,7 +717,7 @@ fun CalculatorScreen(
                                         showMenu = false
                                         val safeFileName = fileName.replace(Regex("[^a-zA-Z0-9.-]"), "_")
                                         coroutineScope.launch {
-                                            ExportUtils.exportAsPdf(context, safeFileName, lines, precision)
+                                            ExportUtils.exportAsPdf(context, safeFileName, lines, precision, viewModel.numberFormatSettings.value)
                                         }
                                     }
                                 )
@@ -732,7 +733,7 @@ fun CalculatorScreen(
                                         showMenu = false
                                         val safeFileName = fileName.replace(Regex("[^a-zA-Z0-9.-]"), "_")
                                         coroutineScope.launch {
-                                            ExportUtils.exportAsImage(context, safeFileName, lines, precision)
+                                            ExportUtils.exportAsImage(context, safeFileName, lines, precision, viewModel.numberFormatSettings.value)
                                         }
                                     }
                                 )
@@ -890,6 +891,7 @@ fun CalculatorScreen(
                         showLineNumbers = effectiveShowLineNumbers,
                         showSuggestions = effectiveShowSuggestions,
                         precision = precision,
+                        numberFormatSettings = displayFormat,
                         numberWidth = numberWidth,
                         availableVariables = availableVariables,
                         fileVariables = fileVariables,
@@ -1066,6 +1068,10 @@ fun CalculatorScreen(
     }
 }
 
+private fun formatResult(text: String, precision: Int, settings: NumberFormatSettings): String {
+    return MathEngine.formatDisplayResult(text, precision, settings = settings)
+}
+
 @Composable
 private fun ShortcutButton(
     text: String,
@@ -1111,6 +1117,7 @@ private fun LineRow(
     showLineNumbers: Boolean,
     showSuggestions: Boolean,
     precision: Int,
+    numberFormatSettings: NumberFormatSettings,
     numberWidth: Dp,
     availableVariables: Set<Suggestion>,
     fileVariables: Map<String, String> = emptyMap(),
@@ -1667,7 +1674,7 @@ private fun LineRow(
                 } else {
                     Modifier.clickable {
                         if (line.result.isNotEmpty()) {
-                            onCopyResult(MathEngine.formatDisplayResult(line.result, precision))
+                        onCopyResult(formatResult(line.result, precision, numberFormatSettings))
                             showCopiedTooltip = true
                         }
                     }
@@ -1700,7 +1707,7 @@ private fun LineRow(
                         )
                     }
                     Text(
-                        text = MathEngine.formatDisplayResult(line.result, precision),
+                        text = formatResult(line.result, precision, numberFormatSettings),
                         style = MaterialTheme.typography.bodyLarge.copy(
                             fontFamily = FiraCodeFamily,
                             fontWeight = FontWeight.Bold

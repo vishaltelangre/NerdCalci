@@ -59,6 +59,8 @@ import com.vishaltelangre.nerdcalci.ui.components.RestoreCompleteDialog
 import com.vishaltelangre.nerdcalci.ui.help.HelpScreen
 import com.vishaltelangre.nerdcalci.ui.home.HomeScreen
 import com.vishaltelangre.nerdcalci.ui.settings.SettingsScreen
+import com.vishaltelangre.nerdcalci.core.NumberFormatSettings
+import com.vishaltelangre.nerdcalci.core.NumberSeparatorPreset
 import com.vishaltelangre.nerdcalci.ui.changelog.ChangelogScreen
 import com.vishaltelangre.nerdcalci.ui.search.SearchScreen
 import com.vishaltelangre.nerdcalci.ui.theme.NerdCalciTheme
@@ -133,6 +135,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
     val showSuggestions by viewModel.showSuggestions.collectAsState()
     val showSymbolsShortcuts by viewModel.showSymbolsShortcuts.collectAsState()
     val showNumbersShortcuts by viewModel.showNumbersShortcuts.collectAsState()
+    val numberFormatSettings by viewModel.numberFormatSettings.collectAsState()
     val restoreProgress by viewModel.restoreProgress.collectAsState()
     
     val syncEnabled by viewModel.syncEnabled.collectAsState()
@@ -259,6 +262,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
             CalculatorScreen(
                 fileId = fileId,
                 viewModel = viewModel,
+                displayFormat = numberFormatSettings,
                 onBack = { navController.popBackStack() },
                 onHelp = { navController.navigate("help") },
                 onNavigateToFile = { newFileId ->
@@ -323,6 +327,8 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
                 onShowSymbolsShortcutsChange = { viewModel.setShowSymbolsShortcuts(it) },
                 showNumbersShortcuts = showNumbersShortcuts,
                 onShowNumbersShortcutsChange = { viewModel.setShowNumbersShortcuts(it) },
+                numberFormatSettings = numberFormatSettings,
+                onNumberFormatSettingsChange = { viewModel.setNumberFormatSettings(it) },
                 syncEnabled = syncEnabled,
                 onSyncEnabledChange = { viewModel.setSyncEnabled(context, it) },
                 syncFolderUri = syncFolderUri,

@@ -1783,8 +1783,8 @@ class MathEngineTest {
         assertEquals("10", MathEngine.formatDisplayResult("10.0", 2)) // whole numbers are displayed without decimal points
         assertEquals("4", MathEngine.formatDisplayResult("4", 6)) // whole numbers are displayed without decimal points
         assertEquals("Err", MathEngine.formatDisplayResult("Err", 2))
-        assertEquals("1234.57", MathEngine.formatDisplayResult("1234.5678", 2))
-        assertEquals("1234.5678000000", MathEngine.formatDisplayResult("1234.5678", 10))
+        assertEquals("1,234.57", MathEngine.formatDisplayResult("1234.5678", 2))
+        assertEquals("1,234.5678000000", MathEngine.formatDisplayResult("1234.5678", 10))
     }
 
     @Test
@@ -1804,13 +1804,52 @@ class MathEngineTest {
     @Test
     fun `formatDisplayResult respects explicit locales`() = runBlocking {
         val raw = "1234.567"
-        // Locale.ROOT uses dot
-        assertEquals("1234.57", MathEngine.formatDisplayResult(raw, 2, java.util.Locale.ROOT))
-        // Locale.GERMANY uses comma
-        assertEquals("1234,57", MathEngine.formatDisplayResult(raw, 2, java.util.Locale.GERMANY))
-        // Scientific notation with Locale.GERMANY
+        assertEquals("1,234.57", MathEngine.formatDisplayResult(raw, 2, java.util.Locale.ROOT))
+        assertEquals("1.234,57", MathEngine.formatDisplayResult(raw, 2, java.util.Locale.GERMANY))
         val largeRaw = "1.23E30"
         assertEquals("1,23e+30", MathEngine.formatDisplayResult(largeRaw, 2, java.util.Locale.GERMANY))
+    }
+
+    @Test
+    fun `formatDisplayResult can disable separators with explicit off preset`() = runBlocking {
+        val settings = NumberFormatSettings(separators = NumberSeparatorPreset.OFF)
+        assertEquals("1234567", MathEngine.formatDisplayResult("1234567", 2, java.util.Locale.US, settings))
+    }
+
+    @Test
+    fun `formatDisplayResult respects system locale for french style`() = runBlocking {
+        val settings = NumberFormatSettings(
+            separators = NumberSeparatorPreset.LOCALE,
+            decimal = NumberDecimalPreset.LOCALE
+        )
+        assertEquals("1\u202F234,57", MathEngine.formatDisplayResult("1234.567", 2, java.util.Locale.FRANCE, settings))
+    }
+
+    @Test
+    fun `formatDisplayResult respects explicit comma and dot settings`() = runBlocking {
+        val settings = NumberFormatSettings(
+            separators = NumberSeparatorPreset.COMMA,
+            decimal = NumberDecimalPreset.DOT
+        )
+        assertEquals("1,234.57", MathEngine.formatDisplayResult("1234.567", 2, java.util.Locale.FRANCE, settings))
+    }
+
+    @Test
+    fun `formatDisplayResult respects explicit dot and comma settings`() = runBlocking {
+        val settings = NumberFormatSettings(
+            separators = NumberSeparatorPreset.DOT,
+            decimal = NumberDecimalPreset.COMMA
+        )
+        assertEquals("1.234,57", MathEngine.formatDisplayResult("1234.567", 2, java.util.Locale.US, settings))
+    }
+
+    @Test
+    fun `formatDisplayResult respects explicit decimal preset independently`() = runBlocking {
+        val settings = NumberFormatSettings(
+            separators = NumberSeparatorPreset.OFF,
+            decimal = NumberDecimalPreset.COMMA
+        )
+        assertEquals("1234,50", MathEngine.formatDisplayResult("1234.5", 2, java.util.Locale.US, settings))
     }
 
     @Test

@@ -395,19 +395,37 @@ private fun extractAllSuggestions(lines: List<LineEntity>): List<Pair<Set<Sugges
                     suggestionMap[name] = Suggestion(name, SuggestionType.VARIABLE)
                     lastSet = suggestionMap.values.toSet()
 
-                    // Reset file variable if reassigned to something else
-                    val wasFileVariable = currentFileVariables.containsKey(name)
+                    // Reset file variable if reassigned to something else.
+                    // Use a snapshot so `f = f` can preserve the existing file link.
+                    val previousFileVariables = currentFileVariables.toMap()
+                    val wasFileVariable = previousFileVariables.containsKey(name)
                     currentFileVariables.remove(name)
 
                     val rhs = exprWithoutComment.substring(matchResult.groups[0]!!.range.last + 1).trim()
                     val fileMatch = Regex("""file\(\s*"([^"]+)"\s*\)""").matchEntire(rhs)
                     when {
                         fileMatch != null -> currentFileVariables[name] = fileMatch.groupValues[1]
-                        rhs in currentFileVariables -> currentFileVariables[name] = currentFileVariables.getValue(rhs)
+                        rhs in previousFileVariables -> currentFileVariables[name] = previousFileVariables.getValue(rhs)
                     }
 
                     // Only recreate map if it actually changed
-                    if (wasFileVariable || fileMatch != null || rhs in currentFileVariables) {
+                    if (wasFileVariable || fileMatch != null || rhs in previousFileVariables) {
+                        lastMap = currentFileVariables.toMap()
+                    }
+                }
+            }
+        } else {
+            val incrementOrDecrement = Regex("""^\s*($varFuncNamePattern)\s*(\+\+|--)\s*$""").find(exprWithoutComment)
+            if (incrementOrDecrement != null) {
+                val name = incrementOrDecrement.groupValues[1].trim()
+                if (currentFileVariables.remove(name) != null) {
+                    lastMap = currentFileVariables.toMap()
+                }
+            } else {
+                val compoundAssignment = Regex("""^\s*($varFuncNamePattern)\s*(\+=|-=|\*=|/=|%=)""").find(exprWithoutComment)
+                if (compoundAssignment != null) {
+                    val name = compoundAssignment.groupValues[1].trim()
+                    if (currentFileVariables.remove(name) != null) {
                         lastMap = currentFileVariables.toMap()
                     }
                 }

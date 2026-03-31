@@ -2369,6 +2369,43 @@ class MathEngineTest {
     }
 
     @Test
+    fun `multiplying length quantities promotes area and volume`() = runBlocking {
+        val lines = listOf(
+            createLine("4 m * 2 m", sortOrder = 0),
+            createLine("last + 2 sqm", sortOrder = 1),
+            createLine("4 m * 2 m * 2 m", sortOrder = 2),
+            createLine("last + 4 cubic meter", sortOrder = 3)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("8.0 m²", result[0].result)
+        assertEquals("10.0 m²", result[1].result)
+        assertEquals("16.0 m³", result[2].result)
+        assertEquals("20.0 m³", result[3].result)
+    }
+
+    @Test
+    fun `dividing area and volume quantities reduces dimension`() = runBlocking {
+        val lines = listOf(
+            createLine("4 m * 2 m * 2 m / 2 m", sortOrder = 0),
+            createLine("4 m * 2 m / 2 m", sortOrder = 1),
+            createLine("8 m³ / 2 m", sortOrder = 2)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("8.0 m²", result[0].result)
+        assertEquals("4.0 m", result[1].result)
+        assertEquals("4.0 m²", result[2].result)
+    }
+
+    @Test
+    fun `unsupported multiplicative unit chain returns error`() = runBlocking {
+        val lines = listOf(createLine("2m * 2m * 2m * 2m", sortOrder = 0))
+        val result = MathEngine.calculate(lines)
+        assertEquals("Err", result[0].result)
+        val err = MathEngine.getErrorDetails(lines, 0)
+        assertTrue(err?.startsWith("unsupported multiplicative unit:") == true)
+    }
+
+    @Test
     fun `add scalar inherits unit`() = runBlocking {
         val lines = listOf(
             createLine("53 weeks", sortOrder = 0),

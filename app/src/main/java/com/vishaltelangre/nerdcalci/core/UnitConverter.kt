@@ -32,6 +32,7 @@ data class Unit(
 )
 
 object UnitConverter {
+    private val CUBIC_METER_TO_LITER = BigDecimal("1000.0")
 
     // Base units:
     // TIME: second (s)
@@ -449,6 +450,61 @@ object UnitConverter {
         val from = findUnit(fromToken) ?: throw EvalException("Unknown unit `$fromToken`")
         val to = findUnit(toToken) ?: throw EvalException("Unknown unit `$toToken`")
         return convert(value, from, to, variables)
+    }
+
+    fun deriveUnit(left: Unit?, right: Unit?, op: TokenKind): String? {
+        if (left == null && right == null) return null
+        if (left?.category == UnitCategory.SCALAR || right?.category == UnitCategory.SCALAR) return null
+
+        return when (op) {
+            TokenKind.STAR -> deriveForMultiplication(left, right)
+            TokenKind.SLASH -> deriveForDivision(left, right)
+            else -> null
+        }
+    }
+
+    fun deriveUnitScale(left: Unit?, right: Unit?, op: TokenKind): BigDecimal {
+        if (left == null || right == null) return BigDecimal.ONE
+        if (left.category == UnitCategory.SCALAR || right.category == UnitCategory.SCALAR) return BigDecimal.ONE
+
+        return when (op) {
+            TokenKind.STAR -> when {
+                (left.category == UnitCategory.AREA && right.category == UnitCategory.LENGTH) ||
+                    (left.category == UnitCategory.LENGTH && right.category == UnitCategory.AREA) ->
+                    CUBIC_METER_TO_LITER
+                else -> BigDecimal.ONE
+            }
+            TokenKind.SLASH -> when {
+                left.category == UnitCategory.VOLUME && right.category == UnitCategory.LENGTH -> BigDecimal.ONE.divide(CUBIC_METER_TO_LITER)
+                left.category == UnitCategory.VOLUME && right.category == UnitCategory.AREA -> BigDecimal.ONE.divide(CUBIC_METER_TO_LITER)
+                else -> BigDecimal.ONE
+            }
+            else -> BigDecimal.ONE
+        }
+    }
+
+    private fun deriveForMultiplication(left: Unit?, right: Unit?): String? {
+        return when {
+            left?.category == UnitCategory.LENGTH && right?.category == UnitCategory.LENGTH ->
+                findUnit("m²")?.symbols?.first()
+            (left?.category == UnitCategory.AREA && right?.category == UnitCategory.LENGTH) ||
+                (left?.category == UnitCategory.LENGTH && right?.category == UnitCategory.AREA) ->
+                findUnit("m³")?.symbols?.first()
+            else -> null
+        }
+    }
+
+    private fun deriveForDivision(left: Unit?, right: Unit?): String? {
+        return when {
+            left?.category == UnitCategory.AREA && right?.category == UnitCategory.LENGTH ->
+                findUnit("m")?.symbols?.first()
+            left?.category == UnitCategory.VOLUME && right?.category == UnitCategory.LENGTH ->
+                findUnit("m²")?.symbols?.first()
+            left?.category == UnitCategory.VOLUME && right?.category == UnitCategory.AREA ->
+                findUnit("m")?.symbols?.first()
+            left?.category == right?.category -> null
+            else -> null
+        }
     }
 
     fun isNumeralSystemSymbol(symbol: String): Boolean {

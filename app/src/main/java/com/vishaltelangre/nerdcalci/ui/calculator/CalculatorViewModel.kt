@@ -565,13 +565,13 @@ class CalculatorViewModel(
         }
     }
 
-    suspend fun addLine(fileId: Long, sortOrder: Int, afterLineId: Long? = null): Long {
+    suspend fun addLine(fileId: Long, sortOrder: Int, expression: String = "", afterLineId: Long? = null): Long {
         return withContext(Dispatchers.IO) {
             calculationMutex.withLock {
                 // Save state for undo
                 saveStateForUndo(fileId)
 
-                val newLine = LineEntity(fileId = fileId, sortOrder = sortOrder, expression = "", result = "")
+                val newLine = LineEntity(fileId = fileId, sortOrder = sortOrder, expression = expression, result = "")
                 val newId = dao.moveAndInsertLine(fileId, afterLineId, newLine)
 
                 // Fetch the now-normalized lines
@@ -582,9 +582,78 @@ class CalculatorViewModel(
 
                 // Recalculate everything from the new line downward
                 val affectedLines = MathEngine.calculateFrom(updatedAllLines, insertIndex, createFileContextLoader(fileId))
-                dao.updateLines(fileId, affectedLines)
+                dao.updateLines(fileId, affectedLines, updateTimestamp = false)
 
                 newId
+            }
+        }
+    }
+
+    /**
+     * Splits a line at the given [splitIndex] within its expression.
+     * The text before [splitIndex] stays on the original line, and text after it
+     * is moved to a new line inserted immediately below.
+     *
+     * This operation is atomic and ensures consistent state between the split lines.
+     */
+    suspend fun splitLine(lineId: Long, splitIndex: Int): Long {
+        return withContext(Dispatchers.IO) {
+            calculationMutex.withLock {
+                val line = dao.getLineById(lineId) ?: return@withLock -1L
+                val fileId = line.fileId
+                saveStateForUndo(fileId)
+
+                val originalExpression = line.expression
+                val safeSplitIndex = splitIndex.coerceIn(0, originalExpression.length)
+                val keep = originalExpression.substring(0, safeSplitIndex)
+                val move = originalExpression.substring(safeSplitIndex)
+
+                // Update the current line with the prefix and clear result
+                dao.updateLine(line.copy(expression = keep, result = ""))
+
+                // Insert the new line with the suffix and clear result
+                val newLine = LineEntity(
+                    fileId = fileId,
+                    sortOrder = line.sortOrder + 1,
+                    expression = move,
+                    result = ""
+                )
+                val newId = dao.moveAndInsertLine(fileId, line.id, newLine)
+
+                // Recalculate affected lines starting from the split point
+                val updatedAllLines = dao.getLinesForFileSync(fileId)
+                val splitIndexInList = updatedAllLines.indexOfFirst { it.id == line.id }.coerceAtLeast(0)
+                val affectedLines = MathEngine.calculateFrom(updatedAllLines, splitIndexInList, createFileContextLoader(fileId))
+                dao.updateLines(fileId, affectedLines, updateTimestamp = false)
+
+                newId
+            }
+        }
+    }
+
+    /**
+     * Merges [currentLineId] into [prevLineId].
+     * The expression of [currentLineId] is appended to [prevLineId], and [currentLineId] is then deleted.
+     */
+    suspend fun mergeLines(prevLineId: Long, currentLineId: Long) {
+        withContext(Dispatchers.IO) {
+            calculationMutex.withLock {
+                val prevLine = dao.getLineById(prevLineId) ?: return@withLock
+                val currentLine = dao.getLineById(currentLineId) ?: return@withLock
+                
+                val fileId = prevLine.fileId
+                saveStateForUndo(fileId)
+
+                val mergedExpression = prevLine.expression + currentLine.expression
+                // Update and clear result to prevent stale data display during calculation
+                dao.updateLine(prevLine.copy(expression = mergedExpression, result = ""))
+                dao.deleteAndNormalize(currentLine)
+
+                // Recalculate starting from the merged line
+                val updatedLines = dao.getLinesForFileSync(fileId)
+                val mergedIndex = updatedLines.indexOfFirst { it.id == prevLine.id }.coerceAtLeast(0)
+                val affectedLines = MathEngine.calculateFrom(updatedLines, mergedIndex, createFileContextLoader(fileId))
+                dao.updateLines(fileId, affectedLines, updateTimestamp = false)
             }
         }
     }

@@ -200,6 +200,7 @@ class SyncManagerTest {
         override suspend fun doesFileExist(name: String): Boolean = files.any { it.name == name }
         override suspend fun doesFileExist(name: String, excludeId: Long): Boolean = files.any { it.name == name && it.id != excludeId }
         override suspend fun getLineCountForFile(fileId: Long): Int = lines.count { it.fileId == fileId }
+        override suspend fun getLineById(lineId: Long): LineEntity? = lines.find { it.id == lineId }
 
         override suspend fun insertFile(file: FileEntity): Long {
             val id = (files.size + 1).toLong()

@@ -2799,4 +2799,47 @@ class MathEngineTest {
         assertEquals("500.0", result[1].result)
         assertEquals("10500.0 m", result[2].result)
     }
+
+    @Test
+    fun `underscore with units should parse correctly`() = runBlocking {
+        val lines = listOf(
+            createLine("10", sortOrder = 0),
+            createLine("_ km", sortOrder = 1)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("10.0", result[0].result)
+        assertEquals("10.0 km", result[1].result)
+    }
+
+    @Test
+    fun `last with units should parse correctly`() = runBlocking {
+        val lines = listOf(
+            createLine("10", sortOrder = 0),
+            createLine("last m", sortOrder = 1)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("10.0", result[0].result)
+        assertEquals("10.0 m", result[1].result)
+    }
+
+    @Test
+    fun `last with unit conversion should parse correctly`() = runBlocking {
+        val lines = listOf(
+            createLine("10", sortOrder = 0),
+            createLine("last km to m", sortOrder = 1)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("10000.0 m", result[1].result)
+    }
+
+    @Test
+    fun `line number alias with units should parse correctly`() = runBlocking {
+        val lines = listOf(
+            createLine("10", sortOrder = 0),
+            createLine("lineno km", sortOrder = 1)
+        )
+        val result = MathEngine.calculate(lines)
+        // lineno is 2 for the second line.
+        assertEquals("2.0 km", result[1].result)
+    }
 }

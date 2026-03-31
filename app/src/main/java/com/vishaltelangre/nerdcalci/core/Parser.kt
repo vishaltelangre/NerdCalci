@@ -453,7 +453,7 @@ class Parser(private val tokens: List<Token>) {
             else -> {
                 if (kind.isPreviousLineAlias || kind.isLineNumberAlias) {
                     val token = advance()
-                    Expr.Variable(token.lexeme)
+                    parseQuantityIfPossible(Expr.Variable(token.lexeme))
                 } else if (kind == TokenKind.LPAREN) {
                     // e.g. (2 + 3), (price * 1.1)
                     advance() // skip past "("

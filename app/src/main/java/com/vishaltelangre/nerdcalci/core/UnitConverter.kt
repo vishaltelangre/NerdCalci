@@ -494,7 +494,7 @@ object UnitConverter {
         }
     }
 
-    private fun deriveForDivision(left: Unit?, right: Unit?): String? {
+    internal fun deriveForDivision(left: Unit?, right: Unit?): String? {
         return when {
             left?.category == UnitCategory.AREA && right?.category == UnitCategory.LENGTH ->
                 findUnit("m")?.symbols?.first()
@@ -505,7 +505,12 @@ object UnitConverter {
             // Only categories that behave linearly from zero can cancel to unitless here.
             // Affine/reciprocal categories need explicit handling and should fall through.
             left?.category == right?.category &&
-                left?.category !in setOf(UnitCategory.TEMPERATURE, UnitCategory.FUEL_CONSUMPTION) ->
+                left?.category in setOf(
+                    UnitCategory.TIME, UnitCategory.LENGTH, UnitCategory.AREA, UnitCategory.VOLUME,
+                    UnitCategory.MASS, UnitCategory.SPEED, UnitCategory.ANGLE, UnitCategory.FREQUENCY,
+                    UnitCategory.ENERGY, UnitCategory.POWER, UnitCategory.DATA, UnitCategory.DATA_RATE,
+                    UnitCategory.FORCE, UnitCategory.PRESSURE, UnitCategory.NUMERAL_SYSTEM
+                ) ->
                 "unitless"
             else -> null
         }

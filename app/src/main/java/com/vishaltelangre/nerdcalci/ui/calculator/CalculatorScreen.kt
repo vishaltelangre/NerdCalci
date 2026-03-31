@@ -1017,8 +1017,8 @@ fun CalculatorScreen(
                                 currentlyFocusedLineId = null
                             }
                         },
-                        onValueChange = { newValue ->
-                            viewModel.updateLine(line.copy(expression = newValue))
+                        onValueChange = { newValue, newVersion ->
+                            viewModel.updateLine(line.copy(expression = newValue, version = newVersion))
                             // Scroll to this line only if it's being edited but off-screen
                             if (currentlyFocusedLineId == line.id) {
                                 coroutineScope.launch {
@@ -1227,7 +1227,7 @@ private fun LineRow(
     conversionColor: Color,
     onFocused: () -> Unit,
     onBlur: () -> Unit,
-    onValueChange: (String) -> Unit,
+    onValueChange: (String, Long) -> Unit,
     onEnter: (Int) -> Unit,
     onDelete: () -> Unit,
     onMergeWithPrevious: () -> Unit,
@@ -1245,15 +1245,16 @@ private fun LineRow(
         mutableStateOf(TextFieldValue(text = displayText))
     }
 
-    // Track the last expression sent to the ViewModel to prevent race conditions
+    // Track the last expression and version sent to the ViewModel to prevent race conditions
     // between local state and database updates during rapid typing.
-    var lastSentExpression by remember { mutableStateOf<String?>(null) }
+    var lastSentExpression by remember(line.id) { mutableStateOf<String?>(null) }
+    var lastSentVersion by remember(line.id) { mutableStateOf(line.version) }
 
     // Guard flag to prevent double-triggering of backspace handlers
     var backspaceHandled by remember { mutableStateOf(false) }
 
     // Reset the backspace guard flag after a short delay or when the line expression changes
-    LaunchedEffect(line.expression, line.id) {
+    LaunchedEffect(line.expression, line.id, line.version) {
         backspaceHandled = false
     }
 
@@ -1480,13 +1481,14 @@ private fun LineRow(
     }
 
     // Sync with database updates
-    LaunchedEffect(line.expression, lineNumber) {
-        // Only update local state if the database version is different from what we last sent.
+    LaunchedEffect(line.expression, line.version, lineNumber) {
+        // Only update local state if the database version is newer than or equal to what we last sent,
+        // or if the field is not focused (meaning it's an external update like a recalculation).
         // This prevents "echo" updates from the database from overwriting the current text field
         // during rapid typing, which is the root cause of cursor synchronization issues.
-        // We also check against textFieldValue.text to handle cases where lastSentExpression
-        // might match but the UI state was reset or manipulated externally (e.g. split/merge).
-        if (line.expression != lastSentExpression || textFieldValue.text != displayText) {
+        val isStaleEcho = isFocused && line.version < lastSentVersion
+        
+        if (!isStaleEcho && (line.expression != lastSentExpression || textFieldValue.text != displayText)) {
             val selection = TextRange(
                 textFieldValue.selection.start.coerceIn(0, displayText.length),
                 textFieldValue.selection.end.coerceIn(0, displayText.length)
@@ -1495,6 +1497,9 @@ private fun LineRow(
                 text = displayText,
                 selection = selection
             )
+            // Sync our local tracking with the actual DB state
+            lastSentExpression = line.expression
+            lastSentVersion = line.version
         }
     }
 
@@ -1541,7 +1546,9 @@ private fun LineRow(
 
             val trimmedText = newText.trim()
             if (trimmedText != line.expression) {
-                onValueChange(trimmedText)
+                lastSentExpression = trimmedText
+                lastSentVersion++
+                onValueChange(trimmedText, lastSentVersion)
             }
 
             onInsertHandled()
@@ -1633,7 +1640,8 @@ private fun LineRow(
 
                         if (actualText != line.expression) {
                             lastSentExpression = actualText
-                            onValueChange(actualText)
+                            lastSentVersion++
+                            onValueChange(actualText, lastSentVersion)
                         }
 
                         textFieldValue = newValue
@@ -1740,7 +1748,11 @@ private fun LineRow(
                     isNonFirstLine = lineNumber > 1,
                     textFieldValue = textFieldValue,
                     onTextFieldValueChange = { textFieldValue = it },
-                    onValueChange = onValueChange,
+                    onValueChange = { newText ->
+                        lastSentExpression = newText
+                        lastSentVersion++
+                        onValueChange(newText, lastSentVersion)
+                    },
                     textLayoutResult = textLayoutResult,
                     boxPosition = boxPosition,
                     keywordColor = keywordColor,

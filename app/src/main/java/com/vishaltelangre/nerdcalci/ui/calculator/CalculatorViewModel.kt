@@ -489,7 +489,8 @@ class CalculatorViewModel(
         // Recalculate everything and batch-write results in one transaction
         val allLines = dao.getLinesForFileSync(fileId)
         val calculatedLines = MathEngine.calculate(allLines, createFileContextLoader(fileId))
-        dao.updateLines(fileId, calculatedLines)
+        val versionedLines = calculatedLines.map { it.copy(version = it.version + 1) }
+        dao.updateLines(fileId, versionedLines)
     }
 
     fun clearHistory(fileId: Long) {
@@ -507,7 +508,8 @@ class CalculatorViewModel(
             calculationMutex.withLock {
                 val allLines = dao.getLinesForFileSync(fileId)
                 val calculatedLines = MathEngine.calculate(allLines, createFileContextLoader(fileId))
-                dao.updateLines(fileId, calculatedLines, updateTimestamp = false)
+                val versionedLines = calculatedLines.map { it.copy(version = it.version + 1) }
+                dao.updateLines(fileId, versionedLines, updateTimestamp = false)
             }
         }
     }
@@ -516,24 +518,29 @@ class CalculatorViewModel(
     // Update a line and recalculate everything from it downward
     fun updateLine(updatedLine: LineEntity) {
         viewModelScope.launch(Dispatchers.IO) {
-            calculationMutex.withLock {
-                // Save the user's current typing
-                dao.updateLine(updatedLine)
+            updateLineInternal(updatedLine)
+        }
+    }
 
-                // Fetch all lines for this file to ensure context is correct
-                val allLines = dao.getLinesForFileSync(updatedLine.fileId)
+    suspend fun updateLineInternal(updatedLine: LineEntity) {
+        calculationMutex.withLock {
+            // Save the user's current typing
+            dao.updateLine(updatedLine)
 
-                // Find where the changed line sits. Preceding lines are not re-evaluated;
-                // their variable state is inherited. If not found, fall back to 0 (recalculate all).
-                val changedIndex = allLines.indexOfFirst { it.id == updatedLine.id }.coerceAtLeast(0)
+            // Fetch all lines for this file to ensure context is correct
+            val allLines = dao.getLinesForFileSync(updatedLine.fileId)
 
-                // Recalculate only affected lines (from changedIndex onward), inheriting variable
-                // state from the preceding lines without re-evaluating them.
-                val affectedLines = MathEngine.calculateFrom(allLines, changedIndex, createFileContextLoader(updatedLine.fileId))
+            // Find where the changed line sits. Preceding lines are not re-evaluated;
+            // their variable state is inherited. If not found, fall back to 0 (recalculate all).
+            val changedIndex = allLines.indexOfFirst { it.id == updatedLine.id }.coerceAtLeast(0)
 
-                // Batch-write all updated results in one DB transaction
-                dao.updateLines(updatedLine.fileId, affectedLines)
-            }
+            // Recalculate only affected lines (from changedIndex onward), inheriting variable
+            // state from the preceding lines without re-evaluating them.
+            val affectedLines = MathEngine.calculateFrom(allLines, changedIndex, createFileContextLoader(updatedLine.fileId))
+            val versionedLines = affectedLines.map { it.copy(version = it.version + 1) }
+
+            // Batch-write all updated results in one DB transaction
+            dao.updateLines(updatedLine.fileId, versionedLines)
         }
     }
 
@@ -582,7 +589,8 @@ class CalculatorViewModel(
 
                 // Recalculate everything from the new line downward
                 val affectedLines = MathEngine.calculateFrom(updatedAllLines, insertIndex, createFileContextLoader(fileId))
-                dao.updateLines(fileId, affectedLines, updateTimestamp = false)
+                val versionedLines = affectedLines.map { it.copy(version = it.version + 1) }
+                dao.updateLines(fileId, versionedLines, updateTimestamp = false)
 
                 newId
             }
@@ -609,7 +617,7 @@ class CalculatorViewModel(
                 val move = originalExpression.substring(safeSplitIndex)
 
                 // Update the current line with the prefix and clear result
-                dao.updateLine(line.copy(expression = keep, result = ""))
+                dao.updateLine(line.copy(expression = keep, result = "", version = line.version + 1))
 
                 // Insert the new line with the suffix and clear result
                 val newLine = LineEntity(
@@ -624,7 +632,8 @@ class CalculatorViewModel(
                 val updatedAllLines = dao.getLinesForFileSync(fileId)
                 val splitIndexInList = updatedAllLines.indexOfFirst { it.id == line.id }.coerceAtLeast(0)
                 val affectedLines = MathEngine.calculateFrom(updatedAllLines, splitIndexInList, createFileContextLoader(fileId))
-                dao.updateLines(fileId, affectedLines, updateTimestamp = false)
+                val versionedLines = affectedLines.map { it.copy(version = it.version + 1) }
+                dao.updateLines(fileId, versionedLines, updateTimestamp = false)
 
                 newId
             }
@@ -646,7 +655,7 @@ class CalculatorViewModel(
 
                 val mergedExpression = prevLine.expression + currentLine.expression
                 // Update and clear result to prevent stale data display during calculation
-                dao.updateLine(prevLine.copy(expression = mergedExpression, result = ""))
+                dao.updateLine(prevLine.copy(expression = mergedExpression, result = "", version = prevLine.version + 1))
                 dao.deleteAndNormalize(currentLine)
 
                 // Recalculate starting from the merged line
@@ -679,7 +688,8 @@ class CalculatorViewModel(
                 // the deleted one now sits at the deleted line's old position.
                 if (deletedIndex in updatedLines.indices) {
                     val affectedLines = MathEngine.calculateFrom(updatedLines, deletedIndex, createFileContextLoader(line.fileId))
-                    dao.updateLines(line.fileId, affectedLines)
+                    val versionedLines = affectedLines.map { l -> l.copy(version = l.version + 1) }
+                    dao.updateLines(line.fileId, versionedLines)
                 }
             }
         }

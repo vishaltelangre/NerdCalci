@@ -65,12 +65,25 @@ object DatabaseMigrations {
     }
 
     /**
+     * Migration from version 4 to 5.
+     *
+     * Changes:
+     * - Added version column to lines table for state-of-the-art sync
+     */
+    val MIGRATION_4_5 = object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE lines ADD COLUMN version INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+
+    /**
      * All migrations in order.
      * Add new migrations to this array as the database evolves.
      */
     val ALL_MIGRATIONS = arrayOf(
         MIGRATION_1_2,
         MIGRATION_2_3,
-        MIGRATION_3_4
+        MIGRATION_3_4,
+        MIGRATION_4_5
     )
 }

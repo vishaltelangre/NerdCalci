@@ -132,6 +132,21 @@ class CalculatorViewModelTest {
         assertEquals("10.0", lines[0].result) // Should keep or re-calc to 10.0
     }
 
+    @Test
+    fun `updateLine increments version`() = runBlocking {
+        // Given a line with version 10
+        val line = LineEntity(id = 1L, fileId = 1L, expression = "x = 5", result = "5.0", sortOrder = 0, version = 10L)
+        fakeDao.insertLine(line)
+
+        // When updating the expression (using the suspend version for synchronous test)
+        viewModel.updateLineInternal(line.copy(expression = "x = 10", version = 11L))
+
+        // Then the version should be 12 (11 from UI + 1 from calculation loop)
+        val updatedLine = fakeDao.getLineById(1L)!!
+        assertEquals("x = 10", updatedLine.expression)
+        assertEquals(12L, updatedLine.version)
+    }
+
     private class FakeCalculatorDao : CalculatorDao() {
         private val _files = MutableStateFlow<List<FileEntity>>(emptyList())
         private val _lines = MutableStateFlow<List<LineEntity>>(emptyList())
@@ -226,6 +241,10 @@ class CalculatorViewModelTest {
 
         override suspend fun internalDeleteLinesForFile(fileId: Long) {
             _lines.value = _lines.value.filter { line: LineEntity -> line.fileId != fileId }
+        }
+
+        override suspend fun touchFile(fileId: Long, timestamp: Long) {
+            updateFileTimestamp(fileId, timestamp)
         }
     }
 }

@@ -12,7 +12,7 @@ import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
  */
 @Database(
     entities = [FileEntity::class, LineEntity::class],
-    version = 4,
+    version = 5,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {

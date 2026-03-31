@@ -390,6 +390,27 @@ class MathEngineTest {
     }
 
     @Test
+    fun `unit cancellation in division returns unitless result`() = runBlocking {
+        val lines = listOf(
+            createLine("10km / 100m"),
+            createLine("(10km * 10km) / 50sqkm"),
+            createLine("x = 10km / 100m"),
+            createLine("x * 2"),
+            createLine("100kg / 10g"),
+            createLine("10kg / 2kg"),
+            createLine("1h / 60min")
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("100.0", result[0].result)
+        assertEquals("2.0", result[1].result)
+        assertEquals("100.0", result[2].result)
+        assertEquals("200.0", result[3].result)
+        assertEquals("10000.0", result[4].result)
+        assertEquals("5.0", result[5].result)
+        assertEquals("1.0", result[6].result)
+    }
+
+    @Test
     fun `percentage off reduces value`() = runBlocking {
         val lines = listOf(createLine("20% off 100"))
         val result = MathEngine.calculate(lines)

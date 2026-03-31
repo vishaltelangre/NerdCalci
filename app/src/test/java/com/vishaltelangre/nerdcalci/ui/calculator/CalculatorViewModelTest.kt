@@ -119,7 +119,7 @@ class CalculatorViewModelTest {
 
     @Test
     fun `mergeLines with empty current line just deletes it`() = runBlocking {
-        val line1 = LineEntity(id = 1L, fileId = 1L, expression = "a = 10", result = "10", sortOrder = 0)
+        val line1 = LineEntity(id = 1L, fileId = 1L, expression = "a = 10", result = "10.0", sortOrder = 0)
         val line2 = LineEntity(id = 2L, fileId = 1L, expression = "", result = "", sortOrder = 1)
         fakeDao.insertLine(line1)
         fakeDao.insertLine(line2)

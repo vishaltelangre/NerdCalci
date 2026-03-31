@@ -60,7 +60,6 @@ import com.vishaltelangre.nerdcalci.ui.help.HelpScreen
 import com.vishaltelangre.nerdcalci.ui.home.HomeScreen
 import com.vishaltelangre.nerdcalci.ui.settings.SettingsScreen
 import com.vishaltelangre.nerdcalci.core.NumberFormatSettings
-import com.vishaltelangre.nerdcalci.core.NumberSeparatorPreset
 import com.vishaltelangre.nerdcalci.ui.changelog.ChangelogScreen
 import com.vishaltelangre.nerdcalci.ui.search.SearchScreen
 import com.vishaltelangre.nerdcalci.ui.theme.NerdCalciTheme

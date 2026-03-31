@@ -2707,4 +2707,23 @@ class MathEngineTest {
         assertEquals("-1.0E7", MathEngine.formatBigDecimal(java.math.BigDecimal("-10000000")))
         assertEquals("-1.0E-4", MathEngine.formatBigDecimal(java.math.BigDecimal("-0.0001")))
     }
+
+    @Test
+    fun `formatDisplayResult preserves scientific notation for small numbers`() = runBlocking {
+        // Small number without unit
+        val result1 = MathEngine.formatDisplayResult("1.0E-4", 2)
+        assertEquals("1.00e-04", result1)
+
+        // Small number with unit
+        val result2 = MathEngine.formatDisplayResult("1.0E-4 kg", 2)
+        assertEquals("1.00e-04 kg", result2)
+
+        // Large number without unit
+        val result3 = MathEngine.formatDisplayResult("1.0E10", 2)
+        assertEquals("1.00e+10", result3)
+
+        // Plain decimal should still use decimal formatting
+        val result4 = MathEngine.formatDisplayResult("1.2345", 2)
+        assertEquals("1.23", result4)
+    }
 }

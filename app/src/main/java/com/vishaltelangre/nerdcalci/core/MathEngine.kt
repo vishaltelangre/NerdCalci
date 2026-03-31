@@ -450,6 +450,8 @@ object MathEngine {
                 else -> 10
             }
             formatNumeralSystem(value.toLong(), radix)
+        } else if (numStr.contains('E', ignoreCase = true)) {
+            formatScientific(value, safePrecision, locale)
         } else if (value.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) == 0) {
             val longVal = value.toLong()
             when {

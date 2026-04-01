@@ -103,11 +103,13 @@ object FileUtils {
             val rawResult = line.result.trim()
             val displayResult = MathEngine.formatDisplayResult(rawResult, precision, java.util.Locale.ROOT)
 
-            when {
-                expr.isEmpty() || rawResult.isBlank() || rawResult == "Err" -> expr
-                expr.trimStart().startsWith("#") -> expr // Full comment line
-                shouldShowResult(expr) -> "$expr # $displayResult"
-                else -> expr
+            if (expr.isEmpty() || rawResult.isBlank() || rawResult == "Err" || expr.trimStart().startsWith("#")) {
+                expr
+            } else if (shouldShowResult(expr)) {
+                val resultJson = JSONObject().apply { put("result", displayResult) }.toString()
+                "$expr # $resultJson"
+            } else {
+                expr
             }
         }
     }
@@ -118,8 +120,8 @@ object FileUtils {
     fun parseFileContent(content: String): ParsedFileContent {
         val lines = content.lines()
         var currentMetadata = FileMetadata()
-        var metadataSet = false
         val dataLines = mutableListOf<String>()
+        var metadataSet = false
 
         for (line in lines) {
             if (line.trim().startsWith("# @metadata ")) {
@@ -134,33 +136,98 @@ object FileUtils {
             }
         }
 
-        val expressions = dataLines.map { line ->
-            val lastHashIndex = line.lastIndexOf('#')
-            if (lastHashIndex > 0) {
-                val exprCandidate = line.substring(0, lastHashIndex).trim()
-                val potentialResult = line.substring(lastHashIndex + 1).trim()
-                // Results may have unit suffixes like "10.5 kg" or scientific notation
-                val resultValue = potentialResult.split(" ").firstOrNull()
-                val isResult = potentialResult == "Err" || resultValue?.toDoubleOrNull() != null
+        // Regex to handle: [expression with optional comment] # {"result":"..."}
+        val structuredResultRegex = Regex("""^(.*)\s*#\s*(\{\s*"result"\s*:\s*".*?"\s*\})\s*$""")
 
-                if (isResult && shouldShowResult(exprCandidate)) {
-                    exprCandidate
+        val expressions = dataLines.map { line ->
+            val match = structuredResultRegex.matchEntire(line)
+            if (match != null) {
+                match.groupValues[1].trim()
+            } else {
+                // FALLBACK: Legacy parsing logic for older files
+                val lastHashIndex = line.lastIndexOf('#')
+                if (lastHashIndex >= 0) {
+                    val exprCandidate = line.substring(0, lastHashIndex).trim()
+                    val potentialResult = line.substring(lastHashIndex + 1).trim()
+
+                    if (looksLikeResult(potentialResult) && shouldShowResult(exprCandidate)) {
+                        exprCandidate
+                    } else if (potentialResult.isEmpty() && lastHashIndex > 0 && shouldShowResult(exprCandidate)) {
+                        // Handle "expr #" case
+                        exprCandidate
+                    } else {
+                        line.trim()
+                    }
+                } else if (looksLikeResult(line.trim())) {
+                    // Omit standalone result lines
+                    null
                 } else {
                     line.trim()
                 }
-            } else {
-                line.trim()
             }
-        }
+        }.filterNotNull()
 
         return ParsedFileContent(expressions, currentMetadata)
     }
 
-    fun shouldShowResult(expression: String): Boolean {
-        val hasOperators = expression.any { it in "+-*/%^" }
-        val simpleAssignmentRegex = Regex("""^\s*[a-zA-Z][a-zA-Z0-9\s]*\s*=\s*[\d.]+\s*$""")
-        if (simpleAssignmentRegex.matches(expression)) return false
-        return hasOperators || !expression.contains("=")
+    private fun looksLikeResult(text: String): Boolean {
+        val trimmed = text.trim()
+        if (trimmed.isEmpty()) return false
+        if (trimmed == "Err") return true
+
+        // Hex, Oct, Bin
+        if (trimmed.startsWith("0x") || trimmed.startsWith("0b") || trimmed.startsWith("0o")) {
+            val content = trimmed.substring(2)
+            if (content.isNotEmpty() && content.all { it.isDigit() || it.lowercaseChar() in 'a'..'f' }) {
+                return true
+            }
+        }
+
+        // Sanitize all safe separators (including spaces, NBSP, etc.) from the whole text
+        val sanitized = text.filter { it !in MathEngine.SAFE_SEPARATORS }
+        if (sanitized.isEmpty()) return false
+
+        // Check for fractions: digits/digits
+        if (sanitized.count { it == '/' } == 1) {
+            val parts = sanitized.split('/')
+            if (parts.all { p -> p.all { it.isDigit() || it == '-' || it == '.' } }) {
+                return true
+            }
+        }
+
+        // Check for scientific notation: digitsEdigits
+        if (sanitized.contains('E', ignoreCase = true)) {
+            val s = sanitized.uppercase()
+            if (s.count { it == 'E' } == 1) {
+                val parts = s.split('E')
+                if (parts[0].replace(Regex("[.-]"), "").all { it.isDigit() } &&
+                    parts[1].replace(Regex("[+-]"), "").all { it.isDigit() }) {
+                    return true
+                }
+            }
+        }
+
+        // Check for pure numeric or number + units
+        // We split by whitespace to detect potential units
+        val words = trimmed.split(Regex("\\s+"))
+        if (words.isNotEmpty()) {
+            val firstWordSanitized = words[0].filter { it !in MathEngine.SAFE_SEPARATORS }
+            if (firstWordSanitized.all { it.isDigit() || it == '-' || it == '.' }) {
+                // It's a result if it's just the number, or followed by a unit (all letters)
+                // Note: if the number had internal spaces (Swiss style), words.size > 1.
+                // We re-check the whole sanitized string for pure numeric case.
+                if (sanitized.all { it.isDigit() || it == '-' || it == '.' }) return true
+
+                // Units case
+                return words.size == 2 && words[1].all { it.isLetter() }
+            }
+        }
+
+        return false
+    }
+
+    private fun shouldShowResult(expression: String): Boolean {
+        return expression.isNotBlank()
     }
 
     /**

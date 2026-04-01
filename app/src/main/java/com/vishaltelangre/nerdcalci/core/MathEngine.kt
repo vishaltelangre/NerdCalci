@@ -53,7 +53,7 @@ object MathEngine {
      * Set of separators that are considered "safe" for Western-style calculation results.
      * Includes standard dot, comma, apostrophes, and various whitespace grouping separators.
      */
-    private val SAFE_SEPARATORS = setOf(
+    internal val SAFE_SEPARATORS = setOf(
         '.',      // Dot (Decimal/Grouping)
         ',',      // Comma (Decimal/Grouping)
         ' ',      // Standard Space (Grouping)

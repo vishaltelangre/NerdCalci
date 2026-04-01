@@ -1,4 +1,4 @@
-- Added "Rational mode" for exact arithmetic using fractions.
+- Added "Rational mode" for exact arithmetic using fractions (Issue #87).
 - Unified number formatting under a single "Region" setting.
 - Increased the scientific notation threshold for better readability.
 - Improved the .nerdcalci file format for better comment preservation during sync.

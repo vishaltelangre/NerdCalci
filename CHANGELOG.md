@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.3.0] - 2026-04-01
 ### Added
-- Added "Rational mode" for exact arithmetic using fractions.
+- Added "Rational mode" for exact arithmetic using fractions (Issue #87).
 - Added `rational(x)`/`fraction(x)` functions for rational display override and `float(x)` for float display override.
 - Support units on parenthesized expressions (e.g., `(1/2) kg`).
 - Unified number formatting under a single "Region" selector, replacing manual decimal/separator settings.

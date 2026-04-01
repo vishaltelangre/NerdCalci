@@ -222,12 +222,11 @@ object FileUtils {
                 // Units case - use UnitConverter to validate if there's a potential unit
                 if (words.size == 2) {
                     val potentialUnit = words[1]
-                    // Check if it's a valid unit or looks like one (letters, or contains common unit chars like °, ², ³)
                     if (com.vishaltelangre.nerdcalci.core.UnitConverter.findUnit(potentialUnit) != null) {
                         return true
                     }
-                    // Fallback: accept if it looks like a unit (letters with optional superscripts/symbols)
-                    if (potentialUnit.all { it.isLetter() || it in "°²³" }) {
+                    // Fallback: accept a compact unit-like suffix with common symbols.
+                    if (potentialUnit.all { it.isLetterOrDigit() || it in "°²³µ/%." }) {
                         return true
                     }
                 }

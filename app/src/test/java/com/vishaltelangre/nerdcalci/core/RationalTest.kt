@@ -1,6 +1,8 @@
 package com.vishaltelangre.nerdcalci.core
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.math.BigDecimal
 import java.math.BigInteger
@@ -51,10 +53,40 @@ class RationalTest {
     }
 
     @Test
+    fun testDivisionByZeroThrows() {
+        val r1 = Rational(1.toBigInteger(), 2.toBigInteger())
+        val zero = Rational.ZERO
+
+        try {
+            r1 / zero
+            throw AssertionError("Expected DivisionByZeroException")
+        } catch (_: DivisionByZeroException) {
+            // Expected
+        }
+    }
+
+    @Test
     fun testToRational() {
         assertEquals("1/2", Rational.toRational(BigDecimal("0.5")).toString())
         assertEquals("1/4", Rational.toRational(BigDecimal("0.25")).toString())
         assertEquals("33/10", Rational.toRational(BigDecimal("3.3")).toString())
         assertEquals("7", Rational.toRational(BigDecimal("7")).toString())
+    }
+
+    @Test
+    fun testToRationalNegativeDecimal() {
+        assertEquals("-1/2", Rational.toRational(BigDecimal("-0.5")).toString())
+        assertEquals("-3/4", Rational.toRational(BigDecimal("-0.75")).toString())
+    }
+
+    @Test
+    fun testNegateAndIsWhole() {
+        val whole = Rational(5.toBigInteger(), 1.toBigInteger())
+        val fraction = Rational(3.toBigInteger(), 4.toBigInteger())
+
+        assertEquals("-5", whole.negate().toString())
+        assertEquals("-3/4", fraction.negate().toString())
+        assertTrue(whole.isWhole())
+        assertFalse(fraction.isWhole())
     }
 }

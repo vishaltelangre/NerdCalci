@@ -276,6 +276,7 @@ class DatabaseTest {
 
         // insertLine touches the file, so capture the new timestamp
         val postInsertTimestamp = dao.getFileById(fileId)!!.lastModified
+        assertNotEquals(initialTimestamp, postInsertTimestamp)
 
         val lines = dao.getLinesForFileSync(fileId)
         val updated = lines.map { it.copy(result = "DONE") }

@@ -145,6 +145,7 @@ class CalculatorViewModel(
         private const val PREF_SHOW_NUMBERS_SHORTCUTS = "show_numbers_shortcuts"
         private const val PREF_NUMBER_SEPARATOR_PRESET = "number_format_separator_preset"
         private const val PREF_NUMBER_DECIMAL_PRESET = "number_format_decimal_preset"
+        private const val PREF_NUMBER_USE_INDIAN_STYLE = "number_format_use_indian_style"
         private const val DEFAULT_THEME = "system"
     }
 
@@ -238,7 +239,8 @@ class CalculatorViewModel(
     private val _numberFormatSettings = MutableStateFlow(
         NumberFormatSettings(
             separators = NumberSeparatorPreset.fromPrefValue(prefs?.getString(PREF_NUMBER_SEPARATOR_PRESET, NumberSeparatorPreset.LOCALE.prefValue)),
-            decimal = NumberDecimalPreset.fromPrefValue(prefs?.getString(PREF_NUMBER_DECIMAL_PRESET, NumberDecimalPreset.LOCALE.prefValue))
+            decimal = NumberDecimalPreset.fromPrefValue(prefs?.getString(PREF_NUMBER_DECIMAL_PRESET, NumberDecimalPreset.LOCALE.prefValue)),
+            useIndianStyle = prefs?.getBoolean(PREF_NUMBER_USE_INDIAN_STYLE, false) ?: false
         )
     )
     val numberFormatSettings: StateFlow<NumberFormatSettings> = _numberFormatSettings
@@ -289,6 +291,7 @@ class CalculatorViewModel(
         prefs?.edit()
             ?.putString(PREF_NUMBER_SEPARATOR_PRESET, settings.separators.prefValue)
             ?.putString(PREF_NUMBER_DECIMAL_PRESET, settings.decimal.prefValue)
+            ?.putBoolean(PREF_NUMBER_USE_INDIAN_STYLE, settings.useIndianStyle)
             ?.apply()
     }
 

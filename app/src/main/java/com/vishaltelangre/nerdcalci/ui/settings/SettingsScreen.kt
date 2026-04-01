@@ -169,7 +169,7 @@ fun SettingsScreen(
     )
     val locale = context.resources.configuration.locales[0] ?: java.util.Locale.getDefault()
     val numberFormatPreview = remember(locale, numberFormatSettings) {
-        MathEngine.formatDisplayResult("1234567.89", 2, locale, numberFormatSettings)
+        MathEngine.formatDisplayResult("12345678.90", 2, locale, numberFormatSettings)
     }
     var showSeparatorDialog by remember { mutableStateOf(false) }
     var showDecimalDialog by remember { mutableStateOf(false) }
@@ -325,7 +325,10 @@ fun SettingsScreen(
             SettingsItem(
                 icon = Icons.Default.Info,
                 title = "Number format",
-                subtitle = "Separator and decimal style.",
+                subtitle = if (numberFormatSettings.useIndianStyle)
+                    "Separator and decimal style (Indian grouping)."
+                else
+                    "Separator and decimal style.",
                 onClick = null
             )
             Text(
@@ -335,14 +338,6 @@ fun SettingsScreen(
                 modifier = Modifier.padding(horizontal = 56.dp, vertical = 2.dp)
             )
             Spacer(modifier = Modifier.height(4.dp))
-            SettingsDropdownItem(
-                icon = Icons.Default.SpaceBar,
-                title = "Separator",
-                value = numberSeparatorLabel(numberFormatSettings.separators),
-                onClick = { showSeparatorDialog = true },
-                modifier = Modifier.padding(start = 24.dp)
-            )
-
             Spacer(modifier = Modifier.height(4.dp))
             SettingsDropdownItem(
                 icon = Icons.Default.Brightness1,
@@ -351,6 +346,34 @@ fun SettingsScreen(
                 onClick = { showDecimalDialog = true },
                 modifier = Modifier.padding(start = 24.dp)
             )
+
+            Spacer(modifier = Modifier.height(4.dp))
+            SettingsDropdownItem(
+                icon = Icons.Default.SpaceBar,
+                title = "Separator",
+                value = numberSeparatorLabel(numberFormatSettings.separators),
+                onClick = { showSeparatorDialog = true },
+                modifier = Modifier.padding(start = 24.dp)
+            )
+
+            val showIndianStyleToggle = remember(numberFormatSettings.separators, locale) {
+                numberFormatSettings.separators == NumberSeparatorPreset.COMMA ||
+                        (numberFormatSettings.separators == NumberSeparatorPreset.LOCALE &&
+                                java.text.DecimalFormatSymbols.getInstance(locale).groupingSeparator == ',')
+            }
+
+            if (showIndianStyleToggle) {
+                SettingsToggleItem(
+                    icon = Icons.Default.Info,
+                    title = "Use Indian style for separator positioning",
+                    subtitle = null,
+                    checked = numberFormatSettings.useIndianStyle,
+                    onCheckedChange = {
+                        onNumberFormatSettingsChange(numberFormatSettings.copy(useIndianStyle = it))
+                    },
+                    modifier = Modifier.padding(start = 48.dp)
+                )
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -805,10 +828,11 @@ private fun SettingsToggleItem(
     title: String,
     subtitle: String?,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clickable { onCheckedChange(!checked) }
             .padding(16.dp),

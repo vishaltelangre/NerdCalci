@@ -8,6 +8,54 @@ import kotlinx.coroutines.runBlocking
 import java.util.Locale
 
 class MathEngineTest {
+    private val indianSettings = NumberFormatSettings(useIndianStyle = true)
+    private val defaultSettings = NumberFormatSettings(useIndianStyle = false)
+
+    @Test
+    fun `formatDisplayResult supports Indian style grouping`() {
+        val locale = Locale.US
+
+        // 1 hundred
+        assertEquals("100", MathEngine.formatDisplayResult("100", 2, locale, indianSettings))
+
+        // 1 thousand
+        assertEquals("1,000", MathEngine.formatDisplayResult("1000", 2, locale, indianSettings))
+
+        // 10 thousand
+        assertEquals("10,000", MathEngine.formatDisplayResult("10000", 2, locale, indianSettings))
+
+        // 1 lakh
+        assertEquals("1,00,000", MathEngine.formatDisplayResult("100000", 2, locale, indianSettings))
+
+        // 10 lakh
+        assertEquals("10,00,000", MathEngine.formatDisplayResult("1000000", 2, locale, indianSettings))
+
+        // 1 crore
+        assertEquals("1,00,00,000", MathEngine.formatDisplayResult("10000000", 2, locale, indianSettings))
+
+        // 10 crore
+        assertEquals("10,00,00,000", MathEngine.formatDisplayResult("100000000", 2, locale, indianSettings))
+
+        // 100 crore
+        assertEquals("1,00,00,00,000", MathEngine.formatDisplayResult("1000000000", 2, locale, indianSettings))
+
+        // 1,000 crore
+        assertEquals("10,00,00,00,000", MathEngine.formatDisplayResult("10000000000", 2, locale, indianSettings))
+
+        // 1 lakh crore
+        assertEquals("10,00,00,00,00,000", MathEngine.formatDisplayResult("1000000000000", 2, locale, indianSettings))
+
+        // Mixed digits
+        assertEquals("12,34,567.89", MathEngine.formatDisplayResult("1234567.89", 2, locale, indianSettings))
+    }
+
+    @Test
+    fun `formatDisplayResult respects useIndianStyle flag`() {
+        val locale = Locale.US
+        val value = "1000000"
+        assertEquals("1,000,000", MathEngine.formatDisplayResult(value, 2, locale, defaultSettings))
+        assertEquals("10,00,000", MathEngine.formatDisplayResult(value, 2, locale, indianSettings))
+    }
 
     private fun createLine(expression: String, fileId: Long = 1L, sortOrder: Int = 0): LineEntity {
         return LineEntity(id = sortOrder.toLong(), fileId = fileId, expression = expression, result = "", sortOrder = sortOrder)

@@ -535,7 +535,15 @@ object MathEngine {
 
         val sign = if (integerPart.startsWith('-')) "-" else ""
         val unsigned = integerPart.removePrefix("-")
-        val groupedInteger = if (useGrouping) unsigned.reversed().chunked(3).joinToString(groupingSeparator.toString()).reversed() else unsigned
+        val groupedInteger = if (useGrouping) {
+            if (settings.useIndianStyle) {
+                formatIndianStyle(unsigned, groupingSeparator)
+            } else {
+                unsigned.reversed().chunked(3).joinToString(groupingSeparator.toString()).reversed()
+            }
+        } else {
+            unsigned
+        }
         val dec = decimalPart?.let { if (it.isNotEmpty()) "$decimalSeparator$it" else "" } ?: if (alwaysDecimal) "${decimalSeparator}0" else ""
         return sign + groupedInteger + dec
     }
@@ -560,6 +568,17 @@ object MathEngine {
         }
 
         return "${localizedMantissa}E$adjustedExponent"
+    }
+
+    private fun formatIndianStyle(unsigned: String, separator: Char): String {
+        if (unsigned.length <= 3) return unsigned
+
+        val reversed = unsigned.reversed()
+        val first3 = reversed.substring(0, 3)
+        val rest = reversed.substring(3)
+        val groupedRest = rest.chunked(2).joinToString(separator.toString())
+
+        return (first3 + separator + groupedRest).reversed()
     }
 
     private fun formatNumeralSystem(value: Long, radix: Int): String {

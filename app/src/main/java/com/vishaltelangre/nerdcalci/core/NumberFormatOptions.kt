@@ -28,5 +28,6 @@ enum class NumberDecimalPreset(val prefValue: String) {
 
 data class NumberFormatSettings(
     val separators: NumberSeparatorPreset = NumberSeparatorPreset.LOCALE,
-    val decimal: NumberDecimalPreset = NumberDecimalPreset.LOCALE
+    val decimal: NumberDecimalPreset = NumberDecimalPreset.LOCALE,
+    val useIndianStyle: Boolean = false
 )

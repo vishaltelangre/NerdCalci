@@ -64,6 +64,26 @@ private object SuggestionPopupConstants {
     val TopOffsetMargin = 60.dp
 }
 
+private fun toLogicalIndex(rawIndex: Int, logicalLength: Int, isNonFirstLine: Boolean): Int {
+    // Popup logic works in "logical" text space, where non-first lines do not include
+    // the leading dummy space used by the editor for backspace handling.
+    return if (isNonFirstLine) {
+        (rawIndex - 1).coerceIn(0, logicalLength)
+    } else {
+        rawIndex.coerceIn(0, logicalLength)
+    }
+}
+
+private fun toRawIndex(logicalIndex: Int, rawLength: Int, isNonFirstLine: Boolean): Int {
+    // Convert a logical index back to the raw TextFieldValue index that still includes
+    // the dummy leading space on non-first lines.
+    return if (isNonFirstLine) {
+        (logicalIndex + 1).coerceIn(0, rawLength)
+    } else {
+        logicalIndex.coerceIn(0, rawLength)
+    }
+}
+
 /**
  * A popup that displays autocomplete suggestions for variables and functions.
  * Calculates position relative to the cursor.
@@ -74,6 +94,7 @@ fun SuggestionPopup(
     isFocused: Boolean,
     forceDismissSuggestions: Boolean,
     onDismissSuggestions: () -> Unit,
+    isNonFirstLine: Boolean,
     textFieldValue: TextFieldValue,
     onTextFieldValueChange: (TextFieldValue) -> Unit,
     onValueChange: (String) -> Unit,
@@ -89,6 +110,12 @@ fun SuggestionPopup(
 ) {
     // Only show if there are suggestions, field is focused, and it hasn't been manually dismissed.
     if (suggestions.isEmpty() || !isFocused || forceDismissSuggestions) return
+
+    val rawText = textFieldValue.text
+    // Strip the dummy prefix so all matching and replacement math uses the same
+    // coordinate system regardless of line number.
+    val logicalText = if (isNonFirstLine) rawText.removePrefix(" ") else rawText
+    val logicalCursor = toLogicalIndex(textFieldValue.selection.start, logicalText.length, isNonFirstLine)
 
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
@@ -142,11 +169,11 @@ fun SuggestionPopup(
     val popupHeight = minOf(SuggestionPopupConstants.MaxPopupHeight, estimatedContentHeight)
 
     // Determine where the cursor is currently located on the screen to anchor the popup.
-    val cursorIndex = textFieldValue.selection.start
-
     // Handle race condition where layout result is behind text field value.
-    val cursorRect = if (textLayoutResult != null && cursorIndex <= textLayoutResult.layoutInput.text.length) {
-        textLayoutResult.getCursorRect(cursorIndex)
+    // Anchor the popup to the raw text layout, but ask for the cursor position using
+    // the raw index that corresponds to our logical cursor.
+    val cursorRect = if (textLayoutResult != null && logicalCursor <= textLayoutResult.layoutInput.text.length) {
+        textLayoutResult.getCursorRect(toRawIndex(logicalCursor, textLayoutResult.layoutInput.text.length, isNonFirstLine))
     } else {
         null
     }
@@ -218,13 +245,16 @@ fun SuggestionPopup(
                                 textFieldValue = textFieldValue,
                                 onTextFieldValueChange = onTextFieldValueChange,
                                 onValueChange = onValueChange,
-                                contextReplaceStart = replaceStart,
+                                // Suggestion contexts are computed in raw editor coordinates, so
+                                // convert them before handing them to the logical popup handler.
+                                contextReplaceStart = replaceStart?.let { toLogicalIndex(it, logicalText.length, isNonFirstLine) },
                                 contextArgumentIndex = argumentIndex,
                                 contextNeedsSpace = needsSpace,
                                 contextKeywordColor = keywordColor,
                                 contextFunctionColor = functionColor,
                                 contextVariableColor = variableColor,
-                                contextConversionColor = conversionColor
+                                contextConversionColor = conversionColor,
+                                isNonFirstLine = isNonFirstLine
                             )
                         }
                     )
@@ -379,55 +409,61 @@ private fun handleSuggestionClick(
     contextKeywordColor: Color = Color.Unspecified,
     contextFunctionColor: Color = Color.Unspecified,
     contextVariableColor: Color = Color.Unspecified,
-    contextConversionColor: Color = Color.Unspecified
+    contextConversionColor: Color = Color.Unspecified,
+    isNonFirstLine: Boolean = false
 ) {
-    val text = textFieldValue.text
-    val cursorPos = textFieldValue.selection.start
+    val rawText = textFieldValue.text
+    val rawCursorPos = textFieldValue.selection.start
+    // This function performs all replacement math in logical text space first, then
+    // converts the resulting text/cursor back to the raw editor buffer shape.
+    val logicalText = if (isNonFirstLine) rawText.removePrefix(" ") else rawText
+    val logicalCursor = toLogicalIndex(rawCursorPos, logicalText.length, isNonFirstLine)
 
     // Find the full word currently under or just before the cursor.
     var wordStart: Int
     var wordEnd: Int
 
     if (suggestion.replaceStart != null) {
-        wordStart = suggestion.replaceStart
-        wordEnd = cursorPos
+        // Some suggestions carry an explicit replacement anchor; normalize it first.
+        wordStart = toLogicalIndex(suggestion.replaceStart, logicalText.length, isNonFirstLine)
+        wordEnd = logicalCursor
     } else if (contextReplaceStart != null) {
         wordStart = contextReplaceStart
-        wordEnd = cursorPos
-        if (suggestion.type == SuggestionType.UNIT && wordStart > 0 && text[wordStart - 1] == '"') {
-            while (wordEnd < text.length && text[wordEnd] != '"' && text[wordEnd] != ',' && text[wordEnd] != ')') {
+        wordEnd = logicalCursor
+        if (suggestion.type == SuggestionType.UNIT && wordStart > 0 && logicalText[wordStart - 1] == '"') {
+            while (wordEnd < logicalText.length && logicalText[wordEnd] != '"' && logicalText[wordEnd] != ',' && logicalText[wordEnd] != ')') {
                 wordEnd++
             }
         }
     } else if (suggestion.type == SuggestionType.FILE) {
         val fileRegex = Regex("""\bfile\(\s*"([^"]*)$""")
-        val fileMatch = fileRegex.find(text.substring(0, cursorPos))
+        val fileMatch = fileRegex.find(logicalText.substring(0, logicalCursor))
         if (fileMatch != null) {
             val filterText = fileMatch.groupValues[1]
-            wordStart = cursorPos - filterText.length
+            wordStart = logicalCursor - filterText.length
             wordEnd = wordStart
-            while (wordEnd < text.length && text[wordEnd] != '"' && text[wordEnd] != ')') {
+            while (wordEnd < logicalText.length && logicalText[wordEnd] != '"' && logicalText[wordEnd] != ')') {
                 wordEnd++
             }
         } else {
-            val range = text.getIdentifierRangeAt(if (cursorPos > 0) cursorPos - 1 else 0)
+            val range = logicalText.getIdentifierRangeAt(if (logicalCursor > 0) logicalCursor - 1 else 0)
             wordStart = range.first
             wordEnd = range.last + 1
         }
     } else {
-        val isAfterDot = cursorPos > 0 && text[cursorPos - 1] == '.'
-        val range = text.getIdentifierRangeAt(if (cursorPos > 0) cursorPos - 1 else 0)
-        wordStart = if (isAfterDot) cursorPos else range.first
-        wordEnd = if (isAfterDot) cursorPos else range.last + 1
+        val isAfterDot = logicalCursor > 0 && logicalText[logicalCursor - 1] == '.'
+        val range = logicalText.getIdentifierRangeAt(if (logicalCursor > 0) logicalCursor - 1 else 0)
+        wordStart = if (isAfterDot) logicalCursor else range.first
+        wordEnd = if (isAfterDot) logicalCursor else range.last + 1
     }
 
-    val hasParens = wordEnd < text.length && text[wordEnd] == '('
+    val hasParens = wordEnd < logicalText.length && logicalText[wordEnd] == '('
     val isFunctionSuggestion = suggestion.type == SuggestionType.LOCAL_FUNCTION ||
                                  suggestion.type == SuggestionType.GLOBAL_FUNCTION
 
     // If replacing a function call with a simple variable, remove existing parens.
     if (!isFunctionSuggestion && hasParens) {
-        wordEnd = text.findClosingParenthesis(wordEnd) + 1
+        wordEnd = logicalText.findClosingParenthesis(wordEnd) + 1
     }
 
     // Determine the exact string to insert.
@@ -440,8 +476,8 @@ private fun handleSuggestionClick(
             if (hasParens) suggestion.name else "${suggestion.name}()"
         }
     } else if (suggestion.type == SuggestionType.UNIT && (contextArgumentIndex == 2 || contextArgumentIndex == 3)) {
-        val alreadyQuoted = contextReplaceStart != null && wordStart > 0 && text[wordStart - 1] == '"'
-        val afterWord = text.substring(wordEnd)
+        val alreadyQuoted = contextReplaceStart != null && wordStart > 0 && logicalText[wordStart - 1] == '"'
+        val afterWord = logicalText.substring(wordEnd)
         val insideClosingString = afterWord.startsWith("\"")
 
         val sb = java.lang.StringBuilder()
@@ -469,7 +505,7 @@ private fun handleSuggestionClick(
         }
         sb.toString()
     } else if (suggestion.type == SuggestionType.FILE) {
-        val afterWord = text.substring(wordEnd)
+        val afterWord = logicalText.substring(wordEnd)
         val insideClosingFileCall = afterWord.matches(Regex("""^"\s*\).*"""))
 
         val sb = java.lang.StringBuilder()
@@ -482,13 +518,16 @@ private fun handleSuggestionClick(
         if (contextNeedsSpace) " " + suggestion.name else suggestion.name
     }
 
-    val newText = text.substring(0, wordStart) + replacementText + text.substring(wordEnd)
+    // Build the edited string without the dummy prefix, then restore the prefix only
+    // if the line is non-first.
+    val newLogicalText = logicalText.substring(0, wordStart) + replacementText + logicalText.substring(wordEnd)
+    val newText = if (isNonFirstLine) " $newLogicalText" else newLogicalText
 
     // Cursor placement rules:
     // 1. Inside empty quotes if we just added file("").
     // 2. Inside empty parens if we just added a function.
     // 3. Otherwise at the end of the newly inserted word.
-    val newCursorPos = if (isFunctionSuggestion && !hasParens) {
+    val newLogicalCursorPos = if (isFunctionSuggestion && !hasParens) {
         if (suggestion.name == "file") {
             wordStart + replacementText.length - 2 // inside quotes
         } else if (suggestion.name == "convert") {
@@ -500,11 +539,15 @@ private fun handleSuggestionClick(
         wordStart + replacementText.length
     }
 
+    // Return the cursor in raw editor coordinates so TextFieldValue stays consistent
+    // with the visible buffer.
+    val newCursorPos = toRawIndex(newLogicalCursorPos, newText.length, isNonFirstLine)
+
     onTextFieldValueChange(
         textFieldValue.copy(
             text = newText,
             selection = TextRange(newCursorPos)
         )
     )
-    onValueChange(newText)
+    onValueChange(newLogicalText)
 }

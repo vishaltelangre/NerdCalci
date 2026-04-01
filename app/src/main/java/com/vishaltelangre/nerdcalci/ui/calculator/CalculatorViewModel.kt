@@ -10,6 +10,9 @@ import androidx.lifecycle.viewModelScope
 import android.util.Log
 import com.vishaltelangre.nerdcalci.core.Constants
 import com.vishaltelangre.nerdcalci.core.MathEngine
+import com.vishaltelangre.nerdcalci.core.NumberFormatSettings
+import com.vishaltelangre.nerdcalci.core.NumberDecimalPreset
+import com.vishaltelangre.nerdcalci.core.NumberSeparatorPreset
 import com.vishaltelangre.nerdcalci.core.FileContextLoader
 import com.vishaltelangre.nerdcalci.core.MathContext
 import com.vishaltelangre.nerdcalci.core.EvalException
@@ -140,6 +143,8 @@ class CalculatorViewModel(
         private const val PREF_SHOW_SUGGESTIONS = "show_suggestions"
         private const val PREF_SHOW_SYMBOLS_SHORTCUTS = "show_symbols_shortcuts"
         private const val PREF_SHOW_NUMBERS_SHORTCUTS = "show_numbers_shortcuts"
+        private const val PREF_NUMBER_SEPARATOR_PRESET = "number_format_separator_preset"
+        private const val PREF_NUMBER_DECIMAL_PRESET = "number_format_decimal_preset"
         private const val DEFAULT_THEME = "system"
     }
 
@@ -230,6 +235,14 @@ class CalculatorViewModel(
     )
     val showNumbersShortcuts: StateFlow<Boolean> = _showNumbersShortcuts
 
+    private val _numberFormatSettings = MutableStateFlow(
+        NumberFormatSettings(
+            separators = NumberSeparatorPreset.fromPrefValue(prefs?.getString(PREF_NUMBER_SEPARATOR_PRESET, NumberSeparatorPreset.LOCALE.prefValue)),
+            decimal = NumberDecimalPreset.fromPrefValue(prefs?.getString(PREF_NUMBER_DECIMAL_PRESET, NumberDecimalPreset.LOCALE.prefValue))
+        )
+    )
+    val numberFormatSettings: StateFlow<NumberFormatSettings> = _numberFormatSettings
+
     fun setTheme(theme: String) {
         _currentTheme.value = theme
         prefs?.edit()?.putString(PREF_THEME, theme)?.apply()
@@ -259,6 +272,14 @@ class CalculatorViewModel(
     fun setShowNumbersShortcuts(enabled: Boolean) {
         _showNumbersShortcuts.value = enabled
         prefs?.edit()?.putBoolean(PREF_SHOW_NUMBERS_SHORTCUTS, enabled)?.apply()
+    }
+
+    fun setNumberFormatSettings(settings: NumberFormatSettings) {
+        _numberFormatSettings.value = settings
+        prefs?.edit()
+            ?.putString(PREF_NUMBER_SEPARATOR_PRESET, settings.separators.prefValue)
+            ?.putString(PREF_NUMBER_DECIMAL_PRESET, settings.decimal.prefValue)
+            ?.apply()
     }
 
     fun setAutoBackupEnabled(context: Context, enabled: Boolean) {
@@ -468,7 +489,8 @@ class CalculatorViewModel(
         // Recalculate everything and batch-write results in one transaction
         val allLines = dao.getLinesForFileSync(fileId)
         val calculatedLines = MathEngine.calculate(allLines, createFileContextLoader(fileId))
-        dao.updateLines(fileId, calculatedLines)
+        val versionedLines = calculatedLines.map { it.copy(version = it.version + 1) }
+        dao.updateLines(fileId, versionedLines)
     }
 
     fun clearHistory(fileId: Long) {
@@ -486,7 +508,8 @@ class CalculatorViewModel(
             calculationMutex.withLock {
                 val allLines = dao.getLinesForFileSync(fileId)
                 val calculatedLines = MathEngine.calculate(allLines, createFileContextLoader(fileId))
-                dao.updateLines(fileId, calculatedLines, updateTimestamp = false)
+                val versionedLines = calculatedLines.map { it.copy(version = it.version + 1) }
+                dao.updateLines(fileId, versionedLines, updateTimestamp = false)
             }
         }
     }
@@ -495,24 +518,29 @@ class CalculatorViewModel(
     // Update a line and recalculate everything from it downward
     fun updateLine(updatedLine: LineEntity) {
         viewModelScope.launch(Dispatchers.IO) {
-            calculationMutex.withLock {
-                // Save the user's current typing
-                dao.updateLine(updatedLine)
+            updateLineInternal(updatedLine)
+        }
+    }
 
-                // Fetch all lines for this file to ensure context is correct
-                val allLines = dao.getLinesForFileSync(updatedLine.fileId)
+    suspend fun updateLineInternal(updatedLine: LineEntity) {
+        calculationMutex.withLock {
+            // Save the user's current typing
+            dao.updateLine(updatedLine)
 
-                // Find where the changed line sits. Preceding lines are not re-evaluated;
-                // their variable state is inherited. If not found, fall back to 0 (recalculate all).
-                val changedIndex = allLines.indexOfFirst { it.id == updatedLine.id }.coerceAtLeast(0)
+            // Fetch all lines for this file to ensure context is correct
+            val allLines = dao.getLinesForFileSync(updatedLine.fileId)
 
-                // Recalculate only affected lines (from changedIndex onward), inheriting variable
-                // state from the preceding lines without re-evaluating them.
-                val affectedLines = MathEngine.calculateFrom(allLines, changedIndex, createFileContextLoader(updatedLine.fileId))
+            // Find where the changed line sits. Preceding lines are not re-evaluated;
+            // their variable state is inherited. If not found, fall back to 0 (recalculate all).
+            val changedIndex = allLines.indexOfFirst { it.id == updatedLine.id }.coerceAtLeast(0)
 
-                // Batch-write all updated results in one DB transaction
-                dao.updateLines(updatedLine.fileId, affectedLines)
-            }
+            // Recalculate only affected lines (from changedIndex onward), inheriting variable
+            // state from the preceding lines without re-evaluating them.
+            val affectedLines = MathEngine.calculateFrom(allLines, changedIndex, createFileContextLoader(updatedLine.fileId))
+            val versionedLines = affectedLines.map { it.copy(version = it.version + 1) }
+
+            // Batch-write all updated results in one DB transaction
+            dao.updateLines(updatedLine.fileId, versionedLines)
         }
     }
 
@@ -544,13 +572,13 @@ class CalculatorViewModel(
         }
     }
 
-    suspend fun addLine(fileId: Long, sortOrder: Int, afterLineId: Long? = null): Long {
+    suspend fun addLine(fileId: Long, sortOrder: Int, expression: String = "", afterLineId: Long? = null): Long {
         return withContext(Dispatchers.IO) {
             calculationMutex.withLock {
                 // Save state for undo
                 saveStateForUndo(fileId)
 
-                val newLine = LineEntity(fileId = fileId, sortOrder = sortOrder, expression = "", result = "")
+                val newLine = LineEntity(fileId = fileId, sortOrder = sortOrder, expression = expression, result = "")
                 val newId = dao.moveAndInsertLine(fileId, afterLineId, newLine)
 
                 // Fetch the now-normalized lines
@@ -561,9 +589,80 @@ class CalculatorViewModel(
 
                 // Recalculate everything from the new line downward
                 val affectedLines = MathEngine.calculateFrom(updatedAllLines, insertIndex, createFileContextLoader(fileId))
-                dao.updateLines(fileId, affectedLines)
+                val versionedLines = affectedLines.map { it.copy(version = it.version + 1) }
+                dao.updateLines(fileId, versionedLines, updateTimestamp = false)
 
                 newId
+            }
+        }
+    }
+
+    /**
+     * Splits a line at the given [splitIndex] within its expression.
+     * The text before [splitIndex] stays on the original line, and text after it
+     * is moved to a new line inserted immediately below.
+     *
+     * This operation is atomic and ensures consistent state between the split lines.
+     */
+    suspend fun splitLine(lineId: Long, splitIndex: Int, currentExpression: String? = null): Long {
+        return withContext(Dispatchers.IO) {
+            calculationMutex.withLock {
+                val line = dao.getLineById(lineId) ?: return@withLock -1L
+                val fileId = line.fileId
+                saveStateForUndo(fileId)
+
+                val originalExpression = currentExpression ?: line.expression
+                val safeSplitIndex = splitIndex.coerceIn(0, originalExpression.length)
+                val keep = originalExpression.substring(0, safeSplitIndex)
+                val move = originalExpression.substring(safeSplitIndex)
+
+                // Update the current line with the prefix and clear result
+                dao.updateLine(line.copy(expression = keep, result = "", version = line.version + 1))
+
+                // Insert the new line with the suffix and clear result
+                val newLine = LineEntity(
+                    fileId = fileId,
+                    sortOrder = line.sortOrder + 1,
+                    expression = move,
+                    result = ""
+                )
+                val newId = dao.moveAndInsertLine(fileId, line.id, newLine)
+
+                // Recalculate affected lines starting from the split point
+                val updatedAllLines = dao.getLinesForFileSync(fileId)
+                val splitIndexInList = updatedAllLines.indexOfFirst { it.id == line.id }.coerceAtLeast(0)
+                val affectedLines = MathEngine.calculateFrom(updatedAllLines, splitIndexInList, createFileContextLoader(fileId))
+                val versionedLines = affectedLines.map { it.copy(version = it.version + 1) }
+                dao.updateLines(fileId, versionedLines, updateTimestamp = false)
+
+                newId
+            }
+        }
+    }
+
+    /**
+     * Merges [currentLineId] into [prevLineId].
+     * The expression of [currentLineId] is appended to [prevLineId], and [currentLineId] is then deleted.
+     */
+    suspend fun mergeLines(prevLineId: Long, currentLineId: Long) {
+        withContext(Dispatchers.IO) {
+            calculationMutex.withLock {
+                val prevLine = dao.getLineById(prevLineId) ?: return@withLock
+                val currentLine = dao.getLineById(currentLineId) ?: return@withLock
+                
+                val fileId = prevLine.fileId
+                saveStateForUndo(fileId)
+
+                val mergedExpression = prevLine.expression + currentLine.expression
+                // Update and clear result to prevent stale data display during calculation
+                dao.updateLine(prevLine.copy(expression = mergedExpression, result = "", version = prevLine.version + 1))
+                dao.deleteAndNormalize(currentLine)
+
+                // Recalculate starting from the merged line
+                val updatedLines = dao.getLinesForFileSync(fileId)
+                val mergedIndex = updatedLines.indexOfFirst { it.id == prevLine.id }.coerceAtLeast(0)
+                val affectedLines = MathEngine.calculateFrom(updatedLines, mergedIndex, createFileContextLoader(fileId))
+                dao.updateLines(fileId, affectedLines, updateTimestamp = false)
             }
         }
     }
@@ -589,7 +688,8 @@ class CalculatorViewModel(
                 // the deleted one now sits at the deleted line's old position.
                 if (deletedIndex in updatedLines.indices) {
                     val affectedLines = MathEngine.calculateFrom(updatedLines, deletedIndex, createFileContextLoader(line.fileId))
-                    dao.updateLines(line.fileId, affectedLines)
+                    val versionedLines = affectedLines.map { l -> l.copy(version = l.version + 1) }
+                    dao.updateLines(line.fileId, versionedLines)
                 }
             }
         }

@@ -5,6 +5,7 @@ import org.junit.Assert.*
 import org.junit.Test
 import java.math.BigDecimal
 import kotlinx.coroutines.runBlocking
+import java.util.Locale
 
 class MathEngineTest {
 
@@ -387,6 +388,44 @@ class MathEngineTest {
         assertEquals("10000.0 g", result[0].result)
         assertEquals("1000.0 g", result[1].result)
         assertEquals("10000.0 g", result[2].result)
+    }
+
+    @Test
+    fun `unit cancellation in division returns unitless result`() = runBlocking {
+        val lines = listOf(
+            createLine("10km / 100m"),
+            createLine("(10km * 10km) / 50sqkm"),
+            createLine("x = 10km / 100m"),
+            createLine("x * 2"),
+            createLine("100kg / 10g"),
+            createLine("10kg / 2kg"),
+            createLine("1h / 60min")
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("100.0", result[0].result)
+        assertEquals("2.0", result[1].result)
+        assertEquals("100.0", result[2].result)
+        assertEquals("200.0", result[3].result)
+        assertEquals("10000.0", result[4].result)
+        assertEquals("5.0", result[5].result)
+        assertEquals("1.0", result[6].result)
+    }
+
+    @Test
+    fun `non linear same category division returns error`() = runBlocking {
+        val lines = listOf(
+            createLine("20 C / 10 C", sortOrder = 0),
+            createLine("6 l100km / 2 l100km", sortOrder = 1)
+        )
+
+        val result = MathEngine.calculate(lines)
+        assertEquals("Err", result[0].result)
+        assertEquals("Err", result[1].result)
+
+        val err0 = MathEngine.getErrorDetails(lines, 0)
+        val err1 = MathEngine.getErrorDetails(lines, 1)
+        assertTrue(err0?.contains("unsupported multiplicative unit") == true)
+        assertTrue(err1?.contains("unsupported multiplicative unit") == true)
     }
 
     @Test
@@ -1783,8 +1822,8 @@ class MathEngineTest {
         assertEquals("10", MathEngine.formatDisplayResult("10.0", 2)) // whole numbers are displayed without decimal points
         assertEquals("4", MathEngine.formatDisplayResult("4", 6)) // whole numbers are displayed without decimal points
         assertEquals("Err", MathEngine.formatDisplayResult("Err", 2))
-        assertEquals("1234.57", MathEngine.formatDisplayResult("1234.5678", 2))
-        assertEquals("1234.5678000000", MathEngine.formatDisplayResult("1234.5678", 10))
+        assertEquals("1,234.57", MathEngine.formatDisplayResult("1234.5678", 2, java.util.Locale.ROOT))
+        assertEquals("1,234.5678000000", MathEngine.formatDisplayResult("1234.5678", 10, java.util.Locale.ROOT))
     }
 
     @Test
@@ -1797,20 +1836,60 @@ class MathEngineTest {
 
     @Test
     fun `formatDisplayResult handles scientific notation`() = runBlocking {
-        assertEquals("1.00e+20", MathEngine.formatDisplayResult("1.0E20", 2, java.util.Locale.ROOT))
-        assertEquals("1e+20", MathEngine.formatDisplayResult("1.0E20", 0, java.util.Locale.ROOT))
+        assertEquals("1.00E20", MathEngine.formatDisplayResult("1.0E20", 2, java.util.Locale.ROOT))
+        assertEquals("1E20", MathEngine.formatDisplayResult("1.0E20", 0, java.util.Locale.ROOT))
+        assertEquals("1.00E1000", MathEngine.formatDisplayResult("1.0E1000", 2, java.util.Locale.ROOT))
     }
 
     @Test
     fun `formatDisplayResult respects explicit locales`() = runBlocking {
         val raw = "1234.567"
-        // Locale.ROOT uses dot
-        assertEquals("1234.57", MathEngine.formatDisplayResult(raw, 2, java.util.Locale.ROOT))
-        // Locale.GERMANY uses comma
-        assertEquals("1234,57", MathEngine.formatDisplayResult(raw, 2, java.util.Locale.GERMANY))
-        // Scientific notation with Locale.GERMANY
+        assertEquals("1,234.57", MathEngine.formatDisplayResult(raw, 2, java.util.Locale.ROOT))
+        assertEquals("1.234,57", MathEngine.formatDisplayResult(raw, 2, java.util.Locale.GERMANY))
         val largeRaw = "1.23E30"
-        assertEquals("1,23e+30", MathEngine.formatDisplayResult(largeRaw, 2, java.util.Locale.GERMANY))
+        assertEquals("1,23E30", MathEngine.formatDisplayResult(largeRaw, 2, java.util.Locale.GERMANY))
+    }
+
+    @Test
+    fun `formatDisplayResult can disable separators with explicit off preset`() = runBlocking {
+        val settings = NumberFormatSettings(separators = NumberSeparatorPreset.OFF)
+        assertEquals("1234567", MathEngine.formatDisplayResult("1234567", 2, java.util.Locale.US, settings))
+    }
+
+    @Test
+    fun `formatDisplayResult respects system locale for french style`() = runBlocking {
+        val settings = NumberFormatSettings(
+            separators = NumberSeparatorPreset.LOCALE,
+            decimal = NumberDecimalPreset.LOCALE
+        )
+        assertEquals("1\u202F234,57", MathEngine.formatDisplayResult("1234.567", 2, java.util.Locale.FRANCE, settings))
+    }
+
+    @Test
+    fun `formatDisplayResult respects explicit comma and dot settings`() = runBlocking {
+        val settings = NumberFormatSettings(
+            separators = NumberSeparatorPreset.COMMA,
+            decimal = NumberDecimalPreset.DOT
+        )
+        assertEquals("1,234.57", MathEngine.formatDisplayResult("1234.567", 2, java.util.Locale.FRANCE, settings))
+    }
+
+    @Test
+    fun `formatDisplayResult respects explicit dot and comma settings`() = runBlocking {
+        val settings = NumberFormatSettings(
+            separators = NumberSeparatorPreset.DOT,
+            decimal = NumberDecimalPreset.COMMA
+        )
+        assertEquals("1.234,57", MathEngine.formatDisplayResult("1234.567", 2, java.util.Locale.US, settings))
+    }
+
+    @Test
+    fun `formatDisplayResult respects explicit decimal preset independently`() = runBlocking {
+        val settings = NumberFormatSettings(
+            separators = NumberSeparatorPreset.OFF,
+            decimal = NumberDecimalPreset.COMMA
+        )
+        assertEquals("1234,50", MathEngine.formatDisplayResult("1234.5", 2, java.util.Locale.US, settings))
     }
 
     @Test
@@ -2369,6 +2448,60 @@ class MathEngineTest {
     }
 
     @Test
+    fun `multiplying length quantities promotes area and volume`() = runBlocking {
+        val lines = listOf(
+            createLine("4 m * 2 m", sortOrder = 0),
+            createLine("last + 2 sqm", sortOrder = 1),
+            createLine("4 m * 2 m * 2 m", sortOrder = 2),
+            createLine("last + 4 cubic meter", sortOrder = 3)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("8.0 m²", result[0].result)
+        assertEquals("10.0 m²", result[1].result)
+        assertEquals("16.0 m³", result[2].result)
+        assertEquals("20.0 m³", result[3].result)
+    }
+
+    @Test
+    fun `dividing area and volume quantities reduces dimension`() = runBlocking {
+        val lines = listOf(
+            createLine("4 m * 2 m * 2 m / 2 m", sortOrder = 0),
+            createLine("4 m * 2 m / 2 m", sortOrder = 1),
+            createLine("8 m³ / 2 m", sortOrder = 2)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("8.0 m²", result[0].result)
+        assertEquals("4.0 m", result[1].result)
+        assertEquals("4.0 m²", result[2].result)
+    }
+
+    @Test
+    fun `unsupported multiplicative unit chain returns error`() = runBlocking {
+        val lines = listOf(createLine("2m * 2m * 2m * 2m", sortOrder = 0))
+        val result = MathEngine.calculate(lines)
+        assertEquals("Err", result[0].result)
+        val err = MathEngine.getErrorDetails(lines, 0)
+        assertTrue(err?.startsWith("unsupported multiplicative unit:") == true)
+    }
+
+    @Test
+    fun `same category multiplication without derivation returns error`() = runBlocking {
+        val lines = listOf(
+            createLine("2 kg * 3 kg", sortOrder = 0),
+            createLine("4 h * 2 h", sortOrder = 1)
+        )
+
+        val result = MathEngine.calculate(lines)
+        assertEquals("Err", result[0].result)
+        assertEquals("Err", result[1].result)
+
+        val err0 = MathEngine.getErrorDetails(lines, 0)
+        val err1 = MathEngine.getErrorDetails(lines, 1)
+        assertTrue(err0?.startsWith("unsupported multiplicative unit:") == true)
+        assertTrue(err1?.startsWith("unsupported multiplicative unit:") == true)
+    }
+
+    @Test
     fun `add scalar inherits unit`() = runBlocking {
         val lines = listOf(
             createLine("53 weeks", sortOrder = 0),
@@ -2558,7 +2691,7 @@ class MathEngineTest {
         val input = "12345678901234567890"
         // Should use scientific notation with precision
         val formatted = MathEngine.formatDisplayResult(input, 2, java.util.Locale.US)
-        assertTrue(formatted.contains("e"))
+        assertTrue(formatted.contains("E"))
         assertTrue(formatted.startsWith("1.23"))
     }
 
@@ -2609,5 +2742,105 @@ class MathEngineTest {
     fun `negative numbers in scientific notation`() {
         assertEquals("-1.0E7", MathEngine.formatBigDecimal(java.math.BigDecimal("-10000000")))
         assertEquals("-1.0E-4", MathEngine.formatBigDecimal(java.math.BigDecimal("-0.0001")))
+    }
+
+    @Test
+    fun `formatDisplayResult preserves scientific notation for small numbers`() = runBlocking {
+        // Small number without unit
+        val result1 = MathEngine.formatDisplayResult("1.0E-4", 2, Locale.ROOT)
+        assertEquals("1.00E-4", result1)
+
+        // Small number with unit
+        val result2 = MathEngine.formatDisplayResult("1.0E-4 kg", 2, Locale.ROOT)
+        assertEquals("1.00E-4 kg", result2)
+
+        // Large number without unit
+        val result3 = MathEngine.formatDisplayResult("1.0E10", 2, Locale.ROOT)
+        assertEquals("1.00E10", result3)
+
+        // Plain decimal should still use decimal formatting
+        val result4 = MathEngine.formatDisplayResult("1.2345", 2, Locale.ROOT)
+        assertEquals("1.23", result4)
+    }
+    @Test
+    fun `variable as unit quantity anchor`() = runBlocking {
+        val lines = listOf(
+            createLine("a = 15", sortOrder = 0),
+            createLine("a km", sortOrder = 1),
+            createLine("a km in m", sortOrder = 2)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("15.0", result[0].result)
+        assertEquals("15.0 km", result[1].result)
+        assertEquals("15000.0 m", result[2].result)
+    }
+
+    @Test
+    fun `variable with composite unit conversion`() = runBlocking {
+        val lines = listOf(
+            createLine("a = 15", sortOrder = 0),
+            createLine("a kilometers per hour to mph", sortOrder = 1)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("15.0", result[0].result)
+        // 15 km/h to mph: 15 / 1.60934 = 9.32056788356...
+        assertTrue(result[1].result.contains("9.3205"))
+        assertTrue(result[1].result.endsWith(" mph"))
+    }
+
+    @Test
+    fun `multiple variables as unit quantities`() = runBlocking {
+        val lines = listOf(
+            createLine("v1 = 10", sortOrder = 0),
+            createLine("v2 = 500", sortOrder = 1),
+            createLine("v1 km + v2 m", sortOrder = 2)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("10.0", result[0].result)
+        assertEquals("500.0", result[1].result)
+        assertEquals("10500.0 m", result[2].result)
+    }
+
+    @Test
+    fun `underscore with units should parse correctly`() = runBlocking {
+        val lines = listOf(
+            createLine("10", sortOrder = 0),
+            createLine("_ km", sortOrder = 1)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("10.0", result[0].result)
+        assertEquals("10.0 km", result[1].result)
+    }
+
+    @Test
+    fun `last with units should parse correctly`() = runBlocking {
+        val lines = listOf(
+            createLine("10", sortOrder = 0),
+            createLine("last m", sortOrder = 1)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("10.0", result[0].result)
+        assertEquals("10.0 m", result[1].result)
+    }
+
+    @Test
+    fun `last with unit conversion should parse correctly`() = runBlocking {
+        val lines = listOf(
+            createLine("10", sortOrder = 0),
+            createLine("last km to m", sortOrder = 1)
+        )
+        val result = MathEngine.calculate(lines)
+        assertEquals("10000.0 m", result[1].result)
+    }
+
+    @Test
+    fun `line number alias with units should parse correctly`() = runBlocking {
+        val lines = listOf(
+            createLine("10", sortOrder = 0),
+            createLine("lineno km", sortOrder = 1)
+        )
+        val result = MathEngine.calculate(lines)
+        // lineno is 2 for the second line.
+        assertEquals("2.0 km", result[1].result)
     }
 }

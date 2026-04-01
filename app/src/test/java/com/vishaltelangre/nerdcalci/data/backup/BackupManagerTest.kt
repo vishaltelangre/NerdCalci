@@ -54,6 +54,9 @@ class BackupManagerTest {
         override suspend fun getLineCountForFile(fileId: Long): Int =
             lines.count { it.fileId == fileId }
 
+        override suspend fun getLineById(lineId: Long): LineEntity? =
+            lines.find { it.id == lineId }
+
         override suspend fun insertFile(file: FileEntity): Long {
             val id = if (file.id == 0L) nextFileId++ else file.id
             val newFile = file.copy(id = id)

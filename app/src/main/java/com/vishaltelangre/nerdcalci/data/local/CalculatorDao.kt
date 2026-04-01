@@ -44,6 +44,9 @@ abstract class CalculatorDao {
     // Synchronous version for operations that need immediate results
     @Query("SELECT * FROM lines WHERE fileId = :fileId ORDER BY sortOrder ASC, id ASC")
     abstract suspend fun getLinesForFileSync(fileId: Long): List<LineEntity>
+    
+    @Query("SELECT * FROM lines WHERE id = :lineId")
+    abstract suspend fun getLineById(lineId: Long): LineEntity?
 
     @Query("SELECT COUNT(*) FROM lines WHERE fileId = :fileId")
     abstract suspend fun getLineCountForFile(fileId: Long): Int

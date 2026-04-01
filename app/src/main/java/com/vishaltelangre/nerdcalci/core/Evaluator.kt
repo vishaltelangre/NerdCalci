@@ -375,18 +375,31 @@ class Evaluator(
         }
 
         val resultVal = applyOp(leftScalar, expr.op, rightScalar)
+        val resultScale = if (expr.op == TokenKind.STAR || expr.op == TokenKind.SLASH) {
+            UnitConverter.deriveUnitScale(leftUnit, rightUnit, expr.op)
+        } else {
+            BigDecimal.ONE
+        }
 
         // Handle scaling multiplication/division inheritance
         val resultUnit = if (expr.op == TokenKind.STAR || expr.op == TokenKind.SLASH) {
             if (leftEval.explicitUnitless || rightEval.explicitUnitless ||
                 leftUnit?.category == UnitCategory.SCALAR || rightUnit?.category == UnitCategory.SCALAR) {
                 null
-            } else if (leftUnit != null && rightUnit == null) {
-                leftEval.unit
-            } else if (leftUnit == null && rightUnit != null && expr.op == TokenKind.STAR) {
-                rightEval.unit
             } else {
-                null
+                val derivedUnit = UnitConverter.deriveUnit(leftUnit, rightUnit, expr.op)
+                when {
+                    derivedUnit == "unitless" -> null  // Units canceled out
+                    derivedUnit == null && leftUnit != null && rightUnit != null -> {
+                        throw EvalException(
+                            "unsupported multiplicative unit: ${leftUnit.name} ${expr.op.display} ${rightUnit.name}"
+                        )
+                    }
+                    derivedUnit != null -> derivedUnit
+                    leftUnit != null && rightUnit == null -> leftEval.unit
+                    leftUnit == null && rightUnit != null && expr.op == TokenKind.STAR -> rightEval.unit
+                    else -> null
+                }
             }
         } else {
             if (leftEval.explicitUnitless || rightEval.explicitUnitless ||
@@ -397,7 +410,7 @@ class Evaluator(
             }
         }
 
-        return EvaluationResult(resultVal, resultUnit)
+        return EvaluationResult(resultVal.multiply(resultScale), resultUnit)
     }
 
     private fun applyOp(left: BigDecimal, op: TokenKind, right: BigDecimal): BigDecimal = when (op) {

@@ -2,6 +2,7 @@ package com.vishaltelangre.nerdcalci.ui.calculator
 
 import com.vishaltelangre.nerdcalci.core.Builtins
 import com.vishaltelangre.nerdcalci.core.MathEngine
+import com.vishaltelangre.nerdcalci.core.NumberFormatSettings
 import com.vishaltelangre.nerdcalci.core.UnitCategory
 import com.vishaltelangre.nerdcalci.core.UnitConverter
 import com.vishaltelangre.nerdcalci.core.Lexer
@@ -87,6 +88,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalDensity
 import androidx.navigation.NavHostController
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
@@ -110,8 +112,6 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
@@ -173,14 +173,38 @@ private class SyntaxHighlightingTransformation(
     private val commentColor: Color,
     private val conversionColor: Color,
     private val defaultColor: Color,
-    private val fileVariables: Map<String, String> = emptyMap()
+    private val fileVariables: Map<String, String> = emptyMap(),
+    private val isNonFirstLine: Boolean
 ) : VisualTransformation {
+    /**
+     * Leading space workaround:
+     * We prepend a dummy space (" ") to the displayText of all non-first lines.
+     * This space serves as a reliable target for Backspace events on all Android keyboards.
+     * Deleting this space triggers a line merge or deletion in [LineRow].
+     *
+     * Offset mapping:
+     * - Original (0..N) maps to Transformed (1..N+1) if hasLeadingSpace
+     * - Transformed (1..N+1) maps to Original (0..N) if hasLeadingSpace
+     * - Transformed index 0 (the dummy space itself) is clamped to Original index 0
+     */
     override fun filter(text: AnnotatedString): TransformedText {
-        // We use a single space " " for empty lines so that backspace can delete them.
-        val isDummySpace = text.text == " "
+        val hasLeadingSpace = isNonFirstLine && text.text.startsWith(" ")
+        val isDummySpace = hasLeadingSpace && text.text.length == 1
 
-        val transformedText = if (isDummySpace) {
-            AnnotatedString("") // Hide the space visually
+        val transformedText = if (hasLeadingSpace) {
+            applySyntaxHighlighting(
+                text.text.substring(1),
+                numberColor,
+                variableColor,
+                keywordColor,
+                functionColor,
+                operatorColor,
+                percentColor,
+                commentColor,
+                conversionColor,
+                defaultColor,
+                fileVariables
+            )
         } else {
             applySyntaxHighlighting(
                 text.text,
@@ -201,12 +225,20 @@ private class SyntaxHighlightingTransformation(
             override fun originalToTransformed(offset: Int): Int {
                 // Force cursor to index 0 visually so it looks like the line is empty.
                 if (isDummySpace && offset == 1) return 0
+
+                if (hasLeadingSpace) {
+                    return if (offset == 0) 0 else offset - 1
+                }
                 return offset
             }
 
             override fun transformedToOriginal(offset: Int): Int {
                 // Map visual position 0 back to original index 1 so backspace still hits the space.
                 if (isDummySpace && offset == 0) return 1
+
+                if (hasLeadingSpace) {
+                    return offset + 1
+                }
                 return offset
             }
         }
@@ -308,17 +340,35 @@ private fun applySyntaxHighlighting(
  * @return Set of Suggestions defined before the specified line
  */
 @OptIn(ExperimentalMaterial3Api::class)
-private fun extractSuggestions(lines: List<LineEntity>, upToSortOrder: Int): Pair<Set<Suggestion>, Map<String, String>> {
-    val suggestionMap = mutableMapOf<String, Suggestion>()
-    val fileVariables = mutableMapOf<String, String>()
+/**
+ * Extracts suggestions from all lines in a single pass, returning a list where each element
+ * contains the available variables and file variables for the corresponding line.
+ */
+private fun extractAllSuggestions(lines: List<LineEntity>): List<Pair<Set<Suggestion>, Map<String, String>>> {
+    val result = mutableListOf<Pair<Set<Suggestion>, Map<String, String>>>()
 
-    // Defaults (Dynamic variables, constants, global functions)
+    // Use a map to track suggestions by name for easy overwriting/updates
+    val suggestionMap = mutableMapOf<String, Suggestion>()
+
+    // Initialize with defaults (Dynamic variables, constants, global functions)
     MathEngine.dynamicVariableNames.forEach { suggestionMap[it] = Suggestion(it, SuggestionType.DYNAMIC_VARIABLE) }
     Builtins.constantNames.forEach { suggestionMap[it] = Suggestion(it, SuggestionType.CONSTANT) }
     Builtins.functionNames.forEach { suggestionMap[it] = Suggestion(it, SuggestionType.GLOBAL_FUNCTION) }
     suggestionMap["file"] = Suggestion("file", SuggestionType.GLOBAL_FUNCTION)
     suggestionMap["convert"] = Suggestion("convert", SuggestionType.GLOBAL_FUNCTION)
-    lines.filter { it.sortOrder < upToSortOrder }.forEach { line ->
+
+    val currentFileVariables = mutableMapOf<String, String>()
+    val varFuncNamePattern = Constants.VAR_FUNC_NAME_PATTERN.removePrefix("^").removeSuffix("$")
+
+    var lastSet = suggestionMap.values.toSet()
+    var lastMap = currentFileVariables.toMap()
+
+    lines.forEach { line ->
+        // Add current state as the result for this line
+        // Optimization: Reuse the last set/map if no changes occurred in this line
+        result.add(lastSet to lastMap)
+
+        // Update state with variables/functions from THIS line for SUBSEQUENT lines
         // Strip comments first
         val hashIndex = line.expression.indexOf('#')
         val exprWithoutComment = if (hashIndex >= 0) {
@@ -327,32 +377,62 @@ private fun extractSuggestions(lines: List<LineEntity>, upToSortOrder: Int): Pai
             line.expression
         }
 
-        val varFuncNamePattern = Constants.VAR_FUNC_NAME_PATTERN.removePrefix("^").removeSuffix("$")
-        // Match both `var =` and `f(...) =`
-        val regex = Regex("""^\s*($varFuncNamePattern)(?:\s*\((.*?)\))?\s*=""")
-        val matchResult = regex.find(exprWithoutComment)
-        if (matchResult != null) {
-            val name = matchResult.groupValues[1].trim()
+        if (exprWithoutComment.contains("=")) {
+            // Match both `var =` and `f(...) =`
+            val regex = Regex("""^\s*($varFuncNamePattern)(?:\s*\((.*?)\))?\s*=""")
+            val matchResult = regex.find(exprWithoutComment)
+            if (matchResult != null) {
+                val name = matchResult.groupValues[1].trim()
 
-            // If it matched the (...) part, it's a function
-            val isFunction = exprWithoutComment.substring(matchResult.groups[1]!!.range.last + 1).trimStart().startsWith("(")
+                // If it matched the (...) part or if there is a '(' after it, it's a function
+                val afterIdentifier = exprWithoutComment.substring(matchResult.groups[1]!!.range.last + 1).trimStart()
+                val isFunction = afterIdentifier.startsWith("(")
 
-            if (isFunction) {
-                suggestionMap[name] = Suggestion(name, SuggestionType.LOCAL_FUNCTION)
+                if (isFunction) {
+                    suggestionMap[name] = Suggestion(name, SuggestionType.LOCAL_FUNCTION)
+                    lastSet = suggestionMap.values.toSet()
+                } else {
+                    suggestionMap[name] = Suggestion(name, SuggestionType.VARIABLE)
+                    lastSet = suggestionMap.values.toSet()
+
+                    // Reset file variable if reassigned to something else.
+                    // Use a snapshot so `f = f` can preserve the existing file link.
+                    val previousFileVariables = currentFileVariables.toMap()
+                    val wasFileVariable = previousFileVariables.containsKey(name)
+                    currentFileVariables.remove(name)
+
+                    val rhs = exprWithoutComment.substring(matchResult.groups[0]!!.range.last + 1).trim()
+                    val fileMatch = Regex("""file\(\s*"([^"]+)"\s*\)""").matchEntire(rhs)
+                    when {
+                        fileMatch != null -> currentFileVariables[name] = fileMatch.groupValues[1]
+                        rhs in previousFileVariables -> currentFileVariables[name] = previousFileVariables.getValue(rhs)
+                    }
+
+                    // Only recreate map if it actually changed
+                    if (wasFileVariable || fileMatch != null || rhs in previousFileVariables) {
+                        lastMap = currentFileVariables.toMap()
+                    }
+                }
+            }
+        } else {
+            val incrementOrDecrement = Regex("""^\s*($varFuncNamePattern)\s*(\+\+|--)\s*$""").find(exprWithoutComment)
+            if (incrementOrDecrement != null) {
+                val name = incrementOrDecrement.groupValues[1].trim()
+                if (currentFileVariables.remove(name) != null) {
+                    lastMap = currentFileVariables.toMap()
+                }
             } else {
-                suggestionMap[name] = Suggestion(name, SuggestionType.VARIABLE)
-                fileVariables.remove(name)
-
-                val rhs = exprWithoutComment.substring(matchResult.groups[0]!!.range.last + 1).trim()
-                val fileMatch = Regex("""file\(\s*"([^"]+)"\s*\)""").matchEntire(rhs)
-                when {
-                    fileMatch != null -> fileVariables[name] = fileMatch.groupValues[1]
-                    rhs in fileVariables -> fileVariables[name] = fileVariables.getValue(rhs)
+                val compoundAssignment = Regex("""^\s*($varFuncNamePattern)\s*(\+=|-=|\*=|/=|%=)""").find(exprWithoutComment)
+                if (compoundAssignment != null) {
+                    val name = compoundAssignment.groupValues[1].trim()
+                    if (currentFileVariables.remove(name) != null) {
+                        lastMap = currentFileVariables.toMap()
+                    }
                 }
             }
         }
     }
-    return Pair(suggestionMap.values.toSet(), fileVariables)
+    return result
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -369,6 +449,7 @@ private fun extractSuggestions(lines: List<LineEntity>, upToSortOrder: Int): Pai
 fun CalculatorScreen(
     fileId: Long,
     viewModel: CalculatorViewModel,
+    displayFormat: NumberFormatSettings,
     onBack: () -> Unit,
     onHelp: () -> Unit,
     onNavigateToFile: (Long) -> Unit = {}
@@ -376,7 +457,6 @@ fun CalculatorScreen(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
-
     val handleBack = {
         coroutineScope.launch {
             viewModel.deleteFileIfEmptyAndRecent(fileId)
@@ -424,6 +504,21 @@ fun CalculatorScreen(
     var focusLineId by remember { mutableStateOf<Long?>(null) }
     var focusCursorPosition by remember { mutableStateOf<Int?>(null) }
     var pendingScrollLineId by remember { mutableStateOf<Long?>(null) }
+
+    // Track if auto-focus has been tried for the current file to avoid repeating it
+    var hasAttemptedAutoFocus by rememberSaveable(fileId) { mutableStateOf(false) }
+
+    // Auto-focus the first line if the file is new/empty
+    LaunchedEffect(lines) {
+        if (!hasAttemptedAutoFocus && lines.isNotEmpty()) {
+            hasAttemptedAutoFocus = true
+            val firstLine = lines.firstOrNull() ?: return@LaunchedEffect
+            if (lines.size == 1 && firstLine.expression.isEmpty()) {
+                focusLineId = firstLine.id
+                focusCursorPosition = 0
+            }
+        }
+    }
 
     // Track which line is currently focused by the user
     var currentlyFocusedLineId by remember { mutableStateOf<Long?>(null) }
@@ -498,6 +593,11 @@ fun CalculatorScreen(
     val commentColor = if (isDarkTheme) SyntaxColors.CommentColorDark else SyntaxColors.CommentColorLight
     val functionColor = if (isDarkTheme) SyntaxColors.FunctionColorDark else SyntaxColors.FunctionColorLight
     val conversionColor = if (isDarkTheme) SyntaxColors.ConversionColorDark else SyntaxColors.ConversionColorLight
+
+    // Pre-calculate suggestions for all lines once per list update
+    val allSuggestionsByLine by remember(lines) {
+        derivedStateOf { extractAllSuggestions(lines) }
+    }
 
     Scaffold(
         modifier = Modifier
@@ -716,7 +816,7 @@ fun CalculatorScreen(
                                         showMenu = false
                                         val safeFileName = fileName.replace(Regex("[^a-zA-Z0-9.-]"), "_")
                                         coroutineScope.launch {
-                                            ExportUtils.exportAsPdf(context, safeFileName, lines, precision)
+                                            ExportUtils.exportAsPdf(context, safeFileName, lines, precision, viewModel.numberFormatSettings.value)
                                         }
                                     }
                                 )
@@ -732,7 +832,7 @@ fun CalculatorScreen(
                                         showMenu = false
                                         val safeFileName = fileName.replace(Regex("[^a-zA-Z0-9.-]"), "_")
                                         coroutineScope.launch {
-                                            ExportUtils.exportAsImage(context, safeFileName, lines, precision)
+                                            ExportUtils.exportAsImage(context, safeFileName, lines, precision, viewModel.numberFormatSettings.value)
                                         }
                                     }
                                 )
@@ -878,11 +978,10 @@ fun CalculatorScreen(
                 state = listState,
                 modifier = Modifier.fillMaxSize()
             ) {
+
                 itemsIndexed(lines, key = { _, line -> line.id }) { index, line ->
-                    // Compute available variables for this line (only from previous lines)
-                    val suggestionsResult = extractSuggestions(lines, line.sortOrder)
-                    val availableVariables = suggestionsResult.first
-                    val fileVariables = suggestionsResult.second
+                    // Get pre-calculated available variables for this line
+                    val (availableVariables, fileVariables) = allSuggestionsByLine.getOrElse(index) { emptySet<Suggestion>() to emptyMap<String, String>() }
 
                     LineRow(
                         line = line,
@@ -890,6 +989,7 @@ fun CalculatorScreen(
                         showLineNumbers = effectiveShowLineNumbers,
                         showSuggestions = effectiveShowSuggestions,
                         precision = precision,
+                        numberFormatSettings = displayFormat,
                         numberWidth = numberWidth,
                         availableVariables = availableVariables,
                         fileVariables = fileVariables,
@@ -917,8 +1017,8 @@ fun CalculatorScreen(
                                 currentlyFocusedLineId = null
                             }
                         },
-                        onValueChange = { newValue ->
-                            viewModel.updateLine(line.copy(expression = newValue))
+                        onValueChange = { newValue, newVersion ->
+                            viewModel.updateLine(line.copy(expression = newValue, version = newVersion))
                             // Scroll to this line only if it's being edited but off-screen
                             if (currentlyFocusedLineId == line.id) {
                                 coroutineScope.launch {
@@ -930,59 +1030,51 @@ fun CalculatorScreen(
                                 }
                             }
                         },
-                        onEnter = {
+                        onEnter = { expression, splitIndex ->
                             coroutineScope.launch {
-                                val newId = viewModel.addLine(fileId, line.sortOrder + 1, afterLineId = line.id)
+                                val newId = viewModel.splitLine(line.id, splitIndex, expression)
                                 focusLineId = newId
-                                // New lines created via Enter always have a leading space, start cursor at pos 1
-                                focusCursorPosition = 1
+                                // New lines created via Enter (splitting) have a leading space;
+                                // we want to focus at the very start of the moved text (pos 0).
+                                focusCursorPosition = 0
                                 pendingScrollLineId = newId
                             }
                         },
                         onDelete = {
                             if (lines.size > 1) {
-                                // Focus previous line immediately (no delay) to keep keyboard open
                                 val prevIndex = index - 1
                                 val prevLine = lines.getOrNull(prevIndex)
                                 if (prevLine != null) {
-                                    val prevLineNumber = prevIndex + 1
                                     focusLineId = prevLine.id
-                                    // For empty lines: line 1 has no leading space (pos 0), others at pos 1
-                                    focusCursorPosition = if (prevLine.expression.isEmpty()) {
-                                        if (prevLineNumber == 1) 0 else 1
-                                    } else {
-                                        prevLine.expression.length
-                                    }
+                                    focusCursorPosition = prevLine.expression.length
                                 }
                                 viewModel.deleteLine(line)
                             }
                         },
+                        onMergeWithPrevious = {
+                            if (index > 0) {
+                                val prevLine = lines[index - 1]
+                                val currentLine = line
+                                focusLineId = prevLine.id
+                                focusCursorPosition = prevLine.expression.length
+
+                                coroutineScope.launch {
+                                    viewModel.mergeLines(prevLine.id, currentLine.id)
+                                }
+                            }
+                        },
                         onNavigateUp = {
                             if (index > 0) {
-                                val prevIndex = index - 1
-                                val prevLine = lines[prevIndex]
-                                val prevLineNumber = prevIndex + 1
+                                val prevLine = lines[index - 1]
                                 focusLineId = prevLine.id
-                                // For empty lines: line 1 has no leading space (pos 0), others at pos 1
-                                focusCursorPosition = if (prevLine.expression.isEmpty()) {
-                                    if (prevLineNumber == 1) 0 else 1
-                                } else {
-                                    prevLine.expression.length
-                                }
+                                focusCursorPosition = prevLine.expression.length
                             }
                         },
                         onNavigateDown = {
                             if (index < lines.size - 1) {
-                                val nextIndex = index + 1
-                                val nextLine = lines[nextIndex]
-                                val nextLineNumber = nextIndex + 1
+                                val nextLine = lines[index + 1]
                                 focusLineId = nextLine.id
-                                // For empty lines: line 1 has no leading space (pos 0), others at pos 1
-                                focusCursorPosition = if (nextLine.expression.isEmpty()) {
-                                    if (nextLineNumber == 1) 0 else 1
-                                } else {
-                                    nextLine.expression.length
-                                }
+                                focusCursorPosition = 0
                             }
                         },
                         onCopyResult = { result ->
@@ -1066,6 +1158,10 @@ fun CalculatorScreen(
     }
 }
 
+private fun formatResult(text: String, precision: Int, settings: NumberFormatSettings): String {
+    return MathEngine.formatDisplayResult(text, precision, settings = settings)
+}
+
 @Composable
 private fun ShortcutButton(
     text: String,
@@ -1111,6 +1207,7 @@ private fun LineRow(
     showLineNumbers: Boolean,
     showSuggestions: Boolean,
     precision: Int,
+    numberFormatSettings: NumberFormatSettings,
     numberWidth: Dp,
     availableVariables: Set<Suggestion>,
     fileVariables: Map<String, String> = emptyMap(),
@@ -1130,25 +1227,40 @@ private fun LineRow(
     conversionColor: Color,
     onFocused: () -> Unit,
     onBlur: () -> Unit,
-    onValueChange: (String) -> Unit,
-    onEnter: () -> Unit,
+    onValueChange: (String, Long) -> Unit,
+    onEnter: (String, Int) -> Unit,
     onDelete: () -> Unit,
+    onMergeWithPrevious: () -> Unit,
     onNavigateUp: () -> Unit,
     onNavigateDown: () -> Unit,
     onCopyResult: (String) -> Unit,
     onGetErrorMessage: suspend (Long) -> String? = { null }
 ) {
     // Add leading space for backspace detection trick (but not for first line)
-    val displayText = if (line.expression.isEmpty() && lineNumber > 1) " " else line.expression
+    // This allows us to capture backspace even when TextField is at the start of original text
+    val displayText = if (lineNumber > 1) " " + line.expression else line.expression
     val defaultTextColor = MaterialTheme.colorScheme.onSurface
 
     var textFieldValue by remember(line.id) {
         mutableStateOf(TextFieldValue(text = displayText))
     }
 
+    // Track the last expression and version sent to the ViewModel to prevent race conditions
+    // between local state and database updates during rapid typing.
+    var lastSentExpression by remember(line.id) { mutableStateOf<String?>(null) }
+    var lastSentVersion by remember(line.id) { mutableStateOf(line.version) }
+
+    // Guard flag to prevent double-triggering of backspace handlers
+    var backspaceHandled by remember { mutableStateOf(false) }
+
+    // Reset the backspace guard flag after a short delay or when the line expression changes
+    LaunchedEffect(line.expression, line.id, line.version) {
+        backspaceHandled = false
+    }
+
     val syntaxHighlightingTransformation = remember(
         numberColor, variableColor, keywordColor, functionColor,
-        operatorColor, percentColor, commentColor, conversionColor, defaultTextColor, fileVariables
+        operatorColor, percentColor, commentColor, conversionColor, defaultTextColor, fileVariables, lineNumber
     ) {
         SyntaxHighlightingTransformation(
             numberColor = numberColor,
@@ -1160,10 +1272,10 @@ private fun LineRow(
             commentColor = commentColor,
             conversionColor = conversionColor,
             defaultColor = defaultTextColor,
-            fileVariables = fileVariables
+            fileVariables = fileVariables,
+            isNonFirstLine = lineNumber > 1
         )
     }
-    var previousSelection by remember { mutableStateOf(textFieldValue.selection) }
     var isFocused by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
 
@@ -1247,21 +1359,30 @@ private fun LineRow(
         }
     }
 
-    val suggestions = remember(suggestionContext, combinedVariables, allFiles, forceDismissSuggestions, showSuggestions, loadingSuggestions) {
+    var suggestions by remember { mutableStateOf<List<Suggestion>>(emptyList()) }
+
+    LaunchedEffect(suggestionContext, combinedVariables, allFiles, forceDismissSuggestions, showSuggestions, loadingSuggestions, textFieldValue.text, textFieldValue.selection) {
+        if (forceDismissSuggestions || !showSuggestions) {
+            suggestions = emptyList()
+            return@LaunchedEffect
+        }
+
+        // Debounce suggestion calculation to reduce UI lag during rapid typing
+        kotlinx.coroutines.delay(100)
+
         val cursorPos = textFieldValue.selection.start
         val text = textFieldValue.text
         val beforeCursor = if (cursorPos > 0) text.substring(0, cursorPos) else ""
 
-        if (!forceDismissSuggestions && showSuggestions && (currentWord.isNotEmpty() || isExplicitTrigger || contextType == SuggestionType.UNIT || contextType == SuggestionType.CONVERSION)) {
-            val tokens = runCatching { 
-                Lexer(beforeCursor).tokenize() 
+        val newSuggestions = if (currentWord.isNotEmpty() || isExplicitTrigger || contextType == SuggestionType.UNIT || contextType == SuggestionType.CONVERSION) {
+            val tokens = runCatching {
+                Lexer(beforeCursor).tokenize()
             }.getOrElse { emptyList() }
             val cleanTokens = tokens.filter { it.kind != TokenKind.EOF }
 
             if (loadingSuggestions && combinedVariables.isEmpty()) {
-                return@remember listOf(Suggestion("Loading...", SuggestionType.VARIABLE))
-            }
-            if (contextType == SuggestionType.FILE) {
+                listOf(Suggestion("Loading...", SuggestionType.VARIABLE))
+            } else if (contextType == SuggestionType.FILE) {
                 allFiles.filter { it.id != line.fileId }.mapNotNull { file ->
                     val match = file.name.calculateFuzzyMatch(currentWord, SuggestionType.FILE)
                     if (match != null && (currentWord.isEmpty() || file.name != currentWord)) {
@@ -1350,6 +1471,8 @@ private fun LineRow(
                 } else emptyList()
             }
         } else emptyList()
+
+        suggestions = newSuggestions
     }
 
     // Handle back button to close suggestions first if they are open
@@ -1358,8 +1481,14 @@ private fun LineRow(
     }
 
     // Sync with database updates
-    LaunchedEffect(line.expression, lineNumber) {
-        if (textFieldValue.text != displayText) {
+    LaunchedEffect(line.expression, line.version, lineNumber) {
+        // Only update local state if the database version is newer than or equal to what we last sent,
+        // or if the field is not focused (meaning it's an external update like a recalculation).
+        // This prevents "echo" updates from the database from overwriting the current text field
+        // during rapid typing, which is the root cause of cursor synchronization issues.
+        val isStaleEcho = isFocused && line.version < lastSentVersion
+        
+        if (!isStaleEcho && (line.expression != lastSentExpression || textFieldValue.text != displayText)) {
             val selection = TextRange(
                 textFieldValue.selection.start.coerceIn(0, displayText.length),
                 textFieldValue.selection.end.coerceIn(0, displayText.length)
@@ -1368,6 +1497,9 @@ private fun LineRow(
                 text = displayText,
                 selection = selection
             )
+            // Sync our local tracking with the actual DB state
+            lastSentExpression = line.expression
+            lastSentVersion = line.version
         }
     }
 
@@ -1378,15 +1510,16 @@ private fun LineRow(
 
             // Set cursor position - focusCursorPos is the desired position in the expression
             // We need to map this to the displayText position
-            val actualPos = if (line.expression.isEmpty()) {
-                // Line 1 has no leading space, others have space at position 0
-                if (lineNumber == 1) 0 else 1
+            val actualPos = if (lineNumber > 1) {
+                // Account for the leading dummy space
+                focusCursorPos + 1
             } else {
-                focusCursorPos.coerceIn(0, textFieldValue.text.length) // Ensure within bounds
+                focusCursorPos
             }
+            val coercedPos = actualPos.coerceIn(0, textFieldValue.text.length)
 
             textFieldValue = textFieldValue.copy(
-                selection = TextRange(actualPos)
+                selection = TextRange(coercedPos)
             )
             // onFocused() will be called by onFocusChanged when focus is gained
         }
@@ -1413,7 +1546,9 @@ private fun LineRow(
 
             val trimmedText = newText.trim()
             if (trimmedText != line.expression) {
-                onValueChange(trimmedText)
+                lastSentExpression = trimmedText
+                lastSentVersion++
+                onValueChange(trimmedText, lastSentVersion)
             }
 
             onInsertHandled()
@@ -1467,53 +1602,51 @@ private fun LineRow(
                     onValueChange = { newValue ->
                         val filteredText = newValue.text.replace("\n", "")
 
-                        // Handle Enter key
+                        // Handle Enter key (Line Splitting)
+                        // Using indexOf('\n') is more reliable than selection.start because
+                        // selection.start can jump ahead after character insertion.
                         if (newValue.text.contains("\n")) {
-                            onEnter()
-                            return@BasicTextField
-                        }
-
-                        // Detect backspace deleting the leading space (empty line deletion)
-                        // This fixes an Android/Compose issue where we couldn't easily tell
-                        // if the user pressed backspace on an empty line.
-                        // This *hack* ensures there's always a dummy space on empty lines.
-                        // When that space is deleted, AND the line was already empty,
-                        // then we know the user is actually trying to delete the line itself.
-                        if (filteredText.isEmpty() && line.expression.isEmpty() && lineNumber > 1) {
-                            onDelete()
-                            return@BasicTextField
-                        }
-
-                        // Strip leading space if user added real content
-                        val actualText =
-                            if (filteredText.startsWith(" ") && filteredText.length > 1) {
-                                filteredText.substring(1)
-                            } else if (filteredText == " ") {
-                                "" // Just the space, treat as empty
+                            val splitIndexInTransformed = newValue.text.indexOf('\n')
+                            val actualText = newValue.text.replace("\n", "")
+                            val normalizedText = if (lineNumber > 1) actualText.removePrefix(" ") else actualText
+                            val splitIndex = if (lineNumber > 1) {
+                                (splitIndexInTransformed - 1).coerceAtLeast(0)
                             } else {
-                                filteredText
+                                splitIndexInTransformed
                             }
-
-                        // Re-add leading space if text becomes empty (but not for line 1)
-                        val displayText =
-                            if (actualText.isEmpty() && lineNumber > 1) " " else actualText
-
-                        var newSelection = newValue.selection
-                        if (actualText.isEmpty() && line.expression.isNotEmpty() && lineNumber > 1) {
-                            newSelection = TextRange(1)
-                        } else if (actualText.isNotEmpty() && line.expression.isEmpty() && lineNumber > 1) {
-                            newSelection = TextRange(
-                                maxOf(0, newValue.selection.start - 1),
-                                maxOf(0, newValue.selection.end - 1)
-                            )
+                            onEnter(normalizedText, splitIndex)
+                            return@BasicTextField
                         }
 
-                        previousSelection = newSelection
-                        textFieldValue = newValue.copy(
-                            text = displayText,
-                            selection = newSelection
-                        )
-                        onValueChange(actualText)
+                        // Detect deletion of the leading dummy space (Leading space workaround)
+                        // All non-first lines have a space at index 0 to reliably capture Backspace.
+                        // If it's missing, the user pressed Backspace at the start of the line.
+                        if (lineNumber > 1 && !filteredText.startsWith(" ")) {
+                            if (!backspaceHandled) {
+                                backspaceHandled = true
+                                if (filteredText.isEmpty()) {
+                                    onDelete() // Line was empty, just delete it
+                                } else {
+                                    onMergeWithPrevious() // Line has content, merge with previous
+                                }
+                            }
+                            return@BasicTextField
+                        }
+
+                        // Strip dummy space from input before updating the ViewModel to keep data clean
+                        val actualText = if (lineNumber > 1 && filteredText.startsWith(" ")) {
+                            filteredText.substring(1)
+                        } else {
+                            filteredText
+                        }
+
+                        if (actualText != line.expression) {
+                            lastSentExpression = actualText
+                            lastSentVersion++
+                            onValueChange(actualText, lastSentVersion)
+                        }
+
+                        textFieldValue = newValue
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1531,8 +1664,7 @@ private fun LineRow(
                             if (keyEvent.type == KeyEventType.KeyDown) {
                                 when (keyEvent.key) {
                                     Key.DirectionUp -> {
-                                        // Only navigate if cursor is at the start
-                                        // Line 1: position 0, Others: position 0 or 1 (before/on leading space)
+                                        // Only navigate if cursor is at the start (pos 0 on line 1, pos <= 1 on others)
                                         val atStart = if (lineNumber == 1) {
                                             textFieldValue.selection.start == 0
                                         } else {
@@ -1556,6 +1688,30 @@ private fun LineRow(
                                         }
                                     }
 
+                                    Key.Backspace -> {
+                                        // Detect backspace at the very beginning of the expression
+                                        // On line 1, this is pos 0. On other lines, pos 1 is the actual start
+                                        // because index 0 is the hidden dummy space.
+                                        val atStart = if (lineNumber == 1) {
+                                            textFieldValue.selection.start == 0
+                                        } else {
+                                            textFieldValue.selection.start <= 1
+                                        }
+                                        if (atStart && lineNumber > 1) {
+                                            if (!backspaceHandled) {
+                                                backspaceHandled = true
+                                                if (textFieldValue.text.removePrefix(" ").isEmpty()) {
+                                                    onDelete()
+                                                } else {
+                                                    onMergeWithPrevious()
+                                                }
+                                            }
+                                            true // Consume the event to prevent default backspace behavior
+                                        } else {
+                                            false
+                                        }
+                                    }
+
                                     else -> false
                                 }
                             } else {
@@ -1569,7 +1725,10 @@ private fun LineRow(
                     cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface),
                     visualTransformation = syntaxHighlightingTransformation,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = { onEnter() }),
+                    keyboardActions = KeyboardActions(onDone = {
+                        val actualText = if (lineNumber > 1) textFieldValue.text.removePrefix(" ") else textFieldValue.text
+                        onEnter(actualText, actualText.length)
+                    }),
                     onTextLayout = { textLayoutResult = it },
                     decorationBox = { innerTextField ->
                         if (textFieldValue.text.trim().isEmpty() && lineNumber == 1) {
@@ -1591,9 +1750,14 @@ private fun LineRow(
                     isFocused = isFocused,
                     forceDismissSuggestions = forceDismissSuggestions,
                     onDismissSuggestions = { forceDismissSuggestions = true },
+                    isNonFirstLine = lineNumber > 1,
                     textFieldValue = textFieldValue,
                     onTextFieldValueChange = { textFieldValue = it },
-                    onValueChange = onValueChange,
+                    onValueChange = { newText ->
+                        lastSentExpression = newText
+                        lastSentVersion++
+                        onValueChange(newText, lastSentVersion)
+                    },
                     textLayoutResult = textLayoutResult,
                     boxPosition = boxPosition,
                     keywordColor = keywordColor,
@@ -1667,7 +1831,7 @@ private fun LineRow(
                 } else {
                     Modifier.clickable {
                         if (line.result.isNotEmpty()) {
-                            onCopyResult(MathEngine.formatDisplayResult(line.result, precision))
+                        onCopyResult(formatResult(line.result, precision, numberFormatSettings))
                             showCopiedTooltip = true
                         }
                     }
@@ -1700,7 +1864,7 @@ private fun LineRow(
                         )
                     }
                     Text(
-                        text = MathEngine.formatDisplayResult(line.result, precision),
+                        text = formatResult(line.result, precision, numberFormatSettings),
                         style = MaterialTheme.typography.bodyLarge.copy(
                             fontFamily = FiraCodeFamily,
                             fontWeight = FontWeight.Bold

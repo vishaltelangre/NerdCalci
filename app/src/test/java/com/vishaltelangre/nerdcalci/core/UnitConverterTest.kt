@@ -36,4 +36,25 @@ class UnitConverterTest {
         assertNotNull(kg2)
         assertEquals(kg1!!.name, kg2!!.name)
     }
+
+    @Test
+    fun `test deriveForDivision handles non-linear categories correctly`() {
+        val celsius = UnitConverter.findUnit("C")
+        val fahrenheit = UnitConverter.findUnit("F")
+        val result = UnitConverter.deriveForDivision(celsius, fahrenheit)
+        assertNull("Same-category non-linear division should return null, not 'unitless'", result)
+
+        val meter = UnitConverter.findUnit("m")
+        val kilometer = UnitConverter.findUnit("km")
+        val linearResult = UnitConverter.deriveForDivision(meter, kilometer)
+        assertEquals("Same-category linear division should return 'unitless'", "unitless", linearResult)
+    }
+
+    @Test
+    fun `test deriveForDivision handles fuel consumption reciprocals correctly`() {
+        val l100km = UnitConverter.findUnit("L/100km")
+        val mpg = UnitConverter.findUnit("mpg")
+        val result = UnitConverter.deriveForDivision(l100km, mpg)
+        assertNull("Same-category reciprocal division should return null", result)
+    }
 }

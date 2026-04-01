@@ -5,6 +5,8 @@ import kotlin.math.roundToInt
 import android.content.Intent
 import android.net.Uri
 import android.text.format.DateUtils
+import java.text.DecimalFormat
+import java.text.DecimalFormatSymbols
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -39,10 +41,12 @@ import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Brightness1
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.Pin
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.SpaceBar
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -53,13 +57,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -68,6 +72,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -75,12 +80,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.vishaltelangre.nerdcalci.core.Constants
+import com.vishaltelangre.nerdcalci.core.NumberFormatSettings
+import com.vishaltelangre.nerdcalci.core.NumberDecimalPreset
+import com.vishaltelangre.nerdcalci.core.NumberSeparatorPreset
+import com.vishaltelangre.nerdcalci.core.MathEngine
 import com.vishaltelangre.nerdcalci.data.backup.BackupFileInfo
 import com.vishaltelangre.nerdcalci.data.backup.BackupFrequency
 import com.vishaltelangre.nerdcalci.data.backup.BackupLocationMode
+import com.vishaltelangre.nerdcalci.ui.theme.FiraCodeFamily
 import com.vishaltelangre.nerdcalci.utils.FileUtils
 import com.vishaltelangre.nerdcalci.ui.components.RestoreBackupListDialog
 import com.vishaltelangre.nerdcalci.ui.components.RestoreSourceDialog
+import com.vishaltelangre.nerdcalci.ui.components.NumberDecimalDialog
+import com.vishaltelangre.nerdcalci.ui.components.NumberSeparatorDialog
 import com.vishaltelangre.nerdcalci.ui.components.formatBackupLocationText
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -112,6 +124,8 @@ fun SettingsScreen(
     onShowSymbolsShortcutsChange: (Boolean) -> Unit,
     showNumbersShortcuts: Boolean,
     onShowNumbersShortcutsChange: (Boolean) -> Unit,
+    numberFormatSettings: NumberFormatSettings,
+    onNumberFormatSettingsChange: (NumberFormatSettings) -> Unit,
     syncEnabled: Boolean,
     onSyncEnabledChange: (Boolean) -> Unit,
     syncFolderUri: String?,
@@ -150,6 +164,12 @@ fun SettingsScreen(
         mode = backupLocationMode,
         customFolderSummary = backupLocationSummary
     )
+    val locale = context.resources.configuration.locales[0] ?: java.util.Locale.getDefault()
+    val numberFormatPreview = remember(locale, numberFormatSettings) {
+        MathEngine.formatDisplayResult("1234567.89", 2, locale, numberFormatSettings)
+    }
+    var showSeparatorDialog by remember { mutableStateOf(false) }
+    var showDecimalDialog by remember { mutableStateOf(false) }
     fun openUrl(url: String) {
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
         context.startActivity(intent)
@@ -288,6 +308,37 @@ fun SettingsScreen(
                 subtitle = "You can also toggle this temporarily for each file from the calculator menu.",
                 checked = showNumbersShortcuts,
                 onCheckedChange = onShowNumbersShortcutsChange
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+            SettingsItem(
+                icon = Icons.Default.Info,
+                title = "Number format",
+                subtitle = "Separator and decimal style.",
+                onClick = null
+            )
+            Text(
+                text = numberFormatPreview,
+                style = MaterialTheme.typography.labelMedium.copy(fontFamily = FiraCodeFamily),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 56.dp, vertical = 2.dp)
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            SettingsDropdownItem(
+                icon = Icons.Default.SpaceBar,
+                title = "Separator",
+                value = numberSeparatorLabel(numberFormatSettings.separators),
+                onClick = { showSeparatorDialog = true },
+                modifier = Modifier.padding(start = 24.dp)
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+            SettingsDropdownItem(
+                icon = Icons.Default.Brightness1,
+                title = "Decimal",
+                value = numberDecimalLabel(numberFormatSettings.decimal),
+                onClick = { showDecimalDialog = true },
+                modifier = Modifier.padding(start = 24.dp)
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -681,6 +732,50 @@ fun SettingsScreen(
             onRestoreFromDifferentLocation()
         }
     )
+
+    NumberSeparatorDialog(
+        visible = showSeparatorDialog,
+        locale = locale,
+        settings = numberFormatSettings,
+        onSelect = {
+            onNumberFormatSettingsChange(numberFormatSettings.copy(separators = it))
+            showSeparatorDialog = false
+        },
+        onDismiss = { showSeparatorDialog = false }
+    )
+
+    NumberDecimalDialog(
+        visible = showDecimalDialog,
+        locale = locale,
+        settings = numberFormatSettings,
+        onSelect = {
+            onNumberFormatSettingsChange(numberFormatSettings.copy(decimal = it))
+            showDecimalDialog = false
+        },
+        onDismiss = { showDecimalDialog = false }
+    )
+}
+
+private fun buildNumberFormatPreview(locale: java.util.Locale, settings: NumberFormatSettings): String {
+    return MathEngine.formatDisplayResult("1234567.89", 2, locale, settings)
+}
+
+private fun numberSeparatorLabel(value: NumberSeparatorPreset): String {
+    return when (value) {
+        NumberSeparatorPreset.LOCALE -> "System"
+        NumberSeparatorPreset.COMMA -> "Comma"
+        NumberSeparatorPreset.DOT -> "Dot"
+        NumberSeparatorPreset.SPACE -> "Space"
+        NumberSeparatorPreset.OFF -> "Off"
+    }
+}
+
+private fun numberDecimalLabel(value: NumberDecimalPreset): String {
+    return when (value) {
+        NumberDecimalPreset.LOCALE -> "System"
+        NumberDecimalPreset.COMMA -> "Comma"
+        NumberDecimalPreset.DOT -> "Dot"
+    }
 }
 
 @Composable
@@ -741,10 +836,11 @@ private fun SettingsDropdownItem(
     icon: ImageVector,
     title: String,
     value: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(16.dp),

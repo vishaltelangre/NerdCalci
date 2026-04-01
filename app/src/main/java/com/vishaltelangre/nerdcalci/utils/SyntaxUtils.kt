@@ -248,8 +248,8 @@ fun getSuggestionContext(
 
             val tokenBeforeLast = if (cleanTokens.size >= 2) cleanTokens[cleanTokens.size - 2] else null
 
-            // 2. Typing unit after number: "15 new"
-            if (lastToken.kind == TokenKind.IDENTIFIER && tokenBeforeLast?.kind == TokenKind.NUMBER) {
+            // 2. Typing unit after quantity (Number or Variable): "15 new" or "a new"
+            if (lastToken.kind == TokenKind.IDENTIFIER && (tokenBeforeLast?.kind == TokenKind.NUMBER || tokenBeforeLast?.kind == TokenKind.IDENTIFIER)) {
                 val found = UnitConverter.findUnit(lastToken.lexeme)
                 return SuggestionContextInfo(
                     word = lastToken.lexeme,
@@ -261,8 +261,8 @@ fun getSuggestionContext(
                 )
             }
 
-            // 3. Simple number followed by space: "15 "
-            if (lastToken.kind == TokenKind.NUMBER) {
+            // 3. Simple quantity (Number or Variable) followed by space: "15 " or "a "
+            if (lastToken.kind == TokenKind.NUMBER || lastToken.kind == TokenKind.IDENTIFIER) {
                 if (beforeCursor.endsWith(" ")) {
                     return SuggestionContextInfo(
                         word = "",
@@ -356,30 +356,52 @@ private fun detectCompositeUnit(text: String): Pair<Int, UnitCategory?> {
     val cleanTokens = tokens.filter { it.kind != TokenKind.EOF && it.kind != TokenKind.SEMICOLON }
     if (cleanTokens.isEmpty()) return -1 to null
 
-    val lastNumberIndex = cleanTokens.indexOfLast { it.kind == TokenKind.NUMBER }
-    if (lastNumberIndex == -1) return -1 to null
+    // Find the last token that is NOT an identifier or a known unit keyword.
+    // This token is the boundary before the potential quantity (Number or Variable).
+    val lastBoundaryIndex = cleanTokens.indexOfLast {
+        it.kind != TokenKind.IDENTIFIER &&
+        it.kind !in setOf(TokenKind.KW_OF, TokenKind.KW_TO, TokenKind.KW_IN, TokenKind.KW_AS)
+    }
 
-    val startTokenIndex = lastNumberIndex + 1
-    if (startTokenIndex >= cleanTokens.size) return -1 to null
+    // If the boundary token is a NUMBER, the unit starts right after it.
+    // Otherwise, we assume the first token after the boundary is a Variable quantity, 
+    // and the unit starts after that.
+    val startTokenIndex = if (lastBoundaryIndex != -1 && cleanTokens[lastBoundaryIndex].kind == TokenKind.NUMBER) {
+        lastBoundaryIndex + 1
+    } else {
+        lastBoundaryIndex + 2
+    }
+
+    if (startTokenIndex >= cleanTokens.size && !text.endsWith(" ")) return -1 to null
 
     // We look for the LONGEST matching unit starting after the number.
     var bestStart = -1
     var bestCategory: UnitCategory? = null
     var maxLength = -1
-
     for (i in startTokenIndex until cleanTokens.size) {
         var currentUnitStr = ""
         for (j in i until cleanTokens.size) {
             val t = cleanTokens[j]
             currentUnitStr = if (currentUnitStr.isEmpty()) t.lexeme else "$currentUnitStr ${t.lexeme}"
+            val normalizedUnitStr = currentUnitStr.trim().lowercase()
 
             val unit = UnitConverter.findUnit(currentUnitStr)
-            if (unit != null) {
-                val fullSuffix = currentUnitStr.trim()
-                if (fullSuffix.length > maxLength) {
+            val prefixMatch = if (unit == null) {
+                UnitConverter.UNITS.firstOrNull { candidate ->
+                    candidate.symbols.any { symbol ->
+                        symbol.lowercase().startsWith(normalizedUnitStr)
+                    }
+                }
+            } else null
+
+            val matchedUnit = unit ?: prefixMatch
+            if (matchedUnit != null) {
+                val matchLength = normalizedUnitStr.length
+                val suffixFromStart = text.substring(cleanTokens[i].position).trim().lowercase()
+                if (matchLength > maxLength && suffixFromStart.startsWith(normalizedUnitStr)) {
                     bestStart = cleanTokens[i].position
-                    bestCategory = unit.category
-                    maxLength = fullSuffix.length
+                    bestCategory = matchedUnit.category
+                    maxLength = matchLength
                 }
             }
         }

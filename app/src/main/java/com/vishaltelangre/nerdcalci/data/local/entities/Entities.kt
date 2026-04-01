@@ -35,5 +35,6 @@ data class LineEntity(
     val fileId: Long,
     val sortOrder: Int,
     val expression: String,
-    val result: String = ""
+    val result: String = "",
+    val version: Long = 0
 )

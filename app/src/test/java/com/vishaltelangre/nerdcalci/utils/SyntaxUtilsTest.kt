@@ -597,6 +597,16 @@ class SyntaxUtilsTest {
     }
 
     @Test
+    fun `getSuggestionContext treats partial composite unit as conversion context`() {
+        val beforeCursor = "15 cubic f"
+        val result = getSuggestionContext(beforeCursor, beforeCursor, beforeCursor.length, emptyMap())
+        assertEquals(SuggestionType.CONVERSION, result.type)
+        assertEquals(3, result.unitStart)
+        assertEquals(UnitCategory.VOLUME, result.unitCategory)
+        assertEquals("f", result.word)
+    }
+
+    @Test
     fun `getSuggestionContext handles unit completion after number`() {
         val beforeCursor = "15 n"
         val result = getSuggestionContext(beforeCursor, beforeCursor, beforeCursor.length, emptyMap())
@@ -621,5 +631,22 @@ class SyntaxUtilsTest {
         assertEquals(SuggestionType.UNIT, result.type)
         assertEquals(UnitCategory.SPEED, result.unitCategory)
         assertEquals(false, result.needsSpace)
+    }
+    @Test
+    fun `getSuggestionContext handles unit completion after variable`() {
+        val beforeCursor = "a kms"
+        val result = getSuggestionContext(beforeCursor, beforeCursor, beforeCursor.length, emptyMap())
+        assertEquals("kms", result.word)
+        assertEquals(SuggestionType.CONVERSION, result.type)
+        assertEquals(2, result.unitStart)
+    }
+
+    @Test
+    fun `getSuggestionContext handles space after variable for unit suggestions`() {
+        val beforeCursor = "a "
+        val result = getSuggestionContext(beforeCursor, beforeCursor, beforeCursor.length, emptyMap())
+        assertEquals(SuggestionType.CONVERSION, result.type)
+        assertEquals(2, result.unitStart)
+        assertNull(result.unitCategory)
     }
 }

@@ -72,7 +72,7 @@ class Evaluator(
             val eval = evaluate(expr.operand)
             val operand = eval.value ?: throw EvalException("Cannot negate a non-numeric value")
             val operandRational = eval.rationalValue ?: Rational.toRational(operand)
-            EvaluationResult(operand.negate(), rationalValue = operandRational.negate())
+            eval.copy(value = operand.negate(), rationalValue = operandRational.negate())
         }
         is Expr.Variable       -> resolveVariable(expr.name)
         is Expr.FunctionCall   -> evaluateFunction(expr.name, expr.args)
@@ -83,7 +83,6 @@ class Evaluator(
         is Expr.Quantity -> {
             val eval = evaluate(expr.value)
             val rawValue = eval.value ?: BigDecimal.ZERO
-            val rationalValue = eval.rationalValue ?: Rational.toRational(rawValue)
             val unit = UnitConverter.findUnit(expr.unit)
                 ?: throw EvalException("Unknown unit `${expr.unit}`")
             if (unit.category == UnitCategory.NUMERAL_SYSTEM && rawValue.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) != 0) {
@@ -92,7 +91,8 @@ class Evaluator(
             // Note: UnitConverter currently works with BigDecimal.
             // We'll keep using BigDecimal for result.value but update rationalValue.
             val resultValue = UnitConverter.toBase(rawValue, unit, variables)
-            EvaluationResult(resultValue, unit.symbols.first(), rationalValue = rationalValue * Rational.toRational(unit.factor))
+            val resultRationalValue = Rational.toRational(resultValue)
+            EvaluationResult(resultValue, unit.symbols.first(), rationalValue = resultRationalValue)
         }
         is Expr.UnitConversion -> {
             val toUnit = UnitConverter.findUnit(expr.toUnit)
@@ -208,7 +208,9 @@ class Evaluator(
                 throw EvalException("Cannot convert `${fromUnit.name}` to `${toUnit.name}`: dimension mismatch")
             }
 
-            return EvaluationResult(UnitConverter.toBase(value, fromUnit, variables), toUnit.symbols.first(), rationalValue = eval.rationalValue)
+            val resultValue = UnitConverter.toBase(value, fromUnit, variables)
+            val resultRationalValue = Rational.toRational(resultValue)
+            return EvaluationResult(resultValue, toUnit.symbols.first(), rationalValue = resultRationalValue)
         }
 
         if (name == "rational" || name == "fraction") {
@@ -541,8 +543,11 @@ class Evaluator(
                     Rational(left.den.pow(-exponent), left.num.pow(-exponent))
                 }
             } catch (e: Exception) {
-                // Fallback to BigDecimal if exponent is not an integer
-                Rational.toRational(left.toBigDecimal(mc).pow(right.toBigDecimal(mc).toDouble().toInt(), mc))
+                // Fallback to double-based approximation for non-integer exponents
+                val leftDouble = left.toBigDecimal(mc).toDouble()
+                val rightDouble = right.toBigDecimal(mc).toDouble()
+                val resultDouble = leftDouble.pow(rightDouble)
+                Rational.toRational(BigDecimal(resultDouble, mc))
             }
         }
         else -> throw EvalException("Unknown operator: `$op`")

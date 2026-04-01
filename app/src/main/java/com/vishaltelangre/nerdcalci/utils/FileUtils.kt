@@ -150,6 +150,7 @@ object FileUtils {
                     val exprCandidate = line.substring(0, lastHashIndex).trim()
                     val potentialResult = line.substring(lastHashIndex + 1).trim()
 
+                    // Use looksLikeResult which now handles units with special characters
                     if (looksLikeResult(potentialResult) && shouldShowResult(exprCandidate)) {
                         exprCandidate
                     } else if (potentialResult.isEmpty() && lastHashIndex > 0 && shouldShowResult(exprCandidate)) {
@@ -218,8 +219,18 @@ object FileUtils {
                 // We re-check the whole sanitized string for pure numeric case.
                 if (sanitized.all { it.isDigit() || it == '-' || it == '.' }) return true
 
-                // Units case
-                return words.size == 2 && words[1].all { it.isLetter() }
+                // Units case - use UnitConverter to validate if there's a potential unit
+                if (words.size == 2) {
+                    val potentialUnit = words[1]
+                    // Check if it's a valid unit or looks like one (letters, or contains common unit chars like °, ², ³)
+                    if (com.vishaltelangre.nerdcalci.core.UnitConverter.findUnit(potentialUnit) != null) {
+                        return true
+                    }
+                    // Fallback: accept if it looks like a unit (letters with optional superscripts/symbols)
+                    if (potentialUnit.all { it.isLetter() || it in "°²³" }) {
+                        return true
+                    }
+                }
             }
         }
 

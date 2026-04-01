@@ -869,7 +869,7 @@ NerdCalci supports converting decimal numbers to/from other number bases using t
 
 ## 12. Number display representation overrides
 
-Results can be forced to be displayed in a specific representation using helper functions. Global and file level display settings exist to toggle the "Rational mode" and it can be always overridden using these functions.
+Results can be forced to be displayed in a specific representation using helper functions. Global and file-level display settings exist to toggle the "Rational mode" and it can always be overridden using these functions.
 
 ### Rational representation
 

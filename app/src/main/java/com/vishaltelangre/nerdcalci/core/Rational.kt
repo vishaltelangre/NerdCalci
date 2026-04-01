@@ -39,7 +39,9 @@ data class Rational(private val initialNumerator: BigInteger, private val initia
     }
 
     operator fun div(other: Rational): Rational {
-        require(other.num != BigInteger.ZERO) { "Division by zero" }
+        if (other.num == BigInteger.ZERO) {
+            throw DivisionByZeroException()
+        }
         return Rational(num * other.den, den * other.num)
     }
 

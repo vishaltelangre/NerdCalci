@@ -340,7 +340,7 @@ fun SettingsScreen(
             )
 
             Text(
-                text = remember(regionCode, groupingSeparatorEnabled) {
+                text = remember(regionCode, groupingSeparatorEnabled, precision) {
                     MathEngine.formatDisplayResult(
                         "12345678.90",
                         precision,

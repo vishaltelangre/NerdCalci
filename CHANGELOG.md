@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.3.0] - 2026-04-01
+### Added
+- Added "Rational mode" for exact arithmetic using fractions.
+- Added `rational(x)`/`fraction(x)` functions for rational display override and `float(x)` for float display override.
+- Support units on parenthesized expressions (e.g., `(1/2) kg`).
+- Unified number formatting under a single "Region" selector, replacing manual decimal/separator settings.
+
+### Changed
+- Improved the `.nerdcalci` file format to use a structured JSON-based result serialization. This ensures that calculated results can be unambiguously identified and stripped during import while perfectly preserving user comments.
+- Increased the threshold for scientific notation so large numbers and small numbers are displayed in standard decimal format by default.
+
 ## [3.2.0] - 2026-03-31
 ### Added
 - Added support for merging lines (Backspace) and splitting lines (Enter) for a more convenient editing experience.

@@ -594,7 +594,13 @@ class CalculatorViewModel(
         }
     }
 
-    suspend fun addLine(fileId: Long, sortOrder: Int, expression: String = "", afterLineId: Long? = null): Long {
+    suspend fun addLine(
+        fileId: Long,
+        sortOrder: Int,
+        expression: String = "",
+        afterLineId: Long? = null,
+        rationalMode: Boolean? = null
+    ): Long {
         return withContext(Dispatchers.IO) {
             calculationMutex.withLock {
                 // Save state for undo
@@ -610,7 +616,7 @@ class CalculatorViewModel(
                 val insertIndex = updatedAllLines.indexOfFirst { it.id == newId }.coerceAtLeast(0)
 
                 // Recalculate everything from the new line downward
-                val effectiveRationalMode = _rationalMode.value
+                val effectiveRationalMode = rationalMode ?: _rationalMode.value
                 val affectedLines = MathEngine.calculateFrom(updatedAllLines, insertIndex, createFileContextLoader(fileId, effectiveRationalMode), rationalMode = effectiveRationalMode)
                 val versionedLines = affectedLines.map { it.copy(version = it.version + 1) }
                 dao.updateLines(fileId, versionedLines, updateTimestamp = false)
@@ -627,7 +633,12 @@ class CalculatorViewModel(
      *
      * This operation is atomic and ensures consistent state between the split lines.
      */
-    suspend fun splitLine(lineId: Long, splitIndex: Int, currentExpression: String? = null): Long {
+    suspend fun splitLine(
+        lineId: Long,
+        splitIndex: Int,
+        currentExpression: String? = null,
+        rationalMode: Boolean? = null
+    ): Long {
         return withContext(Dispatchers.IO) {
             calculationMutex.withLock {
                 val line = dao.getLineById(lineId) ?: return@withLock -1L
@@ -654,7 +665,7 @@ class CalculatorViewModel(
                 // Recalculate affected lines starting from the split point
                 val updatedAllLines = dao.getLinesForFileSync(fileId)
                 val splitIndexInList = updatedAllLines.indexOfFirst { it.id == line.id }.coerceAtLeast(0)
-                val effectiveRationalMode = _rationalMode.value
+                val effectiveRationalMode = rationalMode ?: _rationalMode.value
                 val affectedLines = MathEngine.calculateFrom(updatedAllLines, splitIndexInList, createFileContextLoader(fileId, effectiveRationalMode), rationalMode = effectiveRationalMode)
                 val versionedLines = affectedLines.map { it.copy(version = it.version + 1) }
                 dao.updateLines(fileId, versionedLines, updateTimestamp = false)
@@ -668,7 +679,11 @@ class CalculatorViewModel(
      * Merges [currentLineId] into [prevLineId].
      * The expression of [currentLineId] is appended to [prevLineId], and [currentLineId] is then deleted.
      */
-    suspend fun mergeLines(prevLineId: Long, currentLineId: Long) {
+    suspend fun mergeLines(
+        prevLineId: Long,
+        currentLineId: Long,
+        rationalMode: Boolean? = null
+    ) {
         withContext(Dispatchers.IO) {
             calculationMutex.withLock {
                 val prevLine = dao.getLineById(prevLineId) ?: return@withLock
@@ -685,14 +700,14 @@ class CalculatorViewModel(
                 // Recalculate starting from the merged line
                 val updatedLines = dao.getLinesForFileSync(fileId)
                 val mergedIndex = updatedLines.indexOfFirst { it.id == prevLine.id }.coerceAtLeast(0)
-                val effectiveRationalMode = _rationalMode.value
+                val effectiveRationalMode = rationalMode ?: _rationalMode.value
                 val affectedLines = MathEngine.calculateFrom(updatedLines, mergedIndex, createFileContextLoader(fileId, effectiveRationalMode), rationalMode = effectiveRationalMode)
                 dao.updateLines(fileId, affectedLines, updateTimestamp = false)
             }
         }
     }
 
-    fun deleteLine(line: LineEntity) {
+    fun deleteLine(line: LineEntity, rationalMode: Boolean? = null) {
         viewModelScope.launch(Dispatchers.IO) {
             calculationMutex.withLock {
                 // Save state for undo
@@ -712,7 +727,7 @@ class CalculatorViewModel(
                 // Because we normalized (0, 1, 2...), the line that was below
                 // the deleted one now sits at the deleted line's old position.
                 if (deletedIndex in updatedLines.indices) {
-                    val effectiveRationalMode = _rationalMode.value
+                    val effectiveRationalMode = rationalMode ?: _rationalMode.value
                     val affectedLines = MathEngine.calculateFrom(updatedLines, deletedIndex, createFileContextLoader(line.fileId, effectiveRationalMode), rationalMode = effectiveRationalMode)
                     val versionedLines = affectedLines.map { l -> l.copy(version = l.version + 1) }
                     dao.updateLines(line.fileId, versionedLines)

@@ -756,10 +756,6 @@ fun SettingsScreen(
     )
 }
 
-private fun buildNumberFormatPreview(regionCode: String, precision: Int): String {
-    return MathEngine.formatDisplayResult("1234567.89", precision, regionCode = regionCode)
-}
-
 
 @Composable
 private fun SettingsSection(title: String) {

@@ -544,6 +544,7 @@ class Evaluator(
                 }
             } catch (e: Exception) {
                 // Fallback to double-based approximation for non-integer exponents
+                println("Evaluator: falling back to double approximation for power: ${e.message}")
                 val leftDouble = left.toBigDecimal(mc).toDouble()
                 val rightDouble = right.toBigDecimal(mc).toDouble()
                 val resultDouble = leftDouble.pow(rightDouble)

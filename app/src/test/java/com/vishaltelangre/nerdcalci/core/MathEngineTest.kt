@@ -2655,6 +2655,19 @@ class MathEngineTest {
     }
 
     @Test
+    fun `value and dropUnit preserve display-space rational value`() = runBlocking {
+        val lines = listOf(
+            createLine("rational(value(5 km))", sortOrder = 0),
+            createLine("rational(dropUnit(5 km))", sortOrder = 1),
+            createLine("rational(raw(5 km))", sortOrder = 2),
+        )
+        val result = MathEngine.calculate(lines, rationalMode = true)
+        assertEquals("5", result[0].result)
+        assertEquals("5", result[1].result)
+        assertEquals("5", result[2].result)
+    }
+
+    @Test
     fun `unit conversion calculation chain works as expected between different units by dropping units`() = runBlocking {
         val lines = listOf(
             createLine("area = 4.20", sortOrder = 0),

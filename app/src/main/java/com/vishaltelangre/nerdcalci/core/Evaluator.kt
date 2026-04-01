@@ -189,7 +189,12 @@ class Evaluator(
             } else {
                 evaluated.value
             }
-            return EvaluationResult(strippedValue, explicitUnitless = true, rationalValue = evaluated.rationalValue)
+            return evaluated.copy(
+                value = strippedValue,
+                unit = null,
+                explicitUnitless = true,
+                rationalValue = strippedValue?.let { Rational.toRational(it) }
+            )
         }
 
         if (name == "convert") {

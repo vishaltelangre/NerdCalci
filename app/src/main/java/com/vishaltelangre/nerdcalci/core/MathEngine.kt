@@ -499,7 +499,7 @@ object MathEngine {
         val stz = value.stripTrailingZeros()
         val absoluteValue = stz.abs()
 
-        if (absoluteValue >= BigDecimal("10000000") || (absoluteValue < BigDecimal("0.001") && absoluteValue > BigDecimal.ZERO)) {
+        if (absoluteValue >= BigDecimal("1000000000000000") || (absoluteValue < BigDecimal("0.00001") && absoluteValue > BigDecimal.ZERO)) {
             // High-precision scientific notation
             val scale = stz.precision() - stz.scale() - 1
             val unscaled = stz.movePointLeft(scale).stripTrailingZeros()

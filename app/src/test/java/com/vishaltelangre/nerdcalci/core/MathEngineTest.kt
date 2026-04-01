@@ -268,12 +268,12 @@ class MathEngineTest {
 
         assertEquals("5000.0", result[0].result)
         assertEquals("2500000.0", result[1].result)
-        assertEquals("1.5E7", result[2].result)
+        assertEquals("15000000.0", result[2].result)
         assertEquals("205000.0", result[3].result)
         assertEquals("50000.0", result[4].result)
         assertEquals("150.0", result[5].result)
-        assertEquals("1.0E9", result[6].result)
-        assertEquals("1.0E12", result[7].result)
+        assertEquals("1000000000.0", result[6].result)
+        assertEquals("1000000000000.0", result[7].result)
         assertEquals("450.0 crore", result[8].result)
         assertEquals("200.0 thousand", result[9].result)
         assertEquals("5.0 km", result[10].result)
@@ -681,7 +681,7 @@ class MathEngineTest {
     fun `large integer within Long range is returned correctly`() = runBlocking {
         val lines = listOf(createLine("1000000000 * 2"))
         val result = MathEngine.calculate(lines)
-        assertEquals("2.0E9", result[0].result)
+        assertEquals("2000000000.0", result[0].result)
     }
 
     @Test
@@ -2639,9 +2639,9 @@ class MathEngineTest {
         )
         val result = MathEngine.calculate(lines)
         assertEquals("4.2", result[0].result)
-        assertTrue(result[1].result.startsWith("1.764E8"))
+        assertEquals("176400000.0", result[1].result)
         assertTrue(result[2].result.startsWith("128066.4"))
-        assertTrue(result[3].result.startsWith("6.40332"))
+        assertTrue(result[3].result.startsWith("640332"))
         assertTrue(result[3].result.endsWith(" ft²"))
         assertEquals("10", result[4].result)
         assertEquals("10", result[5].result)
@@ -2651,6 +2651,7 @@ class MathEngineTest {
         assertEquals("12", result[9].result)
         assertTrue(result[10].result.startsWith("128065.6"))
         assertEquals("11.0", result[11].result)
+        assertEquals("463932000.0", result[12].result)
     }
 
     @Test
@@ -2664,11 +2665,11 @@ class MathEngineTest {
         )
         val result = MathEngine.calculate(lines)
         assertEquals("4.2", result[0].result)
-        assertTrue(result[1].result.startsWith("1.764E8"))
+        assertEquals("176400000.0", result[1].result)
         assertTrue(result[2].result.startsWith("128066.4"))
         assertEquals(640332000.0, result[3].result.split(" ")[0].toDouble(), 0.1)
         assertTrue(result[3].result.endsWith(" ft²"))
-        assertEquals(463932000.0, result[4].result.toDouble(), 0.01)
+        assertEquals("463932000.0", result[4].result)
     }
 
     @Test
@@ -2766,18 +2767,20 @@ class MathEngineTest {
 
     @Test
     fun `large numbers should use scientific notation`() {
-        // Threshold is 10^7 (10,000,000)
+        // Threshold is 10^15 (1,000,000,000,000,000)
         assertEquals("9999999.0", MathEngine.formatBigDecimal(java.math.BigDecimal("9999999")))
-        assertEquals("1.0E7", MathEngine.formatBigDecimal(java.math.BigDecimal("10000000")))
-        assertEquals("1.2345678E7", MathEngine.formatBigDecimal(java.math.BigDecimal("12345678")))
+        assertEquals("10000000.0", MathEngine.formatBigDecimal(java.math.BigDecimal("10000000")))
+        assertEquals("12345678.0", MathEngine.formatBigDecimal(java.math.BigDecimal("12345678")))
         assertEquals("1.0E100", MathEngine.formatBigDecimal(java.math.BigDecimal("10").pow(100)))
     }
 
     @Test
     fun `very small numbers should use scientific notation`() {
-        // Threshold is 10^-3 (0.001)
+        // Threshold is 10^-6 (0.000001)
         assertEquals("0.001", MathEngine.formatBigDecimal(java.math.BigDecimal("0.001")))
-        assertEquals("1.0E-4", MathEngine.formatBigDecimal(java.math.BigDecimal("0.0001")))
+        assertEquals("0.0001", MathEngine.formatBigDecimal(java.math.BigDecimal("0.0001")))
+        assertEquals("0.00001", MathEngine.formatBigDecimal(java.math.BigDecimal("0.00001")))
+        assertEquals("1.0E-6", MathEngine.formatBigDecimal(java.math.BigDecimal("0.000001")))
         assertEquals("1.23E-7", MathEngine.formatBigDecimal(java.math.BigDecimal("0.000000123")))
     }
 
@@ -2795,8 +2798,10 @@ class MathEngineTest {
 
     @Test
     fun `negative numbers in scientific notation`() {
-        assertEquals("-1.0E7", MathEngine.formatBigDecimal(java.math.BigDecimal("-10000000")))
-        assertEquals("-1.0E-4", MathEngine.formatBigDecimal(java.math.BigDecimal("-0.0001")))
+        assertEquals("-10000000.0", MathEngine.formatBigDecimal(java.math.BigDecimal("-10000000")))
+        assertEquals("-0.0001", MathEngine.formatBigDecimal(java.math.BigDecimal("-0.0001")))
+        assertEquals("-0.00001", MathEngine.formatBigDecimal(java.math.BigDecimal("-0.00001")))
+        assertEquals("-1.0E-6", MathEngine.formatBigDecimal(java.math.BigDecimal("-0.000001")))
     }
 
     @Test

@@ -8,8 +8,9 @@ import kotlinx.coroutines.runBlocking
 import java.util.Locale
 
 class MathEngineTest {
-    private val indianSettings = NumberFormatSettings(useIndianStyle = true)
-    private val defaultSettings = NumberFormatSettings(useIndianStyle = false)
+
+    private val indianSettings = "IN"
+    private val defaultSettings = "US" // Explicitly test generic grouping
 
     @Test
     fun `formatDisplayResult supports Indian style grouping`() {
@@ -1899,45 +1900,51 @@ class MathEngineTest {
     }
 
     @Test
-    fun `formatDisplayResult can disable separators with explicit off preset`() = runBlocking {
-        val settings = NumberFormatSettings(separators = NumberSeparatorPreset.OFF)
-        assertEquals("1234567", MathEngine.formatDisplayResult("1234567", 2, java.util.Locale.US, settings))
+    fun `formatDisplayResult respects region override for separators`() = runBlocking {
+        assertEquals("1,234,567", MathEngine.formatDisplayResult("1234567", 2, java.util.Locale.FRANCE, "US"))
     }
 
     @Test
-    fun `formatDisplayResult respects system locale for french style`() = runBlocking {
-        val settings = NumberFormatSettings(
-            separators = NumberSeparatorPreset.LOCALE,
-            decimal = NumberDecimalPreset.LOCALE
-        )
-        assertEquals("1\u202F234,57", MathEngine.formatDisplayResult("1234.567", 2, java.util.Locale.FRANCE, settings))
+    fun `formatDisplayResult respects region for french style`() = runBlocking {
+        // Note: France uses non-breaking space (narrow non-breaking space \u202F) as separator
+        assertEquals("1\u202F234,57", MathEngine.formatDisplayResult("1234.567", 2, java.util.Locale.US, "FR"))
     }
 
     @Test
-    fun `formatDisplayResult respects explicit comma and dot settings`() = runBlocking {
-        val settings = NumberFormatSettings(
-            separators = NumberSeparatorPreset.COMMA,
-            decimal = NumberDecimalPreset.DOT
-        )
-        assertEquals("1,234.57", MathEngine.formatDisplayResult("1234.567", 2, java.util.Locale.FRANCE, settings))
+    fun `formatDisplayResult respects explicit US and DE region overrides`() = runBlocking {
+        assertEquals("1,234.57", MathEngine.formatDisplayResult("1234.567", 2, java.util.Locale.GERMANY, "US"))
+
+        assertEquals("1.234,57", MathEngine.formatDisplayResult("1234.567", 2, java.util.Locale.US, "DE"))
     }
 
     @Test
-    fun `formatDisplayResult respects explicit dot and comma settings`() = runBlocking {
-        val settings = NumberFormatSettings(
-            separators = NumberSeparatorPreset.DOT,
-            decimal = NumberDecimalPreset.COMMA
-        )
-        assertEquals("1.234,57", MathEngine.formatDisplayResult("1234.567", 2, java.util.Locale.US, settings))
-    }
+    fun `formatDisplayResult implements smart regional formatting with non-standard separator fallbacks`() = runBlocking {
+        val value = "1234567.89"
 
-    @Test
-    fun `formatDisplayResult respects explicit decimal preset independently`() = runBlocking {
-        val settings = NumberFormatSettings(
-            separators = NumberSeparatorPreset.OFF,
-            decimal = NumberDecimalPreset.COMMA
-        )
-        assertEquals("1234,50", MathEngine.formatDisplayResult("1234.5", 2, java.util.Locale.US, settings))
+        // Bahrain (BH) - Should fallback to Western symbols (en_BH) to avoid mixing Arabic symbols
+        val bhLocale = Locale("ar", "BH")
+        assertEquals("1,234,567.89", MathEngine.formatDisplayResult(value, 2, bhLocale, "BH"))
+
+        // Germany (DE) - Should keep native de_DE symbols (dot grouping, comma decimal)
+        val deLocale = Locale("de", "DE")
+        assertEquals("1.234.567,89", MathEngine.formatDisplayResult(value, 2, deLocale, "DE"))
+
+        // France (FR) - Should keep native fr_FR symbols (space grouping, comma decimal)
+        val frLocale = Locale("fr", "FR")
+        val frResult = MathEngine.formatDisplayResult(value, 2, frLocale, "FR")
+        assertTrue(frResult.contains('\u00A0') || frResult.contains('\u202F') || frResult.contains(' '))
+        assertTrue(frResult.endsWith(",89"))
+
+        // India (IN) - Should keep custom Indian style with Western comma
+        val inLocale = Locale("hi", "IN")
+        assertEquals("12,34,567.89", MathEngine.formatDisplayResult(value, 2, inLocale, "IN"))
+
+        // Switzerland (CH) - Should keep native apostrophe separator
+        val chLocale = Locale("de", "CH")
+        val chResult = MathEngine.formatDisplayResult(value, 2, chLocale, "CH")
+        assertTrue(chResult.any { it in setOf('\'', '\u2019', '.', ',') })
+        // de_CH uses the smart quote ’ (U+2019) as grouping separator
+        assertEquals("1\u2019234\u2019567.89", chResult)
     }
 
     @Test

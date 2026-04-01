@@ -56,11 +56,10 @@ import com.vishaltelangre.nerdcalci.ui.components.RestoreBackupListDialog
 import com.vishaltelangre.nerdcalci.ui.components.RestoreSourceDialog
 import com.vishaltelangre.nerdcalci.ui.components.RestoreProgressDialog
 import com.vishaltelangre.nerdcalci.ui.components.RestoreCompleteDialog
-import com.vishaltelangre.nerdcalci.ui.help.HelpScreen
 import com.vishaltelangre.nerdcalci.ui.home.HomeScreen
 import com.vishaltelangre.nerdcalci.ui.settings.SettingsScreen
-import com.vishaltelangre.nerdcalci.core.NumberFormatSettings
 import com.vishaltelangre.nerdcalci.ui.changelog.ChangelogScreen
+import com.vishaltelangre.nerdcalci.ui.help.HelpScreen
 import com.vishaltelangre.nerdcalci.ui.search.SearchScreen
 import com.vishaltelangre.nerdcalci.ui.theme.NerdCalciTheme
 import com.vishaltelangre.nerdcalci.utils.FileUtils
@@ -134,7 +133,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
     val showSuggestions by viewModel.showSuggestions.collectAsState()
     val showSymbolsShortcuts by viewModel.showSymbolsShortcuts.collectAsState()
     val showNumbersShortcuts by viewModel.showNumbersShortcuts.collectAsState()
-    val numberFormatSettings by viewModel.numberFormatSettings.collectAsState()
+    val regionCode by viewModel.regionCode.collectAsState()
     val restoreProgress by viewModel.restoreProgress.collectAsState()
     
     val syncEnabled by viewModel.syncEnabled.collectAsState()
@@ -261,7 +260,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
             CalculatorScreen(
                 fileId = fileId,
                 viewModel = viewModel,
-                displayFormat = numberFormatSettings,
+                regionCode = regionCode,
                 onBack = { navController.popBackStack() },
                 onHelp = { navController.navigate("help") },
                 onNavigateToFile = { newFileId ->
@@ -285,6 +284,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
             }
             val precision by viewModel.precision.collectAsState()
             val rationalMode by viewModel.rationalMode.collectAsState()
+            val groupingSeparatorEnabled by viewModel.groupingSeparatorEnabled.collectAsState()
             SettingsScreen(
                 currentTheme = currentTheme,
                 onThemeChange = { theme -> viewModel.setTheme(theme) },
@@ -327,8 +327,8 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
                 onShowSymbolsShortcutsChange = { viewModel.setShowSymbolsShortcuts(it) },
                 showNumbersShortcuts = showNumbersShortcuts,
                 onShowNumbersShortcutsChange = { viewModel.setShowNumbersShortcuts(it) },
-                numberFormatSettings = numberFormatSettings,
-                onNumberFormatSettingsChange = { viewModel.setNumberFormatSettings(it) },
+                regionCode = regionCode,
+                onRegionCodeChange = { viewModel.setRegionCode(it) },
                 syncEnabled = syncEnabled,
                 onSyncEnabledChange = { viewModel.setSyncEnabled(context, it) },
                 syncFolderUri = syncFolderUri,
@@ -336,6 +336,8 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
                 lastSyncAt = lastSyncAt,
                 rationalMode = rationalMode,
                 onRationalModeChange = { viewModel.setRationalMode(it) },
+                groupingSeparatorEnabled = groupingSeparatorEnabled,
+                onGroupingSeparatorEnabledChange = { viewModel.setGroupingSeparatorEnabled(it) },
                 onHelp = { navController.navigate("help") },
                 onChangelog = { navController.navigate("changelog") },
                 onBack = { navController.popBackStack() }

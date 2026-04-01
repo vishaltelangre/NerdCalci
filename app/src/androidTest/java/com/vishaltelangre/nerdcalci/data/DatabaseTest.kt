@@ -274,6 +274,9 @@ class DatabaseTest {
         val fileId = dao.insertFile(FileEntity(name = "Test", lastModified = initialTimestamp))
         dao.insertLine(LineEntity(fileId = fileId, sortOrder = 0, expression = "1 + 1", result = ""))
 
+        // insertLine touches the file, so capture the new timestamp
+        val postInsertTimestamp = dao.getFileById(fileId)!!.lastModified
+
         val lines = dao.getLinesForFileSync(fileId)
         val updated = lines.map { it.copy(result = "DONE") }
 
@@ -284,7 +287,7 @@ class DatabaseTest {
         assertTrue(retrieved.all { it.result == "DONE" })
 
         val file = dao.getFileById(fileId)
-        assertEquals(initialTimestamp, file!!.lastModified)
+        assertEquals(postInsertTimestamp, file!!.lastModified)
     }
 
     @Test

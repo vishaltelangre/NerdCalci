@@ -20,7 +20,7 @@ import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.vishaltelangre.nerdcalci.core.MathEngine
-import com.vishaltelangre.nerdcalci.core.NumberFormatSettings
+import com.vishaltelangre.nerdcalci.utils.RegionUtils
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
 import com.vishaltelangre.nerdcalci.ui.theme.SyntaxColors
 import com.vishaltelangre.nerdcalci.ui.theme.ResultSuccess
@@ -37,9 +37,9 @@ object ExportUtils {
 
     private const val MAX_BITMAP_HEIGHT_PX = 10_000f
 
-    suspend fun exportAsImage(context: Context, fileName: String, lines: List<LineEntity>, precision: Int, settings: NumberFormatSettings = NumberFormatSettings()) {
+    suspend fun exportAsImage(context: Context, fileName: String, lines: List<LineEntity>, precision: Int, regionCode: String = RegionUtils.SYSTEM_DEFAULT, groupingSeparatorEnabled: Boolean = true) {
         val file = withContext(Dispatchers.IO) {
-            val bitmap = createBitmapFromLines(lines, precision, settings)
+            val bitmap = createBitmapFromLines(lines, precision, regionCode, groupingSeparatorEnabled)
             val fileNameWithDate = "${fileName}_${getTimestamp()}"
 val exportDir = File(context.cacheDir, "exports").apply { mkdirs() }
 val file = File(exportDir, "$fileNameWithDate.png")
@@ -54,7 +54,7 @@ val file = File(exportDir, "$fileNameWithDate.png")
         }
     }
 
-    suspend fun exportAsPdf(context: Context, fileName: String, lines: List<LineEntity>, precision: Int, settings: NumberFormatSettings = NumberFormatSettings()) {
+    suspend fun exportAsPdf(context: Context, fileName: String, lines: List<LineEntity>, precision: Int, regionCode: String = RegionUtils.SYSTEM_DEFAULT, groupingSeparatorEnabled: Boolean = true) {
         val file = withContext(Dispatchers.IO) {
             val document = PdfDocument()
             try {
@@ -93,7 +93,7 @@ val file = File(exportDir, "$fileNameWithDate.png")
 
                 lines.forEach { line ->
                     val exprLayout = getStaticLayout(highlightSyntax(line.expression), paint, exprWidth, Layout.Alignment.ALIGN_NORMAL)
-                    val resLayout = getStaticLayout(formatResult(line.result, precision, settings), resultPaint, resWidth, Layout.Alignment.ALIGN_OPPOSITE)
+                    val resLayout = getStaticLayout(formatResult(line.result, precision, regionCode, groupingSeparatorEnabled), resultPaint, resWidth, Layout.Alignment.ALIGN_OPPOSITE)
 
                     val rowHeight = max(exprLayout.height, resLayout.height) + 20f
 
@@ -146,7 +146,7 @@ val file = File(exportDir, "$fileNameWithDate.pdf")
         }
     }
 
-    private fun createBitmapFromLines(lines: List<LineEntity>, precision: Int, settings: NumberFormatSettings): Bitmap {
+    private fun createBitmapFromLines(lines: List<LineEntity>, precision: Int, regionCode: String, groupingSeparatorEnabled: Boolean): Bitmap {
         val paint = TextPaint().apply {
             color = Color.BLACK
             textSize = 36f
@@ -177,7 +177,7 @@ val file = File(exportDir, "$fileNameWithDate.pdf")
 
         for (line in lines) {
             val exprLayout = getStaticLayout(highlightSyntax(line.expression), paint, exprWidth, Layout.Alignment.ALIGN_NORMAL)
-            val resLayout = getStaticLayout(formatResult(line.result, precision, settings), resultPaint, resWidth, Layout.Alignment.ALIGN_OPPOSITE)
+            val resLayout = getStaticLayout(formatResult(line.result, precision, regionCode, groupingSeparatorEnabled), resultPaint, resWidth, Layout.Alignment.ALIGN_OPPOSITE)
 
             val rowHeight = max(exprLayout.height, resLayout.height) + 40f
             totalHeight += rowHeight
@@ -294,13 +294,13 @@ val file = File(exportDir, "$fileNameWithDate.pdf")
         return spannable
     }
 
-    internal fun formatResultText(text: String, precision: Int, settings: NumberFormatSettings = NumberFormatSettings()): String {
+    internal fun formatResultText(text: String, precision: Int, regionCode: String = RegionUtils.SYSTEM_DEFAULT, groupingSeparatorEnabled: Boolean = true): String {
         if (text.isBlank()) return ""
-        return MathEngine.formatDisplayResult(text, precision, settings = settings)
+        return MathEngine.formatDisplayResult(text, precision, regionCode = regionCode, groupingSeparatorEnabled = groupingSeparatorEnabled)
     }
 
-    internal fun formatResult(text: String, precision: Int, settings: NumberFormatSettings = NumberFormatSettings()): CharSequence {
-        val formattedResult = formatResultText(text, precision, settings)
+    internal fun formatResult(text: String, precision: Int, regionCode: String = RegionUtils.SYSTEM_DEFAULT, groupingSeparatorEnabled: Boolean = true): CharSequence {
+        val formattedResult = formatResultText(text, precision, regionCode, groupingSeparatorEnabled)
         if (formattedResult.isEmpty()) return ""
         val spannable = SpannableString(formattedResult)
         val color = if (text == "Err") ResultError.toArgb() else ResultSuccess.toArgb()

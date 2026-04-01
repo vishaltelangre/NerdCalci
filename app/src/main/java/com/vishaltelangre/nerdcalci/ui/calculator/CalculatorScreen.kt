@@ -2,7 +2,7 @@ package com.vishaltelangre.nerdcalci.ui.calculator
 
 import com.vishaltelangre.nerdcalci.core.Builtins
 import com.vishaltelangre.nerdcalci.core.MathEngine
-import com.vishaltelangre.nerdcalci.core.NumberFormatSettings
+import com.vishaltelangre.nerdcalci.utils.RegionUtils
 import com.vishaltelangre.nerdcalci.core.UnitCategory
 import com.vishaltelangre.nerdcalci.core.UnitConverter
 import com.vishaltelangre.nerdcalci.core.Lexer
@@ -59,6 +59,7 @@ import androidx.compose.material.icons.filled.Pin
 import androidx.compose.material.icons.filled.FormatListNumbered
 import androidx.compose.material.icons.filled.Functions
 import androidx.compose.material.icons.filled.BorderHorizontal
+import androidx.compose.material.icons.filled.SpaceBar
 import androidx.compose.material.icons.outlined.Functions
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MoreVert
@@ -453,7 +454,7 @@ private fun extractAllSuggestions(lines: List<LineEntity>): List<Pair<Set<Sugges
 fun CalculatorScreen(
     fileId: Long,
     viewModel: CalculatorViewModel,
-    displayFormat: NumberFormatSettings,
+    regionCode: String,
     onBack: () -> Unit,
     onHelp: () -> Unit,
     onNavigateToFile: (Long) -> Unit = {}
@@ -504,6 +505,11 @@ fun CalculatorScreen(
     val globalShowNumbersShortcuts by viewModel.showNumbersShortcuts.collectAsState()
     var localShowNumbersShortcuts by rememberSaveable(fileId) { mutableStateOf<Boolean?>(null) }
     val effectiveShowNumbersShortcuts = localShowNumbersShortcuts ?: globalShowNumbersShortcuts
+
+    val globalGroupingSeparatorEnabled by viewModel.groupingSeparatorEnabled.collectAsState()
+    var localGroupingSeparatorEnabled by rememberSaveable(fileId) { mutableStateOf<Boolean?>(null) }
+    val effectiveGroupingSeparatorEnabled = localGroupingSeparatorEnabled ?: globalGroupingSeparatorEnabled
+
     var showMenu by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var showClearConfirmDialog by remember { mutableStateOf(false) }
@@ -758,6 +764,16 @@ fun CalculatorScreen(
                                     leadingIcon = { Icon(Icons.Default.BorderHorizontal, contentDescription = null) }
                                 )
                                 DropdownMenuItem(
+                                    text = { Text(if (effectiveGroupingSeparatorEnabled) "Disable grouping separator" else "Enable grouping separator") },
+                                    onClick = {
+                                        val nextValue = !effectiveGroupingSeparatorEnabled
+                                        localGroupingSeparatorEnabled =
+                                            nextValue.takeUnless { it == globalGroupingSeparatorEnabled }
+                                        showMenu = false
+                                    },
+                                    leadingIcon = { Icon(Icons.Default.SpaceBar, contentDescription = null) }
+                                )
+                                DropdownMenuItem(
                                     text = { Text("Rename File") },
                                     leadingIcon = {
                                         Icon(
@@ -837,7 +853,7 @@ fun CalculatorScreen(
                                         showMenu = false
                                         val safeFileName = fileName.replace(Regex("[^a-zA-Z0-9.-]"), "_")
                                         coroutineScope.launch {
-                                            ExportUtils.exportAsPdf(context, safeFileName, lines, precision, viewModel.numberFormatSettings.value)
+                                            ExportUtils.exportAsPdf(context, safeFileName, lines, precision, viewModel.regionCode.value, effectiveGroupingSeparatorEnabled)
                                         }
                                     }
                                 )
@@ -853,7 +869,7 @@ fun CalculatorScreen(
                                         showMenu = false
                                         val safeFileName = fileName.replace(Regex("[^a-zA-Z0-9.-]"), "_")
                                         coroutineScope.launch {
-                                            ExportUtils.exportAsImage(context, safeFileName, lines, precision, viewModel.numberFormatSettings.value)
+                                            ExportUtils.exportAsImage(context, safeFileName, lines, precision, viewModel.regionCode.value, effectiveGroupingSeparatorEnabled)
                                         }
                                     }
                                 )
@@ -1010,7 +1026,7 @@ fun CalculatorScreen(
                         showLineNumbers = effectiveShowLineNumbers,
                         showSuggestions = effectiveShowSuggestions,
                         precision = precision,
-                        numberFormatSettings = displayFormat,
+                        regionCode = regionCode,
                         numberWidth = numberWidth,
                         availableVariables = availableVariables,
                         fileVariables = fileVariables,
@@ -1038,6 +1054,7 @@ fun CalculatorScreen(
                                 currentlyFocusedLineId = null
                             }
                         },
+                        groupingSeparatorEnabled = effectiveGroupingSeparatorEnabled,
                         onValueChange = { newValue, newVersion ->
                             viewModel.updateLine(line.copy(expression = newValue, version = newVersion), effectiveRationalMode)
                             // Scroll to this line only if it's being edited but off-screen
@@ -1179,8 +1196,8 @@ fun CalculatorScreen(
     }
 }
 
-private fun formatResult(text: String, precision: Int, settings: NumberFormatSettings): String {
-    return MathEngine.formatDisplayResult(text, precision, settings = settings)
+private fun formatResult(text: String, precision: Int, regionCode: String, groupingSeparatorEnabled: Boolean): String {
+    return MathEngine.formatDisplayResult(text, precision, regionCode = regionCode, groupingSeparatorEnabled = groupingSeparatorEnabled)
 }
 
 @Composable
@@ -1228,7 +1245,7 @@ private fun LineRow(
     showLineNumbers: Boolean,
     showSuggestions: Boolean,
     precision: Int,
-    numberFormatSettings: NumberFormatSettings,
+    regionCode: String,
     numberWidth: Dp,
     availableVariables: Set<Suggestion>,
     fileVariables: Map<String, String> = emptyMap(),
@@ -1248,6 +1265,7 @@ private fun LineRow(
     conversionColor: Color,
     onFocused: () -> Unit,
     onBlur: () -> Unit,
+    groupingSeparatorEnabled: Boolean,
     onValueChange: (String, Long) -> Unit,
     onEnter: (String, Int) -> Unit,
     onDelete: () -> Unit,
@@ -1852,7 +1870,7 @@ private fun LineRow(
                 } else {
                     Modifier.clickable {
                         if (line.result.isNotEmpty()) {
-                        onCopyResult(formatResult(line.result, precision, numberFormatSettings))
+                            onCopyResult(formatResult(line.result, precision, regionCode, groupingSeparatorEnabled))
                             showCopiedTooltip = true
                         }
                     }
@@ -1885,7 +1903,7 @@ private fun LineRow(
                         )
                     }
                     Text(
-                        text = formatResult(line.result, precision, numberFormatSettings),
+                        text = formatResult(line.result, precision, regionCode, groupingSeparatorEnabled),
                         style = MaterialTheme.typography.bodyLarge.copy(
                             fontFamily = FiraCodeFamily,
                             fontWeight = FontWeight.Bold

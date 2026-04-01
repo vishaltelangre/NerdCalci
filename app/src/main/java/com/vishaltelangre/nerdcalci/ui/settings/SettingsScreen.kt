@@ -48,6 +48,7 @@ import androidx.compose.material.icons.filled.Pin
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.SpaceBar
 import androidx.compose.material.icons.filled.BorderHorizontal
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -81,9 +82,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.vishaltelangre.nerdcalci.core.Constants
-import com.vishaltelangre.nerdcalci.core.NumberFormatSettings
-import com.vishaltelangre.nerdcalci.core.NumberDecimalPreset
-import com.vishaltelangre.nerdcalci.core.NumberSeparatorPreset
+import com.vishaltelangre.nerdcalci.utils.RegionUtils
 import com.vishaltelangre.nerdcalci.core.MathEngine
 import com.vishaltelangre.nerdcalci.data.backup.BackupFileInfo
 import com.vishaltelangre.nerdcalci.data.backup.BackupFrequency
@@ -92,8 +91,7 @@ import com.vishaltelangre.nerdcalci.ui.theme.FiraCodeFamily
 import com.vishaltelangre.nerdcalci.utils.FileUtils
 import com.vishaltelangre.nerdcalci.ui.components.RestoreBackupListDialog
 import com.vishaltelangre.nerdcalci.ui.components.RestoreSourceDialog
-import com.vishaltelangre.nerdcalci.ui.components.NumberDecimalDialog
-import com.vishaltelangre.nerdcalci.ui.components.NumberSeparatorDialog
+import com.vishaltelangre.nerdcalci.ui.components.RegionSelectorDialog
 import com.vishaltelangre.nerdcalci.ui.components.formatBackupLocationText
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -125,8 +123,8 @@ fun SettingsScreen(
     onShowSymbolsShortcutsChange: (Boolean) -> Unit,
     showNumbersShortcuts: Boolean,
     onShowNumbersShortcutsChange: (Boolean) -> Unit,
-    numberFormatSettings: NumberFormatSettings,
-    onNumberFormatSettingsChange: (NumberFormatSettings) -> Unit,
+    regionCode: String,
+    onRegionCodeChange: (String) -> Unit,
     syncEnabled: Boolean,
     onSyncEnabledChange: (Boolean) -> Unit,
     syncFolderUri: String?,
@@ -134,6 +132,8 @@ fun SettingsScreen(
     lastSyncAt: Long?,
     rationalMode: Boolean,
     onRationalModeChange: (Boolean) -> Unit,
+    groupingSeparatorEnabled: Boolean,
+    onGroupingSeparatorEnabledChange: (Boolean) -> Unit,
     onHelp: () -> Unit,
     onChangelog: () -> Unit,
     onBack: () -> Unit
@@ -144,6 +144,7 @@ fun SettingsScreen(
     var showBackupNowActionDialog by remember { mutableStateOf(false) }
     var showLocationDialog by remember { mutableStateOf(false) }
     var showFrequencyDialog by remember { mutableStateOf(false) }
+    var showRegionDialog by remember { mutableStateOf(false) }
 
     var sliderValue by remember(precision) { mutableStateOf(precision.toFloat()) }
 
@@ -167,12 +168,6 @@ fun SettingsScreen(
         mode = backupLocationMode,
         customFolderSummary = backupLocationSummary
     )
-    val locale = context.resources.configuration.locales[0] ?: java.util.Locale.getDefault()
-    val numberFormatPreview = remember(locale, numberFormatSettings) {
-        MathEngine.formatDisplayResult("12345678.90", 2, locale, numberFormatSettings)
-    }
-    var showSeparatorDialog by remember { mutableStateOf(false) }
-    var showDecimalDialog by remember { mutableStateOf(false) }
     fun openUrl(url: String) {
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
         context.startActivity(intent)
@@ -321,59 +316,42 @@ fun SettingsScreen(
                 onCheckedChange = onRationalModeChange
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
-            SettingsItem(
-                icon = Icons.Default.Info,
-                title = "Number format",
-                subtitle = if (numberFormatSettings.useIndianStyle)
-                    "Separator and decimal style (Indian grouping)."
-                else
-                    "Separator and decimal style.",
-                onClick = null
+            SettingsDropdownItem(
+                icon = Icons.Default.Public,
+                title = "Region",
+                value = if (regionCode == RegionUtils.SYSTEM_DEFAULT) {
+                    val systemCountryName = RegionUtils.getAvailableRegions()
+                        .find { it.first == java.util.Locale.getDefault().country }?.second
+                        ?: java.util.Locale.getDefault().displayCountry
+                    if (systemCountryName.isNotEmpty()) "System default ($systemCountryName)" else "System default"
+                } else
+                    RegionUtils.getAvailableRegions().find { it.first == regionCode }?.second
+                        ?: regionCode,
+                onClick = { showRegionDialog = true }
             )
+
+            SettingsToggleItem(
+                icon = Icons.Default.SpaceBar,
+                title = "Show grouping separators in numbers",
+                subtitle = "",
+                checked = groupingSeparatorEnabled,
+                onCheckedChange = onGroupingSeparatorEnabledChange,
+                modifier = Modifier.padding(start = 32.dp)
+            )
+
             Text(
-                text = numberFormatPreview,
+                text = remember(regionCode, groupingSeparatorEnabled) {
+                    MathEngine.formatDisplayResult(
+                        "12345678.90",
+                        precision,
+                        regionCode = regionCode,
+                        groupingSeparatorEnabled = groupingSeparatorEnabled
+                    )
+                },
                 style = MaterialTheme.typography.labelMedium.copy(fontFamily = FiraCodeFamily),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 56.dp, vertical = 2.dp)
             )
-            Spacer(modifier = Modifier.height(4.dp))
-            Spacer(modifier = Modifier.height(4.dp))
-            SettingsDropdownItem(
-                icon = Icons.Default.Brightness1,
-                title = "Decimal",
-                value = numberDecimalLabel(numberFormatSettings.decimal),
-                onClick = { showDecimalDialog = true },
-                modifier = Modifier.padding(start = 24.dp)
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-            SettingsDropdownItem(
-                icon = Icons.Default.SpaceBar,
-                title = "Separator",
-                value = numberSeparatorLabel(numberFormatSettings.separators),
-                onClick = { showSeparatorDialog = true },
-                modifier = Modifier.padding(start = 24.dp)
-            )
-
-            val showIndianStyleToggle = remember(numberFormatSettings.separators, locale) {
-                numberFormatSettings.separators == NumberSeparatorPreset.COMMA ||
-                        (numberFormatSettings.separators == NumberSeparatorPreset.LOCALE &&
-                                java.text.DecimalFormatSymbols.getInstance(locale).groupingSeparator == ',')
-            }
-
-            if (showIndianStyleToggle) {
-                SettingsToggleItem(
-                    icon = Icons.Default.Info,
-                    title = "Use Indian style for separator positioning",
-                    subtitle = null,
-                    checked = numberFormatSettings.useIndianStyle,
-                    onCheckedChange = {
-                        onNumberFormatSettingsChange(numberFormatSettings.copy(useIndianStyle = it))
-                    },
-                    modifier = Modifier.padding(start = 48.dp)
-                )
-            }
 
             Spacer(modifier = Modifier.height(8.dp))
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -767,50 +745,21 @@ fun SettingsScreen(
         }
     )
 
-    NumberSeparatorDialog(
-        visible = showSeparatorDialog,
-        locale = locale,
-        settings = numberFormatSettings,
+    RegionSelectorDialog(
+        visible = showRegionDialog,
+        currentRegionCode = regionCode,
         onSelect = {
-            onNumberFormatSettingsChange(numberFormatSettings.copy(separators = it))
-            showSeparatorDialog = false
+            onRegionCodeChange(it)
+            showRegionDialog = false
         },
-        onDismiss = { showSeparatorDialog = false }
-    )
-
-    NumberDecimalDialog(
-        visible = showDecimalDialog,
-        locale = locale,
-        settings = numberFormatSettings,
-        onSelect = {
-            onNumberFormatSettingsChange(numberFormatSettings.copy(decimal = it))
-            showDecimalDialog = false
-        },
-        onDismiss = { showDecimalDialog = false }
+        onDismiss = { showRegionDialog = false }
     )
 }
 
-private fun buildNumberFormatPreview(locale: java.util.Locale, settings: NumberFormatSettings): String {
-    return MathEngine.formatDisplayResult("1234567.89", 2, locale, settings)
+private fun buildNumberFormatPreview(regionCode: String, precision: Int): String {
+    return MathEngine.formatDisplayResult("1234567.89", precision, regionCode = regionCode)
 }
 
-private fun numberSeparatorLabel(value: NumberSeparatorPreset): String {
-    return when (value) {
-        NumberSeparatorPreset.LOCALE -> "System"
-        NumberSeparatorPreset.COMMA -> "Comma"
-        NumberSeparatorPreset.DOT -> "Dot"
-        NumberSeparatorPreset.SPACE -> "Space"
-        NumberSeparatorPreset.OFF -> "Off"
-    }
-}
-
-private fun numberDecimalLabel(value: NumberDecimalPreset): String {
-    return when (value) {
-        NumberDecimalPreset.LOCALE -> "System"
-        NumberDecimalPreset.COMMA -> "Comma"
-        NumberDecimalPreset.DOT -> "Dot"
-    }
-}
 
 @Composable
 private fun SettingsSection(title: String) {

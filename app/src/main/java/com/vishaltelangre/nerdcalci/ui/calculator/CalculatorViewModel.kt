@@ -9,10 +9,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import android.util.Log
 import com.vishaltelangre.nerdcalci.core.Constants
+import com.vishaltelangre.nerdcalci.utils.RegionUtils
 import com.vishaltelangre.nerdcalci.core.MathEngine
-import com.vishaltelangre.nerdcalci.core.NumberFormatSettings
-import com.vishaltelangre.nerdcalci.core.NumberDecimalPreset
-import com.vishaltelangre.nerdcalci.core.NumberSeparatorPreset
 import com.vishaltelangre.nerdcalci.core.FileContextLoader
 import com.vishaltelangre.nerdcalci.core.MathContext
 import com.vishaltelangre.nerdcalci.core.EvalException
@@ -143,9 +141,8 @@ class CalculatorViewModel(
         private const val PREF_SHOW_SUGGESTIONS = "show_suggestions"
         private const val PREF_SHOW_SYMBOLS_SHORTCUTS = "show_symbols_shortcuts"
         private const val PREF_SHOW_NUMBERS_SHORTCUTS = "show_numbers_shortcuts"
-        private const val PREF_NUMBER_SEPARATOR_PRESET = "number_format_separator_preset"
-        private const val PREF_NUMBER_DECIMAL_PRESET = "number_format_decimal_preset"
-        private const val PREF_NUMBER_USE_INDIAN_STYLE = "number_format_use_indian_style"
+        private const val PREF_REGION_CODE = "number_format_region_code"
+        private const val PREF_GROUPING_SEPARATOR_ENABLED = "number_format_grouping_separator_enabled"
         private const val DEFAULT_THEME = "system"
     }
 
@@ -236,14 +233,16 @@ class CalculatorViewModel(
     )
     val showNumbersShortcuts: StateFlow<Boolean> = _showNumbersShortcuts
 
-    private val _numberFormatSettings = MutableStateFlow(
-        NumberFormatSettings(
-            separators = NumberSeparatorPreset.fromPrefValue(prefs?.getString(PREF_NUMBER_SEPARATOR_PRESET, NumberSeparatorPreset.LOCALE.prefValue)),
-            decimal = NumberDecimalPreset.fromPrefValue(prefs?.getString(PREF_NUMBER_DECIMAL_PRESET, NumberDecimalPreset.LOCALE.prefValue)),
-            useIndianStyle = prefs?.getBoolean(PREF_NUMBER_USE_INDIAN_STYLE, false) ?: false
-        )
+    private val _regionCode = MutableStateFlow(
+        prefs?.getString(PREF_REGION_CODE, RegionUtils.SYSTEM_DEFAULT) ?: RegionUtils.SYSTEM_DEFAULT
     )
-    val numberFormatSettings: StateFlow<NumberFormatSettings> = _numberFormatSettings
+
+    val regionCode: StateFlow<String> = _regionCode
+
+    private val _groupingSeparatorEnabled = MutableStateFlow(
+        prefs?.getBoolean(PREF_GROUPING_SEPARATOR_ENABLED, true) ?: true
+    )
+    val groupingSeparatorEnabled: StateFlow<Boolean> = _groupingSeparatorEnabled
 
     private val _rationalMode = MutableStateFlow(
         prefs?.getBoolean(Constants.SYNC_ENGINE_RATIONAL_MODE, Constants.DEFAULT_RATIONAL_MODE) ?: Constants.DEFAULT_RATIONAL_MODE
@@ -286,12 +285,17 @@ class CalculatorViewModel(
         prefs?.edit()?.putBoolean(PREF_SHOW_NUMBERS_SHORTCUTS, enabled)?.apply()
     }
 
-    fun setNumberFormatSettings(settings: NumberFormatSettings) {
-        _numberFormatSettings.value = settings
+    fun setRegionCode(code: String) {
+        _regionCode.value = code
         prefs?.edit()
-            ?.putString(PREF_NUMBER_SEPARATOR_PRESET, settings.separators.prefValue)
-            ?.putString(PREF_NUMBER_DECIMAL_PRESET, settings.decimal.prefValue)
-            ?.putBoolean(PREF_NUMBER_USE_INDIAN_STYLE, settings.useIndianStyle)
+            ?.putString(PREF_REGION_CODE, code)
+            ?.apply()
+    }
+
+    fun setGroupingSeparatorEnabled(enabled: Boolean) {
+        _groupingSeparatorEnabled.value = enabled
+        prefs?.edit()
+            ?.putBoolean(PREF_GROUPING_SEPARATOR_ENABLED, enabled)
             ?.apply()
     }
 
@@ -540,20 +544,20 @@ class CalculatorViewModel(
         calculationMutex.withLock {
             // Save the user's current typing
             dao.updateLine(updatedLine)
-    
+
             // Fetch all lines for this file to ensure context is correct
             val allLines = dao.getLinesForFileSync(updatedLine.fileId)
-    
+
             // Find where the changed line sits. Preceding lines are not re-evaluated;
             // their variable state is inherited. If not found, fall back to 0 (recalculate all).
             val changedIndex = allLines.indexOfFirst { it.id == updatedLine.id }.coerceAtLeast(0)
-    
+
             // Recalculate only affected lines (from changedIndex onward), inheriting variable
             // state from the preceding lines without re-evaluating them.
             val effectiveRationalMode = rationalMode ?: _rationalMode.value
             val affectedLines = MathEngine.calculateFrom(allLines, changedIndex, createFileContextLoader(updatedLine.fileId), rationalMode = effectiveRationalMode)
             val versionedLines = affectedLines.map { it.copy(version = it.version + 1) }
-    
+
             // Batch-write all updated results in one DB transaction
             dao.updateLines(updatedLine.fileId, versionedLines)
         }
@@ -665,7 +669,7 @@ class CalculatorViewModel(
             calculationMutex.withLock {
                 val prevLine = dao.getLineById(prevLineId) ?: return@withLock
                 val currentLine = dao.getLineById(currentLineId) ?: return@withLock
-                
+
                 val fileId = prevLine.fileId
                 saveStateForUndo(fileId)
 

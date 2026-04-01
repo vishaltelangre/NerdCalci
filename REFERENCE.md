@@ -63,6 +63,9 @@
     - [Changing the values](#changing-the-values)
 - [11. Numeral systems](#11-numeral-systems)
   - [Radix base conversions](#radix-base-conversions)
+- [12. Number display representation overrides](#12-number-display-representation-overrides)
+  - [Rational representation](#rational-representation)
+  - [Float representation](#float-representation)
 
 ## 1. Basic math and operators
 
@@ -863,3 +866,24 @@ NerdCalci supports converting decimal numbers to/from other number bases using t
 | Decimal     | `dec`, `decimal`     | 10   | `10.5 in dec`   | `10`     |
 
 > **⚠️ Important**: NerdCalci currently only supports decimal literals as numerical inputs in expressions. While you can convert **to** Hex/Binary representations for display, you cannot directly use hex literals like `0x10` or `0b1101` in calculation inputs.
+
+## 12. Number display representation overrides
+
+Results can be forced to be displayed in a specific representation using helper functions. Global and file level display settings exist to toggle the "Rational mode" and it can be always overridden using these functions.
+
+### Rational representation
+
+Force a result to be displayed as a fraction/rational/ratio number, regardless of global settings.
+
+```text
+rational(0.3333333333) # 1/3
+fraction(0.125)        # 1/8
+```
+
+### Float representation
+
+Force a result to be displayed as a decimal/float, even if Rational mode is enabled globally.
+
+```text
+float(33/100)          # 0.33
+```

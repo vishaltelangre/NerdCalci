@@ -15,7 +15,8 @@ data class MathContext(
     val lineResults: MutableList<EvaluationResult?> = mutableListOf(),
     val userAssignedDynamicVariables: MutableSet<String> = mutableSetOf(),
     val fileVariables: MutableMap<String, String> = mutableMapOf(), // varName -> fileName
-    val injectionErrors: MutableMap<String, Exception> = mutableMapOf()
+    val injectionErrors: MutableMap<String, Exception> = mutableMapOf(),
+    val rationalMode: Boolean = false
 )
 
 object MathEngine {
@@ -87,8 +88,8 @@ object MathEngine {
      * @param lines List of line entities to calculate
      * @return List of line entities with populated results
      */
-    suspend fun calculate(lines: List<LineEntity>, loader: FileContextLoader? = null): List<LineEntity> {
-        return calculateWithContext(lines, MathContext(), loader)
+    suspend fun calculate(lines: List<LineEntity>, loader: FileContextLoader? = null, rationalMode: Boolean = false): List<LineEntity> {
+        return calculateWithContext(lines, MathContext(rationalMode = rationalMode), loader)
     }
 
     /**
@@ -100,9 +101,10 @@ object MathEngine {
     suspend fun buildVariableState(
         lines: List<LineEntity>,
         loader: FileContextLoader? = null,
-        loadingStack: Set<String> = emptySet()
+        loadingStack: Set<String> = emptySet(),
+        rationalMode: Boolean = false
     ): MathContext {
-        val context = MathContext()
+        val context = MathContext(rationalMode = rationalMode)
         for (line in lines) {
             if (line.expression.isBlank()) {
                 context.lineResults.add(null)
@@ -133,7 +135,7 @@ object MathEngine {
      * @param changedIndex  Index of the first line that changed (0-based).
      * @return Recalculated affected lines: `allLines[changedIndex..end]` with updated results.
      */
-    suspend fun calculateFrom(allLines: List<LineEntity>, changedIndex: Int, loader: FileContextLoader? = null, loadingStack: Set<String> = emptySet()): List<LineEntity> {
+    suspend fun calculateFrom(allLines: List<LineEntity>, changedIndex: Int, loader: FileContextLoader? = null, loadingStack: Set<String> = emptySet(), rationalMode: Boolean = false): List<LineEntity> {
         // Determine which lines are affected by the edit
         val firstAffectedIndex = changedIndex.coerceIn(0, allLines.size)
         val precedingLines = allLines.subList(0, firstAffectedIndex)
@@ -142,10 +144,10 @@ object MathEngine {
         try {
             // Collect variable state and line results from preceding lines,
             // then fully recalculate affected lines
-            val context = buildVariableState(precedingLines, loader, loadingStack)
+            val context = buildVariableState(precedingLines, loader, loadingStack, rationalMode)
             return calculateWithContext(affectedLines, context, loader, loadingStack)
         } catch (e: CircularReferenceException) {
-            return calculateWithContext(allLines, MathContext(), loader, loadingStack)
+            return calculateWithContext(allLines, MathContext(rationalMode = rationalMode), loader, loadingStack)
         }
     }
 
@@ -153,14 +155,14 @@ object MathEngine {
      * Re-evaluates a specific line to capture the exact exception message.
      * Used for on-demand error tooltips.
      */
-    suspend fun getErrorDetails(allLines: List<LineEntity>, targetIndex: Int, loader: FileContextLoader? = null, loadingStack: Set<String> = emptySet()): String? {
+    suspend fun getErrorDetails(allLines: List<LineEntity>, targetIndex: Int, loader: FileContextLoader? = null, loadingStack: Set<String> = emptySet(), rationalMode: Boolean = false): String? {
         if (targetIndex < 0 || targetIndex >= allLines.size) return null
 
         val precedingLines = allLines.subList(0, targetIndex)
         val targetLine = allLines[targetIndex]
 
         try {
-            val context = buildVariableState(precedingLines, loader, loadingStack)
+            val context = buildVariableState(precedingLines, loader, loadingStack, rationalMode)
             injectDynamicVariables(context)
             evaluateLine(targetLine.expression, context, loader, loadingStack)
             return null // No error occurred during this evaluation
@@ -187,7 +189,7 @@ object MathEngine {
         val lineResults = context.lineResults
         val userAssignedDynamicVariables = context.userAssignedDynamicVariables.toMutableSet()
         val fileVariables = context.fileVariables.toMutableMap()
-        val isolatedContext = MathContext(variables, localFunctions, lineResults, userAssignedDynamicVariables, fileVariables)
+        val isolatedContext = MathContext(variables, localFunctions, lineResults, userAssignedDynamicVariables, fileVariables, rationalMode = context.rationalMode)
 
         return lines.map { line ->
             if (line.expression.isBlank()) {
@@ -225,11 +227,17 @@ object MathEngine {
                         }
                     } else {
                         val displayValue = UnitConverter.fromBase(result.value, u, isolatedContext.variables)
-                        val formattedValue = formatBigDecimal(displayValue)
+                        val formattedValue = if (!result.forceFloat && (isolatedContext.rationalMode || result.explicitRational)) {
+                            Rational.toRational(displayValue).toString()
+                        } else {
+                            formatBigDecimal(displayValue)
+                        }
                         "$formattedValue ${result.unit}"
                     }
                 } else if (result.explicitUnitless && result.value.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) == 0) {
                     result.value.toLong().toString()
+                } else if (!result.forceFloat && (isolatedContext.rationalMode || result.explicitRational) && result.rationalValue != null) {
+                    result.rationalValue.toString()
                 } else {
                     formatBigDecimal(result.value)
                 }
@@ -415,7 +423,8 @@ object MathEngine {
             localFunctions = context.localFunctions,
             fileVariables = context.fileVariables,
             fileContextLoader = loader,
-            loadingStack = loadingStack
+            loadingStack = loadingStack,
+            rationalMode = context.rationalMode
         ).evaluateStatement(statement, context)
     }
 

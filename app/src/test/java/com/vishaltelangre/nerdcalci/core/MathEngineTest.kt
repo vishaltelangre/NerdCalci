@@ -2843,4 +2843,82 @@ class MathEngineTest {
         // lineno is 2 for the second line.
         assertEquals("2.0 km", result[1].result)
     }
+
+    @Test
+    fun `rational mode provides exact results for division`() = runBlocking {
+        val lines = listOf(createLine("1/3 + 1/3 + 1/3"))
+
+        // Standard mode
+        val standardResult = MathEngine.calculate(lines)
+        assertEquals("0.9999999999999999999999999999999999", standardResult[0].result)
+
+        // Rational mode
+        val rationalResult = MathEngine.calculate(lines, rationalMode = true)
+        assertEquals("1", rationalResult[0].result)
+    }
+
+    @Test
+    fun `rational mode displays fractions for non-whole results`() = runBlocking {
+        val lines = listOf(createLine("1/3 + 1/6"), createLine("1/3 + 2"))
+        val result = MathEngine.calculate(lines, rationalMode = true)
+        assertEquals("1/2", result[0].result)
+        assertEquals("7/3", result[1].result)
+    }
+
+    @Test
+    fun `rational function forces rational display in decimal mode`() = runBlocking {
+        val lines = listOf(createLine("rational(0.5)"))
+        val result = MathEngine.calculate(lines, rationalMode = false)
+        assertEquals("1/2", result[0].result)
+    }
+
+    @Test
+    fun `fraction function forces rational display even in decimal mode`() = runBlocking {
+        val lines = listOf(createLine("fraction(0.75)"))
+        // Global rationalMode is false by default
+        val result = MathEngine.calculate(lines, rationalMode = false)
+        assertEquals("3/4", result[0].result)
+    }
+
+    @Test
+    fun `rational function works with rational expressions in decimal mode`() = runBlocking {
+        val lines = listOf(createLine("rational(1/3)"))
+        val result = MathEngine.calculate(lines, rationalMode = false)
+        assertEquals("1/3", result[0].result)
+    }
+
+    @Test
+    fun `float function forces decimal display in rational mode`() = runBlocking {
+        val lines = listOf(createLine("float(1/3)"))
+        val result = MathEngine.calculate(lines, rationalMode = true)
+        assertEquals("0.3333333333", result[0].result.take(12))
+    }
+
+    @Test
+    fun `in decimal unit conversion enforces integer check`() = runBlocking {
+        val lines = listOf(createLine("1/3 in decimal"))
+        val result = MathEngine.calculate(lines, rationalMode = true)
+        assertEquals("Err", result[0].result)
+    }
+
+    @Test
+    fun `rational function works with quantities in decimal mode`() = runBlocking {
+        val lines = listOf(createLine("rational(5 km / 2)"))
+        val result = MathEngine.calculate(lines, rationalMode = false)
+        assertEquals("5/2 km", result[0].result)
+    }
+
+    @Test
+    fun `quantities respect global rational mode`() = runBlocking {
+        val lines = listOf(createLine("5 km / 2"))
+        val result = MathEngine.calculate(lines, rationalMode = true)
+        assertEquals("5/2 km", result[0].result)
+    }
+
+    @Test
+    fun `float function forces decimal display for quantities in rational mode`() = runBlocking {
+        val lines = listOf(createLine("float(5 km / 2)"))
+        val result = MathEngine.calculate(lines, rationalMode = true)
+        assertEquals("2.5 km", result[0].result)
+    }
 }

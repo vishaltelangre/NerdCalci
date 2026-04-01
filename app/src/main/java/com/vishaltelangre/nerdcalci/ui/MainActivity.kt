@@ -284,6 +284,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
                 viewModel.refreshBackups(context)
             }
             val precision by viewModel.precision.collectAsState()
+            val rationalMode by viewModel.rationalMode.collectAsState()
             SettingsScreen(
                 currentTheme = currentTheme,
                 onThemeChange = { theme -> viewModel.setTheme(theme) },
@@ -333,6 +334,8 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
                 syncFolderUri = syncFolderUri,
                 onChooseSyncFolder = { syncFolderLauncher.launch(null) },
                 lastSyncAt = lastSyncAt,
+                rationalMode = rationalMode,
+                onRationalModeChange = { viewModel.setRationalMode(it) },
                 onHelp = { navController.navigate("help") },
                 onChangelog = { navController.navigate("changelog") },
                 onBack = { navController.popBackStack() }

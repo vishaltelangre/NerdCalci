@@ -459,7 +459,7 @@ class Parser(private val tokens: List<Token>) {
                     advance() // skip past "("
                     val expr = parseExpression()
                     expect(TokenKind.RPAREN) // expect closing ")"
-                    expr
+                    parseQuantityIfPossible(expr)
                 } else {
                     val token = peek()
                     throw ParseException(

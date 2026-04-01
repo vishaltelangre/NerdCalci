@@ -47,6 +47,7 @@ import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.Pin
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.SpaceBar
+import androidx.compose.material.icons.filled.BorderHorizontal
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -131,6 +132,8 @@ fun SettingsScreen(
     syncFolderUri: String?,
     onChooseSyncFolder: () -> Unit,
     lastSyncAt: Long?,
+    rationalMode: Boolean,
+    onRationalModeChange: (Boolean) -> Unit,
     onHelp: () -> Unit,
     onChangelog: () -> Unit,
     onBack: () -> Unit
@@ -308,6 +311,14 @@ fun SettingsScreen(
                 subtitle = "You can also toggle this temporarily for each file from the calculator menu.",
                 checked = showNumbersShortcuts,
                 onCheckedChange = onShowNumbersShortcutsChange
+            )
+
+            SettingsToggleItem(
+                icon = Icons.Default.BorderHorizontal,
+                title = "Rational mode",
+                subtitle = "Display results as a ratio of two integers (fractions) for exactness when possible.",
+                checked = rationalMode,
+                onCheckedChange = onRationalModeChange
             )
 
             Spacer(modifier = Modifier.height(12.dp))

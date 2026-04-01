@@ -46,4 +46,7 @@ object Constants {
     const val DEFAULT_PRECISION = 2
     const val MIN_PRECISION = 0
     const val MAX_PRECISION = 10
+
+    const val SYNC_ENGINE_RATIONAL_MODE = "rational_mode"
+    const val DEFAULT_RATIONAL_MODE = false
 }

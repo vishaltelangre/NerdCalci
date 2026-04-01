@@ -57,6 +57,9 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.Pin
 import androidx.compose.material.icons.filled.FormatListNumbered
+import androidx.compose.material.icons.filled.Functions
+import androidx.compose.material.icons.filled.BorderHorizontal
+import androidx.compose.material.icons.outlined.Functions
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PictureAsPdf
@@ -72,6 +75,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -467,23 +471,31 @@ fun CalculatorScreen(
 
     BackHandler(onBack = handleBack)
 
-    LaunchedEffect(fileId) {
-        viewModel.recalculateFile(fileId)
-    }
+    val globalShowLineNumbers by viewModel.showLineNumbers.collectAsState()
+    var localShowLineNumbers by rememberSaveable(fileId) { mutableStateOf<Boolean?>(null) }
+    val effectiveShowLineNumbers = localShowLineNumbers ?: globalShowLineNumbers
 
-    val lines by viewModel.getLines(fileId).collectAsState(initial = emptyList())
+    val globalShowSuggestions by viewModel.showSuggestions.collectAsState()
+    var localShowSuggestions by rememberSaveable(fileId) { mutableStateOf<Boolean?>(null) }
+    val effectiveShowSuggestions = localShowSuggestions ?: globalShowSuggestions
+
+    val globalRationalMode by viewModel.rationalMode.collectAsState()
+    var localRationalMode by rememberSaveable(fileId) { mutableStateOf<Boolean?>(null) }
+    val effectiveRationalMode = localRationalMode ?: globalRationalMode
+
     val precision by viewModel.precision.collectAsState()
     val files by viewModel.allFiles.collectAsState(initial = emptyList())
     val canUndoMap by viewModel.canUndo.collectAsState()
     val canRedoMap by viewModel.canRedo.collectAsState()
     val canUndo = canUndoMap[fileId] ?: false
     val canRedo = canRedoMap[fileId] ?: false
-    val globalShowLineNumbers by viewModel.showLineNumbers.collectAsState()
-    var localShowLineNumbers by rememberSaveable(fileId) { mutableStateOf<Boolean?>(null) }
-    val effectiveShowLineNumbers = localShowLineNumbers ?: globalShowLineNumbers
-    val globalShowSuggestions by viewModel.showSuggestions.collectAsState()
-    var localShowSuggestions by rememberSaveable(fileId) { mutableStateOf<Boolean?>(null) }
-    val effectiveShowSuggestions = localShowSuggestions ?: globalShowSuggestions
+
+    LaunchedEffect(fileId, effectiveRationalMode) {
+        viewModel.recalculateFile(fileId, effectiveRationalMode)
+    }
+
+    val lines by viewModel.getLines(fileId).collectAsState(initial = emptyList())
+
 
     val globalShowSymbolsShortcuts by viewModel.showSymbolsShortcuts.collectAsState()
     var localShowSymbolsShortcuts by rememberSaveable(fileId) { mutableStateOf<Boolean?>(null) }
@@ -672,6 +684,7 @@ fun CalculatorScreen(
                                     }
                                 )
                                 HorizontalDivider()
+
                                 val leadIcon = if (effectiveShowLineNumbers) Icons.Default.ViewHeadline else Icons.Default.FormatListNumbered
                                 DropdownMenuItem(
                                     text = { Text(if (effectiveShowLineNumbers) "Hide line numbers" else "Show line numbers") },
@@ -719,7 +732,6 @@ fun CalculatorScreen(
                                         )
                                     }
                                 )
-
                                 DropdownMenuItem(
                                     text = { Text(if (effectiveShowNumbersShortcuts) "Hide numbers shortcuts" else "Show numbers shortcuts") },
                                     onClick = {
@@ -735,7 +747,16 @@ fun CalculatorScreen(
                                         )
                                     }
                                 )
-
+                                DropdownMenuItem(
+                                    text = { Text(if (effectiveRationalMode) "Disable rational mode" else "Enable rational mode") },
+                                    onClick = {
+                                        val nextValue = !effectiveRationalMode
+                                        localRationalMode =
+                                            nextValue.takeUnless { it == globalRationalMode }
+                                        showMenu = false
+                                    },
+                                    leadingIcon = { Icon(Icons.Default.BorderHorizontal, contentDescription = null) }
+                                )
                                 DropdownMenuItem(
                                     text = { Text("Rename File") },
                                     leadingIcon = {
@@ -1018,7 +1039,7 @@ fun CalculatorScreen(
                             }
                         },
                         onValueChange = { newValue, newVersion ->
-                            viewModel.updateLine(line.copy(expression = newValue, version = newVersion))
+                            viewModel.updateLine(line.copy(expression = newValue, version = newVersion), effectiveRationalMode)
                             // Scroll to this line only if it's being edited but off-screen
                             if (currentlyFocusedLineId == line.id) {
                                 coroutineScope.launch {
@@ -1080,7 +1101,7 @@ fun CalculatorScreen(
                         onCopyResult = { result ->
                             viewModel.copyToClipboard(context, result)
                         },
-                        onGetErrorMessage = { lineId -> viewModel.getLineErrorMessage(fileId, lineId) }
+                        onGetErrorMessage = { lineId -> viewModel.getLineErrorMessage(fileId, lineId, effectiveRationalMode) }
                     )
                     if (index < lines.size - 1) {
                         HorizontalDivider(
@@ -1487,7 +1508,7 @@ private fun LineRow(
         // This prevents "echo" updates from the database from overwriting the current text field
         // during rapid typing, which is the root cause of cursor synchronization issues.
         val isStaleEcho = isFocused && line.version < lastSentVersion
-        
+
         if (!isStaleEcho && (line.expression != lastSentExpression || textFieldValue.text != displayText)) {
             val selection = TextRange(
                 textFieldValue.selection.start.coerceIn(0, displayText.length),

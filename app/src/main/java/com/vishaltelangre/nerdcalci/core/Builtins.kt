@@ -24,6 +24,11 @@ object Builtins {
         "dropUnit" to BuiltinFn(1) { it[0] },
         "raw" to BuiltinFn(1) { it[0] },
 
+        // Display overrides
+        "rational" to BuiltinFn(1) { it[0] },
+        "fraction" to BuiltinFn(1) { it[0] },
+        "float" to BuiltinFn(1) { it[0] },
+
         // Trigonometric (Fallback to Double)
         "sin"    to BuiltinFn(1) { BigDecimal(sin(it[0].toDouble()), mc) },
         "cos"    to BuiltinFn(1) { BigDecimal(cos(it[0].toDouble()), mc) },

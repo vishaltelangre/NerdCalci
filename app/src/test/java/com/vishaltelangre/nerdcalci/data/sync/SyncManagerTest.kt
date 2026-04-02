@@ -13,7 +13,6 @@ import com.vishaltelangre.nerdcalci.core.MathEngine
 import com.vishaltelangre.nerdcalci.core.MathContext
 import com.vishaltelangre.nerdcalci.utils.FileUtils
 import com.vishaltelangre.nerdcalci.utils.FileMetadata
-import com.vishaltelangre.nerdcalci.utils.ParsedFileContent
 import io.mockk.*
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
@@ -47,8 +46,8 @@ class SyncManagerTest {
         mockkObject(MathEngine)
         mockkObject(FileUtils)
         every { FileUtils.readMetadataHeader(any<java.io.BufferedReader>()) } answers { callOriginal() }
-        every { FileUtils.formatCanonicalFileContent(any(), any()) } answers { callOriginal() }
         every { FileUtils.parseFileContent(any()) } answers { callOriginal() }
+        coEvery { FileUtils.formatCanonicalFileContent(any(), any()) } answers { callOriginal() }
         // Keep calculateHash mocked for speed/determinism
         every { FileUtils.calculateHash(any<String>()) } answers {
             val s = it.invocation.args[0] as String
@@ -109,7 +108,7 @@ class SyncManagerTest {
         val result = SyncManager.performSync(context, dao)
 
         assertTrue(result.isSuccess)
-        verify(exactly = 0) { FileUtils.formatCanonicalFileContent(any(), any()) }
+        coVerify(exactly = 0) { FileUtils.formatCanonicalFileContent(any(), any()) }
         verify(exactly = 0) { contentResolver.openOutputStream(any<Uri>()) }
         verify(exactly = 0) { contentResolver.openOutputStream(any<Uri>(), any()) }
     }
@@ -142,7 +141,7 @@ class SyncManagerTest {
         )
 
         val metadataSlot = slot<FileMetadata>()
-        every { FileUtils.formatCanonicalFileContent(any(), capture(metadataSlot)) } answers { callOriginal() }
+        coEvery { FileUtils.formatCanonicalFileContent(any(), capture(metadataSlot)) } answers { callOriginal() }
 
         val result = SyncManager.performSync(context, dao)
 
@@ -154,7 +153,7 @@ class SyncManagerTest {
         assertTrue(metadata.isPinned)
         assertEquals(1234L, metadata.lastModified)
         assertEquals(1234L, metadata.createdAt)
-        verify(atLeast = 1) { FileUtils.formatCanonicalFileContent(any(), any()) }
+        coVerify(atLeast = 1) { FileUtils.formatCanonicalFileContent(any(), any()) }
     }
 
     @Test
@@ -495,7 +494,7 @@ class SyncManagerTest {
 
         every { FileUtils.readMetadataHeader(any<java.io.BufferedReader>()) } returns FileMetadata(id = null, lastModified = 1000L)
 
-        every { FileUtils.parseFileContent(any()) } returns ParsedFileContent(
+        every { FileUtils.parseFileContent(any()) } returns com.vishaltelangre.nerdcalci.utils.ParsedFileContent(
             expressions = listOf("1+1"),
             metadata = FileMetadata(id = null, lastModified = 1000L)
         )

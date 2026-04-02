@@ -94,7 +94,7 @@ object FileUtils {
      * The serialized content must not depend on user precision or rational display settings,
      * otherwise the same file can hash differently across devices and create avoidable conflicts.
      */
-    fun formatCanonicalFileContent(lines: List<LineEntity>, metadata: FileMetadata? = null): String {
+    suspend fun formatCanonicalFileContent(lines: List<LineEntity>, metadata: FileMetadata? = null): String {
         val sb = StringBuilder()
         val body = formatCanonicalFileBody(lines)
 
@@ -137,8 +137,9 @@ object FileUtils {
     /**
      * Formats lines using stored results as-is, only normalizing obvious empty/error/comment cases.
      */
-    fun formatCanonicalFileBody(lines: List<LineEntity>): String {
-        return lines.joinToString("\n") { line ->
+    suspend fun formatCanonicalFileBody(lines: List<LineEntity>): String {
+        val canonicalLines = MathEngine.calculate(lines, rationalMode = false)
+        return canonicalLines.joinToString("\n") { line ->
             val expr = line.expression.trim()
             val rawResult = line.result.trim()
 

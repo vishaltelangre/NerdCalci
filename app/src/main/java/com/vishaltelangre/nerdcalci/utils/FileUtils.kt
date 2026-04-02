@@ -137,7 +137,7 @@ object FileUtils {
         }
 
         // Regex to handle: [expression with optional comment] # {"result":"..."}
-        val structuredResultRegex = Regex("""^(.*)\s*#\s*(\{\s*"result"\s*:\s*".*?"\s*\})\s*$""")
+        val structuredResultRegex = Regex("""^(.*)\s*#\s*(\{\s*"result"\s*:\s*"(?:[^"\\]|\\.)*"\s*\})\s*$""")
 
         val expressions = dataLines.map { line ->
             val match = structuredResultRegex.matchEntire(line)

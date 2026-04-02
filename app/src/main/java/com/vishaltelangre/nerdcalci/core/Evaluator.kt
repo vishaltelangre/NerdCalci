@@ -442,7 +442,7 @@ class Evaluator(
                 )
             } else if (leftUnit != null && rightUnit == null && !rightEval.explicitUnitless && leftUnit.category != UnitCategory.SCALAR) {
                 val scaledRight = UnitConverter.toBase(rightVal, leftUnit, variables)
-                val scaledRightRational = rightRational * Rational.toRational(leftUnit.factor)
+                val scaledRightRational = Rational.toRational(UnitConverter.toBase(rightRational.toBigDecimal(mc), leftUnit, variables))
                 return EvaluationResult(
                     applyOp(leftVal, expr.op, scaledRight),
                     leftUnit.symbols.first(),
@@ -450,7 +450,7 @@ class Evaluator(
                 )
             } else if (leftUnit == null && rightUnit != null && !leftEval.explicitUnitless && rightUnit.category != UnitCategory.SCALAR) {
                 val scaledLeft = UnitConverter.toBase(leftVal, rightUnit, variables)
-                val scaledLeftRational = leftRational * Rational.toRational(rightUnit.factor)
+                val scaledLeftRational = Rational.toRational(UnitConverter.toBase(leftRational.toBigDecimal(mc), rightUnit, variables))
                 return EvaluationResult(
                     applyOp(scaledLeft, expr.op, rightVal),
                     rightUnit.symbols.first(),

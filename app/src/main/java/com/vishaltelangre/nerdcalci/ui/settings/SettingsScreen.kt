@@ -25,6 +25,7 @@ import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.filled.AccessTimeFilled
 import androidx.compose.material.icons.filled.Attribution
 import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.RssFeed
 import androidx.compose.material.icons.filled.LogoDev
 import androidx.compose.material.icons.filled.PrivacyTip
@@ -134,6 +135,8 @@ fun SettingsScreen(
     onRationalModeChange: (Boolean) -> Unit,
     groupingSeparatorEnabled: Boolean,
     onGroupingSeparatorEnabledChange: (Boolean) -> Unit,
+    autoOpenScratchpad: Boolean,
+    onAutoOpenScratchpadChange: (Boolean) -> Unit,
     onHelp: () -> Unit,
     onChangelog: () -> Unit,
     onBack: () -> Unit
@@ -350,7 +353,15 @@ fun SettingsScreen(
                 },
                 style = MaterialTheme.typography.labelMedium.copy(fontFamily = FiraCodeFamily),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 56.dp, vertical = 2.dp)
+                modifier = Modifier.padding(horizontal = 56.dp).padding(bottom = 8.dp)
+            )
+
+            SettingsToggleItem(
+                icon = Icons.Default.FlashOn,
+                title = "Auto-open temporary scratchpad on launch",
+                subtitle = "Opens the temporary scratchpad automatically when you start the app. Changes in this file are never saved.",
+                checked = autoOpenScratchpad,
+                onCheckedChange = onAutoOpenScratchpadChange
             )
 
             Spacer(modifier = Modifier.height(8.dp))

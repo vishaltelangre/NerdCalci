@@ -49,4 +49,8 @@ object Constants {
 
     const val SYNC_ENGINE_RATIONAL_MODE = "rational_mode"
     const val DEFAULT_RATIONAL_MODE = false
+
+    // Temporary scratchpad settings
+    const val PREF_AUTO_OPEN_SCRATCHPAD = "auto_open_scratchpad"
+    const val SCRATCHPAD_DISPLAY_NAME = "Scratchpad"
 }

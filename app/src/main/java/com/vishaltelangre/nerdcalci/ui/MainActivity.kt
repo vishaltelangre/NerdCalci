@@ -285,6 +285,8 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
             val precision by viewModel.precision.collectAsState()
             val rationalMode by viewModel.rationalMode.collectAsState()
             val groupingSeparatorEnabled by viewModel.groupingSeparatorEnabled.collectAsState()
+            val autoOpenScratchpad by viewModel.autoOpenScratchpad.collectAsState()
+
             SettingsScreen(
                 currentTheme = currentTheme,
                 onThemeChange = { theme -> viewModel.setTheme(theme) },
@@ -306,17 +308,17 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
                         }
                     }
                 },
-                onBackupNowAtDifferentLocation = {
+                onBackupNowAtDifferentLocation = { 
                     val timestamp = SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.getDefault()).format(Date())
                     val filename = "nerdcalci_backup_$timestamp.zip"
                     exportLauncher.launch(filename)
                 },
                 lastBackupAt = lastBackupAt,
                 availableBackups = availableBackups,
-                onRestoreBackup = { backup ->
-                    viewModel.restoreFromBackup(context, backup)
+                onRestoreBackup = { backup -> viewModel.restoreFromBackup(context, backup) },
+                onRestoreFromDifferentLocation = { 
+                    importLauncher.launch(arrayOf(Constants.EXPORT_MIME_TYPE)) 
                 },
-                onRestoreFromDifferentLocation = { importLauncher.launch(arrayOf("application/zip")) },
                 precision = precision,
                 onPrecisionChange = { newPrecision -> viewModel.setPrecision(newPrecision) },
                 showLineNumbers = showLineNumbers,
@@ -338,6 +340,8 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
                 onRationalModeChange = { viewModel.setRationalMode(it) },
                 groupingSeparatorEnabled = groupingSeparatorEnabled,
                 onGroupingSeparatorEnabledChange = { viewModel.setGroupingSeparatorEnabled(it) },
+                autoOpenScratchpad = autoOpenScratchpad,
+                onAutoOpenScratchpadChange = { viewModel.setAutoOpenScratchpad(it) },
                 onHelp = { navController.navigate("help") },
                 onChangelog = { navController.navigate("changelog") },
                 onBack = { navController.popBackStack() }

@@ -74,6 +74,12 @@ class CalculatorViewModel(
     private val prefs: SharedPreferences? = null
 ) : ViewModel() {
 
+    init {
+        viewModelScope.launch {
+            ensureScratchpadExists()
+        }
+    }
+
     // Mutex to ensure atomic recalculation cycles per fileId
     private val calculationMutex = Mutex()
 
@@ -103,6 +109,31 @@ class CalculatorViewModel(
                 val context = MathEngine.buildVariableState(lines, this, loadingStack, rationalMode = rationalMode)
                 cache[fileName] = context
                 return context
+            }
+        }
+    }
+
+    private suspend fun ensureScratchpadExists() {
+        withContext(Dispatchers.IO) {
+            val existing = dao.getTemporaryFile()
+            if (existing != null) {
+                // Clear contents (session reset)
+                dao.clearAllLines(existing.id)
+                _scratchpadFileId.value = existing.id
+            } else {
+                // Create new scratchpad
+                val internalName = "NerdCalci-Scratchpad-${System.currentTimeMillis()}"
+                val id = dao.insertFile(
+                    FileEntity(
+                        name = internalName,
+                        createdAt = System.currentTimeMillis(),
+                        lastModified = System.currentTimeMillis(),
+                        isTemporary = true
+                    )
+                )
+                // Add first empty line
+                dao.insertLine(LineEntity(fileId = id, sortOrder = 0, expression = "", result = ""))
+                _scratchpadFileId.value = id
             }
         }
     }
@@ -146,6 +177,14 @@ class CalculatorViewModel(
         private const val PREF_GROUPING_SEPARATOR_ENABLED = "number_format_grouping_separator_enabled"
         private const val DEFAULT_THEME = "system"
     }
+
+    private val _autoOpenScratchpad = MutableStateFlow(
+        prefs?.getBoolean(Constants.PREF_AUTO_OPEN_SCRATCHPAD, false) ?: false
+    )
+    val autoOpenScratchpad: StateFlow<Boolean> = _autoOpenScratchpad
+
+    private val _scratchpadFileId = MutableStateFlow<Long?>(null)
+    val scratchpadFileId: StateFlow<Long?> = _scratchpadFileId
 
     private val _currentTheme = MutableStateFlow(
         prefs?.getString(PREF_THEME, DEFAULT_THEME) ?: DEFAULT_THEME
@@ -249,6 +288,11 @@ class CalculatorViewModel(
         prefs?.getBoolean(Constants.SYNC_ENGINE_RATIONAL_MODE, Constants.DEFAULT_RATIONAL_MODE) ?: Constants.DEFAULT_RATIONAL_MODE
     )
     val rationalMode: StateFlow<Boolean> = _rationalMode
+
+    fun setAutoOpenScratchpad(enabled: Boolean) {
+        _autoOpenScratchpad.value = enabled
+        prefs?.edit()?.putBoolean(Constants.PREF_AUTO_OPEN_SCRATCHPAD, enabled)?.apply()
+    }
 
     fun setTheme(theme: String) {
         _currentTheme.value = theme

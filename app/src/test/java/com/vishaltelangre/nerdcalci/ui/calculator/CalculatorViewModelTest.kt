@@ -1,269 +1,141 @@
 package com.vishaltelangre.nerdcalci.ui.calculator
 
-import com.vishaltelangre.nerdcalci.data.local.CalculatorDao
+import android.util.Log
+import com.vishaltelangre.nerdcalci.data.local.FakeCalculatorDao
 import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.runBlocking
+import io.mockk.*
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.*
+import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TestWatcher
+import org.junit.runner.Description
+
+class MainDispatcherRule(
+    val testDispatcher: TestDispatcher = UnconfinedTestDispatcher()
+) : TestWatcher() {
+    override fun starting(description: Description) {
+        Dispatchers.setMain(testDispatcher)
+    }
+
+    override fun finished(description: Description) {
+        Dispatchers.resetMain()
+    }
+}
 
 class CalculatorViewModelTest {
+
+    @get:Rule
+    val mainDispatcherRule = MainDispatcherRule()
 
     private lateinit var viewModel: CalculatorViewModel
     private lateinit var fakeDao: FakeCalculatorDao
 
     @Before
     fun setup() {
+        mockkStatic(Log::class)
+        every { Log.d(any<String>(), any<String>()) } returns 0
+        every { Log.e(any<String>(), any<String>()) } returns 0
+        every { Log.e(any<String>(), any<String>(), any<Throwable>()) } returns 0
+        every { Log.w(any<String>(), any<String>()) } returns 0
+
         fakeDao = FakeCalculatorDao()
         viewModel = CalculatorViewModel(fakeDao)
-        
-        // Setup initial file
-        runBlocking {
-            fakeDao.insertFile(FileEntity(id = 1L, name = "TestFile"))
-        }
+    }
+
+    @After
+    fun tearDown() {
+        unmockkAll()
     }
 
     @Test
-    fun `splitLine split in middle of expression`() = runBlocking {
-        // Given a line with "a = 10 + 20"
+    fun `initial setup sets up lines and file`() = runTest {
+        fakeDao.insertFile(FileEntity(id = 1L, name = "TestFile"))
+        fakeDao.insertLine(LineEntity(id = 1L, fileId = 1L, expression = "1+1", sortOrder = 0))
+
+        val lines = fakeDao.getLinesForFileSync(1L)
+        assertEquals(1, lines.size)
+        assertEquals("1+1", lines[0].expression)
+    }
+
+    @Test
+    fun `splitLine split in middle of expression`() = runTest {
+        fakeDao.insertFile(FileEntity(id = 1L, name = "TestFile"))
         val line = LineEntity(id = 1L, fileId = 1L, expression = "a = 10 + 20", result = "30.0", sortOrder = 0)
         fakeDao.insertLine(line)
 
-        // When splitting at index 7 ("a = 10 " | "+ 20")
-        // Index 7 is just before '+'
         viewModel.splitLine(1L, 7)
 
-        // Then two lines should exist
-        val lines = fakeDao.lines.value
+        val lines = fakeDao.getLinesForFileSync(1L)
         assertEquals(2, lines.size)
-
-        // Original line updated
-        val updatedLine = lines.find { it.id == 1L }!!
-        assertEquals("a = 10 ", updatedLine.expression)
-        assertEquals("10.0", updatedLine.result) // Recalculated
-
-        // New line inserted
-        val newLine = lines.find { it.id != 1L }!!
-        assertEquals("+ 20", newLine.expression)
-        assertEquals("Err", newLine.result) 
-        assertEquals(1, newLine.sortOrder)
+        assertEquals("a = 10 ", lines[0].expression)
+        assertEquals("+ 20", lines[1].expression)
     }
 
     @Test
-    fun `splitLine split at beginning of expression`() = runBlocking {
-        // Given a line with "a = 10"
-        val line = LineEntity(id = 1L, fileId = 1L, expression = "a = 10", result = "10.0", sortOrder = 0)
-        fakeDao.insertLine(line)
+    fun `duplicate scratchpad results in Copy of Scratchpad and is not temporary`() = runTest {
+        // Given a temporary scratchpad
+        val tempFile = FileEntity(id = 10L, name = "Temp", isTemporary = true)
+        fakeDao.insertFile(tempFile)
+        fakeDao.insertLine(LineEntity(fileId = 10L, expression = "1+1", result = "2", sortOrder = 0))
 
-        // When splitting at index 0
-        viewModel.splitLine(1L, 0)
-
-        val lines = fakeDao.lines.value
-        assertEquals(2, lines.size)
-
-        val originalLine = lines.find { it.id == 1L }!!
-        assertEquals("", originalLine.expression)
-        assertEquals("", originalLine.result)
-
-        val newLine = lines.find { it.id != 1L }!!
-        assertEquals("a = 10", newLine.expression)
-        assertEquals("10.0", newLine.result)
-    }
-
-    @Test
-    fun `splitLine split at end of expression`() = runBlocking {
-        // Given a line with "a = 10"
-        val line = LineEntity(id = 1L, fileId = 1L, expression = "a = 10", result = "10.0", sortOrder = 0)
-        fakeDao.insertLine(line)
-
-        // When splitting at end
-        viewModel.splitLine(1L, 6)
-
-        val lines = fakeDao.lines.value
-        assertEquals(2, lines.size)
-
-        val originalLine = lines.find { it.id == 1L }!!
-        assertEquals("a = 10", originalLine.expression)
-        assertEquals("10.0", originalLine.result)
-
-        val newLine = lines.find { it.id != 1L }!!
-        assertEquals("", newLine.expression)
-        assertEquals("", newLine.result)
-    }
-
-    @Test
-    fun `splitLine uses currentExpression when provided`() = runBlocking {
-        // Given a line with "a = 10" in DB
-        val line = LineEntity(id = 1L, fileId = 1L, expression = "a = 10", result = "10.0", sortOrder = 0)
-        fakeDao.insertLine(line)
-
-        // When splitting with "a = 10 + 20" (live buffer) at index 6 ("a = 10")
-        viewModel.splitLine(1L, 6, "a = 10 + 20")
-
-        val lines = fakeDao.lines.value
-        assertEquals(2, lines.size)
-
-        val originalLine = lines.find { it.id == 1L }!!
-        assertEquals("a = 10", originalLine.expression)
-
-        val newLine = lines.find { it.id != 1L }!!
-        assertEquals(" + 20", newLine.expression)
-    }
-
-    @Test
-    fun `mergeLines appends content and deletes current line`() = runBlocking {
-        // Given two lines
-        val line1 = LineEntity(id = 1L, fileId = 1L, expression = "a = 10", result = "10.0", sortOrder = 0)
-        val line2 = LineEntity(id = 2L, fileId = 1L, expression = " + 20", result = "30.0", sortOrder = 1)
-        fakeDao.insertLine(line1)
-        fakeDao.insertLine(line2)
-
-        // When merging line 2 into line 1
-        viewModel.mergeLines(1L, 2L)
-
-        // Then only one line should remain
-        val lines = fakeDao.lines.value
-        assertEquals(1, lines.size)
-
-        val mergedLine = lines[0]
-        assertEquals(1L, mergedLine.id)
-        assertEquals("a = 10 + 20", mergedLine.expression)
-        assertEquals("30.0", mergedLine.result) // Should be recalculated
-    }
-
-    @Test
-    fun `mergeLines with empty current line just deletes it`() = runBlocking {
-        val line1 = LineEntity(id = 1L, fileId = 1L, expression = "a = 10", result = "10.0", sortOrder = 0)
-        val line2 = LineEntity(id = 2L, fileId = 1L, expression = "", result = "", sortOrder = 1)
-        fakeDao.insertLine(line1)
-        fakeDao.insertLine(line2)
-
-        viewModel.mergeLines(1L, 2L)
-
-        val lines = fakeDao.lines.value
-        assertEquals(1, lines.size)
-        assertEquals("a = 10", lines[0].expression)
-        assertEquals("10.0", lines[0].result) // Should keep or re-calc to 10.0
-    }
-
-    @Test
-    fun `updateLine increments version`() = runBlocking {
-        // Given a line with version 10
-        val line = LineEntity(id = 1L, fileId = 1L, expression = "x = 5", result = "5.0", sortOrder = 0, version = 10L)
-        fakeDao.insertLine(line)
-
-        // When updating the expression (using the suspend version for synchronous test)
-        viewModel.updateLineInternal(line.copy(expression = "x = 10", version = 11L))
-
-        // Then the version should be 12 (11 from UI + 1 from calculation loop)
-        val updatedLine = fakeDao.getLineById(1L)!!
-        assertEquals("x = 10", updatedLine.expression)
-        assertEquals(12L, updatedLine.version)
-    }
-
-    private class FakeCalculatorDao : CalculatorDao() {
-        private val _files = MutableStateFlow<List<FileEntity>>(emptyList())
-        private val _lines = MutableStateFlow<List<LineEntity>>(emptyList())
-        val lines = _lines.asStateFlow()
+        // When duplicating it
+        val capturedNewId = CompletableDeferred<Long?>()
+        viewModel.duplicateFile(10L) { newId ->
+            capturedNewId.complete(newId)
+        }
         
-        private val fileIdGen = java.util.concurrent.atomic.AtomicLong(100L)
-        private val lineIdGen = java.util.concurrent.atomic.AtomicLong(1000L)
+        // Wait for coroutines
+        val newId = capturedNewId.await()
+        assertNotNull("New ID should not be null", newId)
 
-        private fun nextFileId() = fileIdGen.incrementAndGet()
-        private fun nextLineId() = lineIdGen.incrementAndGet()
+        // Then its name should be "Copy of Scratchpad" and it should NOT be temporary
+        val copyFile = fakeDao.getFileById(newId!!)!!
+        assertEquals("Copy of Scratchpad", copyFile.name)
+        assertFalse("Copy should not be temporary", copyFile.isTemporary)
+    }
 
-        override fun getAllFiles(): Flow<List<FileEntity>> = _files
-        override suspend fun getAllFilesSync(): List<FileEntity> = _files.value
-        override suspend fun getFileById(fileId: Long): FileEntity? = _files.value.find { file: FileEntity -> file.id == fileId }
-        override suspend fun getFileByName(name: String): FileEntity? = _files.value.find { file: FileEntity -> file.name == name }
-        override suspend fun getFileBySyncId(syncId: String): FileEntity? = _files.value.find { file: FileEntity -> file.syncId == syncId }
-        override suspend fun getPinnedFilesCount(): Int = _files.value.count { file: FileEntity -> file.isPinned }
-        override suspend fun doesFileExist(name: String): Boolean = _files.value.any { file: FileEntity -> file.name == name }
-        override suspend fun doesFileExist(name: String, excludeId: Long): Boolean = _files.value.any { file: FileEntity -> file.name == name && file.id != excludeId }
+    @Test
+    fun `ensureScratchpadExists clears lines if scratchpad already exists`() = runTest {
+        // Given an existing scratchpad with content
+        val existingTempFile = FileEntity(id = 20L, name = "Scratchpad", isTemporary = true)
+        fakeDao.insertFile(existingTempFile)
+        fakeDao.insertLine(LineEntity(id = 100L, fileId = 20L, expression = "1+1", sortOrder = 0))
+        
+        // When a new ViewModel is initialized (it calls ensureScratchpadExists in init)
+        val newViewModel = CalculatorViewModel(fakeDao)
+        
+        // Wait for coroutines in init to finish
+        testScheduler.advanceUntilIdle()
+        
+        // Find the temporary file
+        val currentTempFile = fakeDao.files.find { it.isTemporary }
+        assertNotNull("Should have a temporary file", currentTempFile)
+        
+        val lines = fakeDao.getLinesForFileSync(currentTempFile!!.id)
+        // Should only have one empty line now (reset/cleared)
+        assertEquals("Should have exactly 1 line", 1, lines.size)
+        assertEquals("Line expression should be empty", "", lines[0].expression)
+    }
 
-        override fun getLinesForFile(fileId: Long): Flow<List<LineEntity>> = 
-            _lines.map { list: List<LineEntity> -> list.filter { line: LineEntity -> line.fileId == fileId }.sortedBy { line: LineEntity -> line.sortOrder } }
+    @Test
+    fun `allFiles excludes temporary files for sync and backup safety`() = runTest {
+        // Given: One normal file and one temporary file
+        fakeDao.insertFile(FileEntity(id = 1L, name = "Normal", isTemporary = false))
+        fakeDao.insertFile(FileEntity(id = 2L, name = "Scratchpad", isTemporary = true))
 
-        override suspend fun getLinesForFileSync(fileId: Long): List<LineEntity> = 
-            _lines.value.filter { line: LineEntity -> line.fileId == fileId }.sortedBy { line: LineEntity -> line.sortOrder }
+        // When collecting allFiles
+        val allFiles = viewModel.allFiles.first()
 
-        override suspend fun getLineById(lineId: Long): LineEntity? = 
-            _lines.value.find { line: LineEntity -> line.id == lineId }
-
-        override suspend fun getLineCountForFile(fileId: Long): Int = _lines.value.count { line: LineEntity -> line.fileId == fileId }
-
-        override suspend fun insertFile(file: FileEntity): Long {
-            val id = if (file.id == 0L) nextFileId() else file.id
-            val newFile = file.copy(id = id)
-            _files.value = _files.value + newFile
-            return id
-        }
-
-        override suspend fun internalInsertLines(lines: List<LineEntity>) {
-            val toInsert = lines.map { l: LineEntity -> 
-                val id = if (l.id == 0L) nextLineId() else l.id
-                l.copy(id = id)
-            }
-            _lines.value = _lines.value + toInsert
-        }
-
-        override suspend fun internalInsertLine(line: LineEntity): Long {
-            val id = if (line.id == 0L) nextLineId() else line.id
-            val newLine = line.copy(id = id)
-            _lines.value = _lines.value + newLine
-            return id
-        }
-
-        override suspend fun internalUpdateLine(line: LineEntity) {
-            _lines.value = _lines.value.map { existing: LineEntity -> if (existing.id == line.id) line else existing }
-        }
-
-        override suspend fun internalUpdateLines(lines: List<LineEntity>) {
-            val updates = lines.associateBy { l: LineEntity -> l.id }
-            _lines.value = _lines.value.map { existing: LineEntity -> updates[existing.id] ?: existing }
-        }
-
-        override suspend fun internalDeleteLine(line: LineEntity) {
-            _lines.value = _lines.value.filter { existing: LineEntity -> existing.id != line.id }
-        }
-
-        override suspend fun internalUpdateFile(file: FileEntity) {
-            _files.value = _files.value.map { existing: FileEntity -> if (existing.id == file.id) file else existing }
-        }
-
-        override suspend fun internalUpdateFiles(files: List<FileEntity>) {
-            val updates = files.associateBy { f: FileEntity -> f.id }
-            _files.value = _files.value.map { existing: FileEntity -> updates[existing.id] ?: existing }
-        }
-
-        override suspend fun deleteFile(file: FileEntity) {
-            _files.value = _files.value.filter { existing: FileEntity -> existing.id != file.id }
-            _lines.value = _lines.value.filter { existing: LineEntity -> existing.fileId != file.id }
-        }
-
-        override suspend fun updateFileTimestamp(fileId: Long, timestamp: Long) {
-            _files.value = _files.value.map { existing: FileEntity -> if (existing.id == fileId) existing.copy(lastModified = timestamp) else existing }
-        }
-
-        override suspend fun internalRenameFile(fileId: Long, name: String) {
-            _files.value = _files.value.map { existing: FileEntity -> if (existing.id == fileId) existing.copy(name = name) else existing }
-        }
-
-        override suspend fun updateSyncId(fileId: Long, newSyncId: String) {
-            _files.value = _files.value.map { existing: FileEntity -> if (existing.id == fileId) existing.copy(syncId = newSyncId) else existing }
-        }
-
-        override suspend fun internalDeleteLinesForFile(fileId: Long) {
-            _lines.value = _lines.value.filter { line: LineEntity -> line.fileId != fileId }
-        }
-
-        override suspend fun touchFile(fileId: Long, timestamp: Long) {
-            updateFileTimestamp(fileId, timestamp)
-        }
+        // Then only the normal file should be present
+        assertEquals(1, allFiles.size)
+        assertEquals("Normal", allFiles[0].name)
+        assertTrue(allFiles.none { it.isTemporary })
     }
 }

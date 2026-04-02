@@ -77,6 +77,18 @@ object DatabaseMigrations {
     }
 
     /**
+     * Migration from version 5 to 6.
+     *
+     * Changes:
+     * - Added isTemporary column to files table
+     */
+    val MIGRATION_5_6 = object : Migration(5, 6) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE files ADD COLUMN isTemporary INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+
+    /**
      * All migrations in order.
      * Add new migrations to this array as the database evolves.
      */
@@ -84,6 +96,7 @@ object DatabaseMigrations {
         MIGRATION_1_2,
         MIGRATION_2_3,
         MIGRATION_3_4,
-        MIGRATION_4_5
+        MIGRATION_4_5,
+        MIGRATION_5_6
     )
 }

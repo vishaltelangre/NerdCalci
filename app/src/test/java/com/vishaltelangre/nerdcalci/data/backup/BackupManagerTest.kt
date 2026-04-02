@@ -36,7 +36,10 @@ class BackupManagerTest {
         var nextFileId = 1L
         var nextLineId = 1L
 
-        override fun getAllFiles(): Flow<List<FileEntity>> = flowOf(files.toList())
+        override fun getAllFiles(): Flow<List<FileEntity>> = flowOf(files.filter { !it.isTemporary }.toList())
+        override suspend fun getTemporaryFile(): FileEntity? = files.find { it.isTemporary }
+        override suspend fun getUntitledFileNames(): List<String> =
+            files.filter { !it.isTemporary && it.name.startsWith("Untitled ") }.map { it.name }
         override suspend fun getFileById(fileId: Long): FileEntity? = files.find { it.id == fileId }
         override suspend fun getFileByName(name: String): FileEntity? = files.find { it.name == name }
         override suspend fun getFileBySyncId(syncId: String): FileEntity? = files.find { it.syncId == syncId }
@@ -144,7 +147,7 @@ class BackupManagerTest {
             lines.removeAll { it.fileId == fileId }
         }
 
-        override suspend fun getAllFilesSync(): List<FileEntity> = files.toList()
+        override suspend fun getAllFilesSync(): List<FileEntity> = files.filter { !it.isTemporary }.toList()
     }
 
     private fun createMockZip(fileName: String, content: String): ByteArray {

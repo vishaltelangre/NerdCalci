@@ -5,7 +5,7 @@ import android.content.SharedPreferences
 import android.net.Uri
 import android.util.Log
 import androidx.documentfile.provider.DocumentFile
-import com.vishaltelangre.nerdcalci.data.local.CalculatorDao
+import com.vishaltelangre.nerdcalci.data.local.FakeCalculatorDao
 import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
 import com.vishaltelangre.nerdcalci.core.Constants.EXPORT_FILE_EXTENSION
@@ -120,7 +120,7 @@ class SyncManagerTest {
         every { prefs.getAll() } returns emptyMap()
         every { folder.listFiles() } returns emptyArray()
 
-        dao.files.add(
+        dao.addFile(
             FileEntity(
                 id = 1L,
                 name = "Untitled",
@@ -130,7 +130,7 @@ class SyncManagerTest {
                 isPinned = true
             )
         )
-        dao.lines.add(
+        dao.addLine(
             LineEntity(
                 id = 1L,
                 fileId = 1L,
@@ -163,7 +163,7 @@ class SyncManagerTest {
         every { prefs.getAll() } returns emptyMap()
         every { folder.listFiles() } returns emptyArray()
 
-        dao.files.add(
+        dao.addFile(
             FileEntity(
                 id = 1L,
                 name = "Precision",
@@ -173,7 +173,7 @@ class SyncManagerTest {
                 isPinned = false
             )
         )
-        dao.lines.add(
+        dao.addLine(
             LineEntity(
                 id = 1L,
                 fileId = 1L,
@@ -190,7 +190,7 @@ class SyncManagerTest {
         val canonicalContent = contentSlot.captured
 
         assertTrue(canonicalContent.contains("""{"result":"3.333333333333333333"}"""))
-        assertNotEquals(canonicalContent, FileUtils.formatFileBody(dao.lines, 2))
+        assertNotEquals(canonicalContent, FileUtils.formatFileBody(dao.getLinesForFileSync(1L), 2))
     }
 
     @Test
@@ -201,7 +201,7 @@ class SyncManagerTest {
         every { prefs.getAll() } returns emptyMap()
         every { folder.listFiles() } returns emptyArray()
 
-        dao.files.add(
+        dao.addFile(
             FileEntity(
                 id = 1L,
                 name = "Rational",
@@ -211,7 +211,7 @@ class SyncManagerTest {
                 isPinned = false
             )
         )
-        dao.lines.add(
+        dao.addLine(
             LineEntity(
                 id = 1L,
                 fileId = 1L,
@@ -246,7 +246,7 @@ class SyncManagerTest {
         every { prefs.getAll() } returns emptyMap()
         every { folder.listFiles() } returns emptyArray()
 
-        dao.files.add(
+        dao.addFile(
             FileEntity(
                 id = 1L,
                 name = "Decimal",
@@ -256,7 +256,7 @@ class SyncManagerTest {
                 isPinned = false
             )
         )
-        dao.lines.add(
+        dao.addLine(
             LineEntity(
                 id = 1L,
                 fileId = 1L,
@@ -301,7 +301,7 @@ class SyncManagerTest {
             contentHash = null
         )
 
-        dao.insertFile(FileEntity(name = "large", syncId = syncId, lastModified = 7000L))
+        dao.addFile(FileEntity(name = "large", syncId = syncId, lastModified = 7000L))
 
         val result = SyncManager.performSync(context, dao)
 
@@ -309,141 +309,6 @@ class SyncManagerTest {
         verify(exactly = 0) { FileUtils.calculateHash(any<java.io.InputStream>()) }
     }
 
-    private class FakeCalculatorDao : CalculatorDao() {
-        val files = mutableListOf<FileEntity>()
-        val lines = mutableListOf<LineEntity>()
-
-        override fun getAllFiles() = flowOf(files)
-        override suspend fun getFileById(fileId: Long) = files.find { it.id == fileId }
-        override suspend fun getFileByName(name: String) = files.find { it.name == name }
-        override suspend fun getFileBySyncId(syncId: String) = files.find { it.syncId == syncId }
-        override suspend fun getPinnedFilesCount(): Int = files.count { it.isPinned }
-        override suspend fun doesFileExist(name: String): Boolean = files.any { it.name == name }
-        override suspend fun doesFileExist(name: String, excludeId: Long): Boolean = files.any { it.name == name && it.id != excludeId }
-        override suspend fun getLineCountForFile(fileId: Long): Int = lines.count { it.fileId == fileId }
-        override suspend fun getLineById(lineId: Long): LineEntity? = lines.find { it.id == lineId }
-
-        override suspend fun insertFile(file: FileEntity): Long {
-            val id = (files.size + 1).toLong()
-            val newFile = file.copy(id = id)
-            files.add(newFile)
-            return id
-        }
-
-        override suspend fun updateFileFromSync(file: FileEntity) {
-            val idx = files.indexOfFirst { it.syncId == file.syncId }
-            if (idx != -1) files[idx] = file
-        }
-
-        override fun getLinesForFile(fileId: Long) = flowOf(lines.filter { it.fileId == fileId })
-        override suspend fun getLinesForFileSync(fileId: Long) = lines.filter { it.fileId == fileId }
-
-        override suspend fun internalInsertLines(lines: List<LineEntity>) {
-            this.lines.addAll(lines)
-        }
-
-        override suspend fun internalInsertLine(line: LineEntity): Long {
-            val id = (lines.size + 1).toLong()
-            lines.add(line.copy(id = id))
-            return id
-        }
-
-        override suspend fun internalUpdateLine(line: LineEntity) {
-            val idx = lines.indexOfFirst { it.id == line.id }
-            if (idx != -1) lines[idx] = line
-        }
-
-        override suspend fun internalUpdateLines(lines: List<LineEntity>) {
-            lines.forEach { line ->
-                val idx = this.lines.indexOfFirst { it.id == line.id }
-                if (idx != -1) this.lines[idx] = line
-            }
-        }
-
-        override suspend fun internalDeleteLine(line: LineEntity) {
-            lines.removeIf { it.id == line.id }
-        }
-
-        override suspend fun updateLines(fileId: Long, lines: List<LineEntity>, updateTimestamp: Boolean) {
-            this.lines.removeIf { it.fileId == fileId }
-            this.lines.addAll(lines.map { it.copy(fileId = fileId) })
-            if (updateTimestamp) {
-                touchFile(fileId)
-            }
-        }
-
-        override suspend fun restoreLines(fileId: Long, lines: List<LineEntity>, updateTimestamp: Boolean) {
-            this.lines.removeIf { it.fileId == fileId }
-            val toInsert = lines.mapIndexed { index, line ->
-                line.copy(id = 0, fileId = fileId, sortOrder = index)
-            }
-            if (toInsert.isNotEmpty()) {
-                this.lines.addAll(toInsert)
-            }
-            if (updateTimestamp) {
-                touchFile(fileId)
-            }
-        }
-
-        override suspend fun internalUpdateFile(file: FileEntity) {
-            val idx = files.indexOfFirst { it.id == file.id }
-            if (idx != -1) files[idx] = file
-        }
-
-        override suspend fun internalUpdateFiles(files: List<FileEntity>) {
-            files.forEach { internalUpdateFile(it) }
-        }
-
-        override suspend fun deleteFile(file: FileEntity) {
-            files.removeIf { it.id == file.id }
-            internalDeleteLinesForFile(file.id)
-        }
-
-        override suspend fun updateFileTimestamp(fileId: Long, timestamp: Long) {
-            val idx = files.indexOfFirst { it.id == fileId }
-            if (idx != -1) files[idx] = files[idx].copy(lastModified = timestamp)
-        }
-
-        override suspend fun internalRenameFile(fileId: Long, name: String) {
-            val idx = files.indexOfFirst { it.id == fileId }
-            if (idx != -1) files[idx] = files[idx].copy(name = name)
-        }
-
-        override suspend fun internalDeleteLinesForFile(fileId: Long) {
-            lines.removeIf { it.fileId == fileId }
-        }
-
-        override suspend fun updateSyncId(fileId: Long, newSyncId: String) {
-            val idx = files.indexOfFirst { it.id == fileId }
-            if (idx != -1) files[idx] = files[idx].copy(syncId = newSyncId)
-        }
-
-        override suspend fun duplicateFile(fileId: Long, newName: String, newSyncId: String, lastModified: Long?): Long {
-            val original = files.find { it.id == fileId } ?: return -1L
-            val nextId = (files.maxOfOrNull { it.id } ?: 0L) + 1L
-            // For tests, use the provided timestamp, or the original file's if null, or default.
-            val finalTimestamp = lastModified ?: original.lastModified
-            val copy = original.copy(
-                id = nextId,
-                name = newName,
-                syncId = newSyncId,
-                lastModified = finalTimestamp
-            )
-            files.add(copy)
-
-            val originalLines = lines.filter { it.fileId == fileId }
-            var lineId = (lines.maxOfOrNull { l -> l.id } ?: 0L) + 1L
-            val newLines = originalLines.map { it.copy(id = lineId++, fileId = nextId) }
-            lines.addAll(newLines)
-            return nextId
-        }
-
-        override suspend fun touchFile(fileId: Long, timestamp: Long) {
-            updateFileTimestamp(fileId, timestamp)
-        }
-
-        override suspend fun getAllFilesSync(): List<FileEntity> = files.toList()
-    }
 
     @Test
     fun `test embedded hash from metadata is used to skip write`() = runBlocking {
@@ -475,7 +340,7 @@ class SyncManagerTest {
         }).toString()
         every { prefs.getString(SyncManager.PREF_LAST_SYNC_FILES, null) } returns snapshotJson
 
-        dao.insertFile(FileEntity(name = "hash", syncId = syncId, lastModified = 5000L))
+        dao.addFile(FileEntity(name = "hash", syncId = syncId, lastModified = 5000L))
 
         val result = SyncManager.performSync(context, dao)
         assertTrue(result.isSuccess)
@@ -502,8 +367,9 @@ class SyncManagerTest {
         val result = SyncManager.performSync(context, dao)
         assertEquals("Synced: Inbound 1, Outbound 0", result.getOrNull())
 
-        assertNotNull(dao.files[0].syncId)
-        assertTrue(dao.files[0].syncId.isNotEmpty())
+        val files = dao.getAllFilesSync()
+        assertNotNull(files[0].syncId)
+        assertTrue(files[0].syncId.isNotEmpty())
     }
 
     @Test
@@ -540,7 +406,7 @@ class SyncManagerTest {
         every { prefs.getString(SyncManager.PREF_LAST_SYNC_FILES, null) } returns snapshotJson
 
         // Local has isPinned = false (changed locally)
-        dao.insertFile(FileEntity(name = "pin", syncId = syncId, lastModified = 6000L, isPinned = false))
+        dao.addFile(FileEntity(name = "pin", syncId = syncId, lastModified = 6000L, isPinned = false))
 
         val result = SyncManager.performSync(context, dao)
         val stats = result.getOrNull()
@@ -577,7 +443,7 @@ class SyncManagerTest {
         every { prefs.getString(SyncManager.PREF_LAST_SYNC_FILES, null) } returns snapshotJson
 
         // Local has new name and newer timestamp (well beyond tolerance)
-        dao.insertFile(FileEntity(name = "new-name", syncId = syncId, lastModified = 9000L))
+        dao.addFile(FileEntity(name = "new-name", syncId = syncId, lastModified = 9000L))
 
         // Mock remote file content/metadata
         every { FileUtils.readMetadataHeader(any<java.io.BufferedReader>()) } returns FileMetadata(
@@ -625,7 +491,7 @@ class SyncManagerTest {
         every { folder.listFiles() } returns emptyArray()
 
         // Local has a newer edit (20000L > 10000L)
-        dao.insertFile(FileEntity(name = "file", syncId = syncId, lastModified = 20000L))
+        dao.addFile(FileEntity(name = "file", syncId = syncId, lastModified = 20000L))
 
         val tempFile = mockk<DocumentFile>(relaxed = true)
         var fileExistsInSaf = false
@@ -684,7 +550,7 @@ class SyncManagerTest {
             every { contentResolver.openInputStream(safUri) } answers { java.io.ByteArrayInputStream(content.toByteArray()) }
 
             // Local: Renames to 'new' and sets mtime to 10000L (so localChanged is false)
-            dao.insertFile(FileEntity(name = "new", syncId = syncId, lastModified = 10000L))
+            dao.addFile(FileEntity(name = "new", syncId = syncId, lastModified = 10000L))
 
             val result = SyncManager.performSync(context, dao)
             val stats = result.getOrThrow()
@@ -742,10 +608,9 @@ class SyncManagerTest {
             every { contentResolver.openInputStream(safUri) } answers { java.io.ByteArrayInputStream(content.toByteArray()) }
 
             // Local: Edited to 25000L (Conflict!)
-            val localId = dao.insertFile(FileEntity(name = "file", syncId = syncId, lastModified = 25000L))
-            dao.insertLine(LineEntity(fileId = localId, sortOrder = 0, expression = "local-edit"))
-            dao.touchFile(localId, 25000L) // Fix timestamp after insertLine touches it
-
+            dao.addFile(FileEntity(name = "old", syncId = syncId, lastModified = 25000L))
+            dao.addLine(LineEntity(fileId = 1, expression = "old", sortOrder = 0))
+            
             val result = SyncManager.performSync(context, dao)
             val stats = result.getOrThrow()
             println("CONFLICT_STATS: $stats")

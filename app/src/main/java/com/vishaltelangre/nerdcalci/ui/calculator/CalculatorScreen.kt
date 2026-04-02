@@ -515,8 +515,10 @@ fun CalculatorScreen(
     var showClearConfirmDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var showInfoDialog by remember { mutableStateOf(false) }
+    val scratchpadFileId by viewModel.scratchpadFileId.collectAsState()
+    val isScratchpad = fileId == scratchpadFileId
     val currentFile = files.find { it.id == fileId }
-    val fileName = currentFile?.name ?: "Editor"
+    val fileName = if (isScratchpad) Constants.SCRATCHPAD_DISPLAY_NAME else (currentFile?.name ?: "Editor")
 
     // Track which line should be focused and cursor position
     var focusLineId by remember { mutableStateOf<Long?>(null) }
@@ -625,13 +627,27 @@ fun CalculatorScreen(
             Column {
                 TopAppBar(
                     title = {
-                        Text(
-                            text = fileName,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.clickable { showRenameDialog = true },
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                        Column(
+                            modifier = if (!isScratchpad) {
+                                Modifier.clickable { showRenameDialog = true }
+                            } else {
+                                Modifier
+                            }
+                        ) {
+                            Text(
+                                text = fileName,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            if (isScratchpad) {
+                                Text(
+                                    text = "Temporary file • Changes not saved",
+                                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                     },
                     navigationIcon = {
                         IconButton(onClick = handleBack) {
@@ -773,32 +789,34 @@ fun CalculatorScreen(
                                     },
                                     leadingIcon = { Icon(Icons.Default.SpaceBar, contentDescription = null) }
                                 )
-                                DropdownMenuItem(
-                                    text = { Text("Rename File") },
-                                    leadingIcon = {
-                                        Icon(
-                                            Icons.Default.Edit,
-                                            contentDescription = null
-                                        )
-                                    },
-                                    onClick = {
-                                        showMenu = false
-                                        showRenameDialog = true
-                                    }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("File info") },
-                                    leadingIcon = {
-                                        Icon(
-                                            Icons.Outlined.Info,
-                                            contentDescription = null
-                                        )
-                                    },
-                                    onClick = {
-                                        showMenu = false
-                                        showInfoDialog = true
-                                    }
-                                )
+                                if (!isScratchpad) {
+                                    DropdownMenuItem(
+                                        text = { Text("Rename File") },
+                                        leadingIcon = {
+                                            Icon(
+                                                Icons.Default.Edit,
+                                                contentDescription = null
+                                            )
+                                        },
+                                        onClick = {
+                                            showMenu = false
+                                            showRenameDialog = true
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("File info") },
+                                        leadingIcon = {
+                                            Icon(
+                                                Icons.Outlined.Info,
+                                                contentDescription = null
+                                            )
+                                        },
+                                        onClick = {
+                                            showMenu = false
+                                            showInfoDialog = true
+                                        }
+                                    )
+                                }
                                 DropdownMenuItem(
                                     text = { Text("Duplicate File") },
                                     leadingIcon = {
@@ -887,19 +905,21 @@ fun CalculatorScreen(
                                         showClearConfirmDialog = true
                                     }
                                 )
-                                DropdownMenuItem(
-                                    text = { Text("Delete File") },
-                                    leadingIcon = {
-                                        Icon(
-                                            Icons.Default.Delete,
-                                            contentDescription = null
-                                        )
-                                    },
-                                    onClick = {
-                                        showMenu = false
-                                        showDeleteConfirmDialog = true
-                                    }
-                                )
+                                if (!isScratchpad) {
+                                    DropdownMenuItem(
+                                        text = { Text("Delete File") },
+                                        leadingIcon = {
+                                            Icon(
+                                                Icons.Default.Delete,
+                                                contentDescription = null
+                                            )
+                                        },
+                                        onClick = {
+                                            showMenu = false
+                                            showDeleteConfirmDialog = true
+                                        }
+                                    )
+                                }
                             }
                         }
                     },

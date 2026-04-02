@@ -29,6 +29,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.RssFeed
@@ -106,6 +107,10 @@ fun HomeScreen(
         }
     }
 
+    val autoOpenScratchpad by viewModel.autoOpenScratchpad.collectAsState()
+    val scratchpadFileId by viewModel.scratchpadFileId.collectAsState()
+    var hasAutoOpened by rememberSaveable { mutableStateOf(false) }
+
     // Handle UI events like Undo Snackbars and other messages
     val excludedFileIds by viewModel.excludedFileIds.collectAsState(initial = emptySet())
 
@@ -117,6 +122,13 @@ fun HomeScreen(
     DisposableEffect(Unit) {
         onDispose {
             viewModel.permanentDeleteExclusions(context)
+        }
+    }
+
+    LaunchedEffect(autoOpenScratchpad, scratchpadFileId) {
+        if (autoOpenScratchpad && scratchpadFileId != null && !hasAutoOpened) {
+            hasAutoOpened = true
+            onFileClick(scratchpadFileId!!)
         }
     }
 
@@ -295,11 +307,12 @@ fun HomeScreen(
                             visiblePinnedFiles = visiblePinnedFiles,
                             visibleUnpinnedFiles = visibleUnpinnedFiles,
                             excludedFileIds = excludedFileIds,
-                onFileClick = onFileClick,
-                coroutineScope = coroutineScope,
-                snackbarHostState = snackbarHostState,
-                context = context,
-                viewModel = viewModel
+                            scratchpadFileId = scratchpadFileId,
+                            onFileClick = onFileClick,
+                            coroutineScope = coroutineScope,
+                            snackbarHostState = snackbarHostState,
+                            context = context,
+                            viewModel = viewModel
                         )
                     }
                 } else {
@@ -307,11 +320,12 @@ fun HomeScreen(
                         visiblePinnedFiles = visiblePinnedFiles,
                         visibleUnpinnedFiles = visibleUnpinnedFiles,
                         excludedFileIds = excludedFileIds,
-                onFileClick = onFileClick,
-                coroutineScope = coroutineScope,
-                snackbarHostState = snackbarHostState,
-                context = context,
-                viewModel = viewModel
+                        scratchpadFileId = scratchpadFileId,
+                        onFileClick = onFileClick,
+                        coroutineScope = coroutineScope,
+                        snackbarHostState = snackbarHostState,
+                        context = context,
+                        viewModel = viewModel
                     )
                 }
             }
@@ -324,6 +338,7 @@ private fun HomeFileList(
     visiblePinnedFiles: List<FileEntity>,
     visibleUnpinnedFiles: List<FileEntity>,
     excludedFileIds: Set<Long>,
+    scratchpadFileId: Long?,
     onFileClick: (Long) -> Unit,
     coroutineScope: CoroutineScope,
     snackbarHostState: SnackbarHostState,
@@ -334,6 +349,57 @@ private fun HomeFileList(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 96.dp)
     ) {
+        if (scratchpadFileId != null) {
+            item {
+                SectionHeader(title = "Quick Access")
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .clip(MaterialTheme.shapes.medium)
+                        .clickable { onFileClick(scratchpadFileId) },
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.primaryContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.FlashOn,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text(
+                                text = "Scratchpad",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "Temporary file • Changes not saved",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         if (visiblePinnedFiles.isNotEmpty()) {
             item { SectionHeader(title = "Pinned") }
             addDismissibleFileItems(

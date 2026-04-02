@@ -376,14 +376,12 @@ object BackupManager {
         var exportedCount = 0
 
         ZipOutputStream(outputStream).use { zipOut ->
-            val precision = prefs(context).getInt("precision", Constants.DEFAULT_PRECISION)
             filesList.forEach { file ->
                 val lines = dao.getLinesForFileSync(file.id)
-                val body = FileUtils.formatFileBody(lines, precision)
+                val body = FileUtils.formatCanonicalFileBody(lines)
                 val contentHash = FileUtils.calculateHash(body)
-                val content = FileUtils.formatFileContent(
+                val content = FileUtils.formatCanonicalFileContent(
                     lines = lines,
-                    precision = precision,
                     metadata = FileMetadata(
                         id = file.syncId,
                         isPinned = file.isPinned,

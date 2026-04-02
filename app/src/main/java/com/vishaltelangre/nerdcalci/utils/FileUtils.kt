@@ -76,11 +76,34 @@ object FileUtils {
 
     /**
      * Formats lines into a plain text string, appending results as comments and inserting metadata headers if provided.
+     *
+     * This is the presentation-oriented format used by UI export and clipboard flows.
      */
     fun formatFileContent(lines: List<LineEntity>, precision: Int, metadata: FileMetadata? = null): String {
         val sb = StringBuilder()
         val body = formatFileBody(lines, precision)
 
+        appendMetadataHeader(sb, metadata)
+        sb.append(body)
+        return sb.toString()
+    }
+
+    /**
+     * Formats lines for sync/backup storage using canonical, device-independent results.
+     *
+     * The serialized content must not depend on user precision or rational display settings,
+     * otherwise the same file can hash differently across devices and create avoidable conflicts.
+     */
+    fun formatCanonicalFileContent(lines: List<LineEntity>, metadata: FileMetadata? = null): String {
+        val sb = StringBuilder()
+        val body = formatCanonicalFileBody(lines)
+
+        appendMetadataHeader(sb, metadata)
+        sb.append(body)
+        return sb.toString()
+    }
+
+    private fun appendMetadataHeader(sb: StringBuilder, metadata: FileMetadata?) {
         metadata?.let { meta ->
             val json = JSONObject().apply {
                 put("version", meta.version)
@@ -92,9 +115,6 @@ object FileUtils {
             }
             sb.append("# @metadata ").append(json.toString()).append("\n")
         }
-
-        sb.append(body)
-        return sb.toString()
     }
 
     fun formatFileBody(lines: List<LineEntity>, precision: Int): String {
@@ -107,6 +127,25 @@ object FileUtils {
                 expr
             } else if (shouldShowResult(expr)) {
                 val resultJson = JSONObject().apply { put("result", displayResult) }.toString()
+                "$expr # $resultJson"
+            } else {
+                expr
+            }
+        }
+    }
+
+    /**
+     * Formats lines using stored results as-is, only normalizing obvious empty/error/comment cases.
+     */
+    fun formatCanonicalFileBody(lines: List<LineEntity>): String {
+        return lines.joinToString("\n") { line ->
+            val expr = line.expression.trim()
+            val rawResult = line.result.trim()
+
+            if (expr.isEmpty() || rawResult.isBlank() || rawResult == "Err" || expr.trimStart().startsWith("#")) {
+                expr
+            } else if (shouldShowResult(expr)) {
+                val resultJson = JSONObject().apply { put("result", rawResult) }.toString()
                 "$expr # $resultJson"
             } else {
                 expr

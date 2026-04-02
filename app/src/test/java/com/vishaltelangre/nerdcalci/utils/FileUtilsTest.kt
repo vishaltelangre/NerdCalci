@@ -207,4 +207,55 @@ class FileUtilsTest {
         """.trimIndent()
         assertEquals(expected, formatted)
     }
+
+    @Test
+    fun `formatCanonicalFileBody ignores display precision and uses stored result`() {
+        val lines = listOf(
+            LineEntity(fileId = 1L, sortOrder = 0, expression = "10 / 3", result = "3.333333333333333333"),
+            LineEntity(fileId = 1L, sortOrder = 1, expression = "a = 5 # original comment", result = "5.0")
+        )
+
+        val canonical = FileUtils.formatCanonicalFileBody(lines)
+        val formatted = FileUtils.formatFileBody(lines, 2)
+
+        assertEquals(
+            """
+            10 / 3 # {"result":"3.333333333333333333"}
+            a = 5 # original comment # {"result":"5.0"}
+            """.trimIndent(),
+            canonical
+        )
+        assertEquals(
+            """
+            10 / 3 # {"result":"3.33"}
+            a = 5 # original comment # {"result":"5"}
+            """.trimIndent(),
+            formatted
+        )
+    }
+
+    @Test
+    fun `formatCanonicalFileContent preserves metadata and canonical body`() {
+        val metadata = FileMetadata(
+            id = "sync-id",
+            isPinned = true,
+            lastModified = 1234L,
+            createdAt = 4321L,
+            contentHash = "hash"
+        )
+        val lines = listOf(LineEntity(fileId = 1L, sortOrder = 0, expression = "1 + 1", result = "2"))
+
+        val canonical = FileUtils.formatCanonicalFileContent(lines, metadata)
+        val canonicalLines = canonical.lines()
+        val parsedMetadata = JSONObject(canonicalLines[0].removePrefix("# @metadata ").trim())
+
+        assertEquals(2, canonicalLines.size)
+        assertEquals("sync-id", parsedMetadata.getString("id"))
+        assertEquals(1, parsedMetadata.getInt("version"))
+        assertTrue(parsedMetadata.getBoolean("isPinned"))
+        assertEquals(1234L, parsedMetadata.getLong("lastModified"))
+        assertEquals(4321L, parsedMetadata.getLong("createdAt"))
+        assertEquals("hash", parsedMetadata.getString("contentHash"))
+        assertEquals("""1 + 1 # {"result":"2"}""", canonicalLines[1])
+    }
 }

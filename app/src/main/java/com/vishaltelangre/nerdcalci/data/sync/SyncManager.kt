@@ -507,13 +507,10 @@ object SyncManager {
         val tempFileName = "$fileNameWithExtension.tmp"
 
         val lines = dao.getLinesForFileSync(file.id)
-        val precision = prefs(context).getInt(Constants.SYNC_ENGINE_PRECISION, Constants.DEFAULT_PRECISION)
-
-        val body = FileUtils.formatFileBody(lines, precision)
+        val body = FileUtils.formatCanonicalFileBody(lines)
         val contentHash = FileUtils.calculateHash(body)
-        val content = FileUtils.formatFileContent(
+        val content = FileUtils.formatCanonicalFileContent(
             lines = lines,
-            precision = precision,
             metadata = FileMetadata(
                 version = 1,
                 id = file.syncId,

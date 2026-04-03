@@ -30,11 +30,11 @@ object MathEngine {
      * the current block's line results.
      */
     private val DYNAMIC_VARIABLES: Map<String, (List<EvaluationResult?>, Map<String, EvaluationResult>) -> EvaluationResult> = mapOf(
-        "sum"               to { results, vars -> computeBlockSum(results, vars) },
-        "total"             to { results, vars -> computeBlockSum(results, vars) },
+        "sum"               to { results, _ -> computeBlockSum(results) },
+        "total"             to { results, _ -> computeBlockSum(results) },
 
-        "avg"               to { results, vars -> computeBlockAverage(results, vars) },
-        "average"           to { results, vars -> computeBlockAverage(results, vars) },
+        "avg"               to { results, _ -> computeBlockAverage(results) },
+        "average"           to { results, _ -> computeBlockAverage(results) },
 
         "last"              to { results, _ -> computePreviousLineResult(results) },
         "prev"              to { results, _ -> computePreviousLineResult(results) },
@@ -305,7 +305,7 @@ object MathEngine {
         }
     }
 
-    private fun computeBlockSum(lineResults: List<EvaluationResult?>, variables: Map<String, EvaluationResult>): EvaluationResult {
+    private fun computeBlockSum(lineResults: List<EvaluationResult?>): EvaluationResult {
         val blockResults = mutableListOf<EvaluationResult>()
         for (i in lineResults.indices.reversed()) {
             val result = lineResults[i] ?: break
@@ -314,13 +314,24 @@ object MathEngine {
 
         if (blockResults.isEmpty()) return EvaluationResult(BigDecimal.ZERO)
 
-        // Identify the target unit for this block (the unit of the last line with a unit)
-        var targetUnit: Unit? = null
+        var expectedCategory: UnitCategory? = null
+        var firstUnitSymbol: String? = null
+        for (res in blockResults) {
+            if (res.unit != null) {
+                val u = UnitConverter.findUnit(res.unit)
+                if (isPhysicalCategory(u?.category)) {
+                    expectedCategory = u?.category
+                    firstUnitSymbol = res.unit
+                    break
+                }
+            }
+        }
+
+        // Target unit for final result is the unit of the LAST line with a physical unit
         var targetUnitSymbol: String? = null
         for (i in blockResults.indices.reversed()) {
             val u = blockResults[i].unit?.let { UnitConverter.findUnit(it) }
-            if (u != null && u.category != UnitCategory.SCALAR) {
-                targetUnit = u
+            if (isPhysicalCategory(u?.category)) {
                 targetUnitSymbol = blockResults[i].unit
                 break
             }
@@ -330,20 +341,20 @@ object MathEngine {
         for (result in blockResults) {
             val resultValue = result.value ?: BigDecimal.ZERO
             val resultUnit = result.unit?.let { UnitConverter.findUnit(it) }
-            if (targetUnit != null) {
-                if (resultUnit != null) {
-                    if (resultUnit.category != targetUnit.category && resultUnit.category != UnitCategory.SCALAR) {
-                        throw EvalException("Cannot sum ${resultUnit.name} and ${targetUnit.name}: dimension mismatch")
-                    }
-                    sumValue = sumValue.add(resultValue)
-                } else {
-                    // Result is unitless. Treat as "targetUnit" same as '+' operator.
-                    sumValue = sumValue.add(UnitConverter.toBase(resultValue, targetUnit, variables))
+            val resultCategory = resultUnit?.category
+            
+            if (expectedCategory != null) {
+                // Block contains physical units: all lines must match that category
+                if (!isPhysicalCategory(resultCategory) || resultCategory != expectedCategory) {
+                    val expectedName = firstUnitSymbol?.let { UnitConverter.findUnit(it)?.name?.lowercase()?.replaceFirstChar { it.uppercase() } } ?: expectedCategory.name.lowercase().replaceFirstChar { it.uppercase() }
+                    val resultName = resultUnit?.name?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "unitless number"
+                    throw EvalException("Cannot sum $expectedName and $resultName: dimension mismatch")
                 }
+                sumValue = sumValue.add(resultValue)
             } else {
-                if (resultUnit != null && resultUnit.category != UnitCategory.SCALAR) {
-                    // This shouldn't happen given how we pick targetUnit, but for safety:
-                    return EvaluationResult(null)
+                // Block contains no physical units: all lines must be non-physical
+                if (isPhysicalCategory(resultCategory)) {
+                    throw EvalException("Cannot sum physical and unitless values: dimension mismatch")
                 }
                 sumValue = sumValue.add(resultValue)
             }
@@ -352,7 +363,7 @@ object MathEngine {
         return EvaluationResult(sumValue, targetUnitSymbol)
     }
 
-    private fun computeBlockAverage(lineResults: List<EvaluationResult?>, variables: Map<String, EvaluationResult>): EvaluationResult {
+    private fun computeBlockAverage(lineResults: List<EvaluationResult?>): EvaluationResult {
         val blockResults = mutableListOf<EvaluationResult>()
         for (i in lineResults.indices.reversed()) {
             val result = lineResults[i] ?: break
@@ -360,14 +371,24 @@ object MathEngine {
         }
 
         if (blockResults.isEmpty()) return EvaluationResult(BigDecimal.ZERO)
+        
+        // Use logic similar to sum for dimension checking
+        var expectedCategory: UnitCategory? = null
+        var firstUnitSymbol: String? = null
+        for (res in blockResults) {
+            val u = res.unit?.let { UnitConverter.findUnit(it) }
+            val cat = u?.category
+            if (isPhysicalCategory(cat)) {
+                expectedCategory = cat
+                firstUnitSymbol = res.unit
+                break
+            }
+        }
 
-        // Identify the target unit for this block (the unit of the last line with a unit)
-        var targetUnit: Unit? = null
         var targetUnitSymbol: String? = null
         for (i in blockResults.indices.reversed()) {
             val u = blockResults[i].unit?.let { UnitConverter.findUnit(it) }
-            if (u != null && u.category != UnitCategory.SCALAR) {
-                targetUnit = u
+            if (isPhysicalCategory(u?.category)) {
                 targetUnitSymbol = blockResults[i].unit
                 break
             }
@@ -378,23 +399,34 @@ object MathEngine {
         for (result in blockResults) {
             val resultValue = result.value ?: BigDecimal.ZERO
             val resultUnit = result.unit?.let { UnitConverter.findUnit(it) }
-            if (targetUnit != null) {
-                if (resultUnit != null) {
-                    if (resultUnit.category != targetUnit.category && resultUnit.category != UnitCategory.SCALAR) {
-                        throw EvalException("Cannot average ${resultUnit.name} and ${targetUnit.name}: dimension mismatch")
-                    }
-                    sumValue = sumValue.add(resultValue)
-                } else {
-                    sumValue = sumValue.add(UnitConverter.toBase(resultValue, targetUnit, variables))
+            val resultCategory = resultUnit?.category
+
+            if (expectedCategory != null) {
+                if (!isPhysicalCategory(resultCategory) || resultCategory != expectedCategory) {
+                    val expectedName = firstUnitSymbol?.let { UnitConverter.findUnit(it)?.name?.lowercase()?.replaceFirstChar { it.uppercase() } } ?: expectedCategory.name.lowercase().replaceFirstChar { it.uppercase() }
+                    val resultName = resultUnit?.name?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "unitless number"
+                    throw EvalException("Cannot average $expectedName and $resultName: dimension mismatch")
                 }
             } else {
-                sumValue = sumValue.add(resultValue)
+                if (isPhysicalCategory(resultCategory)) {
+                    throw EvalException("Cannot average physical and unitless values: dimension mismatch")
+                }
             }
+            
+            sumValue = sumValue.add(resultValue)
             count++
         }
 
         val avgValue = if (count > 0) sumValue.divide(BigDecimal(count), JavaMathContext.DECIMAL128) else BigDecimal.ZERO
         return EvaluationResult(avgValue, targetUnitSymbol)
+    }
+
+    private fun isPhysicalCategory(category: UnitCategory?): Boolean {
+        return category != null && category != UnitCategory.SCALAR && category != UnitCategory.NUMERAL_SYSTEM
+    }
+
+    private fun getDimensionName(category: UnitCategory?): String {
+        return category?.name?.lowercase() ?: "unitless"
     }
 
     /**
@@ -522,7 +554,9 @@ object MathEngine {
             (groupingSeparatorEnabled && !SAFE_SEPARATORS.contains(symbols.groupingSeparator))
         ) {
             // Fallback to English version of the region's locale to ensure Western-style separators.
-            symbols = java.text.DecimalFormatSymbols.getInstance(Locale("en", locale.country))
+            symbols = java.text.DecimalFormatSymbols.getInstance(
+                Locale.Builder().setLanguage("en").setRegion(locale.country).build()
+            )
         }
 
         // Always force Western digits (0-9)

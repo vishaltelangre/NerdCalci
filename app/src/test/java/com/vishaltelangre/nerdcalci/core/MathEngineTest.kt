@@ -1,10 +1,10 @@
 package com.vishaltelangre.nerdcalci.core
 
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
-import org.junit.Assert.*
-import org.junit.Test
-import java.math.BigDecimal
 import kotlinx.coroutines.runBlocking
+import org.junit.*
+import org.junit.Assert.*
+import java.math.BigDecimal
 import java.util.Locale
 
 class MathEngineTest {
@@ -58,183 +58,161 @@ class MathEngineTest {
         assertEquals("10,00,000", MathEngine.formatDisplayResult(value, 2, locale, indianSettings))
     }
 
-    private fun createLine(expression: String, fileId: Long = 1L, sortOrder: Int = 0): LineEntity {
-        return LineEntity(id = sortOrder.toLong(), fileId = fileId, expression = expression, result = "", sortOrder = sortOrder)
+    @Test
+    fun `basic addition returns correct result`() {
+        testCalculate("2 + 2") { result ->
+            assertEquals("4.0", result[0].result)
+        }
     }
 
     @Test
-    fun `basic addition returns correct result`() = runBlocking {
-        val lines = listOf(createLine("2 + 2"))
-        val result = MathEngine.calculate(lines)
-        assertEquals("4.0", result[0].result)
+    fun `basic subtraction returns correct result`() {
+        testCalculate("10 - 3") { result ->
+            assertEquals("7.0", result[0].result)
+        }
     }
 
     @Test
-    fun `basic subtraction returns correct result`() = runBlocking {
-        val lines = listOf(createLine("10 - 3"))
-        val result = MathEngine.calculate(lines)
-        assertEquals("7.0", result[0].result)
+    fun `basic multiplication returns correct result`() {
+        testCalculate("5 * 6") { result ->
+            assertEquals("30.0", result[0].result)
+        }
     }
 
     @Test
-    fun `basic multiplication returns correct result`() = runBlocking {
-        val lines = listOf(createLine("5 * 6"))
-        val result = MathEngine.calculate(lines)
-        assertEquals("30.0", result[0].result)
+    fun `basic division returns correct result`() {
+        testCalculate("20 / 4") { result ->
+            assertEquals("5.0", result[0].result)
+        }
     }
 
     @Test
-    fun `basic division returns correct result`() = runBlocking {
-        val lines = listOf(createLine("20 / 4"))
-        val result = MathEngine.calculate(lines)
-        assertEquals("5.0", result[0].result)
+    fun `basic modulo returns correct result`() {
+        testCalculate("10 % 3") { result ->
+            assertEquals("1.0", result[0].result)
+        }
     }
 
     @Test
-    fun `basic modulo returns correct result`() = runBlocking {
-        val lines = listOf(createLine("10 % 3"))
-        val result = MathEngine.calculate(lines)
-        assertEquals("1.0", result[0].result)
+    fun `modulo without spaces returns correct result`() {
+        testCalculate("10%3") { result ->
+            assertEquals("1.0", result[0].result)
+        }
     }
 
     @Test
-    fun `modulo without spaces returns correct result`() = runBlocking {
-        val lines = listOf(createLine("10%3"))
-        val result = MathEngine.calculate(lines)
-        assertEquals("1.0", result[0].result)
+    fun `total throws dimension mismatch error for mixed units`() {
+        testCalculate("4kg", "5 hour", "3 kph", "total") { result ->
+            assertError("Cannot sum Kilogram and Hour: dimension mismatch", result, 3)
+        }
     }
 
     @Test
-    fun `total throws dimensional mismatch error when accessed`() = runBlocking {
-        val lines = listOf(
-            createLine("4kg", sortOrder = 0),
-            createLine("5 hour", sortOrder = 1),
-            createLine("3 kph", sortOrder = 2),
-            createLine("total", sortOrder = 3)
-        )
-        val result = MathEngine.calculate(lines)
-        assertEquals("Err", result[3].result)
-
-        val errorMsg = MathEngine.getErrorDetails(lines, 3)
-        assertEquals("Cannot sum Kilogram and Kilometer per hour: dimension mismatch", errorMsg)
+    fun `chained percentage expression works correctly`() {
+        testCalculate("100 + 20% - 5") { result ->
+            assertEquals("115.0", result[0].result)
+        }
     }
 
     @Test
-    fun `chained percentage expression works correctly`() = runBlocking {
-        val lines = listOf(createLine("100 + 20% - 5"))
-        val result = MathEngine.calculate(lines)
-        assertEquals("115.0", result[0].result)
+    fun `complex expression with multiple operators`() {
+        testCalculate("2 + 3 * 4 - 1") { result ->
+            assertEquals("13.0", result[0].result)
+        }
     }
 
     @Test
-    fun `complex expression with multiple operators`() = runBlocking {
-        val lines = listOf(createLine("2 + 3 * 4 - 1"))
-        val result = MathEngine.calculate(lines)
-        assertEquals("13.0", result[0].result)
+    fun `expression with parentheses respects order of operations`() {
+        testCalculate("(2 + 3) * 4") { result ->
+            assertEquals("20.0", result[0].result)
+        }
     }
 
     @Test
-    fun `expression with parentheses respects order of operations`() = runBlocking {
-        val lines = listOf(createLine("(2 + 3) * 4"))
-        val result = MathEngine.calculate(lines)
-        assertEquals("20.0", result[0].result)
+    fun `exponentiation works correctly`() {
+        testCalculate("2 ^ 3") { result ->
+            assertEquals("8.0", result[0].result)
+        }
     }
 
     @Test
-    fun `exponentiation works correctly`() = runBlocking {
-        val lines = listOf(createLine("2 ^ 3"))
-        val result = MathEngine.calculate(lines)
-        assertEquals("8.0", result[0].result)
+    fun `multiplication sign × is normalized to asterisk`() {
+        testCalculate("5 × 6") { result ->
+            assertEquals("30.0", result[0].result)
+        }
     }
 
     @Test
-    fun `multiplication sign × is normalized to asterisk`() = runBlocking {
-        val lines = listOf(createLine("5 × 6"))
-        val result = MathEngine.calculate(lines)
-        assertEquals("30.0", result[0].result)
+    fun `division sign ÷ is normalized to slash`() {
+        testCalculate("20 ÷ 4") { result ->
+            assertEquals("5.0", result[0].result)
+        }
     }
 
     @Test
-    fun `division sign ÷ is normalized to slash`() = runBlocking {
-        val lines = listOf(createLine("20 ÷ 4"))
-        val result = MathEngine.calculate(lines)
-        assertEquals("5.0", result[0].result)
+    fun `temperature addition is order independent`() {
+        testCalculate(
+            "30 °F + 30 °C + 30 °C",
+            "30 °C + 30 °F + 30 °C",
+            "30 °C + 30 °C + 30 °F"
+        ) { result ->
+            // Both expressions should normalize to the same canonical temperature result.
+            val resultString1 = result[0].result
+            val spaceIndex1 = resultString1.indexOf(' ')
+            assertTrue(spaceIndex1 > 0)
+            val value1 = resultString1.substring(0, spaceIndex1).toDouble()
+            val unit1 = resultString1.substring(spaceIndex1 + 1)
+
+            val resultString2 = result[1].result
+            val spaceIndex2 = resultString2.indexOf(' ')
+            assertTrue(spaceIndex2 > 0)
+            val value2 = resultString2.substring(0, spaceIndex2).toDouble()
+            val unit2 = resultString2.substring(spaceIndex2 + 1)
+
+            val resultString3 = result[2].result
+            val spaceIndex3 = resultString3.indexOf(' ')
+            assertTrue(spaceIndex3 > 0)
+            val value3 = resultString3.substring(0, spaceIndex3).toDouble()
+            val unit3 = resultString3.substring(spaceIndex3 + 1)
+
+            assertEquals(58.888888888888886, value1, 1e-9)
+            assertEquals("°C", unit1)
+            assertEquals(58.888888888888886, value2, 1e-9)
+            assertEquals("°C", unit2)
+            assertEquals(58.888888888888886, value3, 1e-9)
+            assertEquals("°C", unit3)
+        }
     }
 
     @Test
-    fun `temperature addition is order independent`() = runBlocking {
-        val lines = listOf(
-            createLine("30 °F + 30 °C + 30 °C"),
-            createLine("30 °C + 30 °F + 30 °C"),
-            createLine("30 °C + 30 °C + 30 °F"),
-        )
-        val result = MathEngine.calculate(lines)
-
-        // Both expressions should normalize to the same canonical temperature result.
-        val resultString1 = result[0].result
-        val spaceIndex1 = resultString1.indexOf(' ')
-        assertTrue(spaceIndex1 > 0)
-        val value1 = resultString1.substring(0, spaceIndex1).toDouble()
-        val unit1 = resultString1.substring(spaceIndex1 + 1)
-
-        val resultString2 = result[1].result
-        val spaceIndex2 = resultString2.indexOf(' ')
-        assertTrue(spaceIndex2 > 0)
-        val value2 = resultString2.substring(0, spaceIndex2).toDouble()
-        val unit2 = resultString2.substring(spaceIndex2 + 1)
-
-        val resultString3 = result[2].result
-        val spaceIndex3 = resultString3.indexOf(' ')
-        assertTrue(spaceIndex3 > 0)
-        val value3 = resultString3.substring(0, spaceIndex3).toDouble()
-        val unit3 = resultString3.substring(spaceIndex3 + 1)
-
-        assertEquals(58.888888888888886, value1, 1e-9)
-        assertEquals("°C", unit1)
-        assertEquals(58.888888888888886, value2, 1e-9)
-        assertEquals("°C", unit2)
-        assertEquals(58.888888888888886, value3, 1e-9)
-        assertEquals("°C", unit3)
+    fun `em conversion with custom variable`() {
+        testCalculate("em = 20", "2 em in px") { result ->
+            assertTrue(result[1].result.startsWith("40.0"))
+        }
     }
 
     @Test
-    fun `em conversion with custom variable`() = runBlocking {
-        val lines = listOf(
-            createLine("em = 20", sortOrder = 0),
-            createLine("2 em in px", sortOrder = 1)
-        )
-        val result = MathEngine.calculate(lines)
-        assertTrue(result[1].result.startsWith("40.0"))
+    fun `pixel conversion with custom ppi variable`() {
+        testCalculate("ppi = 120", "10 px in inches") { result ->
+            val resultStr = result[1].result
+            val spaceIndex = resultStr.indexOf(' ')
+            assertTrue(spaceIndex > 0)
+
+            val value = resultStr.substring(0, spaceIndex).toDouble()
+            val unit = resultStr.substring(spaceIndex + 1)
+
+            assertEquals(0.083333333333, value, 1e-6)
+            assertEquals("inch", unit)
+        }
     }
 
     @Test
-    fun `pixel conversion with custom ppi variable`() = runBlocking {
-        val lines = listOf(
-            createLine("ppi = 120", sortOrder = 0),
-            createLine("10 px in inches", sortOrder = 1)
-        )
-        val result = MathEngine.calculate(lines)
-
-        val resultStr = result[1].result
-        val spaceIndex = resultStr.indexOf(' ')
-        assertTrue(spaceIndex > 0)
-
-        val value = resultStr.substring(0, spaceIndex).toDouble()
-        val unit = resultStr.substring(spaceIndex + 1)
-
-        assertEquals(0.083333333333, value, 1e-6)
-        assertEquals("inch", unit)
-    }
-
-    @Test
-    fun `trigonometric functions support degree inputs`() = runBlocking {
-        val lines = listOf(
-            createLine("sin(90°)"),
-            createLine("sin(30 deg)"),
-            createLine("cos(60 degree)"),
-            createLine("sin(90)") // defaults to radians
-        )
-        val result = MathEngine.calculate(lines)
+    fun `trigonometric functions support degree inputs`() = testCalculate(
+        "sin(90°)",
+        "sin(30 deg)",
+        "cos(60 degree)",
+        "sin(90)" // defaults to radians
+    ) { result ->
         assertEquals(1.0, result[0].result.toDouble(), 1e-9)
         assertEquals(0.5, result[1].result.toDouble(), 1e-9)
         assertEquals(0.5, result[2].result.toDouble(), 1e-9)
@@ -242,30 +220,25 @@ class MathEngineTest {
     }
 
     @Test
-    fun `mixed unicode and ASCII operators work together`() = runBlocking {
-        val lines = listOf(createLine("10 × 2 ÷ 4 + 1"))
-        val result = MathEngine.calculate(lines)
+    fun `mixed unicode and ASCII operators work together`() = testCalculate("10 × 2 ÷ 4 + 1") { result ->
         assertEquals("6.0", result[0].result)
     }
 
     @Test
-    fun `numeral system multipliers evaluate correctly`() = runBlocking {
-        val lines = listOf(
-            createLine("5 thousand", sortOrder = 0),
-            createLine("2.5 million", sortOrder = 1),
-            createLine("1.5 crore", sortOrder = 2),
-            createLine("2 lakh + 5 thousand", sortOrder = 3),
-            createLine("50% of 1 lakh", sortOrder = 4),
-            createLine("1.5 hundred", sortOrder = 5),
-            createLine("1 billion", sortOrder = 6),
-            createLine("1 trillion", sortOrder = 7),
-            createLine("4500 million in crores", sortOrder = 8),
-            createLine("2 lakh to thousand", sortOrder = 9),
-            createLine("5 thousand meters to km", sortOrder = 10),
-            createLine("10 thousand in hex", sortOrder = 11)
-        )
-        val result = MathEngine.calculate(lines)
-
+    fun `numeral system multipliers evaluate correctly`() = testCalculate(
+        "5 thousand",
+        "2.5 million",
+        "1.5 crore",
+        "2 lakh + 5 thousand",
+        "50% of 1 lakh",
+        "1.5 hundred",
+        "1 billion",
+        "1 trillion",
+        "4500 million in crores",
+        "2 lakh to thousand",
+        "5 thousand meters to km",
+        "10 thousand in hex"
+    ) { result ->
         assertEquals("5000.0", result[0].result)
         assertEquals("2500000.0", result[1].result)
         assertEquals("15000000.0", result[2].result)
@@ -281,70 +254,41 @@ class MathEngineTest {
     }
 
     @Test
-    fun `decimal addition returns formatted result`() = runBlocking {
-        val lines = listOf(createLine("1.5 + 2.3"))
-        val result = MathEngine.calculate(lines)
+    fun `decimal addition returns formatted result`() = testCalculate("1.5 + 2.3") { result ->
         assertEquals("3.8", result[0].result)
     }
 
     @Test
-    fun `decimal division returns raw double precision`() = runBlocking {
-        val lines = listOf(createLine("10 / 3"))
-        val result = MathEngine.calculate(lines)
+    fun `decimal division returns raw double precision`() = testCalculate("10 / 3") { result ->
         assertEquals("3.333333333333333333333333333333333", result[0].result)
     }
 
     @Test
-    fun `result with no decimal part shows as double with trailing zero`() = runBlocking {
-        val lines = listOf(createLine("5.0 + 5.0"))
-        val result = MathEngine.calculate(lines)
+    fun `result with no decimal part shows as double with trailing zero`() = testCalculate("5.0 + 5.0") { result ->
         assertEquals("10.0", result[0].result)
     }
 
     @Test
-    fun `simple variable assignment stores value`() = runBlocking {
-        val lines = listOf(
-            createLine("price = 100", sortOrder = 0),
-            createLine("price", sortOrder = 1)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `simple variable assignment stores value`() = testCalculate("price = 100", "price") { result ->
         assertEquals("100.0", result[0].result)
         assertEquals("100.0", result[1].result)
     }
 
     @Test
-    fun `variable can be used in calculations`() = runBlocking {
-        val lines = listOf(
-            createLine("price = 100", sortOrder = 0),
-            createLine("price * 2", sortOrder = 1)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `variable can be used in calculations`() = testCalculate("price = 100", "price * 2") { result ->
         assertEquals("100.0", result[0].result)
         assertEquals("200.0", result[1].result)
     }
 
     @Test
-    fun `multiple variables work together`() = runBlocking {
-        val lines = listOf(
-            createLine("a = 10", sortOrder = 0),
-            createLine("b = 20", sortOrder = 1),
-            createLine("a + b", sortOrder = 2)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `multiple variables work together`() = testCalculate("a = 10", "b = 20", "a + b") { result ->
         assertEquals("10.0", result[0].result)
         assertEquals("20.0", result[1].result)
         assertEquals("30.0", result[2].result)
     }
 
     @Test
-    fun `variable reassignment updates value`() = runBlocking {
-        val lines = listOf(
-            createLine("x = 5", sortOrder = 0),
-            createLine("x * 2", sortOrder = 1),
-            createLine("x = 10", sortOrder = 2),
-            createLine("x * 2", sortOrder = 3)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `variable reassignment updates value`() = testCalculate("x = 5", "x * 2", "x = 10", "x * 2") { result ->
         assertEquals("5.0", result[0].result)
         assertEquals("10.0", result[1].result)
         assertEquals("10.0", result[2].result)
@@ -352,105 +296,65 @@ class MathEngineTest {
     }
 
     @Test
-    fun `variable with underscores in name`() = runBlocking {
-        val lines = listOf(
-            createLine("monthly_salary = 5000", sortOrder = 0),
-            createLine("monthly_salary * 12", sortOrder = 1),
-            createLine("monthly_salary", sortOrder = 2)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `variable with underscores in name`() = testCalculate("monthly_salary = 5000", "monthly_salary * 12", "monthly_salary") { result ->
         assertEquals("5000.0", result[0].result)
         assertEquals("60000.0", result[1].result)
         assertEquals("5000.0", result[2].result)
     }
 
     @Test
-    fun `variable with underscores in percentage expressions`() = runBlocking {
-        val lines =
-                listOf(
-                        createLine("rate = 10", sortOrder = 0),
-                        createLine("rate_with_disc = 10% off rate", sortOrder = 1),
-                        createLine("rate_with_disc", sortOrder = 2)
-                )
-        val result = MathEngine.calculate(lines)
+    fun `variable with underscores in percentage expressions`() = testCalculate("rate = 10", "rate_with_disc = 10% off rate", "rate_with_disc") { result ->
         assertEquals("10.0", result[0].result)
         assertEquals("9.0", result[1].result)
         assertEquals("9.0", result[2].result)
     }
 
     @Test
-    fun `undefined variable returns error not implicit multiplication`() = runBlocking {
+    fun `undefined variable returns error not implicit multiplication`() = testCalculate("rate = 10", "rate2") { result ->
         // rate2 (without underscore) is not defined, should error out instead of being parsed as rate * 2
-        val lines = listOf(
-            createLine("rate = 10", sortOrder = 0),
-            createLine("rate2", sortOrder = 1)
-        )
-        val result = MathEngine.calculate(lines)
         assertEquals("10.0", result[0].result)
-        assertEquals("Err", result[1].result)
+        assertError("Unknown variable `rate2`", result, 1)
     }
 
     @Test
-    fun `variable assignment with expression`() = runBlocking {
-        val lines = listOf(
-            createLine("total = 10 + 20 + 30", sortOrder = 0),
-            createLine("total / 3", sortOrder = 1)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `variable assignment with expression`() = testCalculate("total = 10 + 20 + 30", "total / 3") { result ->
         assertEquals("60.0", result[0].result)
         assertEquals("20.0", result[1].result)
     }
 
     @Test
-    fun `percentage of number works correctly`() = runBlocking {
-        val lines = listOf(createLine("20% of 100"))
-        val result = MathEngine.calculate(lines)
+    fun `percentage of number works correctly`() = testCalculate("20% of 100") { result ->
         assertEquals("20.0", result[0].result)
     }
 
     @Test
-    fun `percentage of decimal number`() = runBlocking {
-        val lines = listOf(createLine("15.5% of 200"))
-        val result = MathEngine.calculate(lines)
+    fun `percentage of decimal number`() = testCalculate("15.5% of 200") { result ->
         assertEquals("31.0", result[0].result) // Result is whole number
     }
 
     @Test
-    fun `percentage of variable`() = runBlocking {
-        val lines = listOf(
-            createLine("price = 1000", sortOrder = 0),
-            createLine("10% of price", sortOrder = 1)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `percentage of variable`() = testCalculate("price = 1000", "10% of price") { result ->
         assertEquals("1000.0", result[0].result)
         assertEquals("100.0", result[1].result)
     }
 
     @Test
-    fun `percentage of quantity preserves unit`() = runBlocking {
-        val lines = listOf(
-            createLine("10000g", sortOrder = 0),
-            createLine("10% of _", sortOrder = 1),
-            createLine("_ + 9kg", sortOrder = 2)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `percentage of quantity preserves unit`() = testCalculate("10000g", "10% of _", "_ + 9kg") { result ->
         assertEquals("10000.0 g", result[0].result)
         assertEquals("1000.0 g", result[1].result)
         assertEquals("10000.0 g", result[2].result)
     }
 
     @Test
-    fun `unit cancellation in division returns unitless result`() = runBlocking {
-        val lines = listOf(
-            createLine("10km / 100m"),
-            createLine("(10km * 10km) / 50sqkm"),
-            createLine("x = 10km / 100m"),
-            createLine("x * 2"),
-            createLine("100kg / 10g"),
-            createLine("10kg / 2kg"),
-            createLine("1h / 60min")
-        )
-        val result = MathEngine.calculate(lines)
+    fun `unit cancellation in division returns unitless result`() = testCalculate(
+        "10km / 100m",
+        "(10km * 10km) / 50sqkm",
+        "x = 10km / 100m",
+        "x * 2",
+        "100kg / 10g",
+        "10kg / 2kg",
+        "1h / 60min"
+    ) { result ->
         assertEquals("100.0", result[0].result)
         assertEquals("2.0", result[1].result)
         assertEquals("100.0", result[2].result)
@@ -461,170 +365,112 @@ class MathEngineTest {
     }
 
     @Test
-    fun `non linear same category division returns error`() = runBlocking {
-        val lines = listOf(
-            createLine("20 C / 10 C", sortOrder = 0),
-            createLine("6 l100km / 2 l100km", sortOrder = 1)
-        )
-
-        val result = MathEngine.calculate(lines)
-        assertEquals("Err", result[0].result)
-        assertEquals("Err", result[1].result)
-
-        val err0 = MathEngine.getErrorDetails(lines, 0)
-        val err1 = MathEngine.getErrorDetails(lines, 1)
-        assertTrue(err0?.contains("unsupported multiplicative unit") == true)
-        assertTrue(err1?.contains("unsupported multiplicative unit") == true)
+    fun `non linear same category division returns error`() = testCalculate("20 C / 10 C", "6 l100km / 2 l100km") { result ->
+        assertError("unsupported multiplicative unit: Celsius / Celsius", result, 0)
+        assertError("unsupported multiplicative unit: Liters per 100 km / Liters per 100 km", result, 1)
     }
 
     @Test
-    fun `percentage off reduces value`() = runBlocking {
-        val lines = listOf(createLine("20% off 100"))
-        val result = MathEngine.calculate(lines)
+    fun `percentage off reduces value`() = testCalculate("20% off 100") { result ->
         assertEquals("80.0", result[0].result)
     }
 
     @Test
-    fun `percentage off with decimal`() = runBlocking {
-        val lines = listOf(createLine("25% off 80"))
-        val result = MathEngine.calculate(lines)
+    fun `percentage off with decimal`() = testCalculate("25% off 80") { result ->
         assertEquals("60.0", result[0].result)
     }
 
     @Test
-    fun `percentage off variable`() = runBlocking {
-        val lines = listOf(
-            createLine("original = 500", sortOrder = 0),
-            createLine("30% off original", sortOrder = 1)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `percentage off variable`() = testCalculate("original = 500", "30% off original") { result ->
         assertEquals("500.0", result[0].result)
         assertEquals("350.0", result[1].result)
     }
 
     @Test
-    fun `add percentage to number`() = runBlocking {
-        val lines = listOf(createLine("100 + 20%"))
-        val result = MathEngine.calculate(lines)
+    fun `add percentage to number`() = testCalculate("100 + 20%") { result ->
         assertEquals("120.0", result[0].result)
     }
 
     @Test
-    fun `add percentage to variable`() = runBlocking {
-        val lines = listOf(
-            createLine("salary = 50000", sortOrder = 0),
-            createLine("salary + 10%", sortOrder = 1)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `add percentage to variable`() = testCalculate("salary = 50000", "salary + 10%") { result ->
         assertEquals("50000.0", result[0].result)
         assertEquals("55000.0", result[1].result)
     }
 
     @Test
-    fun `subtract percentage from number`() = runBlocking {
-        val lines = listOf(createLine("100 - 15%"))
-        val result = MathEngine.calculate(lines)
+    fun `subtract percentage from number`() = testCalculate("100 - 15%") { result ->
         assertEquals("85.0", result[0].result)
     }
 
     @Test
-    fun `subtract percentage from variable`() = runBlocking {
-        val lines = listOf(
-            createLine("budget = 1000", sortOrder = 0),
-            createLine("budget - 25%", sortOrder = 1)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `subtract percentage from variable`() = testCalculate("budget = 1000", "budget - 25%") { result ->
         assertEquals("1000.0", result[0].result)
         assertEquals("750.0", result[1].result)
     }
 
     @Test
-    fun `expression with inline comment returns result`() = runBlocking {
-        val lines = listOf(createLine("10 + 5 # adding numbers"))
-        val result = MathEngine.calculate(lines)
+    fun `expression with inline comment returns result`() = testCalculate("10 + 5 # adding numbers") { result ->
         assertEquals("15.0", result[0].result)
     }
 
     @Test
-    fun `full line comment returns empty result`() = runBlocking {
-        val lines = listOf(createLine("# This is just a comment"))
-        val result = MathEngine.calculate(lines)
+    fun `full line comment returns empty result`() = testCalculate("# This is just a comment") { result ->
         assertEquals("", result[0].result)
     }
 
     @Test
-    fun `comment with special characters is ignored`() = runBlocking {
-        val lines = listOf(createLine("20 * 2 # result should be 40!"))
-        val result = MathEngine.calculate(lines)
+    fun `comment with special characters is ignored`() = testCalculate("20 * 2 # result should be 40!") { result ->
         assertEquals("40.0", result[0].result)
     }
 
     @Test
-    fun `hash symbol in middle of expression is treated as comment`() = runBlocking {
-        val lines = listOf(createLine("5 + 5 # + 10"))
-        val result = MathEngine.calculate(lines)
+    fun `hash symbol in middle of expression is treated as comment`() = testCalculate("5 + 5 # + 10") { result ->
         assertEquals("10.0", result[0].result)
     }
 
     @Test
-    fun `empty expression returns empty result`() = runBlocking {
-        val lines = listOf(createLine(""))
-        val result = MathEngine.calculate(lines)
+    fun `empty expression returns empty result`() = testCalculate("") { result ->
         assertEquals("", result[0].result)
     }
 
     @Test
-    fun `blank expression with spaces returns empty result`() = runBlocking {
-        val lines = listOf(createLine("   "))
-        val result = MathEngine.calculate(lines)
+    fun `blank expression with spaces returns empty result`() = testCalculate("   ") { result ->
         assertEquals("", result[0].result)
     }
 
     @Test
-    fun `expression with only comment and spaces returns empty result`() = runBlocking {
-        val lines = listOf(createLine("   # just a comment"))
-        val result = MathEngine.calculate(lines)
+    fun `expression with only comment and spaces returns empty result`() = testCalculate("   # just a comment") { result ->
         assertEquals("", result[0].result)
     }
 
     @Test
-    fun `invalid expression returns Err`() = runBlocking {
-        val lines = listOf(createLine("2 + * 2"))
-        val result = MathEngine.calculate(lines)
-        assertEquals("Err", result[0].result)
+    fun `invalid expression returns Err`() = testCalculate("2 + * 2") { result ->
+        assertError("Expected a value or `(`, but found `*`", result, 0)
     }
 
     @Test
-    fun `division by zero returns Err`() = runBlocking {
-        val lines = listOf(createLine("10 / 0"))
-        val result = MathEngine.calculate(lines)
-        assertEquals("Err", result[0].result)
+    fun `division by zero returns Err`() = testCalculate("10 / 0") { result ->
+        assertError("Cannot divide by zero", result, 0)
     }
 
     @Test
-    fun `undefined variable returns Err`() = runBlocking {
-        val lines = listOf(createLine("unknownVar * 2"))
-        val result = MathEngine.calculate(lines)
-        assertEquals("Err", result[0].result)
+    fun `undefined variable returns Err`() = testCalculate("unknownVar * 2") { result ->
+        assertError("Unknown variable `unknownVar`", result, 0)
     }
 
     @Test
-    fun `malformed parentheses returns Err`() = runBlocking {
-        val lines = listOf(createLine("(2 + 3"))
-        val result = MathEngine.calculate(lines)
-        assertEquals("Err", result[0].result)
+    fun `malformed parentheses returns Err`() = testCalculate("(2 + 3") { result ->
+        assertError("Expected `)`, but found `end of line`", result, 0)
     }
 
     @Test
-    fun `complex calculation with variables and percentages`() = runBlocking {
-        val lines = listOf(
-            createLine("basePrice = 1000", sortOrder = 0),
-            createLine("discount = 15% of basePrice", sortOrder = 1),
-            createLine("discountedPrice = basePrice - discount", sortOrder = 2),
-            createLine("tax = 10% of discountedPrice", sortOrder = 3),
-            createLine("final = discountedPrice + tax", sortOrder = 4)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `complex calculation with variables and percentages`() = testCalculate(
+        "basePrice = 1000",
+        "discount = 15% of basePrice",
+        "discountedPrice = basePrice - discount",
+        "tax = 10% of discountedPrice",
+        "final = discountedPrice + tax"
+    ) { result ->
         assertEquals("1000.0", result[0].result)
         assertEquals("150.0", result[1].result)
         assertEquals("850.0", result[2].result)
@@ -633,15 +479,13 @@ class MathEngineTest {
     }
 
     @Test
-    fun `multi-line with comments and calculations`() = runBlocking {
-        val lines = listOf(
-            createLine("# Monthly budget calculation", sortOrder = 0),
-            createLine("income = 5000", sortOrder = 1),
-            createLine("rent = 1200 # apartment", sortOrder = 2),
-            createLine("utilities = 300", sortOrder = 3),
-            createLine("remaining = income - rent - utilities", sortOrder = 4)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `multi-line with comments and calculations`() = testCalculate(
+        "# Monthly budget calculation",
+        "income = 5000",
+        "rent = 1200 # apartment",
+        "utilities = 300",
+        "remaining = income - rent - utilities"
+    ) { result ->
         assertEquals("", result[0].result)
         assertEquals("5000.0", result[1].result)
         assertEquals("1200.0", result[2].result)
@@ -650,14 +494,12 @@ class MathEngineTest {
     }
 
     @Test
-    fun `variable dependency chain calculates correctly`() = runBlocking {
-        val lines = listOf(
-            createLine("a = 10", sortOrder = 0),
-            createLine("b = a * 2", sortOrder = 1),
-            createLine("c = b + a", sortOrder = 2),
-            createLine("d = c / a", sortOrder = 3)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `variable dependency chain calculates correctly`() = testCalculate(
+        "a = 10",
+        "b = a * 2",
+        "c = b + a",
+        "d = c / a"
+    ) { result ->
         assertEquals("10.0", result[0].result)
         assertEquals("20.0", result[1].result)
         assertEquals("30.0", result[2].result)
@@ -665,194 +507,153 @@ class MathEngineTest {
     }
 
     @Test
-    fun `mixed valid and invalid lines process independently`() = runBlocking {
-        val lines = listOf(
-            createLine("5 + 5", sortOrder = 0),
-            createLine("invalid ++", sortOrder = 1),
-            createLine("10 * 2", sortOrder = 2)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `mixed valid and invalid lines process independently`() = testCalculate(
+        "5 + 5",
+        "invalid ++",
+        "10 * 2"
+    ) { result ->
         assertEquals("10.0", result[0].result)
-        assertEquals("Err", result[1].result)
+        assertError("Unknown variable `invalid`", result[1], result, 1)
         assertEquals("20.0", result[2].result)
     }
 
     @Test
-    fun `large integer within Long range is returned correctly`() = runBlocking {
-        val lines = listOf(createLine("1000000000 * 2"))
-        val result = MathEngine.calculate(lines)
+    fun `large integer within Long range is returned correctly`() = testCalculate("1000000000 * 2") { result ->
         assertEquals("2000000000.0", result[0].result)
     }
 
     @Test
-    fun `very large number uses scientific notation`() = runBlocking {
-        val lines = listOf(createLine("999999999999999 * 999999999999999"))
-        val result = MathEngine.calculate(lines)
+    fun `very large number uses scientific notation`() = testCalculate("999999999999999 * 999999999999999") { result ->
         // Should be in scientific notation format
         assertTrue(result[0].result.contains("e") || result[0].result.length > 15)
     }
 
     @Test
-    fun `single number evaluates to itself`() = runBlocking {
-        val lines = listOf(createLine("42"))
-        val result = MathEngine.calculate(lines)
+    fun `single number evaluates to itself`() = testCalculate("42") { result ->
         assertEquals("42.0", result[0].result)
     }
 
     @Test
-    fun `negative numbers work correctly`() = runBlocking {
-        val lines = listOf(createLine("-10 + 5"))
-        val result = MathEngine.calculate(lines)
+    fun `negative numbers work correctly`() = testCalculate("-10 + 5") { result ->
         assertEquals("-5.0", result[0].result)
     }
 
     @Test
-    fun `nested parentheses calculate correctly`() = runBlocking {
-        val lines = listOf(createLine("((2 + 3) * (4 + 5))"))
-        val result = MathEngine.calculate(lines)
+    fun `nested parentheses calculate correctly`() = testCalculate("((2 + 3) * (4 + 5))") { result ->
         assertEquals("45.0", result[0].result)
     }
 
     @Test
-    fun `expression with only whitespace after comment`() = runBlocking {
-        val lines = listOf(createLine("10 + 5 #    "))
-        val result = MathEngine.calculate(lines)
+    fun `expression with only whitespace after comment`() = testCalculate("10 + 5 #    ") { result ->
         assertEquals("15.0", result[0].result)
     }
 
     @Test
-    fun `zero as result displays as 0`() = runBlocking {
-        val lines = listOf(createLine("5 - 5"))
-        val result = MathEngine.calculate(lines)
+    fun `zero as result displays as 0`() = testCalculate("5 - 5") { result ->
         assertEquals("0.0", result[0].result)
     }
 
     @Test
-    fun `maintains decimal precision correctly`() = runBlocking {
-        val lines = listOf(createLine("1 / 3 * 3"))
-        val result = MathEngine.calculate(lines)
+    fun `maintains decimal precision correctly`() = testCalculate("1 / 3 * 3") { result ->
         assertEquals("0.9999999999999999999999999999999999", result[0].result) // Result is whole number
     }
 
     @Test
-    fun `high precision arithmetic works for very large numbers`() = runBlocking {
-        val lines = listOf(createLine("(10^100) + 1 - (10^100)"))
-        val result = MathEngine.calculate(lines)
+    fun `high precision arithmetic works for very large numbers`() = testCalculate("(10^100) + 1 - (10^100)") { result ->
         assertEquals("1.0", result[0].result)
     }
 
     @Test
-    fun `variable with underscore in name works`() = runBlocking {
-        val lines = listOf(
-            createLine("my_var = 100", sortOrder = 0),
-            createLine("my_var * 2", sortOrder = 1)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `variable with underscore in name works`() = testCalculate(
+        "my_var = 100",
+        "my_var * 2"
+    ) { result ->
         assertEquals("100.0", result[0].result)
         assertEquals("200.0", result[1].result)
     }
 
     @Test
-    fun `percentage calculation order matters`() = runBlocking {
+    fun `percentage calculation order matters`() = testCalculate("20% of 100") { result ->
         // 20% of 100 should be 20, not 100% of 20
-        val lines = listOf(createLine("20% of 100"))
-        val result = MathEngine.calculate(lines)
         assertEquals("20.0", result[0].result)
     }
 
     @Test
-    fun `multiple spaces in expression are handled`() = runBlocking {
-        val lines = listOf(createLine("10    +    20"))
-        val result = MathEngine.calculate(lines)
+    fun `multiple spaces in expression are handled`() = testCalculate("10    +    20") { result ->
         assertEquals("30.0", result[0].result)
     }
 
     @Test
-    fun `invalid variable name with spaces returns error`() = runBlocking {
-        val lines = listOf(createLine("rate with disc = 10"))
-        val result = MathEngine.calculate(lines)
-        assertEquals("Err", result[0].result)
+    fun `invalid variable name with spaces returns error`() = testCalculate("rate with disc = 10") { result ->
+        assertError("Unexpected `identifier`", result, 0)
     }
 
     @Test
-    fun `invalid variable name starting with digit returns error`() = runBlocking {
-        val lines = listOf(createLine("2rate = 10"))
-        val result = MathEngine.calculate(lines)
-        assertEquals("Err", result[0].result)
+    fun `invalid variable name starting with digit returns error`() = testCalculate("2rate = 10") { result ->
+        assertError("Unexpected `identifier`", result, 0)
     }
 
     @Test
-    fun `invalid variable name with special characters returns error`() = runBlocking {
-        val lines = listOf(createLine("rate-disc = 10"))
-        val result = MathEngine.calculate(lines)
-        assertEquals("Err", result[0].result)
+    fun `invalid variable name with special characters returns error`() = testCalculate("rate-disc = 10") {
+        assertError("Unexpected `=`", it, 0)
     }
 
     @Test
-    fun `valid variable names with underscores work`() = runBlocking {
-        val lines = listOf(
-            createLine("rate_with_disc = 10", sortOrder = 0),
-            createLine("rate_2 = 11", sortOrder = 1),
-            createLine("_private2 = 5", sortOrder = 2),
-            createLine("__internal__ = 3", sortOrder = 3),
-            createLine("_private2 + __internal__", sortOrder = 4)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `valid variable names with underscores work`() = testCalculate(
+        "rate_with_disc = 10",
+        "rate_2 = 11",
+        "_private2 = 5",
+        "__internal__ = 3",
+        "1 + 1", // Dummy line for later subtraction testing if needed
+        "_private2 + __internal__"
+    ) { result ->
         assertEquals("10.0", result[0].result)
         assertEquals("11.0", result[1].result)
         assertEquals("5.0", result[2].result)
         assertEquals("3.0", result[3].result)
-        assertEquals("8.0", result[4].result)
+        assertEquals("8.0", result[5].result)
     }
 
     @Test
-    fun `trigonometric functions work`() = runBlocking {
-        val lines = listOf(
-            createLine("sin(0)", sortOrder = 0),
-            createLine("cos(0)", sortOrder = 1),
-            createLine("tan(0)", sortOrder = 2)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `trigonometric functions work`() = testCalculate(
+        "sin(0)",
+        "cos(0)",
+        "tan(0)"
+    ) { result ->
         assertEquals("0.0", result[0].result)
         assertEquals("1.0", result[1].result)
         assertEquals("0.0", result[2].result)
     }
 
     @Test
-    fun `inverse trigonometric functions work`() = runBlocking {
-        val lines = listOf(
-            createLine("asin(0)", sortOrder = 0),
-            createLine("acos(1)", sortOrder = 1),
-            createLine("atan(0)", sortOrder = 2)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `inverse trigonometric functions work`() = testCalculate(
+        "asin(0)",
+        "acos(1)",
+        "atan(0)"
+    ) { result ->
         assertEquals("0.0", result[0].result)
         assertEquals("0.0", result[1].result)
         assertEquals("0.0", result[2].result)
     }
 
     @Test
-    fun `logarithm functions work`() = runBlocking {
-        val lines = listOf(
-            createLine("log10(1000)", sortOrder = 0),
-            createLine("log2(8)", sortOrder = 1),
-            createLine("log(E)", sortOrder = 2)  // Natural log of E should be 1
-        )
-        val result = MathEngine.calculate(lines)
+    fun `logarithm functions work`() = testCalculate(
+        "log10(1000)",
+        "log2(8)",
+        "log(E)" // Natural log of E should be 1
+    ) { result ->
         assertEquals("3.0", result[0].result)
         assertEquals("3.0", result[1].result)
         assertEquals("1.0", result[2].result)
     }
 
     @Test
-    fun `power and root functions work`() = runBlocking {
-        val lines = listOf(
-            createLine("sqrt(16)", sortOrder = 0),
-            createLine("cbrt(27)", sortOrder = 1),
-            createLine("pow(2, 8)", sortOrder = 2),
-            createLine("exp(0)", sortOrder = 3)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `power and root functions work`() = testCalculate(
+        "sqrt(16)",
+        "cbrt(27)",
+        "pow(2, 8)",
+        "exp(0)"
+    ) { result ->
         assertEquals("4.0", result[0].result)
         assertEquals("3.0", result[1].result)
         assertEquals("256.0", result[2].result)
@@ -860,29 +661,25 @@ class MathEngineTest {
     }
 
     @Test
-    fun `factorial functions work`() = runBlocking {
-        val lines = listOf(
-            createLine("factorial(0)", sortOrder = 0),
-            createLine("factorial(5)", sortOrder = 1),
-            createLine("fact(6)", sortOrder = 2)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `factorial functions work`() = testCalculate(
+        "factorial(0)",
+        "factorial(5)",
+        "fact(6)"
+    ) { result ->
         assertEquals("1.0", result[0].result)
         assertEquals("120.0", result[1].result)
         assertEquals("720.0", result[2].result)
     }
 
     @Test
-    fun `rounding functions work`() = runBlocking {
-        val lines = listOf(
-            createLine("abs(-42)", sortOrder = 0),
-            createLine("floor(3.7)", sortOrder = 1),
-            createLine("ceil(3.2)", sortOrder = 2),
-            createLine("signum(-5)", sortOrder = 3),
-            createLine("signum(0)", sortOrder = 4),
-            createLine("signum(5)", sortOrder = 5)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `rounding functions work`() = testCalculate(
+        "abs(-42)",
+        "floor(3.7)",
+        "ceil(3.2)",
+        "signum(-5)",
+        "signum(0)",
+        "signum(5)"
+    ) { result ->
         assertEquals("42.0", result[0].result)
         assertEquals("3.0", result[1].result)
         assertEquals("4.0", result[2].result)
@@ -892,19 +689,15 @@ class MathEngineTest {
     }
 
     @Test
-    fun `constants work`() = runBlocking {
-        val lines = listOf(
-            createLine("PI", sortOrder = 0),
-            createLine("E", sortOrder = 1),
-            createLine("PI * 2", sortOrder = 2),
-            createLine("E + 1", sortOrder = 3),
-            createLine("pi", sortOrder = 4),
-            createLine("π", sortOrder = 5),
-            createLine("e", sortOrder = 6)
-
-        )
-        val result = MathEngine.calculate(lines)
-
+    fun `constants work`() = testCalculate(
+        "PI",
+        "E",
+        "PI * 2",
+        "E + 1",
+        "pi",
+        "π",
+        "e"
+    ) { result ->
         val piValue = result[0].result.toDoubleOrNull()
         assertNotNull("PI should return a number, got: ${result[0].result}", piValue)
         assertTrue("PI should be ~3.14, got: $piValue", piValue!! >= 3.14 && piValue <= 3.15)
@@ -936,140 +729,116 @@ class MathEngineTest {
 
 
     @Test
-    fun `functions can be used with variables`() = runBlocking {
-        val lines = listOf(
-            createLine("radius = 5", sortOrder = 0),
-            createLine("area = PI * pow(radius, 2)", sortOrder = 1)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `functions can be used with variables`() = testCalculate(
+        "radius = 5",
+        "area = PI * pow(radius, 2)"
+    ) { result ->
         assertEquals("5.0", result[0].result)
         // Area should be approximately 78.54
         assertTrue(result[1].result.toDouble() > 78 && result[1].result.toDouble() < 79)
     }
 
     @Test
-    fun `nested functions work`() = runBlocking {
-        val lines = listOf(
-            createLine("sqrt(pow(3, 2) + pow(4, 2))", sortOrder = 0),
-            createLine("abs(sin(0) - 1)", sortOrder = 1)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `nested functions work`() = testCalculate(
+        "sqrt(pow(3, 2) + pow(4, 2))",
+        "abs(sin(0) - 1)"
+    ) { result ->
         assertEquals("5.0", result[0].result) // Pythagorean theorem: sqrt(9 + 16) = 5
         assertEquals("1.0", result[1].result) // abs(0 - 1) = 1
     }
 
     @Test
-    fun `functions are case sensitive`() = runBlocking {
-        val lines = listOf(
-            createLine("SQRT(16)", sortOrder = 0),
-            createLine("SIN(0)", sortOrder = 1)
-        )
-        val result = MathEngine.calculate(lines)
-        assertEquals("Err", result[0].result)
-        assertEquals("Err", result[1].result)
+    fun `functions are case sensitive`() = testCalculate(
+        "SQRT(16)",
+        "SIN(0)"
+    ) { result ->
+        assertError("Unknown function `SQRT()`", result, 0)
+        assertError("Unknown function `SIN()`", result, 1)
     }
 
     @Test
-    fun `functions require parentheses`() = runBlocking {
-        val lines = listOf(
-            createLine("floor(3.7)", sortOrder = 0),
-            createLine("floor 3.7", sortOrder = 1),
-            createLine("sqrt(16)", sortOrder = 2),
-            createLine("sqrt 16", sortOrder = 3),
-        )
-        val result = MathEngine.calculate(lines)
+    fun `functions require parentheses`() = testCalculate(
+        "floor(3.7)",
+        "floor 3.7",
+        "sqrt(16)",
+        "sqrt 16"
+    ) { result ->
         assertEquals("3.0", result[0].result)
-        assertEquals("Err", result[1].result)
+        assertError("Unexpected `number`", result, 1) // floor 3.7
         assertEquals("4.0", result[2].result)
-        assertEquals("Err", result[3].result)
+        assertError("Unexpected `number`", result, 3) // sqrt 16
     }
 
     @Test
-    fun `increment operator increases variable by 1`() = runBlocking {
-        val lines = listOf(
-            createLine("count = 5", sortOrder = 0),
-            createLine("count++", sortOrder = 1)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `increment operator increases variable by 1`() = testCalculate(
+        "count = 5",
+        "count++"
+    ) { result ->
         assertEquals("5.0", result[0].result)
         assertEquals("6.0", result[1].result)
     }
 
     @Test
-    fun `decrement operator decreases variable by 1`() = runBlocking {
-        val lines = listOf(
-            createLine("count = 5", sortOrder = 0),
-            createLine("count--", sortOrder = 1)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `decrement operator decreases variable by 1`() = testCalculate(
+        "count = 5",
+        "count--"
+    ) { result ->
         assertEquals("5.0", result[0].result)
         assertEquals("4.0", result[1].result)
     }
 
     @Test
-    fun `compound addition assignment`() = runBlocking {
-        val lines = listOf(
-            createLine("total = 10", sortOrder = 0),
-            createLine("total += 5 + 2", sortOrder = 1)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `compound addition assignment`() = testCalculate(
+        "total = 10",
+        "total += 5 + 2"
+    ) { result ->
         assertEquals("10.0", result[0].result)
         assertEquals("17.0", result[1].result) // 10 + (5 + 2)
     }
 
     @Test
-    fun `compound subtraction assignment`() = runBlocking {
-        val lines = listOf(
-            createLine("total = 20", sortOrder = 0),
-            createLine("total -= 5 * 2", sortOrder = 1)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `compound subtraction assignment`() = testCalculate(
+        "total = 20",
+        "total -= 5 * 2"
+    ) { result ->
         assertEquals("20.0", result[0].result)
         assertEquals("10.0", result[1].result) // 20 - (5 * 2)
     }
 
     @Test
-    fun `compound multiplication assignment`() = runBlocking {
-        val lines = listOf(
-            createLine("factor = 3", sortOrder = 0),
-            createLine("factor *= 2 + 1", sortOrder = 1)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `compound multiplication assignment`() = testCalculate(
+        "factor = 3",
+        "factor *= 2 + 1"
+    ) { result ->
         assertEquals("3.0", result[0].result)
         assertEquals("9.0", result[1].result) // 3 * (2 + 1)
     }
 
     @Test
-    fun `compound division assignment`() = runBlocking {
-        val lines = listOf(
-            createLine("amount = 100", sortOrder = 0),
-            createLine("amount /= 5", sortOrder = 1)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `compound division assignment`() = testCalculate(
+        "amount = 100",
+        "amount /= 5"
+    ) { result ->
         assertEquals("100.0", result[0].result)
         assertEquals("20.0", result[1].result)
     }
 
     @Test
-    fun `compound modulo (remainder) assignment`() = runBlocking {
-        val lines = listOf(
-            createLine("amount = 10", sortOrder = 0),
-            createLine("amount %= 3", sortOrder = 1)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `compound modulo (remainder) assignment`() = testCalculate(
+        "amount = 10",
+        "amount %= 3"
+    ) { result ->
         assertEquals("10.0", result[0].result)
         assertEquals("1.0", result[1].result)
     }
 
     @Test
-    fun `calculateFrom returns only the affected lines starting at changedIndex`() = runBlocking {
-        val lines =
-                listOf(
-                        createLine("1 + 1", sortOrder = 0),
-                        createLine("2 + 2", sortOrder = 1),
-                        createLine("3 + 3", sortOrder = 2)
-                )
-        val result = MathEngine.calculateFrom(lines, changedIndex = 1)
+    fun `calculateFrom returns only the affected lines starting at changedIndex`() = testCalculateFrom(
+        "1 + 1",
+        "2 + 2",
+        "3 + 3",
+        changedIndex = 1
+    ) { result ->
         // Should return lines[1..2] only (2 lines)
         assertEquals(2, result.size)
         assertEquals("4.0", result[0].result)
@@ -1077,60 +846,50 @@ class MathEngineTest {
     }
 
     @Test
-    fun `calculateFrom respects variables defined in preceding lines`() = runBlocking {
-        val lines =
-                listOf(
-                        createLine("price = 100", sortOrder = 0), // preceding (not recalculated)
-                        createLine("tax = 10", sortOrder = 1), // preceding (not recalculated)
-                        createLine("price + tax", sortOrder = 2) // affected — must see both vars
-                )
-        val result = MathEngine.calculateFrom(lines, changedIndex = 2)
+    fun `calculateFrom respects variables defined in preceding lines`() = testCalculateFrom(
+        "price = 100",
+        "tax = 10",
+        "price + tax",
+        changedIndex = 2
+    ) { result ->
         assertEquals(1, result.size)
         assertEquals("110.0", result[0].result)
     }
 
     @Test
-    fun `local function basic definition and call`() = runBlocking {
-        val lines = listOf(
-            createLine("f(x) = x * 2", sortOrder = 0),
-            createLine("f(5)", sortOrder = 1)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `local function basic definition and call`() = testCalculate(
+        "f(x) = x * 2",
+        "f(5)"
+    ) { result ->
         assertEquals("", result[0].result) // Function definition produces no output
         assertEquals("10.0", result[1].result)
     }
 
     @Test
-    fun `local function multiple parameters`() = runBlocking {
-        val lines = listOf(
-            createLine("calc(a, b) = a + b;", sortOrder = 0),
-            createLine("calc(10, 20)", sortOrder = 1)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `local function multiple parameters`() = testCalculate(
+        "calc(a, b) = a + b;",
+        "calc(10, 20)"
+    ) { result ->
         assertEquals("", result[0].result)
         assertEquals("30.0", result[1].result)
     }
 
     @Test
-    fun `local function multiple statements returns last expression`() = runBlocking {
-        val lines = listOf(
-            createLine("salary(workHours) = base = workHours * 1000; bonus = base * 0.20; tax = base * 0.10; base + bonus - tax", sortOrder = 0),
-            createLine("salary(120)", sortOrder = 1)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `local function multiple statements returns last expression`() = testCalculate(
+        "salary(workHours) = base = workHours * 1000; bonus = base * 0.20; tax = base * 0.10; base + bonus - tax",
+        "salary(120)"
+    ) { result ->
         assertEquals("", result[0].result)
         assertEquals("132000.0", result[1].result)
     }
 
     @Test
-    fun `local function strictly isolates scope`() = runBlocking {
-        val lines = listOf(
-            createLine("v = 10", sortOrder = 0),
-            createLine("f(x) = v = x;", sortOrder = 1),
-            createLine("f(5)", sortOrder = 2),
-            createLine("v", sortOrder = 3) // Should still be 10, not overridden by 'v' inside f
-        )
-        val result = MathEngine.calculate(lines)
+    fun `local function strictly isolates scope`() = testCalculate(
+        "v = 10",
+        "f(x) = v = x;",
+        "f(5)",
+        "v" // Should still be 10, not overridden by 'v' inside f
+    ) { result ->
         assertEquals("10.0", result[0].result)
         assertEquals("", result[1].result)
         assertEquals("5.0", result[2].result)
@@ -1138,111 +897,84 @@ class MathEngineTest {
     }
 
     @Test
-    fun `local function prevents infinite recursion`() = runBlocking {
-        val lines = listOf(
-            createLine("calc(a) = calc(a);", sortOrder = 0),
-            createLine("calc(2)", sortOrder = 1)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `local function prevents infinite recursion`() = testCalculate(
+        "calc(a) = calc(a);",
+        "calc(2)"
+    ) { result ->
         assertEquals("", result[0].result)
-        assertEquals("Err", result[1].result) // Throws recursive exception
+        assertError("Function `calc()` calls itself too many times which is not allowed", result, 1) // Throws recursive exception
     }
 
     @Test
-    fun `local function with trailing comment does not return 0`() = runBlocking {
-        val lines =
-                listOf(
-                        createLine("f(x) = x * 2; # comment", sortOrder = 0),
-                        createLine("f(5)", sortOrder = 1)
-                )
-        val result = MathEngine.calculate(lines)
+    fun `local function with trailing comment does not return 0`() = testCalculate(
+        "f(x) = x * 2; # comment",
+        "f(5)"
+    ) { result ->
         assertEquals("10.0", result[1].result) // Should NOT be "0"
     }
 
     @Test
-    fun `nested function definition in a local function body is not allowed`() = runBlocking {
-        val lines =
-                listOf(
-                        createLine("f(x) = g(y) = y; x", sortOrder = 0),
-                        createLine("f(5)", sortOrder = 1)
-                )
-        val result = MathEngine.calculate(lines)
-        assertEquals("Err", result[1].result) // Parser throws error for nested definition
+    fun `nested function definition in a local function body is not allowed`() = testCalculate(
+        "f(x) = g(y) = y; x",
+        "f(5)"
+    ) { result ->
+        assertError("Functions cannot be created inside other functions", result, 0)
+        assertError("Unknown function `f()`", result, 1)
     }
 
     @Test
-    fun `semicolons outside function bodies fail parsing`() = runBlocking {
-        val lines = listOf(
-            createLine("x = 10; y = 20", sortOrder = 0)
-        )
-        val result = MathEngine.calculate(lines)
-        assertEquals("Err", result[0].result) // ParseException
+    fun `semicolons outside function bodies fail parsing`() = testCalculate("x = 10; y = 20") { result ->
+        assertError("Unexpected `;`", result, 0) // ParseException
     }
 
     @Test
     fun `calculateFrom with changedIndex 0 is equivalent to full calculate`() = runBlocking {
-        val lines =
-                listOf(
-                        createLine("a = 5", sortOrder = 0),
-                        createLine("b = a * 2", sortOrder = 1),
-                        createLine("a + b", sortOrder = 2)
-                )
+        val expressions = listOf("a = 5", "b = a * 2", "a + b")
+        val lines = createLines(*expressions.toTypedArray())
         val full = MathEngine.calculate(lines)
         val partial = MathEngine.calculateFrom(lines, changedIndex = 0)
         assertEquals(full.map { it.result }, partial.map { it.result })
     }
 
     @Test
-    fun `calculateFrom propagates variable reassignment from preceding lines to affected lines`() = runBlocking {
-        // Simulate the user having changed line at index 1 (x = 10), now recalculating affected lines
-        val lines =
-                listOf(
-                        createLine("x = 5", sortOrder = 0), // preceding: x = 5
-                        createLine(
-                                "x = 10",
-                                sortOrder = 1
-                        ), // changed line (changedIndex = 1, first affected)
-                        createLine("x * 2", sortOrder = 2) // should use x = 10 from the changed line
-                )
-        val result = MathEngine.calculateFrom(lines, changedIndex = 1)
+    fun `calculateFrom propagates variable reassignment from preceding lines to affected lines`() = testCalculateFrom(
+        "x = 5",
+        "x = 10",
+        "x * 2",
+        changedIndex = 1
+    ) { result ->
         assertEquals(2, result.size)
         assertEquals("10.0", result[0].result) // x = 10
         assertEquals("20.0", result[1].result) // x * 2 = 20
     }
 
     @Test
-    fun `calculateFrom clamps out-of-bounds changedIndex gracefully`() = runBlocking {
-        val lines = listOf(
-                            createLine("5 + 5", sortOrder = 0),
-                           createLine("2 * 3", sortOrder = 1)
-                    )
-        // changedIndex beyond list size — should return empty (nothing to recalculate)
-        val result = MathEngine.calculateFrom(lines, changedIndex = 100)
+    fun `calculateFrom clamps out-of-bounds changedIndex gracefully`() = testCalculateFrom(
+        "5 + 5",
+        "2 * 3",
+        changedIndex = 100
+    ) { result ->
         assertEquals(0, result.size)
     }
 
     @Test
-    fun `calculateFrom clamps negative changedIndex to full recalculation`() = runBlocking {
-        val lines = listOf(
-            createLine("a = 5", sortOrder = 0),
-            createLine("a * 2", sortOrder = 1)
-        )
-        // Negative index should clamp to 0 and recalculate everything
-        val result = MathEngine.calculateFrom(lines, changedIndex = -99)
+    fun `calculateFrom clamps negative changedIndex to full recalculation`() = testCalculateFrom(
+        "a = 5",
+        "a * 2",
+        changedIndex = -99
+    ) { result ->
         assertEquals(2, result.size)
         assertEquals("5.0", result[0].result)
         assertEquals("10.0", result[1].result)
     }
 
     @Test
-    fun `total sums all results above in same block`() = runBlocking {
-        val lines = listOf(
-            createLine("4 / 2", sortOrder = 0),
-            createLine("b = 2", sortOrder = 1),
-            createLine("a = 4", sortOrder = 2),
-            createLine("total", sortOrder = 3)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `total sums all results above in same block`() = testCalculate(
+        "4 / 2",
+        "b = 2",
+        "a = 4",
+        "total"
+    ) { result ->
         assertEquals("2.0", result[0].result)
         assertEquals("2.0", result[1].result)
         assertEquals("4.0", result[2].result)
@@ -1250,27 +982,23 @@ class MathEngineTest {
     }
 
     @Test
-    fun `sum is an alias for total`() = runBlocking {
-        val lines = listOf(
-            createLine("10", sortOrder = 0),
-            createLine("20", sortOrder = 1),
-            createLine("sum", sortOrder = 2)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `sum is an alias for total`() = testCalculate(
+        "10",
+        "20",
+        "sum"
+    ) { result ->
         assertEquals("30.0", result[2].result)
     }
 
     @Test
-    fun `blank line resets the block for total`() = runBlocking {
-        val lines = listOf(
-            createLine("a = 10", sortOrder = 0),
-            createLine("b = 20", sortOrder = 1),
-            createLine("total", sortOrder = 2),
-            createLine("", sortOrder = 3),
-            createLine("c = 5", sortOrder = 4),
-            createLine("total", sortOrder = 5)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `blank line resets the block for total`() = testCalculate(
+        "a = 10",
+        "b = 20",
+        "total",
+        "",
+        "c = 5",
+        "total"
+    ) { result ->
         assertEquals("30.0", result[2].result)  // 10 + 20
         assertEquals("", result[3].result)
         assertEquals("5.0", result[4].result)
@@ -1278,42 +1006,35 @@ class MathEngineTest {
     }
 
     @Test
-    fun `comment-only lines do not contribute to total`() = runBlocking {
-        val lines =
-                listOf(
-                        createLine("10", sortOrder = 0),
-                        createLine("# just a comment", sortOrder = 1),
-                        createLine("20", sortOrder = 2),
-                        createLine("total", sortOrder = 3)
-                )
-        val result = MathEngine.calculate(lines)
+    fun `comment-only lines do not contribute to total`() = testCalculate(
+        "10",
+        "# just a comment",
+        "20",
+        "total"
+    ) { result ->
         // comment-only line produces null → breaks the block
         // so total only sees 20
         assertEquals("20.0", result[3].result)
     }
 
     @Test
-    fun `total used in an expression`() = runBlocking {
-        val lines = listOf(
-            createLine("item1 = 25", sortOrder = 0),
-            createLine("item2 = 75", sortOrder = 1),
-            createLine("tax = total * 0.10", sortOrder = 2)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `total used in an expression`() = testCalculate(
+        "item1 = 25",
+        "item2 = 75",
+        "tax = total * 0.10"
+    ) { result ->
         assertEquals("25.0", result[0].result)
         assertEquals("75.0", result[1].result)
         assertEquals("10.0", result[2].result)
     }
 
     @Test
-    fun `total assignment overrides aggregate meaning`() = runBlocking {
-        val lines = listOf(
-            createLine("10", sortOrder = 0),
-            createLine("20", sortOrder = 1),
-            createLine("total = 4", sortOrder = 2),
-            createLine("total / 2", sortOrder = 3)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `total assignment overrides aggregate meaning`() = testCalculate(
+        "10",
+        "20",
+        "total = 4",
+        "total / 2"
+    ) { result ->
         assertEquals("10.0", result[0].result)
         assertEquals("20.0", result[1].result)
         assertEquals("4.0", result[2].result)
@@ -1321,92 +1042,78 @@ class MathEngineTest {
     }
 
     @Test
-    fun `total increment overrides aggregate meaning`() = runBlocking {
-        val lines = listOf(
-            createLine("10", sortOrder = 0),
-            createLine("total++", sortOrder = 1),
-            createLine("total", sortOrder = 2)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `total increment overrides aggregate meaning`() = testCalculate(
+        "10",
+        "total++",
+        "total"
+    ) { result ->
         assertEquals("10.0", result[0].result)
         assertEquals("11.0", result[1].result)  // total was 10, incremented and assigned to 11
         assertEquals("11.0", result[2].result)  // uses assigned value, not aggregate
     }
 
     @Test
-    fun `total decrement overrides aggregate meaning`() = runBlocking {
-        val lines = listOf(
-            createLine("10", sortOrder = 0),
-            createLine("total--", sortOrder = 1),
-            createLine("total", sortOrder = 2)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `total decrement overrides aggregate meaning`() = testCalculate(
+        "10",
+        "total--",
+        "total"
+    ) { result ->
         assertEquals("10.0", result[0].result)
         assertEquals("9.0", result[1].result)   // total was 10, decremented to 9
         assertEquals("9.0", result[2].result)   // uses assigned value, not aggregate
     }
 
     @Test
-    fun `total += overrides aggregate meaning`() = runBlocking {
-        val lines = listOf(
-            createLine("10", sortOrder = 0),
-            createLine("total += 5", sortOrder = 1),
-            createLine("total", sortOrder = 2)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `total += overrides aggregate meaning`() = testCalculate(
+        "10",
+        "total += 5",
+        "total"
+    ) { result ->
         assertEquals("10.0", result[0].result)
         assertEquals("15.0", result[1].result)
         assertEquals("15.0", result[2].result)  // uses assigned value, not aggregate
     }
 
     @Test
-    fun `total -= overrides aggregate meaning`() = runBlocking {
-        val lines = listOf(
-            createLine("10", sortOrder = 0),
-            createLine("total -= 3", sortOrder = 1),
-            createLine("total", sortOrder = 2)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `total -= overrides aggregate meaning`() = testCalculate(
+        "10",
+        "total -= 3",
+        "total"
+    ) { result ->
         assertEquals("10.0", result[0].result)
         assertEquals("7.0", result[1].result)
         assertEquals("7.0", result[2].result)
     }
 
     @Test
-    fun `total multiply-assign overrides aggregate meaning`() = runBlocking {
-        val lines = listOf(
-            createLine("10", sortOrder = 0),
-            createLine("total *= 2", sortOrder = 1),
-            createLine("total", sortOrder = 2)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `total multiply-assign overrides aggregate meaning`() = testCalculate(
+        "10",
+        "total *= 2",
+        "total"
+    ) { result ->
         assertEquals("10.0", result[0].result)
         assertEquals("20.0", result[1].result)
         assertEquals("20.0", result[2].result)
     }
 
     @Test
-    fun `total divide-assign overrides aggregate meaning`() = runBlocking {
-        val lines = listOf(
-            createLine("10", sortOrder = 0),
-            createLine("total /= 2", sortOrder = 1),
-            createLine("total", sortOrder = 2)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `total divide-assign overrides aggregate meaning`() = testCalculate(
+        "10",
+        "total /= 2",
+        "total"
+    ) { result ->
         assertEquals("10.0", result[0].result)
         assertEquals("5.0", result[1].result)
         assertEquals("5.0", result[2].result)
     }
 
     @Test
-    fun `total modulo-assign overrides aggregate meaning`() = runBlocking {
-        val lines = listOf(
-            createLine("10", sortOrder = 0),
-            createLine("20", sortOrder = 1),
-            createLine("total %= 7", sortOrder = 2),
-            createLine("total", sortOrder = 3)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `total modulo-assign overrides aggregate meaning`() = testCalculate(
+        "10",
+        "20",
+        "total %= 7",
+        "total"
+    ) { result ->
         assertEquals("10.0", result[0].result)
         assertEquals("20.0", result[1].result)
         assertEquals("2.0", result[2].result)   // 30 % 7 = 2
@@ -1414,52 +1121,48 @@ class MathEngineTest {
     }
 
     @Test
-    fun `total with no preceding results is 0`() = runBlocking {
-        val lines = listOf(
-            createLine("total", sortOrder = 0)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `total with no preceding results is 0`() = testCalculate("total") { result ->
         assertEquals("0.0", result[0].result)
     }
 
     @Test
-    fun `total preserves units and does not convert to base unit`() = runBlocking {
-        val lines = listOf(
-            createLine("1 acre to sqft", sortOrder = 0),
-            createLine("_/2", sortOrder = 1),
-            createLine("total", sortOrder = 2)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `total preserves units and does not convert to base unit`() = testCalculate(
+        "1 acre to sqft",
+        "_/2",
+        "total"
+    ) { result ->
         assertEquals("43560.0 ft²", result[0].result)
         assertEquals("21780.0 ft²", result[1].result)
         assertEquals("65340.0 ft²", result[2].result)
     }
 
     @Test
-    fun `total handles unitless numbers as target unit`() = runBlocking {
-        val lines = listOf(
-            createLine("4 kg", sortOrder = 0),
-            createLine("5", sortOrder = 1),
-            createLine("total", sortOrder = 2)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `total with physical and unitless values returns error`() = testCalculate(
+        "4 kg",
+        "5",
+        "total"
+    ) { result ->
         assertEquals("4.0 kg", result[0].result)
         assertEquals("5.0", result[1].result)
-        assertEquals("9.0 kg", result[2].result)
+        assertError("Cannot sum Kilogram and unitless number: dimension mismatch", result, 2)
     }
 
     @Test
-    fun `total with mixed categories returns error`() = runBlocking {
-        val lines = listOf(
-            createLine("10 m", sortOrder = 0),
-            createLine("20 s", sortOrder = 1),
-            createLine("total", sortOrder = 2)
-        )
-        val result = MathEngine.calculate(lines)
-        assertEquals("Err", result[2].result)
+    fun `total with mixed categories returns error`() = testCalculate(
+        "10 m",
+        "20 s",
+        "total"
+    ) { result ->
+        assertError("Cannot sum Meter and Second: dimension mismatch", result, 2)
+    }
 
-        val errorMsg = MathEngine.getErrorDetails(lines, 2)
-        assertEquals("Cannot sum Meter and Second: dimension mismatch", errorMsg)
+    @Test
+    fun `total with same categories returns sum`() = testCalculate(
+        "10 m",
+        "200 cm",
+        "total"
+    ) { result ->
+        assertEquals("1200.0 cm", result[2].result)
     }
 
     @Test
@@ -1476,197 +1179,169 @@ class MathEngineTest {
 
     @Test
     fun `total includes its own block results across calculateFrom boundary`() = runBlocking {
-        val lines = listOf(
-            createLine("5", sortOrder = 0),
-            createLine("15", sortOrder = 1),
-            createLine("total * 2", sortOrder = 2)
-        )
+        val lines = createLines("5", "15", "total * 2")
         val result = MathEngine.calculateFrom(lines, changedIndex = 2)
         assertEquals(1, result.size)
         assertEquals("40.0", result[0].result)
     }
 
     @Test
-    fun `avg averages all results above in same block`() = runBlocking {
-        val lines = listOf(
-            createLine("10", sortOrder = 0),
-            createLine("20", sortOrder = 1),
-            createLine("60", sortOrder = 2),
-            createLine("avg", sortOrder = 3)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `avg averages all results above in same block`() = testCalculate(
+        "10",
+        "20",
+        "60",
+        "avg",
+        "10m",
+        "20",
+        "avg"
+    ) { result ->
         assertEquals("10.0", result[0].result)
         assertEquals("20.0", result[1].result)
         assertEquals("60.0", result[2].result)
         assertEquals("30.0", result[3].result)
+        assertEquals("10.0 m", result[4].result)
+        assertEquals("20.0", result[5].result)
+        assertError("Cannot average Meter and unitless number: dimension mismatch", result, 6)
     }
 
     @Test
-    fun `average is an alias for avg`() = runBlocking {
-        val lines = listOf(
-            createLine("10", sortOrder = 0),
-            createLine("30", sortOrder = 1),
-            createLine("average", sortOrder = 2)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `average is an alias for avg`() = testCalculate(
+        "10",
+        "30",
+        "average"
+    ) { result ->
         assertEquals("10.0", result[0].result)
         assertEquals("30.0", result[1].result)
         assertEquals("20.0", result[2].result)
     }
 
     @Test
-    fun `avg with no preceding results is 0`() = runBlocking {
-        val lines = listOf(
-            createLine("avg", sortOrder = 0)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `avg with no preceding results is 0`() = testCalculate("avg") { result ->
         assertEquals("0.0", result[0].result)
     }
 
     @Test
-    fun `blank line resets the block for avg`() = runBlocking {
-        val lines = listOf(
-            createLine("10", sortOrder = 0),
-            createLine("20", sortOrder = 1),
-            createLine("avg", sortOrder = 2),
-            createLine("", sortOrder = 3),
-            createLine("5", sortOrder = 4),
-            createLine("avg", sortOrder = 5)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `blank line resets the block for avg`() = testCalculate(
+        "10",
+        "20",
+        "avg",
+        "",
+        "5",
+        "avg"
+    ) { result ->
         assertEquals("15.0", result[2].result)
         assertEquals("", result[3].result)
         assertEquals("5.0", result[5].result)
     }
 
     @Test
-    fun `comment-only lines do not contribute to avg`() = runBlocking {
-        val lines = listOf(
-            createLine("10", sortOrder = 0),
-            createLine("# ignore this", sortOrder = 1), // Should be null in lineResults
-            createLine("20", sortOrder = 2),
-            createLine("avg", sortOrder = 3)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `comment-only lines do not contribute to avg`() = testCalculate(
+        "10",
+        "# ignore this",
+        "20",
+        "avg"
+    ) { result ->
         // Null breaks the block, so avg only sees 20
         assertEquals("20.0", result[3].result)
     }
 
     @Test
-    fun `avg used in an expression`() = runBlocking {
-        val lines = listOf(
-            createLine("25", sortOrder = 0),
-            createLine("75", sortOrder = 1),
-            createLine("half_avg = avg / 2", sortOrder = 2)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `avg used in an expression`() = testCalculate(
+        "25",
+        "75",
+        "half_avg = avg / 2"
+    ) { result ->
         assertEquals("25.0", result[2].result) // avg is 50, halved to 25
     }
 
     @Test
-    fun `avg assignment overrides aggregate meaning`() = runBlocking {
-        val lines = listOf(
-            createLine("10", sortOrder = 0),
-            createLine("20", sortOrder = 1),
-            createLine("avg = 100", sortOrder = 2),
-            createLine("avg / 2", sortOrder = 3)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `avg assignment overrides aggregate meaning`() = testCalculate(
+        "10",
+        "20",
+        "avg = 100",
+        "avg / 2"
+    ) { result ->
         assertEquals("100.0", result[2].result)
         assertEquals("50.0", result[3].result)
     }
 
     @Test
-    fun `avg increment overrides aggregate meaning`() = runBlocking {
-        val lines = listOf(
-            createLine("10", sortOrder = 0),
-            createLine("20", sortOrder = 1),
-            createLine("avg++", sortOrder = 2),
-            createLine("avg", sortOrder = 3)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `avg increment overrides aggregate meaning`() = testCalculate(
+        "10",
+        "20",
+        "avg++",
+        "avg"
+    ) { result ->
         assertEquals("16.0", result[2].result) // avg is 15, gets incremented and assigned to 16
         assertEquals("16.0", result[3].result)
     }
 
     @Test
-    fun `avg decrement overrides aggregate meaning`() = runBlocking {
-        val lines = listOf(
-            createLine("10", sortOrder = 0),
-            createLine("20", sortOrder = 1),
-            createLine("avg--", sortOrder = 2),
-            createLine("avg", sortOrder = 3)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `avg decrement overrides aggregate meaning`() = testCalculate(
+        "10",
+        "20",
+        "avg--",
+        "avg"
+    ) { result ->
         assertEquals("14.0", result[2].result) // avg is 15, gets decremented and assigned to 14
         assertEquals("14.0", result[3].result)
     }
 
     @Test
-    fun `avg += overrides aggregate meaning`() = runBlocking {
-        val lines = listOf(
-            createLine("10", sortOrder = 0),
-            createLine("20", sortOrder = 1),
-            createLine("avg += 5", sortOrder = 2),
-            createLine("avg", sortOrder = 3)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `avg += overrides aggregate meaning`() = testCalculate(
+        "10",
+        "20",
+        "avg += 5",
+        "avg"
+    ) { result ->
         assertEquals("10.0", result[0].result)
         assertEquals("20.0", result[2].result) // 15 + 5 = 20
         assertEquals("20.0", result[3].result)
     }
 
     @Test
-    fun `avg -= overrides aggregate meaning`() = runBlocking {
-        val lines = listOf(
-            createLine("10", sortOrder = 0),
-            createLine("20", sortOrder = 1),
-            createLine("avg -= 3", sortOrder = 2),
-            createLine("avg", sortOrder = 3)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `avg -= overrides aggregate meaning`() = testCalculate(
+        "10",
+        "20",
+        "avg -= 3",
+        "avg"
+    ) { result ->
         assertEquals("10.0", result[0].result)
         assertEquals("12.0", result[2].result) // 15 - 3 = 12
         assertEquals("12.0", result[3].result)
     }
 
     @Test
-    fun `avg multiply-assign overrides aggregate meaning`() = runBlocking {
-        val lines = listOf(
-            createLine("10", sortOrder = 0),
-            createLine("20", sortOrder = 1),
-            createLine("avg *= 2", sortOrder = 2),
-            createLine("avg", sortOrder = 3)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `avg multiply-assign overrides aggregate meaning`() = testCalculate(
+        "10",
+        "20",
+        "avg *= 2",
+        "avg"
+    ) { result ->
         assertEquals("10.0", result[0].result)
         assertEquals("30.0", result[2].result) // 15 * 2 = 30
         assertEquals("30.0", result[3].result)
     }
 
     @Test
-    fun `avg divide-assign overrides aggregate meaning`() = runBlocking {
-        val lines = listOf(
-            createLine("10", sortOrder = 0),
-            createLine("20", sortOrder = 1),
-            createLine("avg /= 3", sortOrder = 2),
-            createLine("avg", sortOrder = 3)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `avg divide-assign overrides aggregate meaning`() = testCalculate(
+        "10",
+        "20",
+        "avg /= 3",
+        "avg"
+    ) { result ->
         assertEquals("10.0", result[0].result)
         assertEquals("5.0", result[2].result) // 15 / 3 = 5
         assertEquals("5.0", result[3].result)
     }
 
     @Test
-    fun `avg modulo-assign overrides aggregate meaning`() = runBlocking {
-        val lines = listOf(
-            createLine("10", sortOrder = 0),
-            createLine("20", sortOrder = 1),
-            createLine("avg %= 4", sortOrder = 2),
-            createLine("avg", sortOrder = 3)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `avg modulo-assign overrides aggregate meaning`() = testCalculate(
+        "10",
+        "20",
+        "avg %= 4",
+        "avg"
+    ) { result ->
         assertEquals("10.0", result[0].result)
         assertEquals("3.0", result[2].result) // 15 % 4 = 3
         assertEquals("3.0", result[3].result)
@@ -1674,11 +1349,7 @@ class MathEngineTest {
 
     @Test
     fun `calculateFrom correctly handles avg in affected lines`() = runBlocking {
-        val lines = listOf(
-            createLine("a = 10", sortOrder = 0),
-            createLine("b = 20", sortOrder = 1),
-            createLine("avg", sortOrder = 2)
-        )
+        val lines = createLines("a = 10", "b = 20", "avg")
         val result = MathEngine.calculateFrom(lines, changedIndex = 2)
         assertEquals(1, result.size)
         assertEquals("15.0", result[0].result)
@@ -1686,182 +1357,123 @@ class MathEngineTest {
 
     @Test
     fun `avg includes its own block results across calculateFrom boundary`() = runBlocking {
-        val lines = listOf(
-            createLine("5", sortOrder = 0),
-            createLine("35", sortOrder = 1),
-            createLine("avg * 2", sortOrder = 2)
-        )
+        val lines = createLines("5", "35", "avg * 2")
         val result = MathEngine.calculateFrom(lines, changedIndex = 2)
         assertEquals(1, result.size)
         assertEquals("40.0", result[0].result)
     }
 
     @Test
-    fun `last keyword refers to the previous line result`() = runBlocking {
-        val lines = listOf(
-            createLine("10 * 5", sortOrder = 0),
-            createLine("last + 10", sortOrder = 1)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `last keyword refers to the previous line result`() = testCalculate(
+        "10 * 5",
+        "last + 10"
+    ) { result ->
         assertEquals("50.0", result[0].result)
         assertEquals("60.0", result[1].result)
     }
 
     @Test
-    fun `prev keyword refers to the previous line result`() = runBlocking {
-        val lines = listOf(
-            createLine("100 / 4", sortOrder = 0),
-            createLine("prev * 2", sortOrder = 1)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `prev keyword refers to the previous line result`() = testCalculate(
+        "100 / 4",
+        "prev * 2m"
+    ) { result ->
         assertEquals("25.0", result[0].result)
-        assertEquals("50.0", result[1].result)
+        assertEquals("50.0 m", result[1].result)
     }
 
     @Test
-    fun `previous keyword refers to the previous line result`() = runBlocking {
-        val lines = listOf(
-            createLine("20 + 30", sortOrder = 0),
-            createLine("previous - 10", sortOrder = 1)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `previous keyword refers to the previous line result`() = testCalculate(
+        "20 + 30",
+        "previous - 10"
+    ) { result ->
         assertEquals("50.0", result[0].result)
         assertEquals("40.0", result[1].result)
     }
 
     @Test
-    fun `above keyword refers to the previous line result`() = runBlocking {
-        val lines = listOf(
-            createLine("5 ^ 2", sortOrder = 0),
-            createLine("above / 5", sortOrder = 1)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `above keyword refers to the previous line result`() = testCalculate(
+        "5 ^ 2",
+        "above / 5"
+    ) { result ->
         assertEquals("25.0", result[0].result)
         assertEquals("5.0", result[1].result)
     }
 
     @Test
-    fun `underscore keyword refers to the previous line result`() = runBlocking {
-        val lines = listOf(
-            createLine("42", sortOrder = 0),
-            createLine("_ + 8", sortOrder = 1)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `underscore keyword refers to the previous line result`() = testCalculate(
+        "42",
+        "_ + 8"
+    ) { result ->
         assertEquals("42.0", result[0].result)
         assertEquals("50.0", result[1].result)
     }
 
     @Test
-    fun `last keyword returns 0 if the preceding line is blank`() = runBlocking {
-        val lines = listOf(
-            createLine("10", sortOrder = 0),
-            createLine("   ", sortOrder = 1),
-            createLine("last + 5", sortOrder = 2)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `last keyword returns 0 if the preceding line is blank`() = testCalculate(
+        "10",
+        "   ",
+        "last + 5"
+    ) { result ->
         assertEquals("5.0", result[2].result)
     }
 
     @Test
-    fun `last keyword returns 0 if the preceding line is a comment`() = runBlocking {
-        val lines = listOf(
-            createLine("10", sortOrder = 0),
-            createLine("# comment", sortOrder = 1),
-            createLine("last + 5", sortOrder = 2)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `last keyword returns 0 if the preceding line is a comment`() = testCalculate(
+        "10",
+        "# comment",
+        "last + 5"
+    ) { result ->
         assertEquals("5.0", result[2].result)
     }
 
     @Test
-    fun `last keyword returns 0 if the preceding line resulted in an error`() = runBlocking {
-        val lines = listOf(
-            createLine("10", sortOrder = 0),
-            createLine("{", sortOrder = 1), // Invalid expression
-            createLine("last + 5", sortOrder = 2)
-        )
-        val result = MathEngine.calculate(lines)
-        assertEquals("Err", result[1].result)
+    fun `last keyword returns 0 if the preceding line resulted in an error`() = testCalculate(
+        "10",
+        "{",
+        "last + 5"
+    ) { result ->
+        assertError("Unexpected character `{`", result, 1)
         assertEquals("5.0", result[2].result)
     }
 
     @Test
-    fun `last keyword returns 0 on the first line`() = runBlocking {
-        val lines = listOf(
-            createLine("last + 10", sortOrder = 0)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `last keyword returns 0 on the first line`() = testCalculate("last + 10") { result ->
         assertEquals("10.0", result[0].result)
     }
 
     @Test
-    fun `last keyword reassignment is blocked`() = runBlocking {
-        val lines = listOf(createLine("last = 10", sortOrder = 0))
-        val result = MathEngine.calculate(lines)
-        assertEquals("Err", result[0].result)
-
-        val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("`last` is a reserved name and cannot be changed", err)
+    fun `last keyword reassignment is blocked`() = testCalculate("last = 10") { result ->
+        assertError("`last` is a reserved name and cannot be changed", result, 0)
     }
 
     @Test
-    fun `compound assignment to underscore is blocked`() = runBlocking {
-        val lines = listOf(createLine("_ += 5", sortOrder = 0))
-        val result = MathEngine.calculate(lines)
-        assertEquals("Err", result[0].result)
-
-        val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("`_` is a reserved name and cannot be changed", err)
+    fun `compound assignment to underscore is blocked`() = testCalculate("_ += 5") { result ->
+        assertError("`_` is a reserved name and cannot be changed", result, 0)
     }
 
     @Test
-    fun `assignment to constant PI is not allowed`() = runBlocking {
-        val lines = listOf(createLine("PI = 4", sortOrder = 0))
-        val result = MathEngine.calculate(lines)
-        assertEquals("Err", result[0].result)
-
-        val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("`PI` is a reserved name and cannot be changed", err)
+    fun `assignment to constant PI is not allowed`() = testCalculate("PI = 4") { result ->
+        assertError("`PI` is a reserved name and cannot be changed", result, 0)
     }
 
     @Test
-    fun `assignment to constant pi is not allowed`() = runBlocking {
-        val lines = listOf(createLine("pi = 4", sortOrder = 0))
-        val result = MathEngine.calculate(lines)
-        assertEquals("Err", result[0].result)
-
-        val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("`pi` is a reserved name and cannot be changed", err)
+    fun `assignment to constant pi is not allowed`() = testCalculate("pi = 4") { result ->
+        assertError("`pi` is a reserved name and cannot be changed", result, 0)
     }
 
     @Test
-    fun `assignment to constant π is not allowed`() = runBlocking {
-        val lines = listOf(createLine("π = 4", sortOrder = 0))
-        val result = MathEngine.calculate(lines)
-        assertEquals("Err", result[0].result)
-
-        val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("`π` is a reserved name and cannot be changed", err)
+    fun `assignment to constant π is not allowed`() = testCalculate("π = 4") { result ->
+        assertError("`π` is a reserved name and cannot be changed", result, 0)
     }
 
     @Test
-    fun `assignment to constant E is not allowed`() = runBlocking {
-        val lines = listOf(createLine("E = 4", sortOrder = 0))
-        val result = MathEngine.calculate(lines)
-        assertEquals("Err", result[0].result)
-
-        val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("`E` is a reserved name and cannot be changed", err)
+    fun `assignment to constant E is not allowed`() = testCalculate("E = 4") { result ->
+        assertError("`E` is a reserved name and cannot be changed", result, 0)
     }
 
     @Test
-    fun `assignment to constant e is not allowed`() = runBlocking {
-        val lines = listOf(createLine("e = 4", sortOrder = 0))
-        val result = MathEngine.calculate(lines)
-        assertEquals("Err", result[0].result)
-
-        val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("`e` is a reserved name and cannot be changed", err)
+    fun `assignment to constant e is not allowed`() = testCalculate("e = 4") { result ->
+        assertError("`e` is a reserved name and cannot be changed", result, 0)
     }
 
     @Test
@@ -1948,17 +1560,13 @@ class MathEngineTest {
     }
 
     @Test
-    fun `getErrorDetails handles undefined variable`() = runBlocking {
-        val lines = listOf(createLine("x + 5"))
-        val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("Unknown variable `x`", err)
+    fun `getErrorDetails handles undefined variable`() = testCalculate("x + 5") { result ->
+        assertError("Unknown variable `x`", result[0], result, 0)
     }
 
     @Test
-    fun `getErrorDetails handles syntax error`() = runBlocking {
-        val lines = listOf(createLine("1 + (2 * 3"))
-        val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("Expected `)`, but found `end of line`", err)
+    fun `getErrorDetails handles syntax error`() = testCalculate("1 + (2 * 3") { result ->
+        assertError("Expected `)`, but found `end of line`", result[0], result, 0)
     }
 
     @Test
@@ -1969,157 +1577,109 @@ class MathEngineTest {
     }
 
     @Test
-    fun `getErrorDetails handles division by zero`() = runBlocking {
-        val lines = listOf(createLine("10 / 0"))
-        val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("Cannot divide by zero", err)
+    fun `getErrorDetails handles division by zero`() = testCalculate("10 / 0") { result ->
+        assertError("Cannot divide by zero", result, 0)
     }
 
     @Test
-    fun `getErrorDetails handles unknown function`() = runBlocking {
-        val lines = listOf(createLine("unknown(5)"))
-        val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("Unknown function `unknown()`", err)
+    fun `getErrorDetails handles unknown function`() = testCalculate("unknown(5)") { result ->
+        assertError("Unknown function `unknown()`", result, 0)
     }
 
     @Test
-    fun `getErrorDetails handles lexer error`() = runBlocking {
-        val lines = listOf(createLine("1 @ 2"))
-        val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("Unexpected character `@`", err)
+    fun `getErrorDetails handles lexer error`() = testCalculate("1 @ 2") { result ->
+        assertError("Unexpected character `@`", result, 0)
     }
 
     @Test
-    fun `getErrorDetails handles multiple operators`() = runBlocking {
-        val lines = listOf(createLine("1 + * 2"))
-        val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("Expected a value or `(`, but found `*`", err)
+    fun `getErrorDetails handles multiple operators`() = testCalculate("1 + * 2") { result ->
+        assertError("Expected a value or `(`, but found `*`", result, 0)
     }
 
     @Test
-    fun `getErrorDetails handles missing operand`() = runBlocking {
-        val lines = listOf(createLine("5 + "))
-        val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("Expected a value or `(`, but found `end of line`", err)
+    fun `getErrorDetails handles missing operand`() = testCalculate("5 + ") { result ->
+        assertError("Expected a value or `(`, but found `end of line`", result, 0)
     }
 
     @Test
-    fun `getErrorDetails handles empty parentheses`() = runBlocking {
-        val lines = listOf(createLine("()"))
-        val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("Expected a value or `(`, but found `)`", err)
+    fun `getErrorDetails handles empty parentheses`() = testCalculate("()") { result ->
+        assertError("Expected a value or `(`, but found `)`", result, 0)
     }
 
     @Test
-    fun `getErrorDetails handles arity mismatch for user-defined function`() = runBlocking {
-        val lines = listOf(
-            createLine("f(x) = x * 2"),
-            createLine("f(1, 2)")
-        )
-        val err = MathEngine.getErrorDetails(lines, 1)
-        assertEquals("Function `f()` expects 1 argument, but got 2", err)
+    fun `getErrorDetails handles arity mismatch for user-defined function`() = testCalculate(
+        "f(x) = x * 2",
+        "f(1, 2)"
+    ) { result ->
+        assertError("Function `f()` expects 1 argument, but got 2", result, 1)
     }
 
     @Test
-    fun `arity mismatch reported before undefined argument for built in function`() = runBlocking {
-        val lines = listOf(createLine("sinh(2, 5)"))
-        val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("Function `sinh()` expects 1 argument, but got 2", err)
+    fun `arity mismatch reported before undefined argument for built in function`() = testCalculate("sinh(2, 5)") { result ->
+        assertError("Function `sinh()` expects 1 argument, but got 2", result, 0)
     }
 
     @Test
-    fun `arity mismatch reported before undefined argument for local function`() = runBlocking {
-        val lines = listOf(
-            createLine("f(x) = x * 2"),
-            createLine("f(1, unknown_var)")
-        )
-        val err = MathEngine.getErrorDetails(lines, 1)
-        assertEquals("Function `f()` expects 1 argument, but got 2", err)
+    fun `arity mismatch reported before undefined argument for local function`() = testCalculate(
+        "f(x) = x * 2",
+        "f(1, unknown_var)"
+    ) { result ->
+        assertError("Function `f()` expects 1 argument, but got 2", result, 1)
     }
 
     @Test
-    fun `arity mismatch reported before undefined argument for built-in function with invalid arg`() = runBlocking {
-        val lines = listOf(createLine("sinh(1, unknown_var)"))
-        val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("Function `sinh()` expects 1 argument, but got 2", err)
+    fun `arity mismatch reported before undefined argument for built-in function with invalid arg`() = testCalculate("sinh(1, unknown_var)") { result ->
+        assertError("Function `sinh()` expects 1 argument, but got 2", result, 0)
     }
 
     @Test
-    fun `factorial rejects fractional input`() = runBlocking {
-        val lines = listOf(createLine("factorial(4.5)"))
-        val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("Factorial is only defined for whole numbers", err)
+    fun `factorial rejects fractional input`() = testCalculate("factorial(4.5)") { result ->
+        assertError("Factorial is only defined for whole numbers", result, 0)
     }
 
     @Test
-    fun `factorial rejects negative input`() = runBlocking {
-        val lines = listOf(createLine("fact(-3)"))
-        val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("Factorial is only defined for non-negative whole numbers", err)
+    fun `factorial rejects negative input`() = testCalculate("fact(-3)") { result ->
+        assertError("Factorial is only defined for non-negative whole numbers", result, 0)
     }
 
     @Test
-    fun `factorial rejects inputs beyond supported limit`() = runBlocking {
-        val lines = listOf(createLine("factorial(1001)"))
-        val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("Factorial is only supported up to 1000", err)
+    fun `factorial rejects inputs beyond supported limit`() = testCalculate("factorial(1001)") { result ->
+        assertError("Factorial is only supported up to 1000", result, 0)
     }
 
     @Test
-    fun `lineno, linenumber, and currentLineNumber returns correct current line number`() = runBlocking {
-        val lines = listOf(
-            createLine("lineno", sortOrder = 0),
-            createLine("linenumber", sortOrder = 1),
-            createLine("currentLineNumber", sortOrder = 2)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `lineno, linenumber, and currentLineNumber returns correct current line number`() = testCalculate(
+        "lineno",
+        "linenumber",
+        "currentLineNumber"
+    ) { result ->
         assertEquals("1.0", result[0].result)
         assertEquals("2.0", result[1].result)
         assertEquals("3.0", result[2].result)
     }
 
     @Test
-    fun `lineno works in expressions`() = runBlocking {
-        val lines = listOf(
-            createLine("10 + lineno"), // 10 + 1 = 11
-            createLine("lineno * 5")   // 2 * 5 = 10
-        )
-        val result = MathEngine.calculate(lines)
+    fun `lineno works in expressions`() = testCalculate(
+        "10 + lineno",
+        "lineno * 5"
+    ) { result ->
         assertEquals("11.0", result[0].result)
         assertEquals("10.0", result[1].result)
     }
 
     @Test
-    fun `lineno is reserved and cannot be reassigned`() = runBlocking {
-        val lines = listOf(
-            createLine("lineno = 10")
-        )
-        val result = MathEngine.calculate(lines)
-        assertEquals("Err", result[0].result)
-        var err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("`lineno` is a reserved name and cannot be changed", err)
+    fun `lineno is reserved and cannot be reassigned`() = testCalculate("lineno = 10") { result ->
+        assertError("`lineno` is a reserved name and cannot be changed", result, 0)
     }
 
     @Test
-    fun `compound assignment to lineno is not allowed`() = runBlocking {
-        val lines = listOf(
-            createLine("lineno += 5")
-        )
-        val result = MathEngine.calculate(lines)
-        assertEquals("Err", result[0].result)
-        var err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("`lineno` is a reserved name and cannot be changed", err)
+    fun `compound assignment to lineno is not allowed`() = testCalculate("lineno += 5") { result ->
+        assertError("`lineno` is a reserved name and cannot be changed", result, 0)
     }
 
     @Test
-    fun `increment on lineno is not allowed`() = runBlocking {
-        val lines = listOf(
-            createLine("lineno++")
-        )
-        val result = MathEngine.calculate(lines)
-        assertEquals("Err", result[0].result)
-        var err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("`lineno` is a reserved name and cannot be changed", err)
+    fun `increment on lineno is not allowed`() = testCalculate("lineno++") { result ->
+        assertError("`lineno` is a reserved name and cannot be changed", result, 0)
     }
 
     @Test
@@ -2130,7 +1690,7 @@ class MathEngineTest {
             createLine("lineno", sortOrder = 1) // Should be 2
         )
         val result1 = MathEngine.calculate(lines)
-        assertEquals("2.0", result1[1].result)
+            assertEquals("2.0", result1[1].result)
 
         // Insert line at index 1
         lines.add(1, createLine("y = 20", sortOrder = 1))
@@ -2138,10 +1698,10 @@ class MathEngineTest {
         val updatedLines = lines.mapIndexed { index, line -> line.copy(sortOrder = index) }
 
         val result2 = MathEngine.calculate(updatedLines)
-        assertEquals("10.0", result2[0].result) // L1: x=10
-        assertEquals("20.0", result2[1].result) // L2: y=20
-        assertEquals("3.0", result2[2].result)  // L3: lineno (was 2, now 3)
-    }
+                assertEquals("10.0", result2[0].result) // L1: x=10
+                assertEquals("20.0", result2[1].result) // L2: y=20
+                assertEquals("3.0", result2[2].result)  // L3: lineno (was 2, now 3)
+            }
 
     @Test
     fun `lineno updates correctly after line deletion`() = runBlocking {
@@ -2151,31 +1711,21 @@ class MathEngineTest {
             createLine("lineno", sortOrder = 2) // Should be 3
         )
         val result1 = MathEngine.calculate(lines)
-        assertEquals("3.0", result1[2].result)
+            assertEquals("3.0", result1[2].result)
 
         // Delete line at index 1
         val remainingLines = listOf(lines[0], lines[2]).mapIndexed { index, line -> line.copy(sortOrder = index) }
         val result2 = MathEngine.calculate(remainingLines)
-        assertEquals("10.0", result2[0].result)
-        assertEquals("2.0", result2[1].result) // lineno (was 3, now 2)
-    }
+                assertEquals("10.0", result2[0].result)
+                assertEquals("2.0", result2[1].result) // lineno (was 3, now 2)
+            }
 
     @Test
     fun `calculateFrom handles lineno correctly for partial recalculation`() = runBlocking {
-        val lines = listOf(
-            createLine("a = 5", sortOrder = 0),   // L1
-            createLine("b = 10", sortOrder = 1),  // L2
-            createLine("lineno + a", sortOrder = 2) // L3: 3 + 5 = 8
-        )
-
-        // Initial full calculation
-        val fullResult = MathEngine.calculate(lines)
-        assertEquals("8.0", fullResult[2].result)
-
-        // Partial recalculation from line 2 (index 2)
-        val partialResult = MathEngine.calculateFrom(lines, changedIndex = 2)
-        assertEquals(1, partialResult.size)
-        assertEquals("8.0", partialResult[0].result)
+        testCalculateFrom("a = 5", "b = 10", "lineno + a", changedIndex = 2) { partialResult ->
+            assertEquals(1, partialResult.size)
+            assertEquals("8.0", partialResult[0].result)
+        }
     }
 
     private class FakeFileContextLoader(private val contexts: Map<String, MathContext>) : FileContextLoader {
@@ -2189,12 +1739,13 @@ class MathEngineTest {
         val remoteContext = MathContext(variables = mutableMapOf("x" to EvaluationResult(BigDecimal("20.0"))))
         val loader = FakeFileContextLoader(mapOf("File B" to remoteContext))
 
-        val lines = listOf(
-            createLine("f = file(\"File B\")"),
-            createLine("f.x + 5")
-        )
-        val result = MathEngine.calculate(lines, loader)
-        assertEquals("25.0", result[1].result)
+        testCalculate(
+            "f = file(\"File B\")",
+            "f.x + 5",
+            loader = loader
+        ) { result ->
+            assertEquals("25.0", result[1].result)
+        }
     }
 
     @Test
@@ -2202,9 +1753,9 @@ class MathEngineTest {
         val remoteContext = MathContext(variables = mutableMapOf("total" to EvaluationResult(BigDecimal("100.0"))))
         val loader = FakeFileContextLoader(mapOf("Summary" to remoteContext))
 
-        val lines = listOf(createLine("file(\"Summary\").total * 0.1"))
-        val result = MathEngine.calculate(lines, loader)
-        assertEquals("10.0", result[0].result)
+        testCalculate("file(\"Summary\").total * 0.1", loader = loader) { result ->
+            assertEquals("10.0", result[0].result)
+        }
     }
 
     @Test
@@ -2212,15 +1763,14 @@ class MathEngineTest {
         val remoteContext = MathContext(variables = mutableMapOf("x" to EvaluationResult(BigDecimal("20.0"))))
         val loader = FakeFileContextLoader(mapOf("File B" to remoteContext))
 
-        val lines = listOf(
-            createLine("f = file(\"File B\")"),
-            createLine("f = 42"),
-            createLine("f.x")
-        )
-        val result = MathEngine.calculate(lines, loader)
-        assertEquals("Err", result[2].result)
-        val err = MathEngine.getErrorDetails(lines, 2, loader)
-        assertEquals("`f` is not linked to any file. Use `file(\"...\")` to link first", err)
+        testCalculate(
+            "f = file(\"File B\")",
+            "f = 42",
+            "f.x",
+            loader = loader
+        ) { result ->
+            assertError("`f` is not linked to any file. Use `file(\"...\")` to link first", result, 2, loader)
+        }
     }
 
     @Test
@@ -2239,13 +1789,9 @@ class MathEngineTest {
             "File B" to fileBContext
         ))
 
-        val lines = listOf(
-            createLine("file(\"File B\").loopback()")
-        )
-        val result = MathEngine.calculate(lines, loader)
-        assertEquals("Err", result[0].result)
-        val err = MathEngine.getErrorDetails(lines, 0, loader)
-        assertEquals("File `File B` references itself, causing an endless loop", err)
+        testCalculate("file(\"File B\").loopback()", loader = loader) { result ->
+            assertError("File `File B` references itself, causing an endless loop", result, 0, loader)
+        }
     }
 
     @Test
@@ -2266,9 +1812,9 @@ class MathEngineTest {
         )
         val loader = FakeFileContextLoader(mapOf("Summary" to remoteContext))
 
-        val lines = listOf(createLine("file(\"Summary\").double(5) + 3"))
-        val result = MathEngine.calculate(lines, loader)
-        assertEquals("13.0", result[0].result)
+        testCalculate("file(\"Summary\").double(5) + 3", loader = loader) { result ->
+            assertEquals("13.0", result[0].result)
+        }
     }
 
     @Test
@@ -2289,56 +1835,45 @@ class MathEngineTest {
         )
         val loader = FakeFileContextLoader(mapOf("Summary" to remoteContext))
 
-        val lines = listOf(createLine("file(\"Summary\").addOne(10 cm)"))
-        val result = MathEngine.calculate(lines, loader)
-        assertEquals("11.0 cm", result[0].result)
+        testCalculate("file(\"Summary\").addOne(10 cm)", loader = loader) { result ->
+            assertEquals("11.0 cm", result[0].result)
+        }
     }
 
     @Test
-    fun `standalone string literal throws error`() = runBlocking {
-        val lines = listOf(createLine("\"hello\""))
-        val result = MathEngine.calculate(lines)
-        assertEquals("Err", result[0].result)
-        val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("Quotes are only allowed when specifying file names in `file(\"...\")`", err)
+    fun `standalone string literal throws error`() = testCalculate("\"hello\"") { result ->
+        assertError("Quotes are only allowed when specifying file names in `file(\"...\")`", result, 0)
     }
 
     @Test
-    fun `writing to member access target is read-only`() = runBlocking {
-        val lines = listOf(createLine("f = file(\"File B\")"), createLine("f.x = 10"))
-        val result = MathEngine.calculate(lines)
-        assertEquals("Err", result[1].result)
-        val err = MathEngine.getErrorDetails(lines, 1)
-        assertEquals("Variables from other files are read-only and cannot be changed", err)
+    fun `writing to member access target is read-only`() = testCalculate(
+        "f = file(\"File B\")",
+        "f.x = 10"
+    ) { result ->
+        assertError("Variables from other files are read-only and cannot be changed", result, 1)
     }
 
     @Test
     fun `dot notation on global functions throws error`() = runBlocking {
         val remoteContext = MathContext()
         val loader = FakeFileContextLoader(mapOf("File B" to remoteContext))
-        val lines = listOf(createLine("f = file(\"File B\")"), createLine("f.sin(90)"))
-        val result = MathEngine.calculate(lines, loader)
-        assertEquals("Err", result[1].result)
-        val err = MathEngine.getErrorDetails(lines, 1, loader)
-        assertEquals("`sin()` is a global function and should be called directly, not via dot notation", err)
+        testCalculate(
+            "f = file(\"File B\")",
+            "f.sin(90)",
+            loader = loader
+        ) { result ->
+            assertError("`sin()` is a global function and should be called directly, not via dot notation", result, 1, loader)
+        }
     }
 
     @Test
-    fun `file call missing closing parenthesis throws error`() = runBlocking {
-        val lines = listOf(createLine("file(\"A\""))
-        val result = MathEngine.calculate(lines)
-        assertEquals("Err", result[0].result)
-        val err = MathEngine.getErrorDetails(lines, 0)
-        assertTrue(err != null && err.contains("Expected `)`"))
+    fun `file call missing closing parenthesis throws error`() = testCalculate("file(\"A\"") { result ->
+        assertError("Expected `)`, but found `end of line`", result, 0)
     }
 
     @Test
-    fun `dot notation missing identifier throws error`() = runBlocking {
-        val lines = listOf(createLine("file(\"A\")."))
-        val result = MathEngine.calculate(lines)
-        assertEquals("Err", result[0].result)
-        val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("Missing variable or function name after `.`", err)
+    fun `dot notation missing identifier throws error`() = testCalculate("file(\"A\").") { result ->
+        assertError("Missing variable or function name after `.`", result, 0)
     }
 
     private class RecursiveFakeFileContextLoader(
@@ -2352,13 +1887,13 @@ class MathEngineTest {
 
     @Test
     fun `circular dependency between files results in Err`() = runBlocking {
-        val fileALines = listOf(
-            createLine("b = file(\"File B\")", fileId = 1L, sortOrder = 0),
-            createLine("b.y", fileId = 1L, sortOrder = 1)
+        val fileALines = createLines(
+            "b = file(\"File B\")",
+            "b.y"
         )
-        val fileBLines = listOf(
-            createLine("a = file(\"File A\")", fileId = 2L, sortOrder = 0),
-            createLine("a.x", fileId = 2L, sortOrder = 1)
+        val fileBLines = createLines(
+            "a = file(\"File A\")",
+            "a.x"
         )
 
         val loader = RecursiveFakeFileContextLoader(mapOf(
@@ -2366,8 +1901,9 @@ class MathEngineTest {
             "File B" to fileBLines
         ))
 
-        val result = MathEngine.calculate(fileALines, loader)
-        assertEquals("Err", result[1].result)
+        testCalculate("b = file(\"File B\")", "b.y", loader = loader) { result ->
+            assertError("File `File A` also references file `File B`, causing an endless loop", result, 1, loader)
+        }
     }
 
     @Test
@@ -2413,27 +1949,23 @@ class MathEngineTest {
     }
 
     @Test
-    fun `unit conversion simple natural language`() = runBlocking {
-        val lines = listOf(
-            createLine("10 km in m", sortOrder = 0),
-            createLine("1000 m as kilometers", sortOrder = 1),
-            createLine("2 hours in seconds", sortOrder = 2)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `unit conversion simple natural language`() = testCalculate(
+        "10 km in m",
+        "1000 m as kilometers",
+        "2 hours in seconds"
+    ) { result ->
         assertEquals("10000.0 m", result[0].result)
         assertEquals("1.0 km", result[1].result)
         assertEquals("7200.0 s", result[2].result)
     }
 
     @Test
-    fun `unit conversion mixed arithmetic`() = runBlocking {
-        val lines = listOf(
-            createLine("10 km + 5000 m in km", sortOrder = 0),
-            createLine("1 m + 100 cm in m", sortOrder = 1),
-            createLine("10 kg + 20 gram to kilograms", sortOrder = 2),
-            createLine("53 weeks - 20 days", sortOrder = 3)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `unit conversion mixed arithmetic`() = testCalculate(
+        "10 km + 5000 m in km",
+        "1 m + 100 cm in m",
+        "10 kg + 20 gram to kilograms",
+        "53 weeks - 20 days"
+    ) { result ->
         assertEquals("15.0 km", result[0].result)
         assertEquals("2.0 m", result[1].result)
         assertEquals("10.02 kg", result[2].result)
@@ -2441,39 +1973,33 @@ class MathEngineTest {
     }
 
     @Test
-    fun `unit conversion temperature non linear`() = runBlocking {
-        val lines = listOf(
-            createLine("0 degC in F", sortOrder = 0),
-            createLine("212 F in C", sortOrder = 1),
-            createLine("0 C in K", sortOrder = 2)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `unit conversion temperature non linear`() = testCalculate(
+        "0 degC in F",
+        "212 F in C",
+        "0 C in K"
+    ) { result ->
         assertEquals("32.0 °F", result[0].result)
         assertEquals("100.0 °C", result[1].result)
         assertEquals("273.15 K", result[2].result)
     }
 
     @Test
-    fun `unit conversion data storage`() = runBlocking {
-        val lines = listOf(
-            createLine("1 GB in MB", sortOrder = 0),
-            createLine("1 GiB in MiB", sortOrder = 1)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `unit conversion data storage`() = testCalculate(
+        "1 GB in MB",
+        "1 GiB in MiB"
+    ) { result ->
         assertEquals("1000.0 MB", result[0].result)
         assertEquals("1024.0 MiB", result[1].result)
     }
 
     @Test
-    fun `unit conversion css dynamic ppi`() = runBlocking {
-        val lines = listOf(
-            createLine("96 px in inch", sortOrder = 0),
-            createLine("ppi = 300", sortOrder = 1),
-            createLine("300 px in inch", sortOrder = 2),
-            createLine("em = 21px", sortOrder = 3), // triggers em evaluation
-            createLine("1.5 em in px", sortOrder = 4)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `unit conversion css dynamic ppi`() = testCalculate(
+        "96 px in inch",
+        "ppi = 300",
+        "300 px in inch",
+        "em = 21px",
+        "1.5 em in px"
+    ) { result ->
         assertEquals(1.0, result[0].result.split(" ")[0].toDouble(), 0.0001)
         assertEquals(1.0, result[2].result.split(" ")[0].toDouble(), 0.0001)
         // em = 21px. 1.5 em = 1.5 * 21px = 31.5px
@@ -2485,259 +2011,210 @@ class MathEngineTest {
     }
 
     @Test
-    fun `unit conversion function syntax`() = runBlocking {
-        val lines = listOf(
-            createLine("convert(10, \"km\", \"m\")", sortOrder = 0)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `unit conversion function syntax`() = testCalculate("convert(10, \"km\", \"m\")") { result ->
         assertEquals("10000.0 m", result[0].result)
     }
 
     @Test
-    fun `mixed unit addition picking smaller unit`() = runBlocking {
-        val lines = listOf(
-            createLine("53 weeks + 2 days", sortOrder = 0)
-        )
-        val result = MathEngine.calculate(lines)
+    fun `mixed unit addition picking smaller unit`() = testCalculate("53 weeks + 2 days") { result ->
         assertEquals("373.0 d", result[0].result)
     }
 
     @Test
     fun `multiplying length quantities promotes area and volume`() = runBlocking {
-        val lines = listOf(
-            createLine("4 m * 2 m", sortOrder = 0),
-            createLine("last + 2 sqm", sortOrder = 1),
-            createLine("4 m * 2 m * 2 m", sortOrder = 2),
-            createLine("last + 4 cubic meter", sortOrder = 3)
-        )
-        val result = MathEngine.calculate(lines)
-        assertEquals("8.0 m²", result[0].result)
-        assertEquals("10.0 m²", result[1].result)
-        assertEquals("16.0 m³", result[2].result)
-        assertEquals("20.0 m³", result[3].result)
+        testCalculate("4 m * 2 m", "last + 2 sqm", "4 m * 2 m * 2 m", "last + 4 cubic meter") {
+            assertEquals("8.0 m²", it[0].result)
+            assertEquals("10.0 m²", it[1].result)
+            assertEquals("16.0 m³", it[2].result)
+            assertEquals("20.0 m³", it[3].result)
+        }
     }
 
     @Test
     fun `dividing area and volume quantities reduces dimension`() = runBlocking {
-        val lines = listOf(
-            createLine("4 m * 2 m * 2 m / 2 m", sortOrder = 0),
-            createLine("4 m * 2 m / 2 m", sortOrder = 1),
-            createLine("8 m³ / 2 m", sortOrder = 2)
-        )
-        val result = MathEngine.calculate(lines)
-        assertEquals("8.0 m²", result[0].result)
-        assertEquals("4.0 m", result[1].result)
-        assertEquals("4.0 m²", result[2].result)
+        testCalculate("4 m * 2 m * 2 m / 2 m", "4 m * 2 m / 2 m", "8 m³ / 2 m") {
+            assertEquals("8.0 m²", it[0].result)
+            assertEquals("4.0 m", it[1].result)
+            assertEquals("4.0 m²", it[2].result)
+        }
     }
 
     @Test
     fun `unsupported multiplicative unit chain returns error`() = runBlocking {
-        val lines = listOf(createLine("2m * 2m * 2m * 2m", sortOrder = 0))
-        val result = MathEngine.calculate(lines)
-        assertEquals("Err", result[0].result)
-        val err = MathEngine.getErrorDetails(lines, 0)
-        assertTrue(err?.startsWith("unsupported multiplicative unit:") == true)
+        testCalculate("2m * 2m * 2m * 2m") {
+            assertError("unsupported multiplicative unit: Cubic Meter * Meter", it, 0)
+        }
     }
 
     @Test
     fun `same category multiplication without derivation returns error`() = runBlocking {
-        val lines = listOf(
-            createLine("2 kg * 3 kg", sortOrder = 0),
-            createLine("4 h * 2 h", sortOrder = 1)
-        )
-
-        val result = MathEngine.calculate(lines)
-        assertEquals("Err", result[0].result)
-        assertEquals("Err", result[1].result)
-
-        val err0 = MathEngine.getErrorDetails(lines, 0)
-        val err1 = MathEngine.getErrorDetails(lines, 1)
-        assertTrue(err0?.startsWith("unsupported multiplicative unit:") == true)
-        assertTrue(err1?.startsWith("unsupported multiplicative unit:") == true)
+        testCalculate("2 kg * 3 kg", "4 h * 2 h") {
+            assertError("unsupported multiplicative unit: Kilogram * Kilogram", it, 0)
+            assertError("unsupported multiplicative unit: Hour * Hour", it, 1)
+        }
     }
 
     @Test
-    fun `add scalar inherits unit`() = runBlocking {
-        val lines = listOf(
-            createLine("53 weeks", sortOrder = 0),
-            createLine("last + 3", sortOrder = 1)
-        )
-        val result = MathEngine.calculate(lines)
-        assertEquals("53.0 wk", result[0].result)
-        assertEquals("56.0 wk", result[1].result)
+    fun `add scalar to physical quantity is disallowed`() = runBlocking {
+        testCalculate("53 weeks", "last + 3 weeks", "last + 3") {
+            assertEquals("53.0 wk", it[0].result)
+            assertEquals("56.0 wk", it[1].result)
+            assertError("Cannot add Week and unitless number: dimension mismatch", it, 2)
+        }
     }
 
     @Test
     fun `reassigning to unit symbol is disallowed`() = runBlocking {
-        val lines = listOf(createLine("km = 5", sortOrder = 0))
-        val result = MathEngine.calculate(lines)
-        assertEquals("Err", result[0].result)
-
-        val error = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("`km` is a unit symbol and cannot be used as a variable name", error)
+        testCalculate("km = 5") {
+            assertError("`km` is a unit symbol and cannot be used as a variable name", it, 0)
+        }
     }
 
     @Test
     fun `convert function performs full conversion from base`() = runBlocking {
-        val lines = listOf(createLine("convert(10, \"km\", \"cm\")", sortOrder = 0))
-        val result = MathEngine.calculate(lines)
-        assertEquals("1000000.0 cm", result[0].result)
+        testCalculate("convert(10, \"km\", \"cm\")") {
+            assertEquals("1000000.0 cm", it[0].result)
+        }
     }
 
     @Test
     fun `unit conversion expression performs full conversion from base`() = runBlocking {
-        val lines = listOf(createLine("10 km in cm", sortOrder = 0))
-        val result = MathEngine.calculate(lines)
-        assertEquals("1000000.0 cm", result[0].result)
+        testCalculate("10 km in cm") {
+            assertEquals("1000000.0 cm", it[0].result)
+        }
     }
 
     @Test
     fun `unit conversion error incompatible dimensions`() = runBlocking {
-        val lines = listOf(
-            createLine("10 km in kg", sortOrder = 0)
-        )
-        val result = MathEngine.calculate(lines)
-        assertEquals("Err", result[0].result)
-        val err = MathEngine.getErrorDetails(lines, 0)
-        assertTrue(err?.contains("dimension mismatch") == true)
+        testCalculate("10 km in kg") {
+            assertError("Cannot convert `Kilometer` to `Kilogram`: dimension mismatch", it, 0)
+        }
     }
 
     @Test
     fun `unit conversion multi word alias`() = runBlocking {
-        val lines = listOf(
-            createLine("10 degree celsius in fahrenheit", sortOrder = 0)
-        )
-        val result = MathEngine.calculate(lines)
-        assertEquals("50.0 °F", result[0].result)
+        testCalculate("10 degree celsius in fahrenheit") {
+            assertEquals("50.0 °F", it[0].result)
+        }
     }
 
     @Test
     fun `standalone quantity preserves unit in result`() = runBlocking {
-        val lines = listOf(
-            createLine("10 kg", sortOrder = 0)
-        )
-        val result = MathEngine.calculate(lines)
-        assertEquals("10.0 kg", result[0].result)
+        testCalculate("10 kg") {
+            assertEquals("10.0 kg", it[0].result)
+        }
     }
 
     @Test
     fun `quantity can be stripped to unitless value`() = runBlocking {
-        val lines = listOf(
-            createLine("area = 4.20", sortOrder = 0),
-            createLine("cost = area * 4.2 crores", sortOrder = 1),
-            createLine("saleable = area * (1 acre as sqft) * 70%", sortOrder = 2),
-            createLine("revenue = saleable * 5000", sortOrder = 3),
-            createLine("value(10 kg)", sortOrder = 4),
-            createLine("dropUnit(10 kg)", sortOrder = 5),
-            createLine("raw(10 kg)", sortOrder = 6),
-            createLine("value(128066.6 sqft)", sortOrder = 7),
-            createLine("value(12 million)", sortOrder = 8),
-            createLine("value(12 kg)", sortOrder = 9),
-            createLine("value(128066.6 sqft) - 1", sortOrder = 10),
-            createLine("value(12 kg) - 1 kg", sortOrder = 11),
-            createLine("value(revenue) - cost", sortOrder = 12),
-        )
-        val result = MathEngine.calculate(lines)
-        assertEquals("4.2", result[0].result)
-        assertEquals("176400000.0", result[1].result)
-        assertTrue(result[2].result.startsWith("128066.4"))
-        assertTrue(result[3].result.startsWith("640332"))
-        assertTrue(result[3].result.endsWith(" ft²"))
-        assertEquals("10", result[4].result)
-        assertEquals("10", result[5].result)
-        assertEquals("10", result[6].result)
-        assertTrue(result[7].result.startsWith("128066.6"))
-        assertEquals("12000000", result[8].result)
-        assertEquals("12", result[9].result)
-        assertTrue(result[10].result.startsWith("128065.6"))
-        assertEquals("11.0", result[11].result)
-        assertEquals("463932000.0", result[12].result)
+        testCalculate(
+            "area = 4.20",
+            "cost = area * 4.2 crores",
+            "saleable = area * (1 acre as sqft) * 70%",
+            "revenue = saleable * 5000",
+            "value(10 kg)",
+            "dropUnit(10 kg)",
+            "raw(10 kg)",
+            "value(128066.6 sqft)",
+            "value(12 million)",
+            "value(12 kg)",
+            "value(128066.6 sqft) - 1",
+            "12 kg - 1",
+            "value(12 kg) - 1",
+            "value(revenue) - cost"
+        ) {
+            assertEquals("4.2", it[0].result)
+            assertEquals("176400000.0", it[1].result)
+            assertTrue(it[2].result.startsWith("128066.4"))
+            assertTrue(it[3].result.startsWith("640332"))
+            assertTrue(it[3].result.endsWith(" ft²"))
+            assertEquals("10", it[4].result)
+            assertEquals("10", it[5].result)
+            assertEquals("10", it[6].result)
+            assertTrue(it[7].result.startsWith("128066.6"))
+            assertEquals("12000000", it[8].result)
+            assertEquals("12", it[9].result)
+            assertTrue(it[10].result.startsWith("128065.6"))
+            assertError("Cannot subtract Kilogram and unitless number: dimension mismatch", it, 11)
+            assertEquals("11.0", it[12].result)
+            assertEquals("463932000.0", it[13].result)
+        }
     }
 
     @Test
     fun `value and dropUnit preserve display-space rational value`() = runBlocking {
-        val lines = listOf(
-            createLine("rational(value(5 km))", sortOrder = 0),
-            createLine("rational(dropUnit(5 km))", sortOrder = 1),
-            createLine("rational(raw(5 km))", sortOrder = 2),
-        )
-        val result = MathEngine.calculate(lines, rationalMode = true)
-        assertEquals("5", result[0].result)
-        assertEquals("5", result[1].result)
-        assertEquals("5", result[2].result)
+        testCalculate("rational(value(5 km))", "rational(dropUnit(5 km))", "rational(raw(5 km))", rationalMode = true) {
+            assertEquals("5", it[0].result)
+            assertEquals("5", it[1].result)
+            assertEquals("5", it[2].result)
+        }
     }
 
     @Test
     fun `unit conversion calculation chain works as expected between different units by dropping units`() = runBlocking {
-        val lines = listOf(
-            createLine("area = 4.20", sortOrder = 0),
-            createLine("cost = area * 4.2 crores", sortOrder = 1),
-            createLine("saleable = area * (1 acre as sqft) * 70%", sortOrder = 2),
-            createLine("revenue = saleable * 5000", sortOrder = 3),
-            createLine("value(revenue) - cost", sortOrder = 4),
-        )
-        val result = MathEngine.calculate(lines)
-        assertEquals("4.2", result[0].result)
-        assertEquals("176400000.0", result[1].result)
-        assertTrue(result[2].result.startsWith("128066.4"))
-        assertEquals(640332000.0, result[3].result.split(" ")[0].toDouble(), 0.1)
-        assertTrue(result[3].result.endsWith(" ft²"))
-        assertEquals("463932000.0", result[4].result)
+        testCalculate(
+            "area = 4.20",
+            "cost = area * 4.2 crores",
+            "saleable = area * (1 acre as sqft) * 70%",
+            "revenue = saleable * 5000",
+            "value(revenue) - cost"
+        ) {
+            assertEquals("4.2", it[0].result)
+            assertEquals("176400000.0", it[1].result)
+            assertTrue(it[2].result.startsWith("128066.4"))
+            assertEquals(640332000.0, it[3].result.split(" ")[0].toDouble(), 0.1)
+            assertTrue(it[3].result.endsWith(" ft²"))
+            assertEquals("463932000.0", it[4].result)
+        }
     }
 
     @Test
     fun `unit stripping helpers cannot be reassigned`() = runBlocking {
-        val lines = listOf(
-            createLine("value = 1"),
-            createLine("dropUnit = 1"),
-            createLine("raw = 1")
-        )
-        val result = MathEngine.calculate(lines)
-        assertEquals("Err", result[0].result)
-        val err0 = MathEngine.getErrorDetails(lines, 0)
-        assertTrue(err0?.contains("`value` is a reserved name and cannot be changed") == true)
-        assertEquals("Err", result[1].result)
-        val err1 = MathEngine.getErrorDetails(lines, 1)
-        assertTrue(err1?.contains("`dropUnit` is a reserved name and cannot be changed") == true)
-        assertEquals("Err", result[2].result)
-        val err2 = MathEngine.getErrorDetails(lines, 2)
-        assertTrue(err2?.contains("`raw` is a reserved name and cannot be changed") == true)
+        testCalculate("value = 1", "dropUnit = 1", "raw = 1") {
+            assertError("`value` is a reserved name and cannot be changed", it, 0)
+            assertError("`dropUnit` is a reserved name and cannot be changed", it, 1)
+            assertError("`raw` is a reserved name and cannot be changed", it, 2)
+        }
     }
 
     @Test
     fun `unitless conversion to non-scalar returns Err`() = runBlocking {
-        val lines = listOf(createLine("5 as cm"))
-        val result = MathEngine.calculate(lines)
-        assertEquals("Err", result[0].result)
-        val err = MathEngine.getErrorDetails(lines, 0)
-        assertTrue(err?.contains("Cannot convert unitless number to `Centimeter`") == true)
+        testCalculate("5 as cm") {
+            assertError("Cannot convert unitless number to `Centimeter`", it, 0)
+        }
     }
 
     @Test
-    fun `compound assignment is quantity aware`() = runBlocking {
+    fun `compound assignment enforces unit consistency`() = runBlocking {
         val lines = listOf(
             createLine("distance = 10 km"),
+            createLine("distance += 1km"),
             createLine("distance += 1")
         )
         val result = MathEngine.calculate(lines)
         assertEquals("11.0 km", result[1].result)
+        assertError("Cannot add Kilometer and unitless number: dimension mismatch", result[2], lines, 2)
     }
 
     @Test
-    fun `increment is quantity aware`() = runBlocking {
-        val lines = listOf(
-            createLine("distance = 10 km"),
-            createLine("distance++")
-        )
-        val result = MathEngine.calculate(lines)
-        assertEquals("11.0 km", result[1].result)
+    fun `increment support values with units`() = runBlocking {
+        testCalculate("distance = 10 km", "distance++") {
+            assertEquals("11.0 km", it[1].result)
+        }
+    }
+
+    @Test
+    fun `decrement support values with units`() = runBlocking {
+        testCalculate("distance = 10 km", "distance--") {
+            assertEquals("9.0 km", it[1].result)
+        }
     }
 
     @Test
     fun `fractional numeral system conversion throws error`() = runBlocking {
-        val lines = listOf(createLine("10.4 in binary"))
-        val err = MathEngine.getErrorDetails(lines, 0)
-        assertEquals("Fractional value cannot be converted to numeral system", err)
+        testCalculate("10.4 in binary") {
+            assertError("Fractional value cannot be converted to numeral system", it, 0)
+        }
     }
 
     @Test
@@ -2837,172 +2314,148 @@ class MathEngineTest {
     }
     @Test
     fun `variable as unit quantity anchor`() = runBlocking {
-        val lines = listOf(
-            createLine("a = 15", sortOrder = 0),
-            createLine("a km", sortOrder = 1),
-            createLine("a km in m", sortOrder = 2)
-        )
-        val result = MathEngine.calculate(lines)
-        assertEquals("15.0", result[0].result)
-        assertEquals("15.0 km", result[1].result)
-        assertEquals("15000.0 m", result[2].result)
+        testCalculate("a = 15", "a km", "a km in m") {
+            assertEquals("15.0", it[0].result)
+            assertEquals("15.0 km", it[1].result)
+            assertEquals("15000.0 m", it[2].result)
+        }
     }
 
     @Test
     fun `variable with composite unit conversion`() = runBlocking {
-        val lines = listOf(
-            createLine("a = 15", sortOrder = 0),
-            createLine("a kilometers per hour to mph", sortOrder = 1)
-        )
-        val result = MathEngine.calculate(lines)
-        assertEquals("15.0", result[0].result)
-        // 15 km/h to mph: 15 / 1.60934 = 9.32056788356...
-        assertTrue(result[1].result.contains("9.3205"))
-        assertTrue(result[1].result.endsWith(" mph"))
+        testCalculate("a = 15", "a kilometers per hour to mph") {
+            assertEquals("15.0", it[0].result)
+            // 15 km/h to mph: 15 / 1.60934 = 9.32056788356...
+            assertTrue(it[1].result.contains("9.3205"))
+            assertTrue(it[1].result.endsWith(" mph"))
+        }
     }
 
     @Test
     fun `multiple variables as unit quantities`() = runBlocking {
-        val lines = listOf(
-            createLine("v1 = 10", sortOrder = 0),
-            createLine("v2 = 500", sortOrder = 1),
-            createLine("v1 km + v2 m", sortOrder = 2)
-        )
-        val result = MathEngine.calculate(lines)
-        assertEquals("10.0", result[0].result)
-        assertEquals("500.0", result[1].result)
-        assertEquals("10500.0 m", result[2].result)
+        testCalculate("v1 = 10", "v2 = 500", "v1 km + v2 m") {
+            assertEquals("10.0", it[0].result)
+            assertEquals("500.0", it[1].result)
+            assertEquals("10500.0 m", it[2].result)
+        }
     }
 
     @Test
     fun `underscore with units should parse correctly`() = runBlocking {
-        val lines = listOf(
-            createLine("10", sortOrder = 0),
-            createLine("_ km", sortOrder = 1)
-        )
-        val result = MathEngine.calculate(lines)
-        assertEquals("10.0", result[0].result)
-        assertEquals("10.0 km", result[1].result)
+        testCalculate("10", "_ km") {
+            assertEquals("10.0", it[0].result)
+            assertEquals("10.0 km", it[1].result)
+        }
     }
 
     @Test
     fun `last with units should parse correctly`() = runBlocking {
-        val lines = listOf(
-            createLine("10", sortOrder = 0),
-            createLine("last m", sortOrder = 1)
-        )
-        val result = MathEngine.calculate(lines)
-        assertEquals("10.0", result[0].result)
-        assertEquals("10.0 m", result[1].result)
+        testCalculate("10", "last m") {
+            assertEquals("10.0", it[0].result)
+            assertEquals("10.0 m", it[1].result)
+        }
     }
 
     @Test
     fun `last with unit conversion should parse correctly`() = runBlocking {
-        val lines = listOf(
-            createLine("10", sortOrder = 0),
-            createLine("last km to m", sortOrder = 1)
-        )
-        val result = MathEngine.calculate(lines)
-        assertEquals("10000.0 m", result[1].result)
+        testCalculate("10", "last km to m") {
+            assertEquals("10000.0 m", it[1].result)
+        }
     }
 
     @Test
     fun `line number alias with units should parse correctly`() = runBlocking {
-        val lines = listOf(
-            createLine("10", sortOrder = 0),
-            createLine("lineno km", sortOrder = 1)
-        )
-        val result = MathEngine.calculate(lines)
-        // lineno is 2 for the second line.
-        assertEquals("2.0 km", result[1].result)
+        testCalculate("10", "lineno km") {
+            // lineno is 2 for the second line.
+            assertEquals("2.0 km", it[1].result)
+        }
     }
 
     @Test
     fun `global rational mode changes displayed division result`() = runBlocking {
-        val lines = listOf(createLine("1/3 + 1/3 + 1/3"))
+        testCalculate("1/3 + 1/3 + 1/3") {
+            assertEquals("0.9999999999999999999999999999999999", it[0].result)
+        }
 
-        // Standard mode
-        val standardResult = MathEngine.calculate(lines)
-        assertEquals("0.9999999999999999999999999999999999", standardResult[0].result)
-
-        val rationalResult = MathEngine.calculate(lines, rationalMode = true)
-        assertEquals("1", rationalResult[0].result)
+        testCalculate("1/3 + 1/3 + 1/3", rationalMode = true) {
+            assertEquals("1", it[0].result)
+        }
     }
 
     @Test
     fun `global rational mode changes displayed fractional result`() = runBlocking {
-        val lines = listOf(createLine("1/3 + 1/6"), createLine("1/3 + 2"))
-        val result = MathEngine.calculate(lines, rationalMode = true)
-        assertEquals("1/2", result[0].result)
-        assertEquals("7/3", result[1].result)
+        testCalculate("1/3 + 1/6", "1/3 + 2", rationalMode = true) {
+            assertEquals("1/2", it[0].result)
+            assertEquals("7/3", it[1].result)
+        }
     }
 
     @Test
     fun `rational function still stores rational result in decimal mode`() = runBlocking {
-        val lines = listOf(createLine("rational(0.5)"))
-        val result = MathEngine.calculate(lines, rationalMode = false)
-        assertEquals("1/2", result[0].result)
+        testCalculate("rational(0.5)") {
+            assertEquals("1/2", it[0].result)
+        }
     }
 
     @Test
     fun `fraction function still stores rational result in decimal mode`() = runBlocking {
-        val lines = listOf(createLine("fraction(0.75)"))
-        // Global rationalMode is false by default
-        val result = MathEngine.calculate(lines, rationalMode = false)
-        assertEquals("3/4", result[0].result)
+        testCalculate("fraction(0.75)") {
+            assertEquals("3/4", it[0].result)
+        }
     }
 
     @Test
     fun `rational function preserves rational result for rational expressions`() = runBlocking {
-        val lines = listOf(createLine("rational(1/3)"))
-        val result = MathEngine.calculate(lines, rationalMode = false)
-        assertEquals("1/3", result[0].result)
+        testCalculate("rational(1/3)") {
+            assertEquals("1/3", it[0].result)
+        }
     }
 
     @Test
     fun `float function stores decimal result even in rational mode`() = runBlocking {
-        val lines = listOf(createLine("float(1/3)"))
-        val result = MathEngine.calculate(lines, rationalMode = true)
-        assertEquals("0.3333333333", result[0].result.take(12))
+        testCalculate("float(1/3)", rationalMode = true) {
+            assertEquals("0.3333333333", it[0].result.take(12))
+        }
     }
 
     @Test
     fun `in decimal unit conversion enforces integer check`() = runBlocking {
-        val lines = listOf(createLine("1/3 in decimal"))
-        val result = MathEngine.calculate(lines, rationalMode = true)
-        assertEquals("Err", result[0].result)
+        testCalculate("1/3 in decimal", rationalMode = true) {
+            assertError("Fractional value cannot be converted to numeral system", it, 0)
+        }
     }
 
     @Test
     fun `rational function preserves rational result for quantities`() = runBlocking {
-        val lines = listOf(createLine("rational(5 km / 2)"))
-        val result = MathEngine.calculate(lines, rationalMode = false)
-        assertEquals("5/2 km", result[0].result)
+        testCalculate("rational(5 km / 2)") {
+            assertEquals("5/2 km", it[0].result)
+        }
     }
 
     @Test
     fun `global rational mode changes displayed quantity result`() = runBlocking {
-        val lines = listOf(createLine("5 km / 2"))
-        val standardResult = MathEngine.calculate(lines, rationalMode = false)
-        val rationalResult = MathEngine.calculate(lines, rationalMode = true)
-        assertEquals("2.5 km", standardResult[0].result)
-        assertEquals("5/2 km", rationalResult[0].result)
+        testCalculate("5 km / 2") {
+            assertEquals("2.5 km", it[0].result)
+        }
+        testCalculate("5 km / 2", rationalMode = true) {
+            assertEquals("5/2 km", it[0].result)
+        }
     }
 
     @Test
     fun `float function stores decimal result for quantities in rational mode`() = runBlocking {
-        val lines = listOf(createLine("float(5 km / 2)"))
-        val result = MathEngine.calculate(lines, rationalMode = true)
-        assertEquals("2.5 km", result[0].result)
+        testCalculate("float(5 km / 2)", rationalMode = true) {
+            assertEquals("2.5 km", it[0].result)
+        }
     }
 
     @Test
     fun `global rational mode changes displayed value for fractional arithmetic`() = runBlocking {
-        val lines = listOf(createLine("1 / 3"))
-        val standardResult = MathEngine.calculate(lines, rationalMode = false)
-        val rationalResult = MathEngine.calculate(lines, rationalMode = true)
-
-        assertEquals("0.3333333333333333333333333333333333", standardResult[0].result)
-        assertEquals("1/3", rationalResult[0].result)
+        testCalculate("1 / 3") {
+            assertEquals("0.3333333333333333333333333333333333", it[0].result)
+        }
+        testCalculate("1 / 3", rationalMode = true) {
+            assertEquals("1/3", it[0].result)
+        }
     }
 }

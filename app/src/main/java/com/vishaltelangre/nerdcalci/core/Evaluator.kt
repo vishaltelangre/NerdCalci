@@ -325,7 +325,14 @@ class Evaluator(
                 val name = target.name
                 validateVariableOrFunctionName(name)
 
-                val result = evaluateBinaryOp(Expr.BinaryOp(target, TokenKind.PLUS, Expr.NumberLiteral(BigDecimal.ONE)))
+                val currentValue = evaluate(target)
+                val increment = if (currentValue.unit != null) {
+                    Expr.Quantity(Expr.NumberLiteral(BigDecimal.ONE), currentValue.unit)
+                } else {
+                    Expr.NumberLiteral(BigDecimal.ONE)
+                }
+
+                val result = evaluateBinaryOp(Expr.BinaryOp(target, TokenKind.PLUS, increment))
                 context.fileVariables.remove(name)
                 context.variables[name] = result
                 result
@@ -337,7 +344,14 @@ class Evaluator(
                 val name = target.name
                 validateVariableOrFunctionName(name)
 
-                val result = evaluateBinaryOp(Expr.BinaryOp(target, TokenKind.MINUS, Expr.NumberLiteral(BigDecimal.ONE)))
+                val currentValue = evaluate(target)
+                val decrement = if (currentValue.unit != null) {
+                    Expr.Quantity(Expr.NumberLiteral(BigDecimal.ONE), currentValue.unit)
+                } else {
+                    Expr.NumberLiteral(BigDecimal.ONE)
+                }
+
+                val result = evaluateBinaryOp(Expr.BinaryOp(target, TokenKind.MINUS, decrement))
                 context.fileVariables.remove(name)
                 context.variables[name] = result
                 result
@@ -408,16 +422,29 @@ class Evaluator(
         val leftScalar = scalarValue(leftEval, leftUnit, forceDisplayValue)
         val rightScalar = scalarValue(rightEval, rightUnit, forceDisplayValue)
 
+        // General addition/subtraction
         if (expr.op == TokenKind.PLUS || expr.op == TokenKind.MINUS) {
+            val leftIsPhysical = isPhysicalUnit(leftUnit)
+            val rightIsPhysical = isPhysicalUnit(rightUnit)
+
+            // Strict unit check: if one is physical, the other must be physical of the same category
+            if (leftIsPhysical || rightIsPhysical) {
+                if (!leftIsPhysical || !rightIsPhysical || leftUnit!!.category != rightUnit!!.category) {
+                    val leftDesc = getDimensionDescription(leftUnit)
+                    val rightDesc = getDimensionDescription(rightUnit)
+                    val opName = if (expr.op == TokenKind.PLUS) "add" else "subtract"
+
+                    throw EvalException("Cannot $opName $leftDesc and $rightDesc: dimension mismatch")
+                }
+            }
+
             if (leftUnit != null && rightUnit != null) {
-                if (leftUnit.category == UnitCategory.SCALAR || rightUnit.category == UnitCategory.SCALAR) {
+                if (leftUnit.category == UnitCategory.SCALAR || rightUnit.category == UnitCategory.SCALAR ||
+                    leftUnit.category == UnitCategory.NUMERAL_SYSTEM || rightUnit.category == UnitCategory.NUMERAL_SYSTEM) {
                     return EvaluationResult(
                         applyOp(leftScalar, expr.op, rightScalar),
                         rationalValue = applyRationalOp(leftRational, expr.op, rightRational)
                     )
-                }
-                if (leftUnit.category != rightUnit.category) {
-                    throw EvalException("Cannot calculate ${leftUnit.name} and ${rightUnit.name}: dimension mismatch")
                 }
 
                 if (leftUnit.category == UnitCategory.TEMPERATURE) {
@@ -440,21 +467,19 @@ class Evaluator(
                     pickedUnit.symbols.first(),
                     rationalValue = applyRationalOp(leftRational, expr.op, rightRational)
                 )
-            } else if (leftUnit != null && rightUnit == null && !rightEval.explicitUnitless && leftUnit.category != UnitCategory.SCALAR) {
-                val scaledRight = UnitConverter.toBase(rightVal, leftUnit, variables)
-                val scaledRightRational = Rational.toRational(UnitConverter.toBase(rightRational.toBigDecimal(mc), leftUnit, variables))
+            } else if (leftUnit != null) {
+                // At this point it must be non-physical (SCALAR or NUMERAL)
                 return EvaluationResult(
-                    applyOp(leftVal, expr.op, scaledRight),
-                    leftUnit.symbols.first(),
-                    rationalValue = applyRationalOp(leftRational, expr.op, scaledRightRational)
+                    applyOp(leftScalar, expr.op, rightScalar),
+                    leftEval.unit,
+                    rationalValue = applyRationalOp(leftRational, expr.op, rightRational)
                 )
-            } else if (leftUnit == null && rightUnit != null && !leftEval.explicitUnitless && rightUnit.category != UnitCategory.SCALAR) {
-                val scaledLeft = UnitConverter.toBase(leftVal, rightUnit, variables)
-                val scaledLeftRational = Rational.toRational(UnitConverter.toBase(leftRational.toBigDecimal(mc), rightUnit, variables))
+            } else if (rightUnit != null) {
+                // At this point it must be non-physical
                 return EvaluationResult(
-                    applyOp(scaledLeft, expr.op, rightVal),
-                    rightUnit.symbols.first(),
-                    rationalValue = applyRationalOp(scaledLeftRational, expr.op, rightRational)
+                    applyOp(leftScalar, expr.op, rightScalar),
+                    rightEval.unit,
+                    rationalValue = applyRationalOp(leftRational, expr.op, rightRational)
                 )
             }
         }
@@ -646,5 +671,17 @@ class Evaluator(
         } else {
             throw EvalException("You can only $operation other files using dot notation")
         }
+    }
+
+    private fun isPhysicalUnit(unit: NerdUnit?): Boolean {
+        return unit != null && unit.category != UnitCategory.SCALAR && unit.category != UnitCategory.NUMERAL_SYSTEM
+    }
+
+    private fun getDimensionName(unit: NerdUnit?): String {
+        return unit?.category?.name?.lowercase() ?: "unitless"
+    }
+
+    private fun getDimensionDescription(unit: NerdUnit?): String {
+        return unit?.name?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "unitless number"
     }
 }

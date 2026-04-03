@@ -150,6 +150,28 @@ class MathEngineTest {
     }
 
     @Test
+    fun `temperature multiplication uses displayed unit value`() {
+        testCalculate("30 °C * 2", "2 * 30 °C", "30 °F * 2", "2 * 30 K") { result ->
+            assertEquals("60.0 °C", result[0].result)
+            assertEquals("60.0 °C", result[1].result)
+            val fahrenheitValue = result[2].result.substringBefore(' ').toDouble()
+            assertEquals(60.0, fahrenheitValue, 1e-9)
+            assertTrue(result[2].result.endsWith(" °F"))
+            assertEquals("60.0 K", result[3].result)
+        }
+    }
+
+    @Test
+    fun `temperature division uses displayed unit value`() {
+        testCalculate("30 °C / 2", "60 °C / 2", "30 °F / 2", "30 K / 2") { result ->
+            assertEquals("15.0 °C", result[0].result)
+            assertEquals("30.0 °C", result[1].result)
+            assertEquals("15.0 °F", result[2].result)
+            assertEquals("15.0 K", result[3].result)
+        }
+    }
+
+    @Test
     fun `temperature addition is order independent`() {
         testCalculate(
             "30 °F + 30 °C + 30 °C",

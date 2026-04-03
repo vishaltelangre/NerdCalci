@@ -419,8 +419,30 @@ class Evaluator(
         val leftUnit = leftEval.unit?.let { UnitConverter.findUnit(it) }
         val rightUnit = rightEval.unit?.let { UnitConverter.findUnit(it) }
         val forceDisplayValue = leftEval.explicitUnitless || rightEval.explicitUnitless
-        val leftScalar = scalarValue(leftEval, leftUnit, forceDisplayValue)
-        val rightScalar = scalarValue(rightEval, rightUnit, forceDisplayValue)
+        val multiplicativeTemperatureOperand = expr.op == TokenKind.STAR || expr.op == TokenKind.SLASH
+        val leftUsesDisplayValue = forceDisplayValue ||
+            (multiplicativeTemperatureOperand && leftUnit?.category == UnitCategory.TEMPERATURE &&
+                (rightUnit == null || rightUnit.category == UnitCategory.SCALAR))
+        val rightUsesDisplayValue = forceDisplayValue ||
+            (multiplicativeTemperatureOperand && rightUnit?.category == UnitCategory.TEMPERATURE &&
+                (leftUnit == null || leftUnit.category == UnitCategory.SCALAR))
+        val leftScalar = scalarValue(leftEval, leftUnit, leftUsesDisplayValue)
+        val rightScalar = scalarValue(rightEval, rightUnit, rightUsesDisplayValue)
+
+        if ((expr.op == TokenKind.STAR || expr.op == TokenKind.SLASH) &&
+            ((leftUnit?.category == UnitCategory.TEMPERATURE && (rightUnit == null || rightUnit.category == UnitCategory.SCALAR)) ||
+                (rightUnit?.category == UnitCategory.TEMPERATURE && (leftUnit == null || leftUnit.category == UnitCategory.SCALAR)))) {
+            val tempUnit = leftUnit?.takeIf { it.category == UnitCategory.TEMPERATURE }
+                ?: rightUnit?.takeIf { it.category == UnitCategory.TEMPERATURE }
+                ?: throw EvalException("Temperature unit is unavailable")
+            val resultDisplay = applyOp(leftScalar, expr.op, rightScalar)
+            val resultBase = UnitConverter.toBase(resultDisplay, tempUnit, variables)
+            return EvaluationResult(
+                resultBase,
+                tempUnit.symbols.first(),
+                rationalValue = Rational.toRational(resultBase)
+            )
+        }
 
         // General addition/subtraction
         if (expr.op == TokenKind.PLUS || expr.op == TokenKind.MINUS) {

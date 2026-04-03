@@ -1,5 +1,6 @@
 package com.vishaltelangre.nerdcalci.core
 
+import java.math.BigDecimal
 import org.junit.Test
 import org.junit.Assert.*
 
@@ -48,6 +49,15 @@ class UnitConverterTest {
         val kilometer = UnitConverter.findUnit("km")
         val linearResult = UnitConverter.deriveForDivision(meter, kilometer)
         assertEquals("Same-category linear division should return 'unitless'", "unitless", linearResult)
+    }
+
+    @Test
+    fun `test deriveUnitScale leaves temperature multiplication and division unchanged`() {
+        val celsius = UnitConverter.findUnit("C")
+        val scalar = null
+
+        assertEquals(BigDecimal.ONE, UnitConverter.deriveUnitScale(celsius, scalar, TokenKind.STAR))
+        assertEquals(BigDecimal.ONE, UnitConverter.deriveUnitScale(celsius, scalar, TokenKind.SLASH))
     }
 
     @Test

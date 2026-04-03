@@ -81,6 +81,9 @@ class CalculatorViewModel(
     private val _scratchpadFileId = MutableStateFlow<Long?>(null)
     val scratchpadFileId: StateFlow<Long?> = _scratchpadFileId
 
+    private val _isScratchpadReady = MutableStateFlow(false)
+    val isScratchpadReady: StateFlow<Boolean> = _isScratchpadReady
+
     private val _currentTheme = MutableStateFlow(
         prefs?.getString(PREF_THEME, DEFAULT_THEME) ?: DEFAULT_THEME
     )
@@ -173,6 +176,7 @@ class CalculatorViewModel(
                 dao.insertLine(LineEntity(fileId = id, sortOrder = 0, expression = "", result = ""))
                 _scratchpadFileId.value = id
             }
+            _isScratchpadReady.value = true
         }
     }
 

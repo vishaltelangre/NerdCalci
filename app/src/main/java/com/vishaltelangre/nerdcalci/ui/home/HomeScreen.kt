@@ -109,6 +109,7 @@ fun HomeScreen(
 
     val autoOpenScratchpad by viewModel.autoOpenScratchpad.collectAsState()
     val scratchpadFileId by viewModel.scratchpadFileId.collectAsState()
+    val isScratchpadReady by viewModel.isScratchpadReady.collectAsState()
     var hasAutoOpened by rememberSaveable { mutableStateOf(false) }
 
     // Handle UI events like Undo Snackbars and other messages
@@ -125,8 +126,8 @@ fun HomeScreen(
         }
     }
 
-    LaunchedEffect(autoOpenScratchpad, scratchpadFileId) {
-        if (autoOpenScratchpad && scratchpadFileId != null && !hasAutoOpened) {
+    LaunchedEffect(autoOpenScratchpad, scratchpadFileId, isScratchpadReady) {
+        if (autoOpenScratchpad && scratchpadFileId != null && isScratchpadReady && !hasAutoOpened) {
             hasAutoOpened = true
             onFileClick(scratchpadFileId!!)
         }
@@ -253,6 +254,17 @@ fun HomeScreen(
                             textAlign = TextAlign.Center,
                             modifier = Modifier.padding(bottom = 20.dp)
                         )
+                        if (scratchpadFileId != null) {
+                            OutlinedButton(
+                                onClick = { onFileClick(scratchpadFileId) },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(Icons.Default.FlashOn, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Open Scratchpad")
+                            }
+                            Spacer(modifier = Modifier.height(10.dp))
+                        }
                         Button(
                             onClick = { createFile() },
                             modifier = Modifier.fillMaxWidth()

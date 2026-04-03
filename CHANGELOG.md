@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Disallowed additive operations on units of different categories and unitless values for predictable results.
 - Fixed temperature unit arithmetic handling in multiplication and division operations.
-- Made unit math more user friendly: `ft * ft` stays in square feet, mixed units like `ft * m` now fail clearly.
+- Made unit math more user-friendly: `ft * ft` stays in square feet, mixed units like `ft * m` now fail clearly.
 
 ## [3.3.0] - 2026-04-01
 ### Added

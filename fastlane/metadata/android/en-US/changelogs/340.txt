@@ -1,4 +1,4 @@
 - Added a temporary "Scratchpad" for quick calculations, with an option to auto-open it on launch (Issue #66).
 - Disallowed additive operations on units of different categories and unitless values for predictable results.
 - Fixed temperature unit arithmetic handling in multiplication and division operations.
-- Made unit math more user friendly: `ft * ft` stays in square feet, mixed units like `ft * m` now fail clearly.
+- Made unit math more user-friendly: `ft * ft` stays in square feet, mixed units like `ft * m` now fail clearly.

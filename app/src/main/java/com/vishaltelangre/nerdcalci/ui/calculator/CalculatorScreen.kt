@@ -515,8 +515,8 @@ fun CalculatorScreen(
     var showClearConfirmDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var showInfoDialog by remember { mutableStateOf(false) }
-    val scratchpadFileId by viewModel.scratchpadFileId.collectAsState()
-    val isScratchpad = fileId == scratchpadFileId
+    val scratchpadFileId by viewModel.scratchpadFileId.collectAsState(initial = null)
+    val isScratchpad = scratchpadFileId != null && fileId == scratchpadFileId
     val currentFile = files.find { it.id == fileId }
     val fileName = if (isScratchpad) Constants.SCRATCHPAD_DISPLAY_NAME else (currentFile?.name ?: "Editor")
 

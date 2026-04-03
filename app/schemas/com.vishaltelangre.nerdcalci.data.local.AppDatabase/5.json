@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 5,
-    "identityHash": "aa45591059a4f55b967f8ca81a64c9e9",
+    "identityHash": "c3dcd0dc0a4f0b8b0c8e8f8a5c8f8b8a",
     "entities": [
       {
         "tableName": "files",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `lastModified` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `isPinned` INTEGER NOT NULL, `syncId` TEXT NOT NULL, `isTemporary` INTEGER NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `lastModified` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `isPinned` INTEGER NOT NULL, `syncId` TEXT NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
@@ -42,12 +42,6 @@
             "fieldPath": "syncId",
             "columnName": "syncId",
             "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "isTemporary",
-            "columnName": "isTemporary",
-            "affinity": "INTEGER",
             "notNull": true
           }
         ],
@@ -144,7 +138,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'aa45591059a4f55b967f8ca81a64c9e9')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'c3dcd0dc0a4f0b8b0c8e8f8a5c8f8b8a')"
     ]
   }
 }

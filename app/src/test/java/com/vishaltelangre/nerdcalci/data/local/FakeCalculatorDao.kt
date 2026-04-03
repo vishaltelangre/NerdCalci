@@ -72,11 +72,11 @@ open class FakeCalculatorDao : CalculatorDao() {
     override suspend fun doesFileExist(name: String, excludeId: Long): Boolean = 
         _files.value.any { it.name == name && !it.isTemporary && it.id != excludeId }
 
-    override fun getLinesForFile(fileId: Long): Flow<List<LineEntity>> = 
-        _lines.map { list -> list.filter { it.fileId == fileId }.sortedBy { it.sortOrder } }
+    override fun getLinesForFile(fileId: Long): Flow<List<LineEntity>> =
+        _lines.map { list -> list.filter { it.fileId == fileId }.sortedWith(compareBy({ it.sortOrder }, { it.id })) }
 
-    override suspend fun getLinesForFileSync(fileId: Long): List<LineEntity> = 
-        _lines.value.filter { it.fileId == fileId }.sortedBy { it.sortOrder }
+    override suspend fun getLinesForFileSync(fileId: Long): List<LineEntity> =
+        _lines.value.filter { it.fileId == fileId }.sortedWith(compareBy({ it.sortOrder }, { it.id }))
 
     override suspend fun getLineById(lineId: Long): LineEntity? = 
         _lines.value.find { it.id == lineId }

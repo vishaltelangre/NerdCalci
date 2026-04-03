@@ -54,10 +54,9 @@ class UnitConverterTest {
     @Test
     fun `test deriveUnitScale leaves temperature multiplication and division unchanged`() {
         val celsius = UnitConverter.findUnit("C")
-        val scalar = null
 
-        assertEquals(BigDecimal.ONE, UnitConverter.deriveUnitScale(celsius, scalar, TokenKind.STAR))
-        assertEquals(BigDecimal.ONE, UnitConverter.deriveUnitScale(celsius, scalar, TokenKind.SLASH))
+        assertEquals(BigDecimal.ONE, UnitConverter.deriveUnitScale(celsius, null, TokenKind.STAR))
+        assertEquals(BigDecimal.ONE, UnitConverter.deriveUnitScale(celsius, null, TokenKind.SLASH))
     }
 
     @Test

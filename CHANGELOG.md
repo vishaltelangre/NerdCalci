@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.4.0] - 2026-04-03
+### Added
+- Added a temporary "Scratchpad" for quick calculations, with an option to auto-open it on launch (Issue #66).
+
+### Fixed
+- Disallowed additive operations on units of different categories and unitless values for predictable results.
+- Fixed temperature unit arithmetic handling in multiplication and division operations.
+- Made unit math more user friendly: `ft * ft` stays in square feet, mixed units like `ft * m` now fail clearly.
+
 ## [3.3.0] - 2026-04-01
 ### Added
 - Added "Rational mode" for exact arithmetic using fractions (Issue #87).

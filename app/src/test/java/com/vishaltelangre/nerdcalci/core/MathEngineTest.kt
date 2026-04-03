@@ -2044,11 +2044,11 @@ class MathEngineTest {
 
     @Test
     fun `multiplying length quantities promotes area and volume`() = runBlocking {
-        testCalculate("4 m * 2 m", "last + 2 sqm", "4 m * 2 m * 2 m", "last + 4 cubic meter") {
+        testCalculate("4 m * 2 m", "10 ft * 10 ft", "2 cm * 2 cm * 2 cm", "last + 4 cubic meter") {
             assertEquals("8.0 m²", it[0].result)
-            assertEquals("10.0 m²", it[1].result)
-            assertEquals("16.0 m³", it[2].result)
-            assertEquals("20.0 m³", it[3].result)
+            assertEquals("100.0 ft²", it[1].result)
+            assertEquals("8.0 cm³", it[2].result)
+            assertEquals("4000008.0 cm³", it[3].result)
         }
     }
 
@@ -2070,9 +2070,11 @@ class MathEngineTest {
 
     @Test
     fun `same category multiplication without derivation returns error`() = runBlocking {
-        testCalculate("2 kg * 3 kg", "4 h * 2 h") {
+        testCalculate("2 kg * 3 kg", "4 h * 2 h", "2 ft * 3 m", "30 °C * 2 °C") {
             assertError("unsupported multiplicative unit: Kilogram * Kilogram", it, 0)
             assertError("unsupported multiplicative unit: Hour * Hour", it, 1)
+            assertError("unsupported multiplicative unit: Foot * Meter", it, 2)
+            assertError("unsupported multiplicative unit: Celsius * Celsius", it, 3)
         }
     }
 

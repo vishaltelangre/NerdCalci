@@ -34,6 +34,54 @@ data class Unit(
 object UnitConverter {
     private val CUBIC_METER_TO_LITER = BigDecimal("1000.0")
 
+    private data class UnitRule(
+        val left: UnitCategory,
+        val right: UnitCategory,
+        val result: (Unit, Unit) -> String?,
+        val scale: BigDecimal = BigDecimal.ONE,
+    )
+
+    // Multiplication rules are explicit and ordered from most specific to most general.
+    private val MULTIPLICATION_RULES = listOf(
+        UnitRule(UnitCategory.LENGTH, UnitCategory.LENGTH, result = { left, right ->
+            sameSymbolFamily(left, right, ::squareSymbolForFamily)
+        }),
+        UnitRule(UnitCategory.AREA, UnitCategory.LENGTH, result = { left, right ->
+            sameAreaLengthFamily(left, right)?.let { cubeSymbolForFamily(it) }
+        }),
+        UnitRule(UnitCategory.LENGTH, UnitCategory.AREA, result = { left, right ->
+            sameAreaLengthFamily(right, left)?.let { cubeSymbolForFamily(it) }
+        })
+    )
+
+    // Division rules are explicit, reversible, and keep same-category cancellation separate.
+    private val DIVISION_RULES = listOf(
+        UnitRule(UnitCategory.AREA, UnitCategory.LENGTH, result = { left, right ->
+            sameAreaLengthFamily(left, right)?.let { lengthSymbolForFamily(it) }
+        }),
+        UnitRule(UnitCategory.VOLUME, UnitCategory.LENGTH, result = { left, right ->
+            sameVolumeLengthFamily(left, right)?.let { squareSymbolForFamily(it) }
+        }),
+        UnitRule(UnitCategory.VOLUME, UnitCategory.AREA, result = { left, right ->
+            sameVolumeAreaFamily(left, right)?.let { lengthSymbolForFamily(it) }
+        }),
+        UnitRule(UnitCategory.TIME, UnitCategory.TIME, result = { _, _ -> "unitless" }),
+        UnitRule(UnitCategory.LENGTH, UnitCategory.LENGTH, result = { _, _ -> "unitless" }),
+        UnitRule(UnitCategory.AREA, UnitCategory.AREA, result = { _, _ -> "unitless" }),
+        UnitRule(UnitCategory.VOLUME, UnitCategory.VOLUME, result = { _, _ -> "unitless" }),
+        UnitRule(UnitCategory.MASS, UnitCategory.MASS, result = { _, _ -> "unitless" }),
+        UnitRule(UnitCategory.SPEED, UnitCategory.SPEED, result = { _, _ -> "unitless" }),
+        UnitRule(UnitCategory.ANGLE, UnitCategory.ANGLE, result = { _, _ -> "unitless" }),
+        UnitRule(UnitCategory.FREQUENCY, UnitCategory.FREQUENCY, result = { _, _ -> "unitless" }),
+        UnitRule(UnitCategory.ENERGY, UnitCategory.ENERGY, result = { _, _ -> "unitless" }),
+        UnitRule(UnitCategory.POWER, UnitCategory.POWER, result = { _, _ -> "unitless" }),
+        UnitRule(UnitCategory.DATA, UnitCategory.DATA, result = { _, _ -> "unitless" }),
+        UnitRule(UnitCategory.DATA_RATE, UnitCategory.DATA_RATE, result = { _, _ -> "unitless" }),
+        UnitRule(UnitCategory.FORCE, UnitCategory.FORCE, result = { _, _ -> "unitless" }),
+        UnitRule(UnitCategory.PRESSURE, UnitCategory.PRESSURE, result = { _, _ -> "unitless" }),
+        UnitRule(UnitCategory.NUMERAL_SYSTEM, UnitCategory.NUMERAL_SYSTEM, result = { _, _ -> "unitless" })
+    )
+
     // Base units:
     // TIME: second (s)
     // LENGTH: meter (m)
@@ -457,8 +505,8 @@ object UnitConverter {
         if (left?.category == UnitCategory.SCALAR || right?.category == UnitCategory.SCALAR) return null
 
         return when (op) {
-            TokenKind.STAR -> deriveForMultiplication(left, right)
-            TokenKind.SLASH -> deriveForDivision(left, right)
+            TokenKind.STAR -> deriveByRules(left, right, MULTIPLICATION_RULES)
+            TokenKind.SLASH -> deriveByRules(left, right, DIVISION_RULES)
             else -> null
         }
     }
@@ -467,53 +515,85 @@ object UnitConverter {
         if (left == null || right == null) return BigDecimal.ONE
         if (left.category == UnitCategory.SCALAR || right.category == UnitCategory.SCALAR) return BigDecimal.ONE
 
-        return when (op) {
-            TokenKind.STAR -> when {
-                (left.category == UnitCategory.AREA && right.category == UnitCategory.LENGTH) ||
-                    (left.category == UnitCategory.LENGTH && right.category == UnitCategory.AREA) ->
-                    CUBIC_METER_TO_LITER
-                else -> BigDecimal.ONE
-            }
-            TokenKind.SLASH -> when {
-                left.category == UnitCategory.VOLUME && right.category == UnitCategory.LENGTH -> BigDecimal.ONE.divide(CUBIC_METER_TO_LITER)
-                left.category == UnitCategory.VOLUME && right.category == UnitCategory.AREA -> BigDecimal.ONE.divide(CUBIC_METER_TO_LITER)
-                else -> BigDecimal.ONE
-            }
-            else -> BigDecimal.ONE
+        return if (op == TokenKind.STAR &&
+            ((left.category == UnitCategory.AREA && right.category == UnitCategory.LENGTH) ||
+                (left.category == UnitCategory.LENGTH && right.category == UnitCategory.AREA))
+        ) {
+            CUBIC_METER_TO_LITER
+        } else if (op == TokenKind.SLASH &&
+            (left.category == UnitCategory.VOLUME &&
+                (right.category == UnitCategory.LENGTH || right.category == UnitCategory.AREA))
+        ) {
+            BigDecimal.ONE.divide(CUBIC_METER_TO_LITER)
+        } else {
+            BigDecimal.ONE
         }
     }
 
-    private fun deriveForMultiplication(left: Unit?, right: Unit?): String? {
-        return when {
-            left?.category == UnitCategory.LENGTH && right?.category == UnitCategory.LENGTH ->
-                findUnit("m²")?.symbols?.first()
-            (left?.category == UnitCategory.AREA && right?.category == UnitCategory.LENGTH) ||
-                (left?.category == UnitCategory.LENGTH && right?.category == UnitCategory.AREA) ->
-                findUnit("m³")?.symbols?.first()
-            else -> null
-        }
+    private fun deriveByRules(left: Unit?, right: Unit?, rules: List<UnitRule>): String? {
+        if (left == null || right == null) return null
+        if (left.category == UnitCategory.TEMPERATURE || right.category == UnitCategory.TEMPERATURE) return null
+        return rules.firstOrNull { it.left == left.category && it.right == right.category }?.result?.invoke(left, right)
     }
 
-    internal fun deriveForDivision(left: Unit?, right: Unit?): String? {
-        return when {
-            left?.category == UnitCategory.AREA && right?.category == UnitCategory.LENGTH ->
-                findUnit("m")?.symbols?.first()
-            left?.category == UnitCategory.VOLUME && right?.category == UnitCategory.LENGTH ->
-                findUnit("m²")?.symbols?.first()
-            left?.category == UnitCategory.VOLUME && right?.category == UnitCategory.AREA ->
-                findUnit("m")?.symbols?.first()
-            // Only categories that behave linearly from zero can cancel to unitless here.
-            // Affine/reciprocal categories need explicit handling and should fall through.
-            left?.category == right?.category &&
-                left?.category in setOf(
-                    UnitCategory.TIME, UnitCategory.LENGTH, UnitCategory.AREA, UnitCategory.VOLUME,
-                    UnitCategory.MASS, UnitCategory.SPEED, UnitCategory.ANGLE, UnitCategory.FREQUENCY,
-                    UnitCategory.ENERGY, UnitCategory.POWER, UnitCategory.DATA, UnitCategory.DATA_RATE,
-                    UnitCategory.FORCE, UnitCategory.PRESSURE, UnitCategory.NUMERAL_SYSTEM
-                ) ->
-                "unitless"
-            else -> null
-        }
+    internal fun deriveForMultiplication(left: Unit?, right: Unit?): String? = deriveByRules(left, right, MULTIPLICATION_RULES)
+
+    internal fun deriveForDivision(left: Unit?, right: Unit?): String? = deriveByRules(left, right, DIVISION_RULES)
+
+    private fun sameSymbolFamily(left: Unit, right: Unit, resolve: (String) -> String?): String? {
+        return if (left.symbols.first() == right.symbols.first()) resolve(left.symbols.first()) else null
+    }
+
+    private fun sameAreaLengthFamily(area: Unit, length: Unit): String? {
+        val family = area.symbols.first().removeSuffix("²")
+        return if (length.category == UnitCategory.LENGTH && length.symbols.first() == family) family else null
+    }
+
+    private fun sameVolumeLengthFamily(volume: Unit, length: Unit): String? {
+        val family = volume.symbols.first().removeSuffix("³")
+        return if (length.category == UnitCategory.LENGTH && length.symbols.first() == family) family else null
+    }
+
+    private fun sameVolumeAreaFamily(volume: Unit, area: Unit): String? {
+        val family = volume.symbols.first().removeSuffix("³")
+        return if (area.category == UnitCategory.AREA && area.symbols.first().removeSuffix("²") == family) family else null
+    }
+
+    private fun squareSymbolForFamily(family: String): String? = when (family) {
+        "nm" -> findUnit("nm²")?.symbols?.first()
+        "µm" -> findUnit("µm²")?.symbols?.first()
+        "mm" -> findUnit("mm²")?.symbols?.first()
+        "cm" -> findUnit("cm²")?.symbols?.first()
+        "m" -> findUnit("m²")?.symbols?.first()
+        "km" -> findUnit("km²")?.symbols?.first()
+        "inch" -> findUnit("in²")?.symbols?.first()
+        "ft" -> findUnit("ft²")?.symbols?.first()
+        "yd" -> findUnit("yd²")?.symbols?.first()
+        "mi" -> findUnit("mi²")?.symbols?.first()
+        else -> null
+    }
+
+    private fun lengthSymbolForFamily(family: String): String? = when (family) {
+        "nm" -> findUnit("nm")?.symbols?.first()
+        "µm" -> findUnit("µm")?.symbols?.first()
+        "mm" -> findUnit("mm")?.symbols?.first()
+        "cm" -> findUnit("cm")?.symbols?.first()
+        "m" -> findUnit("m")?.symbols?.first()
+        "km" -> findUnit("km")?.symbols?.first()
+        "inch" -> findUnit("inch")?.symbols?.first()
+        "ft" -> findUnit("ft")?.symbols?.first()
+        "yd" -> findUnit("yd")?.symbols?.first()
+        "mi" -> findUnit("mi")?.symbols?.first()
+        else -> null
+    }
+
+    private fun cubeSymbolForFamily(family: String): String? = when (family) {
+        "mm" -> findUnit("mm³")?.symbols?.first()
+        "cm" -> findUnit("cm³")?.symbols?.first()
+        "m" -> findUnit("m³")?.symbols?.first()
+        "inch" -> findUnit("in³")?.symbols?.first()
+        "ft" -> findUnit("ft³")?.symbols?.first()
+        else -> null
     }
 
     fun isNumeralSystemSymbol(symbol: String): Boolean {

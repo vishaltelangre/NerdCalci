@@ -73,12 +73,44 @@ class CalculatorViewModel(
     private val dao: CalculatorDao,
     private val prefs: SharedPreferences? = null
 ) : ViewModel() {
+    private val _autoOpenScratchpad = MutableStateFlow(
+        prefs?.getBoolean(Constants.PREF_AUTO_OPEN_SCRATCHPAD, false) ?: false
+    )
+    val autoOpenScratchpad: StateFlow<Boolean> = _autoOpenScratchpad
 
-    init {
-        viewModelScope.launch {
-            ensureScratchpadExists()
-        }
-    }
+    private val _scratchpadFileId = MutableStateFlow<Long?>(null)
+    val scratchpadFileId: StateFlow<Long?> = _scratchpadFileId
+
+    private val _currentTheme = MutableStateFlow(
+        prefs?.getString(PREF_THEME, DEFAULT_THEME) ?: DEFAULT_THEME
+    )
+    val currentTheme: StateFlow<String> = _currentTheme
+
+    private val _precision = MutableStateFlow(
+        (prefs?.getInt(Constants.SYNC_ENGINE_PRECISION, Constants.DEFAULT_PRECISION) ?: Constants.DEFAULT_PRECISION)
+            .coerceIn(Constants.MIN_PRECISION, Constants.MAX_PRECISION)
+    )
+    val precision: StateFlow<Int> = _precision
+
+    private val _autoBackupEnabled = MutableStateFlow(
+        prefs?.getBoolean(BackupManager.PREF_AUTO_BACKUP_ENABLED, true) ?: true
+    )
+    val autoBackupEnabled: StateFlow<Boolean> = _autoBackupEnabled
+
+    private val _syncEnabled = MutableStateFlow(
+        prefs?.getBoolean(SyncManager.PREF_SYNC_ENABLED, false) ?: false
+    )
+    val syncEnabled: StateFlow<Boolean> = _syncEnabled
+
+    private val _syncFolderUri = MutableStateFlow(
+        prefs?.getString(SyncManager.PREF_SYNC_FOLDER_URI, null)
+    )
+    val syncFolderUri: StateFlow<String?> = _syncFolderUri
+
+    private val _lastSyncAt = MutableStateFlow(
+        prefs?.getLong(SyncManager.PREF_LAST_SYNC_AT, 0L)?.takeIf { it > 0L }
+    )
+    val lastSyncAt: StateFlow<Long?> = _lastSyncAt
 
     // Mutex to ensure atomic recalculation cycles per fileId
     private val calculationMutex = Mutex()
@@ -87,6 +119,12 @@ class CalculatorViewModel(
     val restoreProgress = _restoreProgress.asStateFlow()
 
     private var conflictDeferred: kotlinx.coroutines.CompletableDeferred<ConflictResolution>? = null
+
+    init {
+        viewModelScope.launch {
+            ensureScratchpadExists()
+        }
+    }
 
     fun resolveConflict(resolution: ConflictResolution, rememberChoice: Boolean) {
         if (rememberChoice) {
@@ -177,45 +215,6 @@ class CalculatorViewModel(
         private const val PREF_GROUPING_SEPARATOR_ENABLED = "number_format_grouping_separator_enabled"
         private const val DEFAULT_THEME = "system"
     }
-
-    private val _autoOpenScratchpad = MutableStateFlow(
-        prefs?.getBoolean(Constants.PREF_AUTO_OPEN_SCRATCHPAD, false) ?: false
-    )
-    val autoOpenScratchpad: StateFlow<Boolean> = _autoOpenScratchpad
-
-    private val _scratchpadFileId = MutableStateFlow<Long?>(null)
-    val scratchpadFileId: StateFlow<Long?> = _scratchpadFileId
-
-    private val _currentTheme = MutableStateFlow(
-        prefs?.getString(PREF_THEME, DEFAULT_THEME) ?: DEFAULT_THEME
-    )
-    val currentTheme: StateFlow<String> = _currentTheme
-
-    private val _precision = MutableStateFlow(
-        (prefs?.getInt(Constants.SYNC_ENGINE_PRECISION, Constants.DEFAULT_PRECISION) ?: Constants.DEFAULT_PRECISION)
-            .coerceIn(Constants.MIN_PRECISION, Constants.MAX_PRECISION)
-    )
-    val precision: StateFlow<Int> = _precision
-
-    private val _autoBackupEnabled = MutableStateFlow(
-        prefs?.getBoolean(BackupManager.PREF_AUTO_BACKUP_ENABLED, true) ?: true
-    )
-    val autoBackupEnabled: StateFlow<Boolean> = _autoBackupEnabled
-
-    private val _syncEnabled = MutableStateFlow(
-        prefs?.getBoolean(SyncManager.PREF_SYNC_ENABLED, false) ?: false
-    )
-    val syncEnabled: StateFlow<Boolean> = _syncEnabled
-
-    private val _syncFolderUri = MutableStateFlow(
-        prefs?.getString(SyncManager.PREF_SYNC_FOLDER_URI, null)
-    )
-    val syncFolderUri: StateFlow<String?> = _syncFolderUri
-
-    private val _lastSyncAt = MutableStateFlow(
-        prefs?.getLong(SyncManager.PREF_LAST_SYNC_AT, 0L)?.takeIf { it > 0L }
-    )
-    val lastSyncAt: StateFlow<Long?> = _lastSyncAt
 
     private val syncInProgress = AtomicBoolean(false)
     private val _isSyncing = MutableStateFlow(false)

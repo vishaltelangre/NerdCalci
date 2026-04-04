@@ -350,7 +350,7 @@ object MathEngine {
                 if (!isPhysicalCategory(resultCategory) || resultCategory != expectedCategory) {
                     val expectedName = firstUnitSymbol?.let { UnitConverter.findUnit(it)?.name?.lowercase()?.replaceFirstChar { it.uppercase() } } ?: expectedCategory.name.lowercase().replaceFirstChar { it.uppercase() }
                     val resultName = resultUnit?.name?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "unitless number"
-                    throw EvalException("Summation of $expectedName and $resultName is not supported")
+                    throw EvalException("Summation of `$expectedName` and `$resultName` is not supported")
                 }
                 sumValue = sumValue.add(resultValue)
             } else {
@@ -407,7 +407,7 @@ object MathEngine {
                 if (!isPhysicalCategory(resultCategory) || resultCategory != expectedCategory) {
                     val expectedName = firstUnitSymbol?.let { UnitConverter.findUnit(it)?.name?.lowercase()?.replaceFirstChar { it.uppercase() } } ?: expectedCategory.name.lowercase().replaceFirstChar { it.uppercase() }
                     val resultName = resultUnit?.name?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "unitless number"
-                    throw EvalException("Average of $expectedName and $resultName is not supported")
+                    throw EvalException("Average of `$expectedName` and `$resultName` is not supported")
                 }
             } else {
                 if (isPhysicalCategory(resultCategory)) {

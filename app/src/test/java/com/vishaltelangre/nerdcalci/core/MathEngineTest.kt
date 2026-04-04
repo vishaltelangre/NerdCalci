@@ -96,15 +96,15 @@ class MathEngineTest {
     @Test
     fun `modulo rejects physical units`() {
         testCalculate("10ft % 2", "10 % 2ft", "10kg % 3kg", "10kg % 3", "10 % 3kg", "10 °C % 2", "10 % 2 °C", "10cm² % 3", "10 % 3mm³") { result ->
-            assertError("Modulo of Foot and unitless number is not supported", result, 0)
-            assertError("Modulo of unitless number and Foot is not supported", result, 1)
-            assertError("Modulo of Kilogram and Kilogram is not supported", result, 2)
-            assertError("Modulo of Kilogram and unitless number is not supported", result, 3)
-            assertError("Modulo of unitless number and Kilogram is not supported", result, 4)
-            assertError("Modulo of Celsius and unitless number is not supported", result, 5)
-            assertError("Modulo of unitless number and Celsius is not supported", result, 6)
-            assertError("Modulo of Square centimeter and unitless number is not supported", result, 7)
-            assertError("Modulo of unitless number and Cubic millimeter is not supported", result, 8)
+            assertError("Modulo of `Foot` and `unitless number` is not supported", result, 0)
+            assertError("Modulo of `unitless number` and `Foot` is not supported", result, 1)
+            assertError("Modulo of `Kilogram` and `Kilogram` is not supported", result, 2)
+            assertError("Modulo of `Kilogram` and `unitless number` is not supported", result, 3)
+            assertError("Modulo of `unitless number` and `Kilogram` is not supported", result, 4)
+            assertError("Modulo of `Celsius` and `unitless number` is not supported", result, 5)
+            assertError("Modulo of `unitless number` and `Celsius` is not supported", result, 6)
+            assertError("Modulo of `Square centimeter` and `unitless number` is not supported", result, 7)
+            assertError("Modulo of `unitless number` and `Cubic millimeter` is not supported", result, 8)
         }
     }
 
@@ -118,7 +118,7 @@ class MathEngineTest {
     @Test
     fun `total throws dimension mismatch error for mixed units`() {
         testCalculate("4kg", "5 hour", "3 kph", "total") { result ->
-        assertError("Summation of Kilogram and Hour is not supported", result, 3)
+        assertError("Summation of `Kilogram` and `Hour` is not supported", result, 3)
         }
     }
 
@@ -499,8 +499,8 @@ class MathEngineTest {
 
     @Test
     fun `non linear same category division returns error`() = testCalculate("20 C / 10 C", "6 l100km / 2 l100km") { result ->
-        assertError("Division of Celsius and Celsius is not supported", result, 0)
-        assertError("Division of Liters per 100 km and Liters per 100 km is not supported", result, 1)
+        assertError("Division of `Celsius` and `Celsius` is not supported", result, 0)
+        assertError("Division of `Liters per 100 km` and `Liters per 100 km` is not supported", result, 1)
     }
 
     @Test
@@ -841,9 +841,9 @@ class MathEngineTest {
         assertEquals("3.0", result[2].result)
         assertEquals("3.0 m", result[3].result)
         assertError("`sqrt()` requires a unitless value or a squared unit.", result, 4)
-        assertError("Exponentiation of Kilogram by 2 is not supported", result, 5)
-        assertError("Multiplication of Kilogram and Kilogram is not supported", result, 6)
-        assertError("Exponentiation of Celsius by 2 is not supported", result, 7)
+        assertError("Exponentiation of `Kilogram` by `2` is not supported", result, 5)
+        assertError("Multiplication of `Kilogram` and `Kilogram` is not supported", result, 6)
+        assertError("Exponentiation of `Celsius` by `2` is not supported", result, 7)
         assertEquals("256.0", result[8].result)
         assertEquals("1.0", result[9].result)
     }
@@ -1390,7 +1390,7 @@ class MathEngineTest {
     ) { result ->
         assertEquals("4.0 kg", result[0].result)
         assertEquals("5.0", result[1].result)
-        assertError("Summation of Kilogram and unitless number is not supported", result, 2)
+        assertError("Summation of `Kilogram` and `unitless number` is not supported", result, 2)
     }
 
     @Test
@@ -1399,7 +1399,7 @@ class MathEngineTest {
         "20 s",
         "total"
     ) { result ->
-        assertError("Summation of Meter and Second is not supported", result, 2)
+        assertError("Summation of `Meter` and `Second` is not supported", result, 2)
     }
 
     @Test
@@ -1447,7 +1447,7 @@ class MathEngineTest {
         assertEquals("30.0", result[3].result)
         assertEquals("10.0 m", result[4].result)
         assertEquals("20.0", result[5].result)
-        assertError("Average of Meter and unitless number is not supported", result, 6)
+        assertError("Average of `Meter` and `unitless number` is not supported", result, 6)
     }
 
     @Test
@@ -2288,17 +2288,17 @@ class MathEngineTest {
     @Test
     fun `unsupported multiplicative unit chain returns error`() = runBlocking {
         testCalculate("2m * 2m * 2m * 2m") {
-            assertError("Multiplication of Cubic Meter and Meter is not supported", it, 0)
+            assertError("Multiplication of `Cubic Meter` and `Meter` is not supported", it, 0)
         }
     }
 
     @Test
     fun `same category multiplication without derivation returns error`() = runBlocking {
         testCalculate("2 kg * 3 kg", "4 h * 2 h", "2 ft * 3 m", "30 °C * 2 °C") {
-            assertError("Multiplication of Kilogram and Kilogram is not supported", it, 0)
-            assertError("Multiplication of Hour and Hour is not supported", it, 1)
-            assertError("Multiplication of Foot and Meter is not supported", it, 2)
-            assertError("Multiplication of Celsius and Celsius is not supported", it, 3)
+            assertError("Multiplication of `Kilogram` and `Kilogram` is not supported", it, 0)
+            assertError("Multiplication of `Hour` and `Hour` is not supported", it, 1)
+            assertError("Multiplication of `Foot` and `Meter` is not supported", it, 2)
+            assertError("Multiplication of `Celsius` and `Celsius` is not supported", it, 3)
         }
     }
 
@@ -2307,7 +2307,7 @@ class MathEngineTest {
         testCalculate("53 weeks", "last + 3 weeks", "last + 3") {
             assertEquals("53.0 wk", it[0].result)
             assertEquals("56.0 wk", it[1].result)
-            assertError("Addition of Week and unitless number is not supported", it, 2)
+            assertError("Addition of `Week` and `unitless number` is not supported", it, 2)
         }
     }
 
@@ -2383,7 +2383,7 @@ class MathEngineTest {
             assertEquals("12000000", it[8].result)
             assertEquals("12", it[9].result)
             assertTrue(it[10].result.startsWith("128065.6"))
-            assertError("Subtraction of Kilogram and unitless number is not supported", it, 11)
+            assertError("Subtraction of `Kilogram` and `unitless number` is not supported", it, 11)
             assertEquals("11.0", it[12].result)
             assertEquals("463932000.0", it[13].result)
         }
@@ -2428,7 +2428,7 @@ class MathEngineTest {
     @Test
     fun `unitless conversion to non-scalar returns Err`() = runBlocking {
         testCalculate("5 as cm") {
-            assertError("Conversion of unitless number to `Centimeter` is not supported", it, 0)
+            assertError("Conversion of `unitless number` to `Centimeter` is not supported", it, 0)
         }
     }
 
@@ -2441,7 +2441,7 @@ class MathEngineTest {
         )
         val result = MathEngine.calculate(lines)
         assertEquals("11.0 km", result[1].result)
-        assertError("Addition of Kilometer and unitless number is not supported", result[2], lines, 2)
+        assertError("Addition of `Kilometer` and `unitless number` is not supported", result[2], lines, 2)
     }
 
     @Test

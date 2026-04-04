@@ -112,7 +112,7 @@ class Evaluator(
                 }
             } else {
                 if (toUnit.category != UnitCategory.SCALAR && toUnit.category != UnitCategory.NUMERAL_SYSTEM) {
-                    throw EvalException("Conversion of unitless number to `${toUnit.name}` is not supported")
+                throw EvalException("Conversion of `unitless number` to `${toUnit.name}` is not supported")
                 }
             }
 
@@ -434,7 +434,7 @@ class Evaluator(
         if (expr.op == TokenKind.PERCENT && (leftUnit != null || rightUnit != null)) {
             val leftDesc = getDimensionDescription(leftUnit)
             val rightDesc = getDimensionDescription(rightUnit)
-            throw EvalException("Modulo of $leftDesc and $rightDesc is not supported")
+            throw EvalException("Modulo of `$leftDesc` and `$rightDesc` is not supported")
         }
 
         // General addition/subtraction
@@ -449,7 +449,7 @@ class Evaluator(
                     val rightDesc = getDimensionDescription(rightUnit)
                     val opName = if (expr.op == TokenKind.PLUS) "Addition" else "Subtraction"
 
-                    throw EvalException("$opName of $leftDesc and $rightDesc is not supported")
+                    throw EvalException("$opName of `$leftDesc` and `$rightDesc` is not supported")
                 }
             }
 
@@ -539,7 +539,7 @@ class Evaluator(
                             else -> expr.op.display
                         }
                         throw EvalException(
-                            "$operationName of ${leftUnit.name} and ${rightUnit.name} is not supported"
+                            "$operationName of `${leftUnit.name}` and `${rightUnit.name}` is not supported"
                         )
                     }
                     derivedUnit != null -> derivedUnit
@@ -565,7 +565,7 @@ class Evaluator(
             when {
                 derivedUnit == "unitless" -> null
                 derivedUnit == null -> throw EvalException(
-                    "Exponentiation of ${leftUnit.name} by ${rightVal.stripTrailingZeros().toPlainString()} is not supported"
+                    "Exponentiation of `${leftUnit.name}` by `${rightVal.stripTrailingZeros().toPlainString()}` is not supported"
                 )
                 else -> derivedUnit
             }

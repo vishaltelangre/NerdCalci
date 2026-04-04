@@ -8,8 +8,8 @@ class MixedUnitUsageTest {
     @Test
     fun `basic mixed unit addition fails`() {
         testCalculate("10m + 10kg", "10m - 5s") { result ->
-            assertError("Addition of Meter and Kilogram is not supported", result, 0)
-            assertError("Subtraction of Meter and Second is not supported", result, 1)
+            assertError("Addition of `Meter` and `Kilogram` is not supported", result, 0)
+            assertError("Subtraction of `Meter` and `Second` is not supported", result, 1)
         }
     }
 
@@ -21,10 +21,10 @@ class MixedUnitUsageTest {
             "10m - 5",
             "5 - 10m"
         ) { result ->
-            assertError("Addition of Meter and unitless number is not supported", result, 0)
-            assertError("Addition of unitless number and Meter is not supported", result, 1)
-            assertError("Subtraction of Meter and unitless number is not supported", result, 2)
-            assertError("Subtraction of unitless number and Meter is not supported", result, 3)
+            assertError("Addition of `Meter` and `unitless number` is not supported", result, 0)
+            assertError("Addition of `unitless number` and `Meter` is not supported", result, 1)
+            assertError("Subtraction of `Meter` and `unitless number` is not supported", result, 2)
+            assertError("Subtraction of `unitless number` and `Meter` is not supported", result, 3)
         }
     }
 
@@ -67,8 +67,8 @@ class MixedUnitUsageTest {
     @Test
     fun `multiple operands fail on first mismatch involving unitless numbers`() {
         testCalculate("10m + 20m + 5", "10 + 20 + 5m") { result ->
-            assertError("Addition of Meter and unitless number is not supported", result, 0)
-            assertError("Addition of unitless number and Meter is not supported", result, 1)
+            assertError("Addition of `Meter` and `unitless number` is not supported", result, 0)
+            assertError("Addition of `unitless number` and `Meter` is not supported", result, 1)
         }
     }
 
@@ -90,7 +90,7 @@ class MixedUnitUsageTest {
         testCalculate("10m", "5", "sum") { result ->
             assertEquals("10.0 m", result[0].result)
             assertEquals("5.0", result[1].result)
-            assertError("Summation of Meter and unitless number is not supported", result, 2)
+            assertError("Summation of `Meter` and `unitless number` is not supported", result, 2)
         }
     }
 
@@ -99,7 +99,7 @@ class MixedUnitUsageTest {
         testCalculate("10m", "5kg", "sum") { result ->
             assertEquals("10.0 m", result[0].result)
             assertEquals("5.0 kg", result[1].result)
-            assertError("Summation of Meter and Kilogram is not supported", result, 2)
+            assertError("Summation of `Meter` and `Kilogram` is not supported", result, 2)
         }
     }
 
@@ -115,7 +115,7 @@ class MixedUnitUsageTest {
         testCalculate("10m", "5", "avg") { result ->
             assertEquals("10.0 m", result[0].result)
             assertEquals("5.0", result[1].result)
-            assertError("Average of Meter and unitless number is not supported", result, 2)
+            assertError("Average of `Meter` and `unitless number` is not supported", result, 2)
         }
     }
 
@@ -145,7 +145,7 @@ class MixedUnitUsageTest {
     @Test
     fun `compound assignments fail on mismatch`() {
         testCalculate("x = 10m", "x += 5") { result ->
-            assertError("Addition of Meter and unitless number is not supported", result, 1)
+            assertError("Addition of `Meter` and `unitless number` is not supported", result, 1)
         }
     }
 
@@ -159,7 +159,7 @@ class MixedUnitUsageTest {
     @Test
     fun `complex mixed expression with variables fails`() {
         testCalculate("a = 10m", "b = 5", "a + b") { result ->
-            assertError("Addition of Meter and unitless number is not supported", result, 2)
+            assertError("Addition of `Meter` and `unitless number` is not supported", result, 2)
         }
     }
 

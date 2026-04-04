@@ -91,7 +91,9 @@ fun HomeScreen(
     onHelpClick: () -> Unit,
     onChangelogClick: () -> Unit,
     onRestoreClick: () -> Unit,
-    onSearchClick: () -> Unit
+    onSearchClick: () -> Unit,
+    launchAutoOpenScratchpad: Boolean,
+    suppressAutoOpenScratchpad: Boolean = false
 ) {
     val context = LocalContext.current
     val files by viewModel.allFiles.collectAsState(initial = emptyList())
@@ -107,7 +109,6 @@ fun HomeScreen(
         }
     }
 
-    val autoOpenScratchpad by viewModel.autoOpenScratchpad.collectAsState()
     val scratchpadFileId by viewModel.scratchpadFileId.collectAsState()
     val isScratchpadReady by viewModel.isScratchpadReady.collectAsState()
     var hasAutoOpened by rememberSaveable { mutableStateOf(false) }
@@ -126,8 +127,14 @@ fun HomeScreen(
         }
     }
 
-    LaunchedEffect(autoOpenScratchpad, scratchpadFileId, isScratchpadReady) {
-        if (autoOpenScratchpad && scratchpadFileId != null && isScratchpadReady && !hasAutoOpened) {
+    LaunchedEffect(launchAutoOpenScratchpad, scratchpadFileId, isScratchpadReady, suppressAutoOpenScratchpad) {
+        if (
+            launchAutoOpenScratchpad &&
+            !suppressAutoOpenScratchpad &&
+            scratchpadFileId != null &&
+            isScratchpadReady &&
+            !hasAutoOpened
+        ) {
             hasAutoOpened = true
             onFileClick(scratchpadFileId!!)
         }

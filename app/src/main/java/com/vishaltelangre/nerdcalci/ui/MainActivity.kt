@@ -12,15 +12,22 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.runtime.SideEffect
@@ -29,6 +36,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -157,6 +165,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
     )
     var showHomeRestoreActionDialog by remember { mutableStateOf(false) }
     var showHomeRestoreListDialog by remember { mutableStateOf(false) }
+    var suppressHomeAutoOpenOnce by rememberSaveable { mutableStateOf(false) }
 
     // Export launcher - creates a one-off ZIP file at user-chosen location
     val exportLauncher = rememberLauncherForActivityResult(
@@ -229,8 +238,49 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
     val slideOutToLeft = slideOutHorizontally(animationSpec = tween(300), targetOffsetX = { fullWidth: Int -> -fullWidth / 3 })
     val slideInFromLeft = slideInHorizontally(animationSpec = tween(300), initialOffsetX = { fullWidth: Int -> -fullWidth / 3 })
     val slideOutToRight = slideOutHorizontally(animationSpec = tween(300), targetOffsetX = { fullWidth: Int -> fullWidth })
+    val launchAutoOpenScratchpad = rememberSaveable { mutableStateOf(viewModel.autoOpenScratchpad.value) }
 
-    NavHost(navController = navController, startDestination = "home") {
+    NavHost(
+        navController = navController,
+        startDestination = if (launchAutoOpenScratchpad.value) "startup" else "home"
+    ) {
+        composable("startup") {
+            val scratchpadFileId by viewModel.scratchpadFileId.collectAsState()
+            val isScratchpadReady by viewModel.isScratchpadReady.collectAsState()
+
+            if (isScratchpadReady && scratchpadFileId != null) {
+                CalculatorScreen(
+                    fileId = scratchpadFileId!!,
+                    viewModel = viewModel,
+                    regionCode = regionCode,
+                    onBack = {
+                        suppressHomeAutoOpenOnce = true
+                        navController.navigate("home") {
+                            popUpTo("startup") { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    },
+                    onHelp = { navController.navigate("help") },
+                    onNavigateToFile = { newFileId ->
+                        navController.navigate("editor/$newFileId") {
+                            popUpTo("startup") { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    }
+                )
+            } else {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(32.dp),
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+
         // Home Screen
         composable("home") {
             HomeScreen(
@@ -243,7 +293,9 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
                     viewModel.refreshBackups(context)
                     showHomeRestoreActionDialog = true
                 },
-                onSearchClick = { navController.navigate("search") }
+                onSearchClick = { navController.navigate("search") },
+                launchAutoOpenScratchpad = launchAutoOpenScratchpad.value,
+                suppressAutoOpenScratchpad = suppressHomeAutoOpenOnce
             )
         }
 
@@ -251,8 +303,12 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
         composable(
             "editor/{fileId}",
             arguments = listOf(navArgument("fileId") { type = NavType.LongType }),
-            enterTransition = { slideInFromRight },
-            exitTransition = { slideOutToLeft },
+            enterTransition = {
+                if (initialState.destination.route == "startup") EnterTransition.None else slideInFromRight
+            },
+            exitTransition = {
+                if (targetState.destination.route == "startup") ExitTransition.None else slideOutToLeft
+            },
             popEnterTransition = { slideInFromLeft },
             popExitTransition = { slideOutToRight }
         ) { backStackEntry ->

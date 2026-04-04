@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.4.2] - 2026-04-04
+### Fixed
+- Made built-in math functions handle unit values more safely, with clearer errors when a function cannot use a given unit.
+- Fixed modulo behavior so values with physical units now fail clearly instead of producing incorrect results.
+
 ## [3.4.1] - 2026-04-03
 ### Fixed
 - Fixed unit exponentiation so powered quantities like `ft^2` and `ft^3` preserve their units correctly.

@@ -1,0 +1,2 @@
+- Built-in functions now handle unit values more safely, with clearer errors when a function cannot use a given unit.
+- Fixed modulo so values with physical units fail clearly instead of producing incorrect results.

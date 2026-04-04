@@ -156,27 +156,33 @@ class CalculatorViewModel(
 
     private suspend fun ensureScratchpadExists() {
         withContext(Dispatchers.IO) {
-            val existing = dao.getTemporaryFile()
-            if (existing != null) {
-                // Clear contents (session reset)
-                dao.clearAllLines(existing.id)
-                _scratchpadFileId.value = existing.id
-            } else {
-                // Create new scratchpad
-                val internalName = "NerdCalci-Scratchpad-${System.currentTimeMillis()}"
-                val id = dao.insertFile(
-                    FileEntity(
-                        name = internalName,
-                        createdAt = System.currentTimeMillis(),
-                        lastModified = System.currentTimeMillis(),
-                        isTemporary = true
+            try {
+                val existing = dao.getTemporaryFile()
+                if (existing != null) {
+                    // Clear contents (session reset)
+                    dao.clearAllLines(existing.id)
+                    _scratchpadFileId.value = existing.id
+                } else {
+                    // Create new scratchpad
+                    val internalName = "NerdCalci-Scratchpad-${System.currentTimeMillis()}"
+                    val id = dao.insertFile(
+                        FileEntity(
+                            name = internalName,
+                            createdAt = System.currentTimeMillis(),
+                            lastModified = System.currentTimeMillis(),
+                            isTemporary = true
+                        )
                     )
-                )
-                // Add first empty line
-                dao.insertLine(LineEntity(fileId = id, sortOrder = 0, expression = "", result = ""))
-                _scratchpadFileId.value = id
+                    // Add first empty line
+                    dao.insertLine(LineEntity(fileId = id, sortOrder = 0, expression = "", result = ""))
+                    _scratchpadFileId.value = id
+                }
+                _isScratchpadReady.value = true
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to ensure scratchpad exists", e)
+                _scratchpadFileId.value = null
+                _isScratchpadReady.value = false
             }
-            _isScratchpadReady.value = true
         }
     }
 

@@ -254,9 +254,9 @@ fun HomeScreen(
                             textAlign = TextAlign.Center,
                             modifier = Modifier.padding(bottom = 20.dp)
                         )
-                        if (scratchpadFileId != null) {
+                        scratchpadFileId?.let { id ->
                             OutlinedButton(
-                                onClick = { onFileClick(scratchpadFileId) },
+                                onClick = { onFileClick(id) },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Icon(Icons.Default.FlashOn, contentDescription = null)
@@ -361,7 +361,7 @@ private fun HomeFileList(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 96.dp)
     ) {
-        if (scratchpadFileId != null) {
+        scratchpadFileId?.let { id ->
             item {
                 SectionHeader(title = "Quick Access")
                 Card(
@@ -369,7 +369,7 @@ private fun HomeFileList(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                         .clip(MaterialTheme.shapes.medium)
-                        .clickable { onFileClick(scratchpadFileId) },
+                        .clickable { onFileClick(id) },
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                     ),

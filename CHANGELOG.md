@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [3.4.1] - 2026-04-03
 ### Fixed
 - Fixed unit exponentiation so powered quantities like `ft^2` and `ft^3` preserve their units correctly.
-- Fixed a crash when opening Settings on Android 8.1 and earlier.
+- Fixed a crash when opening Settings on Android 8.1 and earlier (Issue #94).
 
 ## [3.4.0] - 2026-04-03
 ### Added

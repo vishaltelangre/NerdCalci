@@ -350,13 +350,13 @@ object MathEngine {
                 if (!isPhysicalCategory(resultCategory) || resultCategory != expectedCategory) {
                     val expectedName = firstUnitSymbol?.let { UnitConverter.findUnit(it)?.name?.lowercase()?.replaceFirstChar { it.uppercase() } } ?: expectedCategory.name.lowercase().replaceFirstChar { it.uppercase() }
                     val resultName = resultUnit?.name?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "unitless number"
-                    throw EvalException("Cannot sum $expectedName and $resultName: dimension mismatch")
+                    throw EvalException("Summation of $expectedName and $resultName is not supported")
                 }
                 sumValue = sumValue.add(resultValue)
             } else {
                 // Block contains no physical units: all lines must be non-physical
                 if (isPhysicalCategory(resultCategory)) {
-                    throw EvalException("Cannot sum physical and unitless values: dimension mismatch")
+                    throw EvalException("Summation of physical and unitless values is not supported")
                 }
                 sumValue = sumValue.add(resultValue)
             }
@@ -407,11 +407,11 @@ object MathEngine {
                 if (!isPhysicalCategory(resultCategory) || resultCategory != expectedCategory) {
                     val expectedName = firstUnitSymbol?.let { UnitConverter.findUnit(it)?.name?.lowercase()?.replaceFirstChar { it.uppercase() } } ?: expectedCategory.name.lowercase().replaceFirstChar { it.uppercase() }
                     val resultName = resultUnit?.name?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "unitless number"
-                    throw EvalException("Cannot average $expectedName and $resultName: dimension mismatch")
+                    throw EvalException("Average of $expectedName and $resultName is not supported")
                 }
             } else {
                 if (isPhysicalCategory(resultCategory)) {
-                    throw EvalException("Cannot average physical and unitless values: dimension mismatch")
+                    throw EvalException("Average of physical and unitless values is not supported")
                 }
             }
             

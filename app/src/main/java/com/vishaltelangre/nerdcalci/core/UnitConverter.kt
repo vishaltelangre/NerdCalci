@@ -488,7 +488,7 @@ object UnitConverter {
 
     fun convert(value: BigDecimal, from: Unit, to: Unit, variables: Map<String, EvaluationResult>): BigDecimal {
         if (from.category != to.category) {
-            throw EvalException("Cannot convert `${from.name}` to `${to.name}`: dimension mismatch")
+            throw EvalException("Conversion of `${from.name}` to `${to.name}` is not supported")
         }
         val baseValue = toBase(value, from, variables)
         return fromBase(baseValue, to, variables)
@@ -550,6 +550,19 @@ object UnitConverter {
             3 -> cubeSymbolForFamily(left.symbols.first())
             else -> null
         }
+    }
+
+    internal fun deriveForRoot(left: Unit?, rootDegree: Int): String? {
+        if (left == null) return null
+        if (rootDegree == 2) {
+            val family = left.symbols.first().removeSuffix("²")
+            return if (left.category == UnitCategory.AREA) lengthSymbolForFamily(family) else null
+        }
+        if (rootDegree == 3) {
+            val family = left.symbols.first().removeSuffix("³")
+            return if (left.category == UnitCategory.VOLUME) lengthSymbolForFamily(family) else null
+        }
+        return null
     }
 
     private fun sameSymbolFamily(left: Unit, right: Unit, resolve: (String) -> String?): String? {

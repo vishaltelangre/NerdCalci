@@ -108,11 +108,11 @@ class Evaluator(
                         (fromUnit.category == UnitCategory.SCALAR && toUnit.category == UnitCategory.NUMERAL_SYSTEM) ||
                         (fromUnit.category == UnitCategory.NUMERAL_SYSTEM && toUnit.category == UnitCategory.SCALAR)
                 if (!isCompatible) {
-                    throw EvalException("Cannot convert `${fromUnit.name}` to `${toUnit.name}`: dimension mismatch")
+                    throw EvalException("Conversion of `${fromUnit.name}` to `${toUnit.name}` is not supported")
                 }
             } else {
                 if (toUnit.category != UnitCategory.SCALAR && toUnit.category != UnitCategory.NUMERAL_SYSTEM) {
-                    throw EvalException("Cannot convert unitless number to `${toUnit.name}`")
+                    throw EvalException("Conversion of unitless number to `${toUnit.name}` is not supported")
                 }
             }
 
@@ -176,27 +176,6 @@ class Evaluator(
             throw EvalException("The `file()` function either needs to be assigned like `f = file(\"FileName\")` or used in dot notation like `file(\"FileName\").variable`")
         }
 
-        if (name == "value" || name == "dropUnit" || name == "raw") {
-            if (argExprs.size != 1) throw ArityMismatchException(name, 1, argExprs.size)
-            val evaluated = evaluate(argExprs[0])
-            val unit = evaluated.unit?.let { UnitConverter.findUnit(it) }
-            val strippedValue = if (unit != null) {
-                if (unit.category == UnitCategory.SCALAR) {
-                    evaluated.value
-                } else {
-                    UnitConverter.fromBase(evaluated.value ?: BigDecimal.ZERO, unit, variables)
-                }
-            } else {
-                evaluated.value
-            }
-            return evaluated.copy(
-                value = strippedValue,
-                unit = null,
-                explicitUnitless = true,
-                rationalValue = strippedValue?.let { Rational.toRational(it) }
-            )
-        }
-
         if (name == "convert") {
             if (argExprs.size != 3) throw ArityMismatchException("convert", 3, argExprs.size)
             val eval = evaluate(argExprs[0])
@@ -210,26 +189,12 @@ class Evaluator(
             val toUnit = UnitConverter.findUnit(to) ?: throw EvalException("Unknown unit `$to`")
 
             if (fromUnit.category != toUnit.category) {
-                throw EvalException("Cannot convert `${fromUnit.name}` to `${toUnit.name}`: dimension mismatch")
+                    throw EvalException("Conversion of `${fromUnit.name}` to `${toUnit.name}` is not supported")
             }
 
             val resultValue = UnitConverter.toBase(value, fromUnit, variables)
             val resultRationalValue = Rational.toRational(resultValue)
             return EvaluationResult(resultValue, toUnit.symbols.first(), rationalValue = resultRationalValue)
-        }
-
-        if (name == "rational" || name == "fraction") {
-            if (argExprs.size != 1) throw ArityMismatchException(name, 1, argExprs.size)
-            val eval = evaluate(argExprs[0])
-            val value = eval.value ?: BigDecimal.ZERO
-            val rational = eval.rationalValue ?: Rational.toRational(value)
-            return EvaluationResult(value, unit = eval.unit, rationalValue = rational, explicitRational = true)
-        }
-
-        if (name == "float") {
-            if (argExprs.size != 1) throw ArityMismatchException(name, 1, argExprs.size)
-            val eval = evaluate(argExprs[0])
-            return eval.copy(forceFloat = true)
         }
 
         // Fallback to built-ins
@@ -239,9 +204,7 @@ class Evaluator(
         }
 
         val evaluatedArgs = argExprs.map { evaluate(it) }
-        val args = evaluatedArgs.map { it.value ?: BigDecimal.ZERO }
-        val resultValue = Builtins.call(name, args)
-        return EvaluationResult(resultValue, rationalValue = Rational.toRational(resultValue))
+        return Builtins.execute(name, evaluatedArgs, variables)
     }
 
     /**
@@ -478,9 +441,9 @@ class Evaluator(
                 if (!leftIsPhysical || !rightIsPhysical || leftUnit!!.category != rightUnit!!.category) {
                     val leftDesc = getDimensionDescription(leftUnit)
                     val rightDesc = getDimensionDescription(rightUnit)
-                    val opName = if (expr.op == TokenKind.PLUS) "add" else "subtract"
+                    val opName = if (expr.op == TokenKind.PLUS) "Addition" else "Subtraction"
 
-                    throw EvalException("Cannot $opName $leftDesc and $rightDesc: dimension mismatch")
+                    throw EvalException("$opName of $leftDesc and $rightDesc is not supported")
                 }
             }
 
@@ -564,8 +527,13 @@ class Evaluator(
                 when {
                     derivedUnit == "unitless" -> null  // Units canceled out
                     derivedUnit == null && leftUnit != null && rightUnit != null -> {
+                        val operationName = when (expr.op) {
+                            TokenKind.STAR -> "Multiplication"
+                            TokenKind.SLASH -> "Division"
+                            else -> expr.op.display
+                        }
                         throw EvalException(
-                            "unsupported multiplicative unit: ${leftUnit.name} ${expr.op.display} ${rightUnit.name}"
+                            "$operationName of ${leftUnit.name} and ${rightUnit.name} is not supported"
                         )
                     }
                     derivedUnit != null -> derivedUnit
@@ -581,17 +549,17 @@ class Evaluator(
             leftUnit.category != UnitCategory.NUMERAL_SYSTEM
         ) {
             if (rightEval.unit != null) {
-                throw EvalException("Exponent must be unitless when applied to a unit")
+                throw EvalException("Exponentiation requires a unitless exponent")
             }
             val exponent = rightVal.toIntOrNullExact()
             if (exponent == null) {
-                throw EvalException("Exponent must be an integer when applied to a unit")
+                throw EvalException("Exponentiation requires an integer exponent")
             }
             val derivedUnit = UnitConverter.deriveForPower(leftUnit, exponent)
             when {
                 derivedUnit == "unitless" -> null
                 derivedUnit == null -> throw EvalException(
-                    "unsupported exponent unit: ${leftUnit.name} ^ ${rightVal.stripTrailingZeros().toPlainString()}"
+                    "Exponentiation of ${leftUnit.name} by ${rightVal.stripTrailingZeros().toPlainString()} is not supported"
                 )
                 else -> derivedUnit
             }

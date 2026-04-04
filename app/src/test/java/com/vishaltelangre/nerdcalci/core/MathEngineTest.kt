@@ -259,7 +259,9 @@ class MathEngineTest {
         "4500 million in crores",
         "2 lakh to thousand",
         "5 thousand meters to km",
-        "10 thousand in hex"
+        "10 thousand in hex",
+        "10 hex + 10 hex",
+        "20 hex - 10 hex"
     ) { result ->
         assertEquals("5000.0", result[0].result)
         assertEquals("2500000.0", result[1].result)
@@ -273,6 +275,8 @@ class MathEngineTest {
         assertEquals("200.0 thousand", result[9].result)
         assertEquals("5.0 km", result[10].result)
         assertEquals("0x2710", result[11].result)
+        assertEquals("0x140", result[12].result)
+        assertEquals("0xA0", result[13].result)
     }
 
     @Test

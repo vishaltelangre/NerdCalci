@@ -487,8 +487,14 @@ class Evaluator(
             if (leftUnit != null && rightUnit != null) {
                 if (leftUnit.category == UnitCategory.SCALAR || rightUnit.category == UnitCategory.SCALAR ||
                     leftUnit.category == UnitCategory.NUMERAL_SYSTEM || rightUnit.category == UnitCategory.NUMERAL_SYSTEM) {
+                    val resultUnit = when {
+                        leftUnit.category == UnitCategory.NUMERAL_SYSTEM -> leftEval.unit
+                        rightUnit.category == UnitCategory.NUMERAL_SYSTEM -> rightEval.unit
+                        else -> null
+                    }
                     return EvaluationResult(
                         applyOp(leftScalar, expr.op, rightScalar),
+                        resultUnit,
                         rationalValue = applyRationalOp(leftRational, expr.op, rightRational)
                     )
                 }

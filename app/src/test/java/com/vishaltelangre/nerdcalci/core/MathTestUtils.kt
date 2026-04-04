@@ -9,7 +9,7 @@ import kotlinx.coroutines.runBlocking
  */
 fun createLine(expression: String, fileId: Long = 1L, sortOrder: Int = 0): LineEntity {
     return LineEntity(
-        id = sortOrder.toLong(),
+        id = 0L,
         fileId = fileId,
         expression = expression,
         result = "",

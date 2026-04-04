@@ -71,6 +71,7 @@ import com.vishaltelangre.nerdcalci.ui.help.HelpScreen
 import com.vishaltelangre.nerdcalci.ui.search.SearchScreen
 import com.vishaltelangre.nerdcalci.ui.theme.NerdCalciTheme
 import com.vishaltelangre.nerdcalci.utils.FileUtils
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -247,6 +248,23 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
         composable("startup") {
             val scratchpadFileId by viewModel.scratchpadFileId.collectAsState()
             val isScratchpadReady by viewModel.isScratchpadReady.collectAsState()
+            var timedOut by remember { mutableStateOf(false) }
+
+            LaunchedEffect(Unit) {
+                delay(5_000L)
+                if (!isScratchpadReady || scratchpadFileId == null) {
+                    timedOut = true
+                }
+            }
+
+            LaunchedEffect(timedOut) {
+                if (timedOut) {
+                    navController.navigate("home") {
+                        popUpTo("startup") { inclusive = true }
+                        launchSingleTop = true
+                    }
+                }
+            }
 
             if (isScratchpadReady && scratchpadFileId != null) {
                 CalculatorScreen(

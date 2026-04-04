@@ -1,0 +1,2 @@
+- Fixed unit exponentiation so powered quantities like ft^2 and ft^3 preserve their units correctly.
+- Fixed a crash when opening Settings on Android 8.1 and earlier.

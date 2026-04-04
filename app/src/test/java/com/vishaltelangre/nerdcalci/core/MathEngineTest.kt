@@ -94,6 +94,21 @@ class MathEngineTest {
     }
 
     @Test
+    fun `modulo rejects physical units`() {
+        testCalculate("10ft % 2", "10 % 2ft", "10kg % 3kg", "10kg % 3", "10 % 3kg", "10 °C % 2", "10 % 2 °C", "10cm² % 3", "10 % 3mm³") { result ->
+            assertError("Modulo of Foot and unitless number is not supported", result, 0)
+            assertError("Modulo of unitless number and Foot is not supported", result, 1)
+            assertError("Modulo of Kilogram and Kilogram is not supported", result, 2)
+            assertError("Modulo of Kilogram and unitless number is not supported", result, 3)
+            assertError("Modulo of unitless number and Kilogram is not supported", result, 4)
+            assertError("Modulo of Celsius and unitless number is not supported", result, 5)
+            assertError("Modulo of unitless number and Celsius is not supported", result, 6)
+            assertError("Modulo of Square centimeter and unitless number is not supported", result, 7)
+            assertError("Modulo of unitless number and Cubic millimeter is not supported", result, 8)
+        }
+    }
+
+    @Test
     fun `modulo without spaces returns correct result`() {
         testCalculate("10%3") { result ->
             assertEquals("1.0", result[0].result)
@@ -456,6 +471,14 @@ class MathEngineTest {
     }
 
     @Test
+    fun `percentage of squared and cubed quantities preserves unit`() = testCalculate("100cm²", "10% of _", "1000mm³", "10% of _") { result ->
+        assertEquals("100.0 cm²", result[0].result)
+        assertEquals("10.0 cm²", result[1].result)
+        assertEquals("1000.0 mm³", result[2].result)
+        assertEquals("100.0 mm³", result[3].result)
+    }
+
+    @Test
     fun `unit cancellation in division returns unitless result`() = testCalculate(
         "10km / 100m",
         "(10km * 10km) / 50sqkm",
@@ -502,6 +525,11 @@ class MathEngineTest {
     }
 
     @Test
+    fun `add percentage to quantity preserves unit`() = testCalculate("10kg + 20%") { result ->
+        assertEquals("12.0 kg", result[0].result)
+    }
+
+    @Test
     fun `add percentage to variable`() = testCalculate("salary = 50000", "salary + 10%") { result ->
         assertEquals("50000.0", result[0].result)
         assertEquals("55000.0", result[1].result)
@@ -510,6 +538,11 @@ class MathEngineTest {
     @Test
     fun `subtract percentage from number`() = testCalculate("100 - 15%") { result ->
         assertEquals("85.0", result[0].result)
+    }
+
+    @Test
+    fun `subtract percentage from quantity preserves unit`() = testCalculate("10kg - 20%") { result ->
+        assertEquals("8.0 kg", result[0].result)
     }
 
     @Test

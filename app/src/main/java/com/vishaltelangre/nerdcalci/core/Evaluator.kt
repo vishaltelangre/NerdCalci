@@ -431,6 +431,12 @@ class Evaluator(
             )
         }
 
+        if (expr.op == TokenKind.PERCENT && (leftUnit != null || rightUnit != null)) {
+            val leftDesc = getDimensionDescription(leftUnit)
+            val rightDesc = getDimensionDescription(rightUnit)
+            throw EvalException("Modulo of $leftDesc and $rightDesc is not supported")
+        }
+
         // General addition/subtraction
         if (expr.op == TokenKind.PLUS || expr.op == TokenKind.MINUS) {
             val leftIsPhysical = isPhysicalUnit(leftUnit)

@@ -130,8 +130,18 @@ class MathEngineTest {
 
     @Test
     fun `exponentiation works correctly`() {
-        testCalculate("2 ^ 3") { result ->
+        testCalculate("2 ^ 3", "2.5 ^ 2") { result ->
             assertEquals("8.0", result[0].result)
+            assertEquals("6.25", result[1].result)
+        }
+    }
+
+    @Test
+    fun `exponentiation preserves powered units`() {
+        testCalculate("(10 ft)^2", "(10 ft)^3", "2.5cm^2") { result ->
+            assertEquals("100.0 ft²", result[0].result)
+            assertEquals("1000.0 ft³", result[1].result)
+            assertEquals("6.25 cm²", result[2].result)
         }
     }
 

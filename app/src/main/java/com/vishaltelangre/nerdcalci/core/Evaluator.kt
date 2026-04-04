@@ -539,10 +539,19 @@ class Evaluator(
         val resultVal = applyOp(leftScalar, expr.op, rightScalar)
         val resultRational = applyRationalOp(leftRational, expr.op, rightRational)
 
-        val resultScale = if (expr.op == TokenKind.STAR || expr.op == TokenKind.SLASH) {
-            UnitConverter.deriveUnitScale(leftUnit, rightUnit, expr.op)
-        } else {
-            BigDecimal.ONE
+        val resultScale = when (expr.op) {
+            TokenKind.STAR, TokenKind.SLASH -> UnitConverter.deriveUnitScale(leftUnit, rightUnit, expr.op)
+            TokenKind.CARET -> if (leftUnit != null) {
+                val exponent = rightVal.toIntOrNullExact()
+                if (exponent == 3 && leftUnit?.category == UnitCategory.LENGTH) {
+                    BigDecimal("1000.0")
+                } else {
+                    BigDecimal.ONE
+                }
+            } else {
+                BigDecimal.ONE
+            }
+            else -> BigDecimal.ONE
         }
 
         // Handle scaling multiplication/division inheritance
@@ -565,12 +574,24 @@ class Evaluator(
                     else -> null
                 }
             }
+        } else if (expr.op == TokenKind.CARET && leftUnit != null) {
+            val exponent = rightVal.toIntOrNullExact()
+            if (exponent == null) {
+                throw EvalException("Exponent must be an integer when applied to a unit")
+            }
+            val derivedUnit = UnitConverter.deriveForPower(leftUnit, exponent)
+            when {
+                derivedUnit == "unitless" -> null
+                derivedUnit == null -> throw EvalException(
+                    "unsupported exponent unit: ${leftUnit.name} ^ ${rightVal.stripTrailingZeros().toPlainString()}"
+                )
+                else -> derivedUnit
+            }
         } else {
-            if (leftEval.explicitUnitless || rightEval.explicitUnitless ||
-                leftUnit?.category == UnitCategory.SCALAR || rightUnit?.category == UnitCategory.SCALAR) {
-                null
-            } else {
-                leftEval.unit ?: rightEval.unit
+            when {
+                leftEval.explicitUnitless || rightEval.explicitUnitless -> null
+                leftUnit?.category == UnitCategory.SCALAR || rightUnit?.category == UnitCategory.SCALAR -> null
+                else -> leftEval.unit ?: rightEval.unit
             }
         }
 
@@ -634,6 +655,14 @@ class Evaluator(
             }
         }
         else -> throw EvalException("Unknown operator: `$op`")
+    }
+
+    private fun BigDecimal.toIntOrNullExact(): Int? {
+        return try {
+            toBigIntegerExact().intValueExact()
+        } catch (_: Exception) {
+            null
+        }
     }
 
     /**

@@ -540,6 +540,17 @@ object UnitConverter {
 
     internal fun deriveForDivision(left: Unit?, right: Unit?): String? = deriveByRules(left, right, DIVISION_RULES)
 
+    internal fun deriveForPower(left: Unit?, exponent: Int): String? {
+        if (left == null || left.category == UnitCategory.TEMPERATURE) return null
+        return when (exponent) {
+            0 -> null
+            1 -> left.symbols.first()
+            2 -> squareSymbolForFamily(left.symbols.first())
+            3 -> cubeSymbolForFamily(left.symbols.first())
+            else -> null
+        }
+    }
+
     private fun sameSymbolFamily(left: Unit, right: Unit, resolve: (String) -> String?): String? {
         return if (left.symbols.first() == right.symbols.first()) resolve(left.symbols.first()) else null
     }

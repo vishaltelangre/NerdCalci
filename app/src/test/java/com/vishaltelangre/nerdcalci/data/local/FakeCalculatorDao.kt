@@ -43,10 +43,16 @@ open class FakeCalculatorDao : CalculatorDao() {
     private fun nextLineId() = lineIdGen.incrementAndGet()
 
     override fun getAllFiles(): Flow<List<FileEntity>> =
-        _files.map { files -> files.filter { file -> !file.isTemporary }.sortedByDescending { file -> file.lastModified } }
+        _files.map { files ->
+            files
+                .filter { file -> !file.isTemporary }
+                .sortedWith(compareByDescending<FileEntity> { file -> file.isPinned }.thenByDescending { file -> file.lastModified })
+        }
 
     override suspend fun getAllFilesSync(): List<FileEntity> =
-        _files.value.filter { file -> !file.isTemporary }.sortedByDescending { file -> file.lastModified }
+        _files.value
+            .filter { file -> !file.isTemporary }
+            .sortedWith(compareByDescending<FileEntity> { file -> file.isPinned }.thenByDescending { file -> file.lastModified })
 
     override suspend fun getTemporaryFile(): FileEntity? = 
         _files.value.find { it.isTemporary }
@@ -92,11 +98,12 @@ open class FakeCalculatorDao : CalculatorDao() {
     }
 
     override suspend fun internalInsertLines(lines: List<LineEntity>) {
-        val toInsert = lines.map { 
+        val toInsert = lines.map {
             val id = if (it.id == 0L) nextLineId() else it.id
             it.copy(id = id)
         }
-        _lines.value = _lines.value + toInsert
+        val insertIds = toInsert.map { it.id }.toSet()
+        _lines.value = _lines.value.filter { it.id !in insertIds } + toInsert
     }
 
     override suspend fun internalInsertLine(line: LineEntity): Long {

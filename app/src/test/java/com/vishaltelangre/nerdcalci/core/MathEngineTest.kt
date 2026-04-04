@@ -2483,7 +2483,7 @@ class MathEngineTest {
     @Test
     fun `in decimal unit conversion enforces integer check`() = runBlocking {
         testCalculate("1/3 in decimal", rationalMode = true) {
-            assertError("Fractional value cannot be converted to numeral system", it, 0)
+            assertError("Fractional value cannot be converted to numeral system", it, 0, rationalMode = true)
         }
     }
 

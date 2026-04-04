@@ -73,10 +73,11 @@ fun assertError(
     allLines: List<LineEntity>,
     index: Int,
     loader: FileContextLoader? = null,
-    loadingStack: Set<String> = emptySet()
+    loadingStack: Set<String> = emptySet(),
+    rationalMode: Boolean = false
 ) = runBlocking {
     assertEquals("Err", line.result)
-    val actualMsg = MathEngine.getErrorDetails(allLines, index, loader, loadingStack)
+    val actualMsg = MathEngine.getErrorDetails(allLines, index, loader, loadingStack, rationalMode)
     assertEquals(expectedMsg, actualMsg)
 }
 
@@ -88,7 +89,8 @@ fun assertError(
     results: List<LineEntity>,
     index: Int,
     loader: FileContextLoader? = null,
-    loadingStack: Set<String> = emptySet()
+    loadingStack: Set<String> = emptySet(),
+    rationalMode: Boolean = false
 ) {
-    assertError(expectedMsg, results[index], results, index, loader, loadingStack)
+    assertError(expectedMsg, results[index], results, index, loader, loadingStack, rationalMode)
 }

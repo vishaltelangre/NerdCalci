@@ -125,6 +125,19 @@ class CalculatorViewModelTest {
     }
 
     @Test
+    fun `create temporary scratchpad seeds one empty line`() = runTest {
+        val scratchpadId = fakeDao.createTemporaryFileWithInitialLine()
+
+        val scratchpad = fakeDao.getFileById(scratchpadId)!!
+        assertTrue(scratchpad.isTemporary)
+
+        val lines = fakeDao.getLinesForFileSync(scratchpadId)
+        assertEquals(1, lines.size)
+        assertEquals("", lines[0].expression)
+        assertEquals(0, lines[0].sortOrder)
+    }
+
+    @Test
     fun `allFiles excludes temporary files for sync and backup safety`() = runTest {
         // Given: One normal file and one temporary file
         fakeDao.insertFile(FileEntity(id = 1L, name = "Normal", isTemporary = false))

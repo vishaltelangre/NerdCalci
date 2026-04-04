@@ -189,6 +189,21 @@ abstract class CalculatorDao {
     }
 
     @Transaction
+    open suspend fun createTemporaryFileWithInitialLine(createdAt: Long = System.currentTimeMillis()): Long {
+        val uniqueName = "NerdCalci-Scratchpad-${createdAt}"
+        val fileId = insertFile(
+            FileEntity(
+                name = uniqueName,
+                lastModified = createdAt,
+                createdAt = createdAt,
+                isTemporary = true
+            )
+        )
+        internalInsertLine(LineEntity(fileId = fileId, sortOrder = 0, expression = "", result = ""))
+        return fileId
+    }
+
+    @Transaction
     open suspend fun duplicateFile(sourceFileId: Long, createdAt: Long): Long? {
         val sourceFile = getFileById(sourceFileId) ?: return null
         val sourceLines = getLinesForFileSync(sourceFileId)

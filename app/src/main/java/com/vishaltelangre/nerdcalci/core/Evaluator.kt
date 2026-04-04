@@ -326,6 +326,17 @@ class Evaluator(
                 validateVariableOrFunctionName(name)
 
                 val currentValue = evaluate(target)
+                val currentUnit = currentValue.unit?.let { UnitConverter.findUnit(it) }
+                if (currentUnit?.category == UnitCategory.TEMPERATURE) {
+                    val displayValue = UnitConverter.fromBase(currentValue.value ?: BigDecimal.ZERO, currentUnit, variables)
+                    val updatedDisplayValue = displayValue.add(BigDecimal.ONE)
+                    val updatedBaseValue = UnitConverter.toBase(updatedDisplayValue, currentUnit, variables)
+                    val result = EvaluationResult(updatedBaseValue, currentValue.unit, rationalValue = Rational.toRational(updatedBaseValue))
+                    context.fileVariables.remove(name)
+                    context.variables[name] = result
+                    return result
+                }
+
                 val increment = if (currentValue.unit != null) {
                     Expr.Quantity(Expr.NumberLiteral(BigDecimal.ONE), currentValue.unit)
                 } else {
@@ -346,6 +357,17 @@ class Evaluator(
                 validateVariableOrFunctionName(name)
 
                 val currentValue = evaluate(target)
+                val currentUnit = currentValue.unit?.let { UnitConverter.findUnit(it) }
+                if (currentUnit?.category == UnitCategory.TEMPERATURE) {
+                    val displayValue = UnitConverter.fromBase(currentValue.value ?: BigDecimal.ZERO, currentUnit, variables)
+                    val updatedDisplayValue = displayValue.subtract(BigDecimal.ONE)
+                    val updatedBaseValue = UnitConverter.toBase(updatedDisplayValue, currentUnit, variables)
+                    val result = EvaluationResult(updatedBaseValue, currentValue.unit, rationalValue = Rational.toRational(updatedBaseValue))
+                    context.fileVariables.remove(name)
+                    context.variables[name] = result
+                    return result
+                }
+
                 val decrement = if (currentValue.unit != null) {
                     Expr.Quantity(Expr.NumberLiteral(BigDecimal.ONE), currentValue.unit)
                 } else {

@@ -810,6 +810,40 @@ class MathEngineTest {
     }
 
     @Test
+    fun `temperature increment increases displayed value by one degree`() = testCalculate(
+        "temp = 30 °C",
+        "temp++",
+        "temp = 30 °F",
+        "temp++",
+        "temp = 30 K",
+        "temp++"
+    ) { result ->
+        assertEquals("30.0 °C", result[0].result)
+        assertEquals("31.0 °C", result[1].result)
+        assertEquals("30.0 °F", result[2].result)
+        assertEquals("31.0 °F", result[3].result)
+        assertEquals("30.0 K", result[4].result)
+        assertEquals("31.0 K", result[5].result)
+    }
+
+    @Test
+    fun `temperature decrement decreases displayed value by one degree`() = testCalculate(
+        "temp = 30 °C",
+        "temp--",
+        "temp = 30 °F",
+        "temp--",
+        "temp = 30 K",
+        "temp--"
+    ) { result ->
+        assertEquals("30.0 °C", result[0].result)
+        assertEquals("29.0 °C", result[1].result)
+        assertEquals("30.0 °F", result[2].result)
+        assertEquals("29.0 °F", result[3].result)
+        assertEquals("30.0 K", result[4].result)
+        assertEquals("29.0 K", result[5].result)
+    }
+
+    @Test
     fun `compound addition assignment`() = testCalculate(
         "total = 10",
         "total += 5 + 2"

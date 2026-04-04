@@ -242,7 +242,9 @@ object MathEngine {
                             formatNumeralSystem(result.value.toLong(), u.factor.toInt())
                         }
                     } else {
-                        val displayValue = UnitConverter.fromBase(result.value, u, isolatedContext.variables)
+                        val displayValue = UnitConverter.fromBase(result.value, u, isolatedContext.variables).let { value ->
+                            if (u.category == UnitCategory.TEMPERATURE) value.setScale(10, java.math.RoundingMode.HALF_UP) else value
+                        }
                         val formattedValue = if (!result.forceFloat && (isolatedContext.rationalMode || result.explicitRational)) {
                             Rational.toRational(displayValue).toString()
                         } else {

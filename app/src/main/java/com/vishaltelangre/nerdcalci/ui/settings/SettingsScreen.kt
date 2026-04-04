@@ -4,6 +4,7 @@ import kotlin.math.roundToInt
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.text.format.DateUtils
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
@@ -155,7 +156,12 @@ fun SettingsScreen(
         try {
             val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
             val versionName = packageInfo.versionName ?: "Unknown"
-            val versionCode = packageInfo.longVersionCode
+            val versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                packageInfo.longVersionCode
+            } else {
+                @Suppress("DEPRECATION")
+                packageInfo.versionCode.toLong()
+            }
             "v$versionName ($versionCode)"
         } catch (_: Exception) {
             "Unknown"

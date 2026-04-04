@@ -146,6 +146,13 @@ class MathEngineTest {
     }
 
     @Test
+    fun `exponentiation by zero returns unitless result`() {
+        testCalculate("(10 ft)^0") { result ->
+            assertEquals("1.0", result[0].result)
+        }
+    }
+
+    @Test
     fun `multiplication sign × is normalized to asterisk`() {
         testCalculate("5 × 6") { result ->
             assertEquals("30.0", result[0].result)

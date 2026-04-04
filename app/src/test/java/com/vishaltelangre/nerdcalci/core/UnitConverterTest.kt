@@ -60,6 +60,13 @@ class UnitConverterTest {
     }
 
     @Test
+    fun `test deriveForPower returns unitless for zero exponent`() {
+        val meter = UnitConverter.findUnit("m")
+
+        assertEquals("unitless", UnitConverter.deriveForPower(meter, 0))
+    }
+
+    @Test
     fun `test deriveForDivision handles fuel consumption reciprocals correctly`() {
         val l100km = UnitConverter.findUnit("L/100km")
         val mpg = UnitConverter.findUnit("mpg")

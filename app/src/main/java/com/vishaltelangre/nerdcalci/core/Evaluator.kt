@@ -574,7 +574,15 @@ class Evaluator(
                     else -> null
                 }
             }
-        } else if (expr.op == TokenKind.CARET && leftUnit != null) {
+        } else if (
+            expr.op == TokenKind.CARET &&
+            leftUnit != null &&
+            leftUnit.category != UnitCategory.SCALAR &&
+            leftUnit.category != UnitCategory.NUMERAL_SYSTEM
+        ) {
+            if (rightEval.unit != null) {
+                throw EvalException("Exponent must be unitless when applied to a unit")
+            }
             val exponent = rightVal.toIntOrNullExact()
             if (exponent == null) {
                 throw EvalException("Exponent must be an integer when applied to a unit")

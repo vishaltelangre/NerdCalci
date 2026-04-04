@@ -443,12 +443,12 @@ class Evaluator(
         val leftUnit = leftEval.unit?.let { UnitConverter.findUnit(it) }
         val rightUnit = rightEval.unit?.let { UnitConverter.findUnit(it) }
         val forceDisplayValue = leftEval.explicitUnitless || rightEval.explicitUnitless
-        val multiplicativeTemperatureOperand = expr.op == TokenKind.STAR || expr.op == TokenKind.SLASH
         val leftUsesDisplayValue = forceDisplayValue ||
-            (multiplicativeTemperatureOperand && leftUnit?.category == UnitCategory.TEMPERATURE &&
+            ((expr.op == TokenKind.STAR || (expr.op == TokenKind.SLASH && leftUnit?.category == UnitCategory.TEMPERATURE)) &&
+                leftUnit?.category == UnitCategory.TEMPERATURE &&
                 (rightUnit == null || rightUnit.category == UnitCategory.SCALAR))
         val rightUsesDisplayValue = forceDisplayValue ||
-            (multiplicativeTemperatureOperand && rightUnit?.category == UnitCategory.TEMPERATURE &&
+            (expr.op == TokenKind.STAR && rightUnit?.category == UnitCategory.TEMPERATURE &&
                 (leftUnit == null || leftUnit.category == UnitCategory.SCALAR))
         val leftScalar = scalarValue(leftEval, leftUnit, leftUsesDisplayValue)
         val rightScalar = scalarValue(rightEval, rightUnit, rightUsesDisplayValue)

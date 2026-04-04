@@ -333,6 +333,7 @@ class Evaluator(
                 }
 
                 val result = evaluateBinaryOp(Expr.BinaryOp(target, TokenKind.PLUS, increment))
+                // Return the updated value for calculator UX; prefix semantics are not supported.
                 context.fileVariables.remove(name)
                 context.variables[name] = result
                 result
@@ -352,6 +353,7 @@ class Evaluator(
                 }
 
                 val result = evaluateBinaryOp(Expr.BinaryOp(target, TokenKind.MINUS, decrement))
+                // Return the updated value for calculator UX; prefix semantics are not supported.
                 context.fileVariables.remove(name)
                 context.variables[name] = result
                 result

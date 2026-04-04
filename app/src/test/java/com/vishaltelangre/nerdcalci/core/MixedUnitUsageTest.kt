@@ -37,7 +37,7 @@ class MixedUnitUsageTest {
     }
 
     @Test
-    fun `nested mixed unit expressions inherit from the deepest unit`() {
+    fun `nested mixed unit expressions inherit from the smallest unit`() {
         testCalculate("(1m + 1cm) + 1mm", "10kg + (500g + 10mg)") { result ->
             assertEquals("1011.0 mm", result[0].result)
             assertEquals("10500010.0 mg", result[1].result)

@@ -93,7 +93,7 @@ class DatabaseMigrationTest {
 
     @Test
     @Throws(IOException::class)
-    fun migrate5_6() {
+    fun migrate5To6() {
         helper.createDatabase(TEST_DB, 5).apply {
             execSQL("INSERT INTO files (id, name, lastModified, isPinned, createdAt, syncId) VALUES (1, 'Temp File', 1000, 0, 1000, 'sync-id')")
             close()

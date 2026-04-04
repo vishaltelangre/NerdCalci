@@ -399,7 +399,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
         },
         onChooseDifferentFile = {
             showHomeRestoreActionDialog = false
-            importLauncher.launch(arrayOf("application/zip"))
+            importLauncher.launch(arrayOf(Constants.EXPORT_MIME_TYPE))
         }
     )
 

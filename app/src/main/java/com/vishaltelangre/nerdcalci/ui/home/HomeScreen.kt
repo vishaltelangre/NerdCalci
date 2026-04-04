@@ -397,7 +397,7 @@ private fun HomeFileList(
                         Spacer(modifier = Modifier.width(16.dp))
                         Column {
                             Text(
-                                text = "Scratchpad",
+                                text = Constants.SCRATCHPAD_DISPLAY_NAME,
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onSurface
                             )

@@ -27,13 +27,13 @@ fun createLines(vararg expressions: String, fileId: Long = 1L): List<LineEntity>
 /**
  * Shared helper to calculate results from multiple expressions.
  */
-fun testCalculate(
+suspend fun testCalculate(
     vararg expressions: String,
     loader: FileContextLoader? = null,
     rationalMode: Boolean = false
-): List<LineEntity> = runBlocking {
+): List<LineEntity> {
     val lines = createLines(*expressions)
-    MathEngine.calculate(lines, loader, rationalMode)
+    return MathEngine.calculate(lines, loader, rationalMode)
 }
 
 /**

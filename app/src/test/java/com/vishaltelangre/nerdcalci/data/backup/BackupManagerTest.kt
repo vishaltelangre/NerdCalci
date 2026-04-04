@@ -2,14 +2,12 @@ package com.vishaltelangre.nerdcalci.data.backup
 
 import android.content.Context
 import android.content.SharedPreferences
-import com.vishaltelangre.nerdcalci.data.local.CalculatorDao
+import com.vishaltelangre.nerdcalci.data.local.FakeCalculatorDao
 import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
 import com.vishaltelangre.nerdcalci.data.sync.SyncManager
 import io.mockk.every
 import io.mockk.mockk
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -27,127 +25,6 @@ class BackupManagerTest {
     init {
         every { mockContext.getSharedPreferences(SyncManager.PREFS_NAME, any()) } returns mockPrefs
         every { mockPrefs.getBoolean(SyncManager.PREF_SYNC_ENABLED, any()) } returns false
-    }
-
-    // Fake DAO Implementation
-    class FakeCalculatorDao : CalculatorDao() {
-        val files = mutableListOf<FileEntity>()
-        val lines = mutableListOf<LineEntity>()
-        var nextFileId = 1L
-        var nextLineId = 1L
-
-        override fun getAllFiles(): Flow<List<FileEntity>> = flowOf(files.filter { !it.isTemporary }.toList())
-        override suspend fun getTemporaryFile(): FileEntity? = files.find { it.isTemporary }
-        override suspend fun getUntitledFileNames(): List<String> =
-            files.filter { !it.isTemporary && it.name.startsWith("Untitled ") }.map { it.name }
-        override suspend fun getFileById(fileId: Long): FileEntity? = files.find { it.id == fileId }
-        override suspend fun getFileByName(name: String): FileEntity? = files.find { it.name == name }
-        override suspend fun getFileBySyncId(syncId: String): FileEntity? = files.find { it.syncId == syncId }
-        override suspend fun getPinnedFilesCount(): Int = files.count { it.isPinned }
-        override suspend fun doesFileExist(name: String): Boolean = files.any { it.name == name }
-        override suspend fun doesFileExist(name: String, excludeId: Long): Boolean =
-            files.any { it.name == name && it.id != excludeId }
-
-        override fun getLinesForFile(fileId: Long): Flow<List<LineEntity>> =
-            flowOf(lines.filter { it.fileId == fileId })
-
-        override suspend fun getLinesForFileSync(fileId: Long): List<LineEntity> =
-            lines.filter { it.fileId == fileId }
-
-        override suspend fun getLineCountForFile(fileId: Long): Int =
-            lines.count { it.fileId == fileId }
-
-        override suspend fun getLineById(lineId: Long): LineEntity? =
-            lines.find { it.id == lineId }
-
-        override suspend fun insertFile(file: FileEntity): Long {
-            val id = if (file.id == 0L) nextFileId++ else file.id
-            val newFile = file.copy(id = id)
-            files.add(newFile)
-            return id
-        }
-
-        public override suspend fun internalInsertLines(lines: List<LineEntity>) {
-            lines.forEach { line ->
-                val id = if (line.id == 0L) nextLineId++ else line.id
-                this.lines.add(line.copy(id = id))
-            }
-        }
-
-        override suspend fun internalInsertLine(line: LineEntity): Long {
-            val id = if (line.id == 0L) nextLineId++ else line.id
-            lines.add(line.copy(id = id))
-            return id
-        }
-
-        override suspend fun internalUpdateLine(line: LineEntity) {
-            val idx = lines.indexOfFirst { it.id == line.id }
-            if (idx >= 0) lines[idx] = line
-        }
-
-        override suspend fun internalUpdateLines(lines: List<LineEntity>) {
-            lines.forEach { internalUpdateLine(it) }
-        }
-
-        override suspend fun internalUpdateFiles(files: List<FileEntity>) {
-            files.forEach { internalUpdateFile(it) }
-        }
-
-        override suspend fun internalDeleteLine(line: LineEntity) {
-            lines.removeAll { it.id == line.id }
-        }
-
-        override suspend fun internalUpdateFile(file: FileEntity) {
-            val idx = files.indexOfFirst { it.id == file.id }
-            if (idx >= 0) files[idx] = file
-        }
-
-        override suspend fun updateFileFromSync(file: FileEntity) {
-            internalUpdateFile(file)
-        }
-
-        override suspend fun internalRenameFile(fileId: Long, name: String) {
-            val idx = files.indexOfFirst { it.id == fileId }
-            if (idx >= 0) files[idx] = files[idx].copy(name = name)
-        }
-
-        override suspend fun updateSyncId(fileId: Long, newSyncId: String) {
-            val idx = files.indexOfFirst { it.id == fileId }
-            if (idx >= 0) files[idx] = files[idx].copy(syncId = newSyncId)
-        }
-
-        override suspend fun duplicateFile(fileId: Long, newName: String, newSyncId: String, lastModified: Long?): Long {
-            val original = files.find { it.id == fileId } ?: return -1L
-            val nextId = nextFileId++
-            val copy = original.copy(
-                id = nextId,
-                name = newName,
-                syncId = newSyncId,
-                lastModified = lastModified ?: System.currentTimeMillis()
-            )
-            files.add(copy)
-
-            val originalLines = lines.filter { it.fileId == fileId }
-            val newLines = originalLines.map { it.copy(id = nextLineId++, fileId = nextId) }
-            lines.addAll(newLines)
-            return nextId
-        }
-
-        override suspend fun deleteFile(file: FileEntity) {
-            files.removeAll { it.id == file.id }
-            lines.removeAll { it.fileId == file.id }
-        }
-
-        override suspend fun updateFileTimestamp(fileId: Long, timestamp: Long) {
-            val idx = files.indexOfFirst { it.id == fileId }
-            if (idx >= 0) files[idx] = files[idx].copy(lastModified = timestamp)
-        }
-
-        override suspend fun internalDeleteLinesForFile(fileId: Long) {
-            lines.removeAll { it.fileId == fileId }
-        }
-
-        override suspend fun getAllFilesSync(): List<FileEntity> = files.filter { !it.isTemporary }.toList()
     }
 
     private fun createMockZip(fileName: String, content: String): ByteArray {
@@ -169,7 +46,8 @@ class BackupManagerTest {
 
         BackupManager.importFromZip(mockContext, dao, { ByteArrayInputStream(zipBytes) }, { _, _, _ -> }, { _, _, _ -> ConflictResolution.KEEP_LOCAL_FILE })
 
-        val importedLines = dao.getLinesForFileSync(1)
+        val importedFile = dao.files.single { it.name == "test_file" }
+        val importedLines = dao.getLinesForFileSync(importedFile.id)
         assertEquals(6, importedLines.size)
         assertEquals("10+10", importedLines[0].expression)
         assertEquals("", importedLines[1].expression)
@@ -183,7 +61,7 @@ class BackupManagerTest {
     fun `test import conflict with keep local choice`() = runBlocking {
         val dao = FakeCalculatorDao()
         val fileId = dao.insertFile(FileEntity(name = "test_file", createdAt = 1000L, lastModified = 1000L))
-        dao.internalInsertLines(listOf(LineEntity(fileId = fileId, expression = "local expression", sortOrder = 0, result = "")))
+        dao.addLine(LineEntity(fileId = fileId, expression = "local expression", sortOrder = 0, result = ""))
 
         val zipBytes = createMockZip("test_file", "zip expression")
 
@@ -209,7 +87,7 @@ class BackupManagerTest {
     fun `test import conflict with replace choice`() = runBlocking {
         val dao = FakeCalculatorDao()
         val fileId = dao.insertFile(FileEntity(name = "test_file", createdAt = 1000L, lastModified = 1000L))
-        dao.internalInsertLines(listOf(LineEntity(fileId = fileId, expression = "local expression", sortOrder = 0, result = "")))
+        dao.addLine(LineEntity(fileId = fileId, expression = "local expression", sortOrder = 0, result = ""))
 
         val zipBytes = createMockZip("test_file", "zip expression")
 
@@ -238,7 +116,7 @@ class BackupManagerTest {
     fun `test import conflict with keep both choice`() = runBlocking {
         val dao = FakeCalculatorDao()
         val fileId = dao.insertFile(FileEntity(name = "test_file", createdAt = 1000L, lastModified = 1000L))
-        dao.internalInsertLines(listOf(LineEntity(fileId = fileId, expression = "local expression", sortOrder = 0, result = "")))
+        dao.addLine(LineEntity(fileId = fileId, expression = "local expression", sortOrder = 0, result = ""))
 
         val zipBytes = createMockZip("test_file", "zip expression")
 

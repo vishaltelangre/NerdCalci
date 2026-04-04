@@ -42,11 +42,11 @@ open class FakeCalculatorDao : CalculatorDao() {
     private fun nextFileId() = fileIdGen.incrementAndGet()
     private fun nextLineId() = lineIdGen.incrementAndGet()
 
-    override fun getAllFiles(): Flow<List<FileEntity>> = 
-        _files.map { it.filter { !it.isTemporary }.sortedByDescending { it.lastModified } }
+    override fun getAllFiles(): Flow<List<FileEntity>> =
+        _files.map { files -> files.filter { file -> !file.isTemporary }.sortedByDescending { file -> file.lastModified } }
 
-    override suspend fun getAllFilesSync(): List<FileEntity> = 
-        _files.value.filter { !it.isTemporary }.sortedByDescending { it.lastModified }
+    override suspend fun getAllFilesSync(): List<FileEntity> =
+        _files.value.filter { file -> !file.isTemporary }.sortedByDescending { file -> file.lastModified }
 
     override suspend fun getTemporaryFile(): FileEntity? = 
         _files.value.find { it.isTemporary }

@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -125,7 +126,11 @@ class CalculatorViewModel(
 
     init {
         viewModelScope.launch {
-            ensureScratchpadExists()
+            try {
+                ensureScratchpadExists()
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to initialize scratchpad", e)
+            }
         }
     }
 
@@ -179,6 +184,7 @@ class CalculatorViewModel(
                 }
                 _isScratchpadReady.value = true
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 Log.e(TAG, "Failed to ensure scratchpad exists", e)
                 _scratchpadFileId.value = null
                 _isScratchpadReady.value = false

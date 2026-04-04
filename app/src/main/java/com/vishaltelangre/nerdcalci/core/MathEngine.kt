@@ -425,10 +425,6 @@ object MathEngine {
         return category != null && category != UnitCategory.SCALAR && category != UnitCategory.NUMERAL_SYSTEM
     }
 
-    private fun getDimensionName(category: UnitCategory?): String {
-        return category?.name?.lowercase() ?: "unitless"
-    }
-
     /**
      * Returns the result of the immediately preceding line, or 0.0 if that line
      * was blank, a comment, or an error.

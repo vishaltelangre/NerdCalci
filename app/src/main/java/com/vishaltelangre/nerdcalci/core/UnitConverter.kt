@@ -344,6 +344,7 @@ object UnitConverter {
         Unit("Binary", listOf("bin", "binary"), UnitCategory.NUMERAL_SYSTEM, BigDecimal("2.0")),
 
         // --- SCALAR MULTIPLIERS ---
+        Unit("Dozens", listOf("dozen", "dozens"), UnitCategory.SCALAR, BigDecimal("12.0")),
         Unit("Hundred", listOf("hundred", "hundreds"), UnitCategory.SCALAR, BigDecimal("100.0")),
         Unit("Thousand", listOf("thousand", "thousands"), UnitCategory.SCALAR, BigDecimal("1000.0")),
         Unit("Lakh", listOf("lakh", "lakhs"), UnitCategory.SCALAR, BigDecimal("100000.0")),

@@ -51,6 +51,9 @@ object UnitConverter {
         }),
         UnitRule(UnitCategory.LENGTH, UnitCategory.AREA, result = { left, right ->
             sameAreaLengthFamily(right, left)?.let { cubeSymbolForFamily(it) }
+        }),
+        UnitRule(UnitCategory.SPEED, UnitCategory.TIME, result = { left, right ->
+            speedAndTimeToLength(left.symbols[0], right.symbols[0])
         })
     )
 
@@ -79,7 +82,10 @@ object UnitConverter {
         UnitRule(UnitCategory.DATA_RATE, UnitCategory.DATA_RATE, result = { _, _ -> "unitless" }),
         UnitRule(UnitCategory.FORCE, UnitCategory.FORCE, result = { _, _ -> "unitless" }),
         UnitRule(UnitCategory.PRESSURE, UnitCategory.PRESSURE, result = { _, _ -> "unitless" }),
-        UnitRule(UnitCategory.NUMERAL_SYSTEM, UnitCategory.NUMERAL_SYSTEM, result = { _, _ -> "unitless" })
+        UnitRule(UnitCategory.NUMERAL_SYSTEM, UnitCategory.NUMERAL_SYSTEM, result = { _, _ -> "unitless" }),
+        UnitRule(UnitCategory.LENGTH, UnitCategory.TIME, result = { left, right ->
+            lengthAndTimeToSpeed(left.symbols[0], right.symbols[0])
+        })
     )
 
     // Base units:
@@ -624,6 +630,22 @@ object UnitConverter {
         "inch" -> findUnit("in³")?.symbols?.first()
         "ft" -> findUnit("ft³")?.symbols?.first()
         else -> null
+    }
+
+    private fun speedAndTimeToLength(speed: String, time: String): String? {
+        if(speed == "mps" && time == "s") return "m"
+        if(speed == "kmh" && time == "h") return "km"
+        if(speed == "mph" && time == "h") return "mi"
+        if(speed == "fps" && time == "s") return "ft"
+        return null;
+    }
+
+    private fun lengthAndTimeToSpeed(length: String, time: String): String? {
+        if(length == "m" && time == "s") return "mps"
+        if(length == "km" && time == "h") return "kmh"
+        if(length == "mi" && time == "h") return "mph"
+        if(length == "ft" && time == "s") return "fps"
+        return null;
     }
 
     fun isNumeralSystemSymbol(symbol: String): Boolean {

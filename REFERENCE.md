@@ -722,18 +722,22 @@ cos(60 degree) # 0.5
 
 ### Energy
 
-| Unit                 | Symbols (Aliases)                             | Example     |
-| :------------------- | :-------------------------------------------- | :---------- |
-| Joule                | `J`, `joule`, `joules`                        | `10 J`      |
-| Kilojoule            | `kJ`, `kilojoule`, `kilojoules`               | `10 kJ`     |
-| Megajoule            | `MJ`, `megajoule`, `megajoules`               | `10 MJ`     |
-| Calorie              | `cal`, `calorie`, `calories`                  | `10 cal`    |
-| Kilocalorie          | `kCal`, `kcal`, `kilocalorie`, `kilocalories` | `10 kCal`   |
-| Watt hour            | `Wh`, `watt hour`, `watt hours`               | `10 Wh`     |
-| Kilowatt hour        | `kWh`, `kilowatt hour`, `kilowatt hours`      | `10 kWh`    |
-| Electron volt        | `eV`, `electronvolt`, `electron volts`        | `10 eV`     |
-| Foot pound-force     | `ft_lbf`, `foot_pound`                         | `10 ft_lbf` |
-| British thermal unit | `BTU`, `btu`                                  | `10 BTU`    |
+| Unit                       | Symbols (Aliases)                                                                     | Example     |
+|:---------------------------|:--------------------------------------------------------------------------------------|:------------|
+| Joule                      | `J`, `joule`, `joules`                                                                | `10 J`      |
+| Kilojoule                  | `kJ`, `kilojoule`, `kilojoules`                                                       | `10 kJ`     |
+| Megajoule                  | `MJ`, `megajoule`, `megajoules`                                                       | `10 MJ`     |
+| Gigajoule                  | `GJ`, `gigajoule`, `gigajoules`                                                       | `10 GJ`     |
+| Calorie                    | `cal`, `calorie`, `calories`                                                          | `10 cal`    |
+| Kilocalorie                | `kCal`, `kcal`, `kilocalorie`, `kilocalories`                                         | `10 kCal`   |
+| Watt hour                  | `Wh`, `watt hour`, `watt hours`                                                       | `10 Wh`     |
+| Kilowatt hour              | `kWh`, `kilowatt hour`, `kilowatt hours`                                              | `10 kWh`    |
+| Electron volt              | `eV`, `electronvolt`, `electron volts`                                                | `10 eV`     |
+| Foot pound-force           | `ft_lbf`, `foot_pound`                                                                | `10 ft_lbf` |
+| British thermal unit       | `BTU`, `btu`                                                                          | `10 BTU`    |
+| Tons of TNT equivalent     | `tTNT`, `ton of TNT`, `tons of TNT`, `tonne of TNT`, `tonnes of TNT`                  | `10 tTNT`   |
+| Kilotons of TNT equivalent | `ktTNT`, `kiloton of TNT`, `kilotons of TNT`, `kilotonne of TNT`, `kilotonnes of TNT` | `10 ktTNT`  |
+| Megatons of TNT equivalent | `MtTNT`, `megaton of TNT`, `megatons of TNT`, `megatonne of TNT`, `megatonnes of TNT` | `10 MtTNT`  |
 
 ### Power
 
@@ -844,15 +848,16 @@ em = 20
 
 NerdCalci expands numeric representations supporting standard numeral naming conventions efficiently with scalable word suffixes:
 
-| Word       | Multiplier          | Example      | Evaluates to |
-| :--------- | :------------------ | :----------- | :----------- |
-| `hundred`  | `100`               | `5 hundred`  | `500`        |
-| `thousand` | `1,000`             | `2 thousand` | `2000`       |
-| `lakh`     | `100,000`           | `10 lakh`    | `1000000`    |
-| `million`  | `1,000,000`         | `5 million`  | `5000000`    |
-| `crore`    | `10,000,000`        | `1.5 crore`  | `15000000`   |
-| `billion`  | `1,000,000,000`     | `1 billion`  | `1000000000` |
-| `trillion` | `1,000,000,000,000` | `1 trillion` | `1E12`       |
+| Word       | Multiplier           | Example       | Evaluates to |
+|:-----------|:---------------------|:--------------|:-------------|
+| `dozen`    | `12`                 | `4 dozen`     | `48`         |
+| `hundred`  | `100`                | `5 hundred`   | `500`        |
+| `thousand` | `1,000`              | `2 thousand`  | `2000`       |
+| `lakh`     | `100,000`            | `10 lakh`     | `1000000`    |
+| `million`  | `1,000,000`          | `5 million`   | `5000000`    |
+| `crore`    | `10,000,000`         | `1.5 crore`   | `15000000`   |
+| `billion`  | `1,000,000,000`      | `1 billion`   | `1000000000` |
+| `trillion` | `1,000,000,000,000`  | `1 trillion`  | `1E12`       |
 
 ### Radix base conversions
 

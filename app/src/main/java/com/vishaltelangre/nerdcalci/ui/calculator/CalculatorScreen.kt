@@ -660,7 +660,7 @@ fun CalculatorScreen(
                     },
                     actions = {
                         IconButton(
-                            onClick = { viewModel.undo(fileId) },
+                            onClick = { viewModel.undo(fileId, effectiveRationalMode) },
                             enabled = canUndo
                         ) {
                             Icon(
@@ -671,7 +671,7 @@ fun CalculatorScreen(
                         }
 
                         IconButton(
-                            onClick = { viewModel.redo(fileId) },
+                            onClick = { viewModel.redo(fileId, effectiveRationalMode) },
                             enabled = canRedo
                         ) {
                             Icon(
@@ -1090,7 +1090,7 @@ fun CalculatorScreen(
                         },
                         onEnter = { expression, splitIndex ->
                             coroutineScope.launch {
-                                val newId = viewModel.splitLine(line.id, splitIndex, expression)
+                                val newId = viewModel.splitLine(line.id, splitIndex, expression, effectiveRationalMode)
                                 focusLineId = newId
                                 // New lines created via Enter (splitting) have a leading space;
                                 // we want to focus at the very start of the moved text (pos 0).
@@ -1106,7 +1106,7 @@ fun CalculatorScreen(
                                     focusLineId = prevLine.id
                                     focusCursorPosition = prevLine.expression.length
                                 }
-                                viewModel.deleteLine(line)
+                                viewModel.deleteLine(line, effectiveRationalMode)
                             }
                         },
                         onMergeWithPrevious = {
@@ -1117,7 +1117,7 @@ fun CalculatorScreen(
                                 focusCursorPosition = prevLine.expression.length
 
                                 coroutineScope.launch {
-                                    viewModel.mergeLines(prevLine.id, currentLine.id)
+                                    viewModel.mergeLines(prevLine.id, currentLine.id, effectiveRationalMode)
                                 }
                             }
                         },

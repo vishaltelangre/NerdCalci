@@ -506,7 +506,7 @@ class CalculatorViewModel(
         updateUndoRedoState(fileId)
     }
 
-    fun undo(fileId: Long) {
+    fun undo(fileId: Long, rationalMode: Boolean? = null) {
         viewModelScope.launch(Dispatchers.IO) {
             calculationMutex.withLock {
                 val undoStack = undoStacks[fileId] ?: return@withLock
@@ -520,14 +520,14 @@ class CalculatorViewModel(
 
                 // Restore previous state
                 val previousSnapshot = undoStack.removeAt(undoStack.size - 1)
-                restoreSnapshot(fileId, previousSnapshot)
+                restoreSnapshot(fileId, previousSnapshot, rationalMode)
 
                 updateUndoRedoState(fileId)
             }
         }
     }
 
-    fun redo(fileId: Long) {
+    fun redo(fileId: Long, rationalMode: Boolean? = null) {
         viewModelScope.launch(Dispatchers.IO) {
             calculationMutex.withLock {
                 val redoStack = redoStacks[fileId] ?: return@withLock
@@ -541,19 +541,19 @@ class CalculatorViewModel(
 
                 // Restore redo state
                 val redoSnapshot = redoStack.removeAt(redoStack.size - 1)
-                restoreSnapshot(fileId, redoSnapshot)
+                restoreSnapshot(fileId, redoSnapshot, rationalMode)
 
                 updateUndoRedoState(fileId)
             }
         }
     }
 
-    private suspend fun restoreSnapshot(fileId: Long, snapshot: FileSnapshot) {
+    private suspend fun restoreSnapshot(fileId: Long, snapshot: FileSnapshot, rationalMode: Boolean? = null) {
         dao.restoreLines(fileId, snapshot.lines)
 
         // Recalculate everything and batch-write results in one transaction
         val allLines = dao.getLinesForFileSync(fileId)
-        val effectiveRationalMode = _rationalMode.value
+        val effectiveRationalMode = rationalMode ?: _rationalMode.value
         val calculatedLines = MathEngine.calculate(allLines, createFileContextLoader(fileId, effectiveRationalMode), rationalMode = effectiveRationalMode)
         val versionedLines = calculatedLines.map { it.copy(version = it.version + 1) }
         dao.updateLines(fileId, versionedLines)

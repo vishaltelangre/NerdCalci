@@ -3399,7 +3399,7 @@ class UnitConversionStaticTest {
         assertEquals("MtTNT to J", 41840000000000000.0, val68!!, 0.05)
         val val69 = result[69].result.substringBefore(' ').toDoubleOrNull()
         assertNotNull(val69)
-        assertEquals("J to tTNT", 2.3900573614E-16, val69!!, 0.05)
+        assertEquals("J to MtTNT", 2.3900573614E-16, val69!!, 0.05)
     }
 
     @Test

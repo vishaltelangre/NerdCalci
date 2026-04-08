@@ -633,19 +633,19 @@ object UnitConverter {
     }
 
     private fun speedAndTimeToLength(speed: String, time: String): String? {
-        if(speed == "mps" && time == "s") return "m"
-        if(speed == "kmh" && time == "h") return "km"
-        if(speed == "mph" && time == "h") return "mi"
-        if(speed == "fps" && time == "s") return "ft"
-        return null;
+        if (speed == "mps" && time == "s") return "m"
+        if (speed == "kmh" && time == "h") return "km"
+        if (speed == "mph" && time == "h") return "mi"
+        if (speed == "fps" && time == "s") return "ft"
+        return null
     }
 
     private fun lengthAndTimeToSpeed(length: String, time: String): String? {
-        if(length == "m" && time == "s") return "mps"
-        if(length == "km" && time == "h") return "kmh"
-        if(length == "mi" && time == "h") return "mph"
-        if(length == "ft" && time == "s") return "fps"
-        return null;
+        if (length == "m" && time == "s") return "mps"
+        if (length == "km" && time == "h") return "kmh"
+        if (length == "mi" && time == "h") return "mph"
+        if (length == "ft" && time == "s") return "fps"
+        return null
     }
 
     fun isNumeralSystemSymbol(symbol: String): Boolean {

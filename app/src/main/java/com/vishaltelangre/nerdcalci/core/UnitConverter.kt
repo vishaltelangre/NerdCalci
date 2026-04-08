@@ -54,6 +54,9 @@ object UnitConverter {
         }),
         UnitRule(UnitCategory.SPEED, UnitCategory.TIME, result = { left, right ->
             speedAndTimeToLength(left.symbols[0], right.symbols[0])
+        }),
+        UnitRule(UnitCategory.TIME, UnitCategory.SPEED, result = { left, right ->
+            speedAndTimeToLength(right.symbols[0], left.symbols[0])
         })
     )
 

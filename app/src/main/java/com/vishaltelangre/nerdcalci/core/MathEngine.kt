@@ -480,7 +480,8 @@ object MathEngine {
         precision: Int,
         systemLocale: Locale = Locale.getDefault(),
         regionCode: String = RegionUtils.SYSTEM_DEFAULT,
-        groupingSeparatorEnabled: Boolean = true
+        groupingSeparatorEnabled: Boolean = true,
+        showEllipsis: Boolean = false
     ): String {
         if (rawResult.isBlank() || rawResult == "Err") return rawResult
 
@@ -500,7 +501,7 @@ object MathEngine {
         val trimmedUnit = unitStr.trim().lowercase()
         val isNumeralSystem = UnitConverter.isNumeralSystemSymbol(trimmedUnit)
 
-        val formattedResult = if (isNumeralSystem) {
+        val (formattedResult, isTruncated) = if (isNumeralSystem) {
             if (value.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) != 0) return "Err"
             val radix = when (trimmedUnit) {
                 "bin" -> 2
@@ -508,20 +509,34 @@ object MathEngine {
                 "oct" -> 8
                 else -> 10
             }
-            formatNumeralSystem(value.toLong(), radix)
-        } else if (numStr.contains('E', ignoreCase = true) ||
-                   value.abs() >= BigDecimal("1000000000000000") || // 10^15, reasonable threshold before Long range end
-                   (value.abs() < BigDecimal("0.001") && value.abs() > BigDecimal.ZERO)) {
-            formatScientific(value, safePrecision, locale)
+            formatNumeralSystem(value.toLong(), radix) to false
         } else {
-            val useIndianStyle = regionCode == "IN" ||
-                    (regionCode == RegionUtils.SYSTEM_DEFAULT && locale.country == "IN")
-            val isWholeNumber = value.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) == 0
-            val forcePrecision = !isWholeNumber // Only force trailing zeros for actual decimals
-            formatLocalized(value, safePrecision, locale, alwaysDecimal = false, forcePrecision = forcePrecision, useIndianStyle = useIndianStyle, groupingSeparatorEnabled = groupingSeparatorEnabled)
+            val isScientific = numStr.contains('E', ignoreCase = true) ||
+                    value.abs() >= BigDecimal("1000000000000000") || // 10^15
+                    (value.abs() < BigDecimal("0.001") && value.abs() > BigDecimal.ZERO)
+
+            val truncated = if (isScientific) {
+                isScientificTruncated(value, safePrecision)
+            } else {
+                value.compareTo(value.setScale(safePrecision, java.math.RoundingMode.HALF_UP)) != 0
+            }
+
+            val roundingMode = if (truncated && showEllipsis) java.math.RoundingMode.DOWN else java.math.RoundingMode.HALF_UP
+
+            val formatted = if (isScientific) {
+                formatScientific(value, safePrecision, locale, roundingMode)
+            } else {
+                val useIndianStyle = regionCode == "IN" ||
+                        (regionCode == RegionUtils.SYSTEM_DEFAULT && locale.country == "IN")
+                val isWholeNumber = value.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) == 0
+                val forcePrecision = !isWholeNumber // Only force trailing zeros for actual decimals
+                formatLocalized(value, safePrecision, locale, alwaysDecimal = false, forcePrecision = forcePrecision, useIndianStyle = useIndianStyle, groupingSeparatorEnabled = groupingSeparatorEnabled, roundingMode = roundingMode)
+            }
+            formatted to truncated
         }
 
-        return if (isNumeralSystem) formattedResult else formattedResult + unitStr
+        val ellipsis = if (isTruncated && showEllipsis) "…" else ""
+        return if (isNumeralSystem) formattedResult else formattedResult + ellipsis + unitStr
     }
 
     /** Helper to format BigDecimal like Double for integers but with BigDecimal's precision for decimals. */
@@ -569,13 +584,14 @@ object MathEngine {
         alwaysDecimal: Boolean,
         forcePrecision: Boolean = false,
         useIndianStyle: Boolean = false,
-        groupingSeparatorEnabled: Boolean = true
+        groupingSeparatorEnabled: Boolean = true,
+        roundingMode: java.math.RoundingMode = java.math.RoundingMode.HALF_UP
     ): String {
         val symbols = getSafeSymbols(locale, groupingSeparatorEnabled)
+        val roundedValue = value.setScale(precision, roundingMode)
 
         if (useIndianStyle) {
-            val rounded = value.setScale(precision, java.math.RoundingMode.HALF_UP)
-            val s = rounded.toPlainString()
+            val s = roundedValue.toPlainString()
             val parts = s.split('.', limit = 2)
             val integerPart = parts[0]
             val decimalPart = parts.getOrNull(1)
@@ -612,7 +628,7 @@ object MathEngine {
         formatter.maximumFractionDigits = precision
         formatter.minimumFractionDigits = if (forcePrecision) precision else if (alwaysDecimal) 1 else 0
 
-        return formatter.format(value)
+        return formatter.format(roundedValue)
     }
 
     private fun formatIndianStyle(unsigned: String, separator: Char): String {
@@ -627,14 +643,27 @@ object MathEngine {
     }
 
 
-    private fun formatScientific(value: BigDecimal, precision: Int, locale: Locale): String {
+    private fun isScientificTruncated(value: BigDecimal, precision: Int): Boolean {
+        if (value.compareTo(BigDecimal.ZERO) == 0) return false
+        val exponent = value.precision() - value.scale() - 1
+        val mantissa = value.movePointLeft(exponent)
+        val roundedMantissa = mantissa.setScale(precision.coerceAtLeast(0), java.math.RoundingMode.HALF_UP)
+        return mantissa.compareTo(roundedMantissa) != 0
+    }
+
+    private fun formatScientific(
+        value: BigDecimal,
+        precision: Int,
+        locale: Locale,
+        roundingMode: java.math.RoundingMode = java.math.RoundingMode.HALF_UP
+    ): String {
         val exponent = value.precision() - value.scale() - 1
         val mantissaScale = precision.coerceAtLeast(0)
-        var mantissa = value.movePointLeft(exponent).setScale(mantissaScale, java.math.RoundingMode.HALF_UP)
+        var mantissa = value.movePointLeft(exponent).setScale(mantissaScale, roundingMode)
         var adjustedExponent = exponent
 
         if (mantissa.abs() >= BigDecimal.TEN) {
-            mantissa = mantissa.movePointLeft(1).setScale(mantissaScale, java.math.RoundingMode.HALF_UP)
+            mantissa = mantissa.movePointLeft(1).setScale(mantissaScale, roundingMode)
             adjustedExponent += 1
         }
 

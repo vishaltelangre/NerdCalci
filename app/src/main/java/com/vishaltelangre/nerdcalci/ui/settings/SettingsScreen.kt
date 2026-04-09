@@ -55,6 +55,7 @@ import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.SpaceBar
 import androidx.compose.material.icons.filled.BorderHorizontal
 import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -140,10 +141,14 @@ fun SettingsScreen(
     onRationalModeChange: (Boolean) -> Unit,
     groupingSeparatorEnabled: Boolean,
     onGroupingSeparatorEnabledChange: (Boolean) -> Unit,
+    showPrecisionEllipsis: Boolean,
+    onShowPrecisionEllipsisChange: (Boolean) -> Unit,
     launchMode: LaunchMode,
     onLaunchModeChange: (LaunchMode) -> Unit,
     launchFileId: Long?,
     onLaunchFileIdChange: (Long?) -> Unit,
+    showScratchpad: Boolean,
+    onShowScratchpadChange: (Boolean) -> Unit,
     allFiles: List<FileEntity>,
     onAutoValidateLaunchFile: () -> Unit,
     onValidateLaunchFile: (Long, (Boolean) -> Unit) -> Unit,
@@ -379,6 +384,49 @@ fun SettingsScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 56.dp).padding(bottom = 8.dp)
             )
+
+            SettingsToggleItem(
+                icon = Icons.Default.MoreHoriz,
+                title = "Truncate too precise numbers with ellipsis",
+                subtitle = "Show ellipsis (e.g., 0.123…) for results with more decimal places than the current precision setting.",
+                checked = showPrecisionEllipsis,
+                onCheckedChange = onShowPrecisionEllipsisChange
+            )
+
+            val mutedEllipsisColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            Text(
+                text = remember(showPrecisionEllipsis, precision, mutedEllipsisColor) {
+                    val base = "0.12345678901"
+                    val formatted = MathEngine.formatDisplayResult(
+                        base,
+                        precision,
+                        showEllipsis = showPrecisionEllipsis
+                    )
+                    buildAnnotatedString {
+                        if (showPrecisionEllipsis && formatted.endsWith("…")) {
+                            append(formatted.dropLast(1))
+                            withStyle(SpanStyle(color = mutedEllipsisColor, fontWeight = FontWeight.Normal)) {
+                                append("…")
+                            }
+                        } else {
+                            append(formatted)
+                        }
+                    }
+                },
+                style = MaterialTheme.typography.labelMedium.copy(fontFamily = FiraCodeFamily),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 56.dp).padding(bottom = 8.dp)
+            )
+
+            if (launchMode != LaunchMode.SCRATCHPAD) {
+                SettingsToggleItem(
+                    icon = Icons.Default.FlashOn,
+                    title = "Show temporary scratchpad shortcut on home",
+                    subtitle = "Always show a bolt icon on the home screen to quickly open the temporary scratchpad.",
+                    checked = showScratchpad,
+                    onCheckedChange = onShowScratchpadChange
+                )
+            }
 
             SettingsDropdownItem(
                 icon = when (launchMode) {

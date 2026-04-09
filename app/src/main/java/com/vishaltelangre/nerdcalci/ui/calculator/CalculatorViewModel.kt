@@ -131,10 +131,20 @@ class CalculatorViewModel(
     )
     val syncFolderUri: StateFlow<String?> = _syncFolderUri
 
-    private val _lastSyncAt = MutableStateFlow(
+    private val _lastSyncAt = MutableStateFlow<Long?>(
         prefs?.getLong(SyncManager.PREF_LAST_SYNC_AT, 0L)?.takeIf { it > 0L }
     )
     val lastSyncAt: StateFlow<Long?> = _lastSyncAt
+
+    private val _showPrecisionEllipsis = MutableStateFlow(
+        prefs?.getBoolean(Constants.PREF_SHOW_PRECISION_ELLIPSIS, false) ?: false
+    )
+    val showPrecisionEllipsis: StateFlow<Boolean> = _showPrecisionEllipsis
+
+    private val _showScratchpad = MutableStateFlow(
+        prefs?.getBoolean(Constants.PREF_SHOW_SCRATCHPAD, true) ?: true
+    )
+    val showScratchpad: StateFlow<Boolean> = _showScratchpad
 
     // Mutex to ensure atomic recalculation cycles per fileId
     private val calculationMutex = Mutex()
@@ -194,13 +204,15 @@ class CalculatorViewModel(
                 val fileId = when (mode) {
                     LaunchMode.NOT_SET -> null
                     LaunchMode.SCRATCHPAD -> {
-                        // Wait for scratchpad to be ready if it's not yet
-                        var retry = 0
-                        while (_scratchpadFileId.value == null && retry < 10) {
-                            kotlinx.coroutines.delay(100)
-                            retry++
+                        if (!_showScratchpad.value) null else {
+                            // Wait for scratchpad to be ready if it's not yet
+                            var retry = 0
+                            while (_scratchpadFileId.value == null && retry < 10) {
+                                kotlinx.coroutines.delay(100)
+                                retry++
+                            }
+                            _scratchpadFileId.value
                         }
-                        _scratchpadFileId.value
                     }
                     LaunchMode.JOURNAL -> {
                         val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
@@ -388,21 +400,41 @@ class CalculatorViewModel(
 
     fun setLaunchMode(mode: LaunchMode) {
         _launchMode.value = mode
-        val editor = prefs?.edit() ?: return
-        editor.putString(Constants.PREF_LAUNCH_MODE, mode.prefValue)
-        if (mode != LaunchMode.SPECIFIC_FILE) {
-            editor.remove(Constants.PREF_LAUNCH_FILE_ID)
-            _launchFileId.value = null
+
+        // If switching to SCRATCHPAD auto-open mode, ensure scratchpad is visible on home
+        if (mode == LaunchMode.SCRATCHPAD) {
+            setShowScratchpad(true)
         }
-        editor.apply()
+
+        val editor = prefs?.edit()
+        if (mode != LaunchMode.SPECIFIC_FILE) {
+            _launchFileId.value = null
+            editor?.remove(Constants.PREF_LAUNCH_FILE_ID)
+        }
+        editor
+            ?.putString(Constants.PREF_LAUNCH_MODE, mode.prefValue)
+            ?.apply()
+    }
+
+    fun setShowScratchpad(show: Boolean) {
+        _showScratchpad.value = show
+        prefs?.edit()?.putBoolean(Constants.PREF_SHOW_SCRATCHPAD, show)?.apply()
+
+        // If the scratchpad is hidden from home, also ensure it's not set to auto-open on launch
+        if (!show && _launchMode.value == LaunchMode.SCRATCHPAD) {
+            setLaunchMode(LaunchMode.NOT_SET)
+        }
     }
 
     fun setLaunchFileId(fileId: Long?) {
         _launchFileId.value = fileId
+        if (fileId != null) {
+            setLaunchMode(LaunchMode.SPECIFIC_FILE)
+        }
+
         val prefs = prefs ?: return
         if (fileId != null) {
             prefs.edit().putLong(Constants.PREF_LAUNCH_FILE_ID, fileId).apply()
-            setLaunchMode(LaunchMode.SPECIFIC_FILE)
         } else {
             prefs.edit().remove(Constants.PREF_LAUNCH_FILE_ID).apply()
         }
@@ -475,6 +507,11 @@ class CalculatorViewModel(
     fun setShowSymbolsShortcuts(enabled: Boolean) {
         _showSymbolsShortcuts.value = enabled
         prefs?.edit()?.putBoolean(PREF_SHOW_SYMBOLS_SHORTCUTS, enabled)?.apply()
+    }
+
+    fun setShowPrecisionEllipsis(enabled: Boolean) {
+        _showPrecisionEllipsis.value = enabled
+        prefs?.edit()?.putBoolean(Constants.PREF_SHOW_PRECISION_ELLIPSIS, enabled)?.apply()
     }
 
     fun setRationalMode(enabled: Boolean) {

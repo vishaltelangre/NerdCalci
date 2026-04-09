@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.6.0] - 2026-04-09
+### Added
+- Added a global setting to show an ellipsis for truncated numbers that exceed the configured result precision (Issue #106).
+- Added a configurable setting to show or hide the temporary scratchpad shortcut on the home screen via a new bolt icon (Issue #109).
+
+### Fixed
+- Fixed an issue where changing "Auto-open a file on launch" settings caused unintended navigation.
+- Fixed an issue where the calculator's last sync time was not persisted across application restarts.
+
 ## [3.5.0] - 2026-04-09
 ### Added
 - Added flexible auto-open on launch modes: Choose between Home, Scratchpad, Daily Journal, or a Specific file (Issue #108).

@@ -511,13 +511,19 @@ object MathEngine {
             }
             formatNumeralSystem(value.toLong(), radix) to false
         } else {
-            val rounded = value.setScale(safePrecision, java.math.RoundingMode.HALF_UP)
-            val truncated = value.compareTo(rounded) != 0
+            val isScientific = numStr.contains('E', ignoreCase = true) ||
+                    value.abs() >= BigDecimal("1000000000000000") || // 10^15
+                    (value.abs() < BigDecimal("0.001") && value.abs() > BigDecimal.ZERO)
+
+            val truncated = if (isScientific) {
+                isScientificTruncated(value, safePrecision)
+            } else {
+                value.compareTo(value.setScale(safePrecision, java.math.RoundingMode.HALF_UP)) != 0
+            }
+
             val roundingMode = if (truncated && showEllipsis) java.math.RoundingMode.DOWN else java.math.RoundingMode.HALF_UP
 
-            val formatted = if (numStr.contains('E', ignoreCase = true) ||
-                value.abs() >= BigDecimal("1000000000000000") || // 10^15, reasonable threshold before Long range end
-                (value.abs() < BigDecimal("0.001") && value.abs() > BigDecimal.ZERO)) {
+            val formatted = if (isScientific) {
                 formatScientific(value, safePrecision, locale, roundingMode)
             } else {
                 val useIndianStyle = regionCode == "IN" ||
@@ -636,6 +642,14 @@ object MathEngine {
         return (first3 + separator + groupedRest).reversed()
     }
 
+
+    private fun isScientificTruncated(value: BigDecimal, precision: Int): Boolean {
+        if (value.compareTo(BigDecimal.ZERO) == 0) return false
+        val exponent = value.precision() - value.scale() - 1
+        val mantissa = value.movePointLeft(exponent)
+        val roundedMantissa = mantissa.setScale(precision.coerceAtLeast(0), java.math.RoundingMode.HALF_UP)
+        return mantissa.compareTo(roundedMantissa) != 0
+    }
 
     private fun formatScientific(
         value: BigDecimal,

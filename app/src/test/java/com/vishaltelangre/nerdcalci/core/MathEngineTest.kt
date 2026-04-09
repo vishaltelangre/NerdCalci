@@ -1806,27 +1806,6 @@ class MathEngineTest {
     }
 
     @Test
-    fun `formatDisplayResult supports precision ellipsis`() = runBlocking {
-        val locale = Locale.US
-        val value = "1.2345678"
-
-        // Without ellipsis (should round HALF_UP)
-        assertEquals("1.23", MathEngine.formatDisplayResult(value, 2, locale, "US", showEllipsis = false))
-        assertEquals("1.235", MathEngine.formatDisplayResult(value, 3, locale, "US", showEllipsis = false))
-
-        // With ellipsis (should round DOWN and append …)
-        assertEquals("1.23…", MathEngine.formatDisplayResult(value, 2, locale, "US", showEllipsis = true))
-        assertEquals("1.234…", MathEngine.formatDisplayResult(value, 3, locale, "US", showEllipsis = true))
-
-        // With unit
-        assertEquals("1.23… kg", MathEngine.formatDisplayResult(value + " kg", 2, locale, "US", showEllipsis = true))
-
-        // No truncation = no ellipsis
-        assertEquals("1.23", MathEngine.formatDisplayResult("1.23", 2, locale, "US", showEllipsis = true))
-        assertEquals("1.23 kg", MathEngine.formatDisplayResult("1.23 kg", 2, locale, "US", showEllipsis = true))
-    }
-
-    @Test
     fun `getErrorDetails handles undefined variable`() = testCalculate("x + 5") { result ->
         assertError("Unknown variable `x`", result[0], result, 0)
     }

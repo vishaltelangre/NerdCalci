@@ -42,6 +42,17 @@ class PrecisionEllipsisTest {
     }
 
     @Test
+    fun `standard notation ellipsis - truncated negative`() {
+        val result = engine.formatDisplayResult(
+            rawResult = "-1.23456",
+            precision = 2,
+            showEllipsis = true
+        )
+        // -1.23456 truncated to 2 decimals with DOWN rounding (towards zero) -> -1.23
+        assertEquals("-1.23…", result)
+    }
+
+    @Test
     fun `standard notation ellipsis - exact`() {
         val result = engine.formatDisplayResult(
             rawResult = "1.23",
@@ -110,5 +121,16 @@ class PrecisionEllipsisTest {
         )
         // 1.23456E2 -> 1.23E2...
         assertEquals("1.23E2…", result)
+    }
+
+    @Test
+    fun `scientific notation ellipsis - truncated negative`() {
+        val result = engine.formatDisplayResult(
+            rawResult = "-1.23456E2",
+            precision = 2,
+            showEllipsis = true
+        )
+        // -1.23456E2 -> -1.23E2...
+        assertEquals("-1.23E2…", result)
     }
 }

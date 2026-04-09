@@ -1,2 +1,2 @@
-- Fixed Rational mode resetting when splitting, merging, or deleting lines, and when using undo/redo.
-- Added flexible auto-open on launch modes: Choose between Home, Scratchpad, Daily Journal, or a Specific file.
+- Fixed Rational mode resetting when splitting, merging, or deleting lines, and when using undo/redo (Issue #107).
+- Added flexible auto-open on launch modes: Choose between Home, Scratchpad, Daily Journal, or a Specific file (Issue #108).

@@ -139,6 +139,11 @@ class CalculatorViewModel(
     )
     val showPrecisionEllipsis: StateFlow<Boolean> = _showPrecisionEllipsis
 
+    private val _showScratchpad = MutableStateFlow(
+        prefs?.getBoolean(Constants.PREF_SHOW_SCRATCHPAD, true) ?: true
+    )
+    val showScratchpad: StateFlow<Boolean> = _showScratchpad
+
     // Mutex to ensure atomic recalculation cycles per fileId
     private val calculationMutex = Mutex()
 
@@ -398,6 +403,16 @@ class CalculatorViewModel(
             _launchFileId.value = null
         }
         editor.apply()
+
+        // If switching to SCRATCHPAD auto-open mode, ensure scratchpad is visible on home
+        if (mode == LaunchMode.SCRATCHPAD) {
+            setShowScratchpad(true)
+        }
+    }
+
+    fun setShowScratchpad(show: Boolean) {
+        _showScratchpad.value = show
+        prefs?.edit()?.putBoolean(Constants.PREF_SHOW_SCRATCHPAD, show)?.apply()
     }
 
     fun setLaunchFileId(fileId: Long?) {

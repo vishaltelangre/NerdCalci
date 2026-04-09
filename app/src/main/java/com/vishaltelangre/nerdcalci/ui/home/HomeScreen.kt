@@ -96,7 +96,8 @@ fun HomeScreen(
     launchMode: LaunchMode,
     autoOpenFileId: Long?,
     isAutoOpenReady: Boolean,
-    suppressAutoOpenScratchpad: Boolean = false
+    suppressAutoOpenScratchpad: Boolean = false,
+    showScratchpad: Boolean = true
 ) {
     val context = LocalContext.current
     val files by viewModel.allFiles.collectAsState(initial = emptyList())
@@ -206,11 +207,28 @@ fun HomeScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { createFile() },
-                containerColor = MaterialTheme.colorScheme.primary
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Icon(Icons.Default.Add, contentDescription = "New Calculation")
+                if (showScratchpad) {
+                    scratchpadFileId?.let { id ->
+                        FloatingActionButton(
+                            onClick = { onFileClick(id) },
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        ) {
+                            Icon(Icons.Default.FlashOn, contentDescription = "Open temporary scratchpad")
+                        }
+                    }
+                }
+
+                FloatingActionButton(
+                    onClick = { createFile() },
+                    containerColor = MaterialTheme.colorScheme.primary
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "New Calculation")
+                }
             }
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
@@ -264,16 +282,18 @@ fun HomeScreen(
                             textAlign = TextAlign.Center,
                             modifier = Modifier.padding(bottom = 20.dp)
                         )
-                        scratchpadFileId?.let { id ->
-                            OutlinedButton(
-                                onClick = { onFileClick(id) },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Icon(Icons.Default.FlashOn, contentDescription = null)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Open Scratchpad")
+                        if (showScratchpad) {
+                            scratchpadFileId?.let { id ->
+                                OutlinedButton(
+                                    onClick = { onFileClick(id) },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Icon(Icons.Default.FlashOn, contentDescription = null)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Open temporary scratchpad")
+                                }
+                                Spacer(modifier = Modifier.height(10.dp))
                             }
-                            Spacer(modifier = Modifier.height(10.dp))
                         }
                         Button(
                             onClick = { createFile() },
@@ -329,7 +349,6 @@ fun HomeScreen(
                             visiblePinnedFiles = visiblePinnedFiles,
                             visibleUnpinnedFiles = visibleUnpinnedFiles,
                             excludedFileIds = excludedFileIds,
-                            scratchpadFileId = scratchpadFileId,
                             onFileClick = onFileClick,
                             coroutineScope = coroutineScope,
                             snackbarHostState = snackbarHostState,
@@ -342,7 +361,6 @@ fun HomeScreen(
                         visiblePinnedFiles = visiblePinnedFiles,
                         visibleUnpinnedFiles = visibleUnpinnedFiles,
                         excludedFileIds = excludedFileIds,
-                        scratchpadFileId = scratchpadFileId,
                         onFileClick = onFileClick,
                         coroutineScope = coroutineScope,
                         snackbarHostState = snackbarHostState,
@@ -360,7 +378,6 @@ private fun HomeFileList(
     visiblePinnedFiles: List<FileEntity>,
     visibleUnpinnedFiles: List<FileEntity>,
     excludedFileIds: Set<Long>,
-    scratchpadFileId: Long?,
     onFileClick: (Long) -> Unit,
     coroutineScope: CoroutineScope,
     snackbarHostState: SnackbarHostState,
@@ -371,56 +388,6 @@ private fun HomeFileList(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 96.dp)
     ) {
-        scratchpadFileId?.let { id ->
-            item {
-                SectionHeader(title = "Quick Access")
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .clip(MaterialTheme.shapes.medium)
-                        .clickable { onFileClick(id) },
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .padding(16.dp)
-                            .fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(MaterialTheme.colorScheme.primaryContainer),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.FlashOn,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Column {
-                            Text(
-                                text = Constants.SCRATCHPAD_DISPLAY_NAME,
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = "Temporary file • Changes not saved",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-            }
-        }
 
         if (visiblePinnedFiles.isNotEmpty()) {
             item { SectionHeader(title = "Pinned") }

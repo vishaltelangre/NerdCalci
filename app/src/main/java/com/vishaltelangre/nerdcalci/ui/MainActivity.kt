@@ -156,6 +156,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
     val isAutoOpenReady by viewModel.isAutoOpenReady.collectAsState()
     val allFiles by viewModel.allFiles.collectAsState(initial = emptyList())
     val showPrecisionEllipsis by viewModel.showPrecisionEllipsis.collectAsState()
+    val showScratchpad by viewModel.showScratchpad.collectAsState()
     val customBackupFolderSummary = remember(customBackupFolderUri) {
         val uriString = customBackupFolderUri
         if (uriString != null) {
@@ -307,7 +308,8 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
                 launchMode = launchMode,
                 autoOpenFileId = autoOpenFileId,
                 isAutoOpenReady = isAutoOpenReady,
-                suppressAutoOpenScratchpad = suppressHomeAutoOpenOnce
+                suppressAutoOpenScratchpad = suppressHomeAutoOpenOnce,
+                showScratchpad = showScratchpad
             )
         }
 
@@ -416,6 +418,8 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
                 allFiles = allFiles,
                 onLaunchModeChange = { viewModel.setLaunchMode(it) },
                 onLaunchFileIdChange = { viewModel.setLaunchFileId(it) },
+                showScratchpad = showScratchpad,
+                onShowScratchpadChange = { viewModel.setShowScratchpad(it) },
                 onAutoValidateLaunchFile = {
                     viewModel.validateSpecificFileSetting()
                 },

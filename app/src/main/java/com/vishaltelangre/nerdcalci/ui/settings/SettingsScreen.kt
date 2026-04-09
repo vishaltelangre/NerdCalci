@@ -147,6 +147,8 @@ fun SettingsScreen(
     onLaunchModeChange: (LaunchMode) -> Unit,
     launchFileId: Long?,
     onLaunchFileIdChange: (Long?) -> Unit,
+    showScratchpad: Boolean,
+    onShowScratchpadChange: (Boolean) -> Unit,
     allFiles: List<FileEntity>,
     onAutoValidateLaunchFile: () -> Unit,
     onValidateLaunchFile: (Long, (Boolean) -> Unit) -> Unit,
@@ -416,6 +418,16 @@ fun SettingsScreen(
                 modifier = Modifier.padding(horizontal = 56.dp).padding(bottom = 8.dp)
             )
 
+
+            if (launchMode != LaunchMode.SCRATCHPAD) {
+                SettingsToggleItem(
+                    icon = Icons.Default.FlashOn,
+                    title = "Show temporary scratchpad shortcut on home",
+                    subtitle = "Always show a bolt icon on the home screen to quickly open the temporary scratchpad.",
+                    checked = showScratchpad,
+                    onCheckedChange = onShowScratchpadChange
+                )
+            }
 
             SettingsDropdownItem(
                 icon = when (launchMode) {

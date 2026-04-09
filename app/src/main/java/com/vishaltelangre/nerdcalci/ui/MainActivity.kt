@@ -146,7 +146,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
     val showNumbersShortcuts by viewModel.showNumbersShortcuts.collectAsState()
     val regionCode by viewModel.regionCode.collectAsState()
     val restoreProgress by viewModel.restoreProgress.collectAsState()
-    
+
     val syncEnabled by viewModel.syncEnabled.collectAsState()
     val syncFolderUri by viewModel.syncFolderUri.collectAsState()
     val lastSyncAt by viewModel.lastSyncAt.collectAsState()
@@ -248,7 +248,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
     val slideOutToLeft = slideOutHorizontally(animationSpec = tween(300), targetOffsetX = { fullWidth: Int -> -fullWidth / 3 })
     val slideInFromLeft = slideInHorizontally(animationSpec = tween(300), initialOffsetX = { fullWidth: Int -> -fullWidth / 3 })
     val slideOutToRight = slideOutHorizontally(animationSpec = tween(300), targetOffsetX = { fullWidth: Int -> fullWidth })
-    
+
     val initialStartDestination = remember { if (viewModel.launchMode.value != LaunchMode.NOT_SET) "startup" else "home" }
 
     NavHost(
@@ -272,14 +272,14 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
                         launchSingleTop = true
                     }
                 } else if (isAutoOpenReady && autoOpenFileId != null) {
-                    suppressHomeAutoOpenOnce = true
-                    navController.navigate("home") {
-                        popUpTo("startup") { inclusive = true }
-                        launchSingleTop = true
+                        suppressHomeAutoOpenOnce = true
+                        navController.navigate("home") {
+                            popUpTo("startup") { inclusive = true }
+                            launchSingleTop = true
+                        }
+                        navController.navigate("editor/$autoOpenFileId")
                     }
-                    navController.navigate("editor/$autoOpenFileId")
                 }
-            }
 
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -379,7 +379,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
                         }
                     }
                 },
-                onBackupNowAtDifferentLocation = { 
+                onBackupNowAtDifferentLocation = {
                     val timestamp = SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.getDefault()).format(Date())
                     val filename = "nerdcalci_backup_$timestamp.zip"
                     exportLauncher.launch(filename)
@@ -387,8 +387,8 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
                 lastBackupAt = lastBackupAt,
                 availableBackups = availableBackups,
                 onRestoreBackup = { backup -> viewModel.restoreFromBackup(context, backup) },
-                onRestoreFromDifferentLocation = { 
-                    importLauncher.launch(arrayOf(Constants.EXPORT_MIME_TYPE)) 
+                onRestoreFromDifferentLocation = {
+                    importLauncher.launch(arrayOf(Constants.EXPORT_MIME_TYPE))
                 },
                 precision = precision,
                 onPrecisionChange = { newPrecision -> viewModel.setPrecision(newPrecision) },

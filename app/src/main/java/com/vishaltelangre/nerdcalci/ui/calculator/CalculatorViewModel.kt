@@ -400,18 +400,20 @@ class CalculatorViewModel(
 
     fun setLaunchMode(mode: LaunchMode) {
         _launchMode.value = mode
-        val editor = prefs?.edit() ?: return
-        editor.putString(Constants.PREF_LAUNCH_MODE, mode.prefValue)
-        if (mode != LaunchMode.SPECIFIC_FILE) {
-            editor.remove(Constants.PREF_LAUNCH_FILE_ID)
-            _launchFileId.value = null
-        }
-        editor.apply()
 
         // If switching to SCRATCHPAD auto-open mode, ensure scratchpad is visible on home
         if (mode == LaunchMode.SCRATCHPAD) {
             setShowScratchpad(true)
         }
+
+        val editor = prefs?.edit()
+        if (mode != LaunchMode.SPECIFIC_FILE) {
+            _launchFileId.value = null
+            editor?.remove(Constants.PREF_LAUNCH_FILE_ID)
+        }
+        editor
+            ?.putString(Constants.PREF_LAUNCH_MODE, mode.prefValue)
+            ?.apply()
     }
 
     fun setShowScratchpad(show: Boolean) {
@@ -426,10 +428,13 @@ class CalculatorViewModel(
 
     fun setLaunchFileId(fileId: Long?) {
         _launchFileId.value = fileId
+        if (fileId != null) {
+            setLaunchMode(LaunchMode.SPECIFIC_FILE)
+        }
+
         val prefs = prefs ?: return
         if (fileId != null) {
             prefs.edit().putLong(Constants.PREF_LAUNCH_FILE_ID, fileId).apply()
-            setLaunchMode(LaunchMode.SPECIFIC_FILE)
         } else {
             prefs.edit().remove(Constants.PREF_LAUNCH_FILE_ID).apply()
         }

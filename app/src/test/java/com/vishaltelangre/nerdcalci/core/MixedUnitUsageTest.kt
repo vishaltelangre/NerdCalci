@@ -173,17 +173,49 @@ class MixedUnitUsageTest {
 
     @Test
     fun `multiply speed by time`() {
-        testCalculate("10 mps * 5 s", "30 kmh * 2 h") { result ->
+        testCalculate(
+            "10 mps * 5 s",
+            "5 s * 10 mps",
+            "10 kmh * 5 h",
+            "5 h * 10 kmh",
+            "10 mph * 5 h",
+            "5 h * 10 mph",
+            "10 kn * 5 h",
+            "5 h * 10 kn",
+            "10 fps * 5 s",
+            "5 s * 10 fps",
+            "1 speed of light * 10 s",
+            "10 s * 1 speed of light"
+        ) { result ->
             assertEquals("50.0 m", result[0].result)
-            assertEquals("60.0 km", result[1].result)
+            assertEquals("50.0 m", result[1].result)
+            assertEquals("50.0 km", result[2].result)
+            assertEquals("50.0 km", result[3].result)
+            assertEquals("50.0 mi", result[4].result)
+            assertEquals("50.0 mi", result[5].result)
+            assertEquals("49.99995680345572354211663066954644 NM", result[6].result) // Floating point error
+            assertEquals("49.99995680345572354211663066954644 NM", result[7].result)
+            assertEquals("50.0 ft", result[8].result)
+            assertEquals("50.0 ft", result[9].result)
+            assertEquals("2997924580.0 m", result[10].result)
+            assertEquals("2997924580.0 m", result[11].result)
         }
     }
 
     @Test
     fun `divide length by time`() {
-        testCalculate("50 m / 10 s", "30 km / 2 h") { result ->
-            assertEquals("5.0 mps", result[0].result)
-            assertEquals("15.0 kmh", result[1].result)
+        testCalculate(
+            "10 m / 5 s",
+            "10 km / 5 h",
+            "10 mi / 5 h",
+            "10 NM / 5 h",
+            "10 ft / 5 s"
+        ) { result ->
+            assertEquals("2.0 mps", result[0].result)
+            assertEquals("2.0 kmh", result[1].result)
+            assertEquals("2.0 mph", result[2].result)
+            assertEquals("2.000001727863263812754913827139376 kn", result[3].result) // Floating point error
+            assertEquals("2.0 fps", result[4].result)
         }
     }
 }

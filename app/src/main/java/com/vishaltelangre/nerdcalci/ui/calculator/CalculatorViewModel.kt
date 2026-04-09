@@ -131,7 +131,9 @@ class CalculatorViewModel(
     )
     val syncFolderUri: StateFlow<String?> = _syncFolderUri
 
-    private val _lastSyncAt = MutableStateFlow<Long?>(null)
+    private val _lastSyncAt = MutableStateFlow<Long?>(
+        prefs?.getLong(SyncManager.PREF_LAST_SYNC_AT, 0L)?.takeIf { it > 0L }
+    )
     val lastSyncAt: StateFlow<Long?> = _lastSyncAt
 
     private val _showPrecisionEllipsis = MutableStateFlow(

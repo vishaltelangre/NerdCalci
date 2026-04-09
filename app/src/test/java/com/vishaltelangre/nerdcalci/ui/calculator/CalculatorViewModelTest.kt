@@ -1,9 +1,11 @@
 package com.vishaltelangre.nerdcalci.ui.calculator
 
 import android.util.Log
+import android.content.SharedPreferences
 import com.vishaltelangre.nerdcalci.data.local.FakeCalculatorDao
 import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
+import com.vishaltelangre.nerdcalci.data.sync.SyncManager
 import io.mockk.*
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -150,5 +152,18 @@ class CalculatorViewModelTest {
         assertEquals(1, allFiles.size)
         assertEquals("Normal", allFiles[0].name)
         assertTrue(allFiles.none { it.isTemporary })
+    }
+    @Test
+    fun `lastSyncAt is initialized from SharedPreferences`() = runTest {
+        // Given: SharedPreferences has a last sync timestamp
+        val expectedTimestamp = 123456789L
+        val mockPrefs = mockk<SharedPreferences>(relaxed = true)
+        every { mockPrefs.getLong(SyncManager.PREF_LAST_SYNC_AT, 0L) } returns expectedTimestamp
+
+        // When: ViewModel is created with these prefs
+        val testViewModel = CalculatorViewModel(fakeDao, mockPrefs)
+
+        // Then: lastSyncAt should reflect the stored timestamp
+        assertEquals(expectedTimestamp, testViewModel.lastSyncAt.value)
     }
 }

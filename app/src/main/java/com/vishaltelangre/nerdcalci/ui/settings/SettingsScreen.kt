@@ -418,7 +418,6 @@ fun SettingsScreen(
                 modifier = Modifier.padding(horizontal = 56.dp).padding(bottom = 8.dp)
             )
 
-
             if (launchMode != LaunchMode.SCRATCHPAD) {
                 SettingsToggleItem(
                     icon = Icons.Default.FlashOn,

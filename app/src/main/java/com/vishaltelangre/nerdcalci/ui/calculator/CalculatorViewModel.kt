@@ -204,13 +204,15 @@ class CalculatorViewModel(
                 val fileId = when (mode) {
                     LaunchMode.NOT_SET -> null
                     LaunchMode.SCRATCHPAD -> {
-                        // Wait for scratchpad to be ready if it's not yet
-                        var retry = 0
-                        while (_scratchpadFileId.value == null && retry < 10) {
-                            kotlinx.coroutines.delay(100)
-                            retry++
+                        if (!_showScratchpad.value) null else {
+                            // Wait for scratchpad to be ready if it's not yet
+                            var retry = 0
+                            while (_scratchpadFileId.value == null && retry < 10) {
+                                kotlinx.coroutines.delay(100)
+                                retry++
+                            }
+                            _scratchpadFileId.value
                         }
-                        _scratchpadFileId.value
                     }
                     LaunchMode.JOURNAL -> {
                         val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
@@ -415,6 +417,11 @@ class CalculatorViewModel(
     fun setShowScratchpad(show: Boolean) {
         _showScratchpad.value = show
         prefs?.edit()?.putBoolean(Constants.PREF_SHOW_SCRATCHPAD, show)?.apply()
+
+        // If the scratchpad is hidden from home, also ensure it's not set to auto-open on launch
+        if (!show && _launchMode.value == LaunchMode.SCRATCHPAD) {
+            setLaunchMode(LaunchMode.NOT_SET)
+        }
     }
 
     fun setLaunchFileId(fileId: Long?) {

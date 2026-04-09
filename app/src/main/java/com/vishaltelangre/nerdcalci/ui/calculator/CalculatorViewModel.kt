@@ -388,7 +388,13 @@ class CalculatorViewModel(
 
     fun setLaunchMode(mode: LaunchMode) {
         _launchMode.value = mode
-        prefs?.edit()?.putString(Constants.PREF_LAUNCH_MODE, mode.prefValue)?.apply()
+        val editor = prefs?.edit() ?: return
+        editor.putString(Constants.PREF_LAUNCH_MODE, mode.prefValue)
+        if (mode != LaunchMode.SPECIFIC_FILE) {
+            editor.remove(Constants.PREF_LAUNCH_FILE_ID)
+            _launchFileId.value = null
+        }
+        editor.apply()
     }
 
     fun setLaunchFileId(fileId: Long?) {

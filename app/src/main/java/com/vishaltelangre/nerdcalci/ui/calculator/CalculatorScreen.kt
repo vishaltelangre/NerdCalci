@@ -455,6 +455,7 @@ fun CalculatorScreen(
     fileId: Long,
     viewModel: CalculatorViewModel,
     regionCode: String,
+    showPrecisionEllipsis: Boolean,
     onBack: () -> Unit,
     onHelp: () -> Unit,
     onNavigateToFile: (Long) -> Unit = {}
@@ -1050,6 +1051,7 @@ fun CalculatorScreen(
                         numberWidth = numberWidth,
                         availableVariables = availableVariables,
                         fileVariables = fileVariables,
+                        showPrecisionEllipsis = showPrecisionEllipsis,
                         allFiles = files,
                         onGetSuggestionsForFile = viewModel::getSuggestionsForFile,
                         shouldFocus = focusLineId == line.id,
@@ -1216,8 +1218,41 @@ fun CalculatorScreen(
     }
 }
 
-private fun formatResult(text: String, precision: Int, regionCode: String, groupingSeparatorEnabled: Boolean): String {
-    return MathEngine.formatDisplayResult(text, precision, regionCode = regionCode, groupingSeparatorEnabled = groupingSeparatorEnabled)
+private fun formatResult(
+    text: String,
+    precision: Int,
+    regionCode: String,
+    groupingSeparatorEnabled: Boolean,
+    showEllipsis: Boolean = false
+): String {
+    return MathEngine.formatDisplayResult(
+        text,
+        precision,
+        regionCode = regionCode,
+        groupingSeparatorEnabled = groupingSeparatorEnabled,
+        showEllipsis = showEllipsis
+    )
+}
+
+private fun formatAnnotatedResult(
+    text: String,
+    precision: Int,
+    regionCode: String,
+    groupingSeparatorEnabled: Boolean,
+    showPrecisionEllipsis: Boolean,
+    resultColor: Color
+): AnnotatedString {
+    val formatted = formatResult(text, precision, regionCode, groupingSeparatorEnabled, showPrecisionEllipsis)
+    return buildAnnotatedString {
+        if (showPrecisionEllipsis && formatted.endsWith("…")) {
+            append(formatted.dropLast(1))
+            withStyle(SpanStyle(color = resultColor.copy(alpha = 0.5f), fontWeight = FontWeight.Normal)) {
+                append("…")
+            }
+        } else {
+            append(formatted)
+        }
+    }
 }
 
 @Composable
@@ -1264,6 +1299,7 @@ private fun LineRow(
     lineNumber: Int,
     showLineNumbers: Boolean,
     showSuggestions: Boolean,
+    showPrecisionEllipsis: Boolean,
     precision: Int,
     regionCode: String,
     numberWidth: Dp,
@@ -1890,7 +1926,8 @@ private fun LineRow(
                 } else {
                     Modifier.clickable {
                         if (line.result.isNotEmpty()) {
-                            onCopyResult(formatResult(line.result, precision, regionCode, groupingSeparatorEnabled))
+                            // Copying always uses the standard rounded version without ellipsis
+                            onCopyResult(formatResult(line.result, precision, regionCode, groupingSeparatorEnabled, showEllipsis = false))
                             showCopiedTooltip = true
                         }
                     }
@@ -1923,7 +1960,14 @@ private fun LineRow(
                         )
                     }
                     Text(
-                        text = formatResult(line.result, precision, regionCode, groupingSeparatorEnabled),
+                        text = formatAnnotatedResult(
+                            line.result,
+                            precision,
+                            regionCode,
+                            groupingSeparatorEnabled,
+                            showPrecisionEllipsis,
+                            resultColor
+                        ),
                         style = MaterialTheme.typography.bodyLarge.copy(
                             fontFamily = FiraCodeFamily,
                             fontWeight = FontWeight.Bold

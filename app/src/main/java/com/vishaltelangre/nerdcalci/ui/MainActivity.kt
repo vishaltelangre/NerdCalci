@@ -155,6 +155,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
     val autoOpenFileId by viewModel.autoOpenFileId.collectAsState()
     val isAutoOpenReady by viewModel.isAutoOpenReady.collectAsState()
     val allFiles by viewModel.allFiles.collectAsState(initial = emptyList())
+    val showPrecisionEllipsis by viewModel.showPrecisionEllipsis.collectAsState()
     val customBackupFolderSummary = remember(customBackupFolderUri) {
         val uriString = customBackupFolderUri
         if (uriString != null) {
@@ -323,11 +324,13 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
             popEnterTransition = { slideInFromLeft },
             popExitTransition = { slideOutToRight }
         ) { backStackEntry ->
+            val showPrecisionEllipsis by viewModel.showPrecisionEllipsis.collectAsState()
             val fileId = backStackEntry.arguments?.getLong("fileId") ?: 0L
             CalculatorScreen(
                 fileId = fileId,
                 viewModel = viewModel,
                 regionCode = regionCode,
+                showPrecisionEllipsis = showPrecisionEllipsis,
                 onBack = { navController.popBackStack() },
                 onHelp = { navController.navigate("help") },
                 onNavigateToFile = { newFileId ->
@@ -406,6 +409,8 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
                 onRationalModeChange = { viewModel.setRationalMode(it) },
                 groupingSeparatorEnabled = groupingSeparatorEnabled,
                 onGroupingSeparatorEnabledChange = { viewModel.setGroupingSeparatorEnabled(it) },
+                showPrecisionEllipsis = showPrecisionEllipsis,
+                onShowPrecisionEllipsisChange = { viewModel.setShowPrecisionEllipsis(it) },
                 launchMode = launchMode,
                 launchFileId = launchFileId,
                 allFiles = allFiles,

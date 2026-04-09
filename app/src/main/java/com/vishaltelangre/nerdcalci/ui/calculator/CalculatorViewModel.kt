@@ -131,10 +131,13 @@ class CalculatorViewModel(
     )
     val syncFolderUri: StateFlow<String?> = _syncFolderUri
 
-    private val _lastSyncAt = MutableStateFlow(
-        prefs?.getLong(SyncManager.PREF_LAST_SYNC_AT, 0L)?.takeIf { it > 0L }
-    )
+    private val _lastSyncAt = MutableStateFlow<Long?>(null)
     val lastSyncAt: StateFlow<Long?> = _lastSyncAt
+
+    private val _showPrecisionEllipsis = MutableStateFlow(
+        prefs?.getBoolean(Constants.PREF_SHOW_PRECISION_ELLIPSIS, false) ?: false
+    )
+    val showPrecisionEllipsis: StateFlow<Boolean> = _showPrecisionEllipsis
 
     // Mutex to ensure atomic recalculation cycles per fileId
     private val calculationMutex = Mutex()
@@ -475,6 +478,11 @@ class CalculatorViewModel(
     fun setShowSymbolsShortcuts(enabled: Boolean) {
         _showSymbolsShortcuts.value = enabled
         prefs?.edit()?.putBoolean(PREF_SHOW_SYMBOLS_SHORTCUTS, enabled)?.apply()
+    }
+
+    fun setShowPrecisionEllipsis(enabled: Boolean) {
+        _showPrecisionEllipsis.value = enabled
+        prefs?.edit()?.putBoolean(Constants.PREF_SHOW_PRECISION_ELLIPSIS, enabled)?.apply()
     }
 
     fun setRationalMode(enabled: Boolean) {

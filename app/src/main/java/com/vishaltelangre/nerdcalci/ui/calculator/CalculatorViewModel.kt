@@ -429,7 +429,17 @@ class CalculatorViewModel(
                 }
             }
         } else {
-            onResult?.invoke(false)
+            // Handle the case where id == null but LaunchMode is SPECIFIC_FILE
+            if (_launchMode.value == LaunchMode.SPECIFIC_FILE) {
+                viewModelScope.launch(Dispatchers.Main) {
+                    setLaunchMode(LaunchMode.NOT_SET)
+                    prefs?.edit()?.remove(Constants.PREF_LAUNCH_FILE_ID)?.apply()
+                    _launchFileId.value = null
+                    onResult?.invoke(false)
+                }
+            } else {
+                onResult?.invoke(false)
+            }
         }
     }
 

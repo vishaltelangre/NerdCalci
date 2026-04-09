@@ -52,5 +52,7 @@ object Constants {
 
     // Temporary scratchpad settings
     const val PREF_AUTO_OPEN_SCRATCHPAD = "auto_open_scratchpad"
+    const val PREF_LAUNCH_MODE = "launch_mode"
+    const val PREF_LAUNCH_FILE_ID = "launch_file_id"
     const val SCRATCHPAD_DISPLAY_NAME = "Scratchpad"
 }

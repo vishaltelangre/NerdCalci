@@ -189,6 +189,18 @@ abstract class CalculatorDao {
     }
 
     @Transaction
+    open suspend fun createJournalFileIfAbsent(name: String, createdAt: Long): Long {
+        val existingFile = getFileByName(name)
+        if (existingFile != null) {
+            return existingFile.id
+        }
+        val fileId = insertFile(FileEntity(name = name, lastModified = createdAt, createdAt = createdAt))
+        // Insert a default empty line
+        internalInsertLine(LineEntity(fileId = fileId, sortOrder = 0, expression = "", result = ""))
+        return fileId
+    }
+
+    @Transaction
     open suspend fun createTemporaryFileWithInitialLine(createdAt: Long = System.currentTimeMillis()): Long {
         val uniqueName = "NerdCalci-Scratchpad-${createdAt}"
         val fileId = insertFile(

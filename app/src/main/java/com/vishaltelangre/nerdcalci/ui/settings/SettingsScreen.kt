@@ -37,6 +37,10 @@ import androidx.compose.material.icons.filled.Coffee
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.FormatListNumbered
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import com.vishaltelangre.nerdcalci.ui.components.RestoreSourceDialog
+import com.vishaltelangre.nerdcalci.ui.components.RestoreBackupListDialog
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LightMode
@@ -90,11 +94,11 @@ import com.vishaltelangre.nerdcalci.data.backup.BackupFileInfo
 import com.vishaltelangre.nerdcalci.data.backup.BackupFrequency
 import com.vishaltelangre.nerdcalci.data.backup.BackupLocationMode
 import com.vishaltelangre.nerdcalci.ui.theme.FiraCodeFamily
-import com.vishaltelangre.nerdcalci.utils.FileUtils
-import com.vishaltelangre.nerdcalci.ui.components.RestoreBackupListDialog
-import com.vishaltelangre.nerdcalci.ui.components.RestoreSourceDialog
+import com.vishaltelangre.nerdcalci.core.LaunchMode
+import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
 import com.vishaltelangre.nerdcalci.ui.components.RegionSelectorDialog
 import com.vishaltelangre.nerdcalci.ui.components.formatBackupLocationText
+import com.vishaltelangre.nerdcalci.utils.FileUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -136,8 +140,13 @@ fun SettingsScreen(
     onRationalModeChange: (Boolean) -> Unit,
     groupingSeparatorEnabled: Boolean,
     onGroupingSeparatorEnabledChange: (Boolean) -> Unit,
-    autoOpenScratchpad: Boolean,
-    onAutoOpenScratchpadChange: (Boolean) -> Unit,
+    launchMode: LaunchMode,
+    onLaunchModeChange: (LaunchMode) -> Unit,
+    launchFileId: Long?,
+    onLaunchFileIdChange: (Long?) -> Unit,
+    allFiles: List<FileEntity>,
+    onAutoValidateLaunchFile: () -> Unit,
+    onValidateLaunchFile: (Long, (Boolean) -> Unit) -> Unit,
     onHelp: () -> Unit,
     onChangelog: () -> Unit,
     onBack: () -> Unit
@@ -149,6 +158,8 @@ fun SettingsScreen(
     var showLocationDialog by remember { mutableStateOf(false) }
     var showFrequencyDialog by remember { mutableStateOf(false) }
     var showRegionDialog by remember { mutableStateOf(false) }
+    var showLaunchModeDialog by remember { mutableStateOf(false) }
+    var showSelectFileDialog by remember { mutableStateOf(false) }
 
     var sliderValue by remember(precision) { mutableStateOf(precision.toFloat()) }
 
@@ -180,6 +191,13 @@ fun SettingsScreen(
     fun openUrl(url: String) {
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
         context.startActivity(intent)
+    }
+
+    // Validate the specific file if set
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        if (launchMode == LaunchMode.SPECIFIC_FILE) {
+            onAutoValidateLaunchFile()
+        }
     }
 
     Scaffold(
@@ -362,12 +380,37 @@ fun SettingsScreen(
                 modifier = Modifier.padding(horizontal = 56.dp).padding(bottom = 8.dp)
             )
 
-            SettingsToggleItem(
-                icon = Icons.Default.FlashOn,
-                title = "Auto-open temporary scratchpad on launch",
-                subtitle = "Opens the temporary scratchpad automatically when you start the app. Changes in this file are never saved.",
-                checked = autoOpenScratchpad,
-                onCheckedChange = onAutoOpenScratchpadChange
+            SettingsDropdownItem(
+                icon = when (launchMode) {
+                    LaunchMode.NOT_SET -> Icons.Default.Restore
+                    LaunchMode.SCRATCHPAD -> Icons.Default.FlashOn
+                    LaunchMode.JOURNAL -> Icons.Default.Schedule
+                    LaunchMode.SPECIFIC_FILE -> Icons.Default.Description
+                },
+                title = "Auto-open file on launch",
+                value = when (launchMode) {
+                    LaunchMode.NOT_SET -> "Not set"
+                    LaunchMode.SCRATCHPAD -> "Temporary scratchpad"
+                    LaunchMode.JOURNAL -> "Daily journal (YYYY-MM-DD)"
+                    LaunchMode.SPECIFIC_FILE -> {
+                        val file = allFiles.find { it.id == launchFileId }
+                        file?.name ?: "Choose file..."
+                    }
+                },
+                onClick = {
+                    if (launchMode == LaunchMode.SPECIFIC_FILE && launchFileId != null) {
+                        onValidateLaunchFile(launchFileId) { exists ->
+                            if (!exists) {
+                                // If stored file is gone, show selector immediately
+                                showSelectFileDialog = true
+                            } else {
+                                showLaunchModeDialog = true
+                            }
+                        }
+                    } else {
+                        showLaunchModeDialog = true
+                    }
+                }
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -770,6 +813,137 @@ fun SettingsScreen(
             showRegionDialog = false
         },
         onDismiss = { showRegionDialog = false }
+    )
+
+    if (showLaunchModeDialog) {
+        LaunchModeDialog(
+            currentMode = launchMode,
+            onSelect = { mode ->
+                showLaunchModeDialog = false
+                if (mode == LaunchMode.SPECIFIC_FILE) {
+                    showSelectFileDialog = true
+                } else {
+                    onLaunchModeChange(mode)
+                }
+            },
+            onDismiss = { showLaunchModeDialog = false }
+        )
+    }
+
+    if (showSelectFileDialog) {
+        SelectAutoOpenFileDialog(
+            files = allFiles,
+            currentFileId = launchFileId,
+            onSelect = { fileId ->
+                showSelectFileDialog = false
+                onLaunchModeChange(LaunchMode.SPECIFIC_FILE)
+                onLaunchFileIdChange(fileId)
+            },
+            onDismiss = { showSelectFileDialog = false }
+        )
+    }
+}
+
+@Composable
+private fun LaunchModeDialog(
+    currentMode: LaunchMode,
+    onSelect: (LaunchMode) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Auto-open on launch") },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                val options = listOf(
+                    LaunchMode.NOT_SET to "Not set",
+                    LaunchMode.SCRATCHPAD to "Temporary scratchpad",
+                    LaunchMode.JOURNAL to "Daily journal (YYYY-MM-DD)",
+                    LaunchMode.SPECIFIC_FILE to "Specific file"
+                )
+
+                options.forEach { (mode, label) ->
+                    TextButton(
+                        onClick = { onSelect(mode) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (currentMode == mode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.weight(1f))
+                            if (currentMode == mode) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Selected",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+@Composable
+private fun SelectAutoOpenFileDialog(
+    files: List<FileEntity>,
+    currentFileId: Long?,
+    onSelect: (Long) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Select file") },
+        text = {
+            if (files.isEmpty()) {
+                Text("No files available to select.")
+            } else {
+                val sortedFiles = remember(files) { files.sortedBy { it.name } }
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth().height(300.dp)
+                ) {
+                    items(sortedFiles) { file ->
+                        TextButton(
+                            onClick = { onSelect(file.id) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = file.name,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = if (currentFileId == file.id) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.weight(1f))
+                                if (currentFileId == file.id) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = "Selected",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
     )
 }
 

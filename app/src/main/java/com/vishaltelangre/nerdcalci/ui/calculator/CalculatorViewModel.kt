@@ -40,8 +40,11 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import com.vishaltelangre.nerdcalci.utils.FileUtils
+import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean
 import com.vishaltelangre.nerdcalci.data.sync.SyncManager
+import com.vishaltelangre.nerdcalci.core.LaunchMode
+import java.text.SimpleDateFormat
 
 sealed class HomeUiEvent {
     data class ShowMessage(val message: String) : HomeUiEvent()
@@ -74,21 +77,32 @@ class CalculatorViewModel(
     private val dao: CalculatorDao,
     private val prefs: SharedPreferences? = null
 ) : ViewModel() {
-    private val _autoOpenScratchpad = MutableStateFlow(
-        prefs?.getBoolean(Constants.PREF_AUTO_OPEN_SCRATCHPAD, false) ?: false
+    private val _launchMode = MutableStateFlow(
+        LaunchMode.fromPrefValue(prefs?.getString(Constants.PREF_LAUNCH_MODE, null))
     )
-    val autoOpenScratchpad: StateFlow<Boolean> = _autoOpenScratchpad
+    val launchMode: StateFlow<LaunchMode> = _launchMode
+
+    private val _launchFileId = MutableStateFlow(
+        prefs?.getLong(Constants.PREF_LAUNCH_FILE_ID, -1L)?.takeIf { it != -1L }
+    )
+    val launchFileId: StateFlow<Long?> = _launchFileId
+
+    private val _autoOpenFileId = MutableStateFlow<Long?>(null)
+    val autoOpenFileId: StateFlow<Long?> = _autoOpenFileId
+
+    private val _isAutoOpenReady = MutableStateFlow(false)
+    val isAutoOpenReady: StateFlow<Boolean> = _isAutoOpenReady
+
+    private val _currentTheme = MutableStateFlow(
+        prefs?.getString(PREF_THEME, DEFAULT_THEME) ?: DEFAULT_THEME
+    )
+    val currentTheme: StateFlow<String> = _currentTheme
 
     private val _scratchpadFileId = MutableStateFlow<Long?>(null)
     val scratchpadFileId: StateFlow<Long?> = _scratchpadFileId
 
     private val _isScratchpadReady = MutableStateFlow(false)
     val isScratchpadReady: StateFlow<Boolean> = _isScratchpadReady
-
-    private val _currentTheme = MutableStateFlow(
-        prefs?.getString(PREF_THEME, DEFAULT_THEME) ?: DEFAULT_THEME
-    )
-    val currentTheme: StateFlow<String> = _currentTheme
 
     private val _precision = MutableStateFlow(
         (prefs?.getInt(Constants.SYNC_ENGINE_PRECISION, Constants.DEFAULT_PRECISION) ?: Constants.DEFAULT_PRECISION)
@@ -127,9 +141,81 @@ class CalculatorViewModel(
     init {
         viewModelScope.launch {
             try {
+                // Perform migration if needed
+                migrateLaunchSettings()
+
+                // Initialize scratchpad (always needed for the "Open Scratchpad" button)
                 ensureScratchpadExists()
+
+                // Resolve which file to auto-open based on current mode
+                resolveAutoOpenFile()
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to initialize scratchpad", e)
+                Log.e(TAG, "Initialization failed", e)
+                _isAutoOpenReady.value = true // Fallback to home screen
+            }
+        }
+    }
+
+    private fun migrateLaunchSettings() {
+        val prefs = prefs ?: return
+        // If the new launch mode isn't set but the old toggle was true, migrate to SCRATCHPAD
+        if (!prefs.contains(Constants.PREF_LAUNCH_MODE) &&
+            prefs.getBoolean(Constants.PREF_AUTO_OPEN_SCRATCHPAD, false)) {
+            setLaunchMode(LaunchMode.SCRATCHPAD)
+        }
+
+        // TODO: Remove PREF_AUTO_OPEN_SCRATCHPAD in a future release
+        if (prefs.contains(Constants.PREF_AUTO_OPEN_SCRATCHPAD)) {
+            prefs.edit().remove(Constants.PREF_AUTO_OPEN_SCRATCHPAD).apply()
+        }
+    }
+
+    fun onValidateLaunchFile(fileId: Long, callback: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val exists = withContext(Dispatchers.IO) {
+                dao.getFileById(fileId) != null
+            }
+            callback(exists)
+        }
+    }
+
+    private suspend fun resolveAutoOpenFile() {
+        withContext(Dispatchers.IO) {
+            try {
+                val mode = _launchMode.value
+                val fileId = when (mode) {
+                    LaunchMode.NOT_SET -> null
+                    LaunchMode.SCRATCHPAD -> {
+                        // Wait for scratchpad to be ready if it's not yet
+                        var retry = 0
+                        while (_scratchpadFileId.value == null && retry < 10) {
+                            kotlinx.coroutines.delay(100)
+                            retry++
+                        }
+                        _scratchpadFileId.value
+                    }
+                    LaunchMode.JOURNAL -> {
+                        val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+                        dao.createJournalFileIfAbsent(today, System.currentTimeMillis())
+                    }
+                    LaunchMode.SPECIFIC_FILE -> {
+                        val id = _launchFileId.value
+                        if (id != null && dao.getFileById(id) != null) {
+                            id
+                        } else {
+                            // Reset if file missing
+                            withContext(Dispatchers.Main) {
+                                setLaunchMode(LaunchMode.NOT_SET)
+                                prefs?.edit()?.remove(Constants.PREF_LAUNCH_FILE_ID)?.apply()
+                                _launchFileId.value = null
+                            }
+                            null
+                        }
+                    }
+                }
+                _autoOpenFileId.value = fileId
+            } finally {
+                _isAutoOpenReady.value = true
             }
         }
     }
@@ -292,9 +378,53 @@ class CalculatorViewModel(
     )
     val rationalMode: StateFlow<Boolean> = _rationalMode
 
-    fun setAutoOpenScratchpad(enabled: Boolean) {
-        _autoOpenScratchpad.value = enabled
-        prefs?.edit()?.putBoolean(Constants.PREF_AUTO_OPEN_SCRATCHPAD, enabled)?.apply()
+    fun setLaunchMode(mode: LaunchMode) {
+        _launchMode.value = mode
+        prefs?.edit()?.putString(Constants.PREF_LAUNCH_MODE, mode.prefValue)?.apply()
+    }
+
+    fun setLaunchFileId(fileId: Long?) {
+        _launchFileId.value = fileId
+        val prefs = prefs ?: return
+        if (fileId != null) {
+            prefs.edit().putLong(Constants.PREF_LAUNCH_FILE_ID, fileId).apply()
+            setLaunchMode(LaunchMode.SPECIFIC_FILE)
+        } else {
+            prefs.edit().remove(Constants.PREF_LAUNCH_FILE_ID).apply()
+        }
+    }
+
+    /**
+     * Validates that the specifically set launch file still exists.
+     * Resets to NOT_SET if it has been deleted.
+     */
+    fun validateSpecificFileSetting() {
+        validateLaunchFile()
+    }
+
+    /**
+     * Validates that the specifically set launch file still exists.
+     * Resets to NOT_SET if it has been deleted.
+     */
+    fun validateLaunchFile(fileId: Long? = null, onResult: ((Boolean) -> Unit)? = null) {
+        val id = fileId ?: if (_launchMode.value == LaunchMode.SPECIFIC_FILE) _launchFileId.value else null
+        if (id != null) {
+            viewModelScope.launch(Dispatchers.IO) {
+                val exists = dao.getFileById(id) != null
+                if (!exists && fileId == null) { // Only auto-reset if we're validating the CURRENT setting
+                    withContext(Dispatchers.Main) {
+                        setLaunchMode(LaunchMode.NOT_SET)
+                        prefs?.edit()?.remove(Constants.PREF_LAUNCH_FILE_ID)?.apply()
+                        _launchFileId.value = null
+                    }
+                }
+                withContext(Dispatchers.Main) {
+                    onResult?.invoke(exists)
+                }
+            }
+        } else {
+            onResult?.invoke(false)
+        }
     }
 
     fun setTheme(theme: String) {

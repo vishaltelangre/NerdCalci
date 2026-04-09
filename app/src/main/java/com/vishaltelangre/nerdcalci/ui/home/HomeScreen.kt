@@ -60,6 +60,7 @@ import com.vishaltelangre.nerdcalci.core.Constants
 import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
 import com.vishaltelangre.nerdcalci.ui.calculator.CalculatorViewModel
 import com.vishaltelangre.nerdcalci.ui.calculator.HomeUiEvent
+import com.vishaltelangre.nerdcalci.core.LaunchMode
 import com.vishaltelangre.nerdcalci.ui.components.SectionHeader
 import com.vishaltelangre.nerdcalci.ui.components.addDismissibleFileItems
 import kotlinx.coroutines.CoroutineScope
@@ -92,7 +93,9 @@ fun HomeScreen(
     onChangelogClick: () -> Unit,
     onRestoreClick: () -> Unit,
     onSearchClick: () -> Unit,
-    launchAutoOpenScratchpad: Boolean,
+    launchMode: LaunchMode,
+    autoOpenFileId: Long?,
+    isAutoOpenReady: Boolean,
     suppressAutoOpenScratchpad: Boolean = false
 ) {
     val context = LocalContext.current
@@ -109,12 +112,11 @@ fun HomeScreen(
         }
     }
 
-    val scratchpadFileId by viewModel.scratchpadFileId.collectAsState()
-    val isScratchpadReady by viewModel.isScratchpadReady.collectAsState()
     var hasAutoOpened by rememberSaveable { mutableStateOf(false) }
 
     // Handle UI events like Undo Snackbars and other messages
     val excludedFileIds by viewModel.excludedFileIds.collectAsState(initial = emptySet())
+    val scratchpadFileId by viewModel.scratchpadFileId.collectAsState()
 
     val syncEnabled by viewModel.syncEnabled.collectAsState()
     val isSyncing by viewModel.isSyncing.collectAsState()
@@ -127,16 +129,17 @@ fun HomeScreen(
         }
     }
 
-    LaunchedEffect(launchAutoOpenScratchpad, scratchpadFileId, isScratchpadReady, suppressAutoOpenScratchpad) {
+    // Auto-open logic on launch
+    LaunchedEffect(isAutoOpenReady, launchMode, autoOpenFileId, suppressAutoOpenScratchpad) {
         if (
-            launchAutoOpenScratchpad &&
+            isAutoOpenReady &&
             !suppressAutoOpenScratchpad &&
-            scratchpadFileId != null &&
-            isScratchpadReady &&
+            launchMode != LaunchMode.NOT_SET &&
+            autoOpenFileId != null &&
             !hasAutoOpened
         ) {
             hasAutoOpened = true
-            onFileClick(scratchpadFileId!!)
+            onFileClick(autoOpenFileId)
         }
     }
 
@@ -441,8 +444,8 @@ private fun HomeFileList(
                     }
                 },
                 onTogglePin = { id -> viewModel.togglePinFile(id) },
-                onUndo = { viewModel.undoHideFile(it) },
-                onDismiss = { viewModel.hideFile(it) },
+                onUndo = { id: Long -> viewModel.undoHideFile(id) },
+                onDismiss = { id: Long -> viewModel.hideFile(id) },
                 viewModel = viewModel
             )
         }
@@ -473,8 +476,8 @@ private fun HomeFileList(
                     }
                 },
                 onTogglePin = { id -> viewModel.togglePinFile(id) },
-                onUndo = { viewModel.undoHideFile(it) },
-                onDismiss = { viewModel.hideFile(it) },
+                onUndo = { id: Long -> viewModel.undoHideFile(id) },
+                onDismiss = { id: Long -> viewModel.hideFile(id) },
                 viewModel = viewModel
             )
         }

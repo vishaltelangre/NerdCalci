@@ -78,7 +78,13 @@ class CalculatorViewModel(
     private val prefs: SharedPreferences? = null
 ) : ViewModel() {
     private val _launchMode = MutableStateFlow(
-        LaunchMode.fromPrefValue(prefs?.getString(Constants.PREF_LAUNCH_MODE, null))
+        LaunchMode.fromPrefValue(prefs?.getString(Constants.PREF_LAUNCH_MODE, null)).let { mode ->
+            if (mode == LaunchMode.NOT_SET && prefs?.getBoolean(Constants.PREF_AUTO_OPEN_SCRATCHPAD, false) == true) {
+                LaunchMode.SCRATCHPAD
+            } else {
+                mode
+            }
+        }
     )
     val launchMode: StateFlow<LaunchMode> = _launchMode
 

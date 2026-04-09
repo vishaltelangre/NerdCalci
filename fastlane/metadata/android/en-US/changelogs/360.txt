@@ -1,0 +1,3 @@
+- Added a global setting to show an ellipsis for truncated numbers that exceed the configured result precision (Issue #106).
+- Added a toggle to show/hide the temporary scratchpad shortcut on the home screen via a new bolt icon (Issue #109).
+- Fixed an issue where changing "Auto-open a file on launch" settings caused unintended navigation.

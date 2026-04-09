@@ -249,7 +249,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
     val slideInFromLeft = slideInHorizontally(animationSpec = tween(300), initialOffsetX = { fullWidth: Int -> -fullWidth / 3 })
     val slideOutToRight = slideOutHorizontally(animationSpec = tween(300), targetOffsetX = { fullWidth: Int -> fullWidth })
     
-    val initialStartDestination = if (launchMode != LaunchMode.NOT_SET) "startup" else "home"
+    val initialStartDestination = remember { if (viewModel.launchMode.value != LaunchMode.NOT_SET) "startup" else "home" }
 
     NavHost(
         navController = navController,

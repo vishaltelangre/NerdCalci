@@ -8,6 +8,20 @@ import java.util.Locale
 class PrecisionEllipsisTest {
 
     private val engine = MathEngine
+    private val locale = Locale.US
+    private val region = "US"
+
+    private fun format(
+        rawResult: String,
+        precision: Int,
+        showEllipsis: Boolean = true
+    ) = engine.formatDisplayResult(
+        rawResult = rawResult,
+        precision = precision,
+        systemLocale = locale,
+        regionCode = region,
+        showEllipsis = showEllipsis
+    )
 
     @Test
     fun `formatDisplayResult supports precision ellipsis`() = runBlocking {
@@ -32,7 +46,7 @@ class PrecisionEllipsisTest {
 
     @Test
     fun `standard notation ellipsis - truncated`() {
-        val result = engine.formatDisplayResult(
+        val result = format(
             rawResult = "1.23456",
             precision = 2,
             showEllipsis = true
@@ -43,7 +57,7 @@ class PrecisionEllipsisTest {
 
     @Test
     fun `standard notation ellipsis - truncated negative`() {
-        val result = engine.formatDisplayResult(
+        val result = format(
             rawResult = "-1.23456",
             precision = 2,
             showEllipsis = true
@@ -54,7 +68,7 @@ class PrecisionEllipsisTest {
 
     @Test
     fun `standard notation ellipsis - exact`() {
-        val result = engine.formatDisplayResult(
+        val result = format(
             rawResult = "1.23",
             precision = 2,
             showEllipsis = true
@@ -66,7 +80,7 @@ class PrecisionEllipsisTest {
     fun `scientific notation ellipsis - truncated large number`() {
         // 1.23456E15 with precision 2
         // Mantissa 1.23456 truncated to 1.23
-        val result = engine.formatDisplayResult(
+        val result = format(
             rawResult = "1234560000000000",
             precision = 2,
             showEllipsis = true
@@ -77,7 +91,7 @@ class PrecisionEllipsisTest {
 
     @Test
     fun `scientific notation ellipsis - exact large number`() {
-        val result = engine.formatDisplayResult(
+        val result = format(
             rawResult = "1230000000000000",
             precision = 2,
             showEllipsis = true
@@ -88,7 +102,7 @@ class PrecisionEllipsisTest {
     @Test
     fun `scientific notation ellipsis - truncated small number`() {
         // 0.000123456 -> 1.23456E-4
-        val result = engine.formatDisplayResult(
+        val result = format(
             rawResult = "0.000123456",
             precision = 2,
             showEllipsis = true
@@ -104,7 +118,7 @@ class PrecisionEllipsisTest {
         // 9.999 != 10.0 -> truncated = true
         // Then roundingMode = DOWN (because showEllipsis = true)
         // formatScientific(9.999E15, precision 1, DOWN) -> 9.9E15
-        val result = engine.formatDisplayResult(
+        val result = format(
             rawResult = "9999000000000000",
             precision = 1,
             showEllipsis = true
@@ -114,7 +128,7 @@ class PrecisionEllipsisTest {
 
     @Test
     fun `scientific notation ellipsis - forced by E notation in input`() {
-        val result = engine.formatDisplayResult(
+        val result = format(
             rawResult = "1.23456E2",
             precision = 2,
             showEllipsis = true
@@ -125,7 +139,7 @@ class PrecisionEllipsisTest {
 
     @Test
     fun `scientific notation ellipsis - truncated negative`() {
-        val result = engine.formatDisplayResult(
+        val result = format(
             rawResult = "-1.23456E2",
             precision = 2,
             showEllipsis = true

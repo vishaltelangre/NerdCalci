@@ -155,6 +155,8 @@ class CalculatorViewModel(
 
                 // Resolve which file to auto-open based on current mode
                 resolveAutoOpenFile()
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Initialization failed", e)
                 _isAutoOpenReady.value = true // Fallback to home screen

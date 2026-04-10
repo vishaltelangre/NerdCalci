@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.7.0] - 2026-04-10
+### Added
+- Added file sorting functionality (Issue #79).
+- Added ability to lock files to protect them from accidental edits and deletions (Issue #57).
+
+### Changed
+- Removed duplicate create and scratchpad shortcuts on home when there are no files to show (Issue #116).
+- File rows now show both created and modified timestamps.
+
 ## [3.6.0] - 2026-04-09
 ### Added
 - Added a global setting to show an ellipsis for truncated numbers that exceed the configured result precision (Issue #106).

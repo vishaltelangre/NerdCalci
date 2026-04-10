@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
@@ -58,6 +59,8 @@ import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.Pin
 import androidx.compose.material.icons.filled.FormatListNumbered
 import androidx.compose.material.icons.filled.Functions
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.BorderHorizontal
 import androidx.compose.material.icons.filled.SpaceBar
 import androidx.compose.material.icons.outlined.Functions
@@ -519,6 +522,7 @@ fun CalculatorScreen(
     val scratchpadFileId by viewModel.scratchpadFileId.collectAsState(initial = null)
     val isScratchpad = scratchpadFileId != null && fileId == scratchpadFileId
     val currentFile = files.find { it.id == fileId }
+    val isLocked = currentFile?.isLocked ?: false
     val fileName = if (isScratchpad) Constants.SCRATCHPAD_DISPLAY_NAME else (currentFile?.name ?: "Editor")
 
     // Track which line should be focused and cursor position
@@ -629,21 +633,39 @@ fun CalculatorScreen(
                 TopAppBar(
                     title = {
                         Column(
-                            modifier = if (!isScratchpad) {
+                            modifier = if (!isScratchpad && !isLocked) {
                                 Modifier.clickable { showRenameDialog = true }
                             } else {
                                 Modifier
                             }
                         ) {
-                            Text(
-                                text = fileName,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = fileName,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                if (isLocked) {
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Icon(
+                                        Icons.Default.Lock,
+                                        contentDescription = "Locked",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
                             if (isScratchpad) {
                                 Text(
                                     text = "Temporary file • Changes not saved",
+                                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            if (isLocked) {
+                                Text(
+                                    text = "Locked file • Cannot be modified",
                                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -660,26 +682,28 @@ fun CalculatorScreen(
                         }
                     },
                     actions = {
-                        IconButton(
-                            onClick = { viewModel.undo(fileId, effectiveRationalMode) },
-                            enabled = canUndo
-                        ) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.Undo,
-                                "Undo",
-                                tint = if (canUndo) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        if (!isLocked) {
+                            IconButton(
+                                onClick = { viewModel.undo(fileId, effectiveRationalMode) },
+                                enabled = canUndo
+                            ) {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.Undo,
+                                    "Undo",
+                                    tint = if (canUndo) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
 
-                        IconButton(
-                            onClick = { viewModel.redo(fileId, effectiveRationalMode) },
-                            enabled = canRedo
-                        ) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.Redo,
-                                "Redo",
-                                tint = if (canRedo) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            IconButton(
+                                onClick = { viewModel.redo(fileId, effectiveRationalMode) },
+                                enabled = canRedo
+                            ) {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.Redo,
+                                    "Redo",
+                                    tint = if (canRedo) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
 
                         Box {
@@ -724,52 +748,54 @@ fun CalculatorScreen(
                                         )
                                     }
                                 )
-                                DropdownMenuItem(
-                                    text = { Text(if (effectiveShowSuggestions) "Hide suggestions" else "Show suggestions") },
-                                    onClick = {
-                                        val nextValue = !effectiveShowSuggestions
-                                        localShowSuggestions =
-                                            nextValue.takeUnless { it == globalShowSuggestions }
-                                        showMenu = false
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            if (effectiveShowSuggestions) Icons.Default.ChatBubbleOutline else Icons.Default.Chat,
-                                            contentDescription = null
-                                        )
-                                    }
-                                )
+                                if (!isLocked) {
+                                    DropdownMenuItem(
+                                        text = { Text(if (effectiveShowSuggestions) "Hide suggestions" else "Show suggestions") },
+                                        onClick = {
+                                            val nextValue = !effectiveShowSuggestions
+                                            localShowSuggestions =
+                                                nextValue.takeUnless { it == globalShowSuggestions }
+                                            showMenu = false
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                if (effectiveShowSuggestions) Icons.Default.ChatBubbleOutline else Icons.Default.Chat,
+                                                contentDescription = null
+                                            )
+                                        }
+                                    )
 
-                                DropdownMenuItem(
-                                    text = { Text(if (effectiveShowSymbolsShortcuts) "Hide symbols shortcuts" else "Show symbols shortcuts") },
-                                    onClick = {
-                                        val nextValue = !effectiveShowSymbolsShortcuts
-                                        localShowSymbolsShortcuts =
-                                            nextValue.takeUnless { it == globalShowSymbolsShortcuts }
-                                        showMenu = false
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            Icons.Default.Calculate,
-                                            contentDescription = null
-                                        )
-                                    }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text(if (effectiveShowNumbersShortcuts) "Hide numbers shortcuts" else "Show numbers shortcuts") },
-                                    onClick = {
-                                        val nextValue = !effectiveShowNumbersShortcuts
-                                        localShowNumbersShortcuts =
-                                            nextValue.takeUnless { it == globalShowNumbersShortcuts }
-                                        showMenu = false
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            Icons.Default.Pin,
-                                            contentDescription = null
-                                        )
-                                    }
-                                )
+                                    DropdownMenuItem(
+                                        text = { Text(if (effectiveShowSymbolsShortcuts) "Hide symbols shortcuts" else "Show symbols shortcuts") },
+                                        onClick = {
+                                            val nextValue = !effectiveShowSymbolsShortcuts
+                                            localShowSymbolsShortcuts =
+                                                nextValue.takeUnless { it == globalShowSymbolsShortcuts }
+                                            showMenu = false
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                Icons.Default.Calculate,
+                                                contentDescription = null
+                                            )
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(if (effectiveShowNumbersShortcuts) "Hide numbers shortcuts" else "Show numbers shortcuts") },
+                                        onClick = {
+                                            val nextValue = !effectiveShowNumbersShortcuts
+                                            localShowNumbersShortcuts =
+                                                nextValue.takeUnless { it == globalShowNumbersShortcuts }
+                                            showMenu = false
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                Icons.Default.Pin,
+                                                contentDescription = null
+                                            )
+                                        }
+                                    )
+                                }
                                 DropdownMenuItem(
                                     text = { Text(if (effectiveRationalMode) "Disable rational mode" else "Enable rational mode") },
                                     onClick = {
@@ -778,7 +804,12 @@ fun CalculatorScreen(
                                             nextValue.takeUnless { it == globalRationalMode }
                                         showMenu = false
                                     },
-                                    leadingIcon = { Icon(Icons.Default.BorderHorizontal, contentDescription = null) }
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Default.BorderHorizontal,
+                                            contentDescription = null
+                                        )
+                                    }
                                 )
                                 DropdownMenuItem(
                                     text = { Text(if (effectiveGroupingSeparatorEnabled) "Disable grouping separator" else "Enable grouping separator") },
@@ -792,6 +823,21 @@ fun CalculatorScreen(
                                 )
                                 if (!isScratchpad) {
                                     DropdownMenuItem(
+                                        text = { Text(if (isLocked) "Unlock File" else "Lock File") },
+                                        leadingIcon = {
+                                            Icon(
+                                                if (isLocked) Icons.Default.LockOpen else Icons.Default.Lock,
+                                                contentDescription = null
+                                            )
+                                        },
+                                        onClick = {
+                                            showMenu = false
+                                            viewModel.toggleLockFile(fileId)
+                                        }
+                                    )
+                                }
+                                if (!isScratchpad) {
+                                    DropdownMenuItem(
                                         text = { Text("Rename File") },
                                         leadingIcon = {
                                             Icon(
@@ -799,6 +845,7 @@ fun CalculatorScreen(
                                                 contentDescription = null
                                             )
                                         },
+                                        enabled = !isLocked,
                                         onClick = {
                                             showMenu = false
                                             showRenameDialog = true
@@ -901,6 +948,7 @@ fun CalculatorScreen(
                                             contentDescription = null
                                         )
                                     },
+                                    enabled = !isLocked,
                                     onClick = {
                                         showMenu = false
                                         showClearConfirmDialog = true
@@ -915,6 +963,7 @@ fun CalculatorScreen(
                                                 contentDescription = null
                                             )
                                         },
+                                        enabled = !isLocked,
                                         onClick = {
                                             showMenu = false
                                             showDeleteConfirmDialog = true
@@ -1046,6 +1095,7 @@ fun CalculatorScreen(
                         lineNumber = index + 1,
                         showLineNumbers = effectiveShowLineNumbers,
                         showSuggestions = effectiveShowSuggestions,
+                        isLocked = isLocked,
                         precision = precision,
                         regionCode = regionCode,
                         numberWidth = numberWidth,
@@ -1299,6 +1349,7 @@ private fun LineRow(
     lineNumber: Int,
     showLineNumbers: Boolean,
     showSuggestions: Boolean,
+    isLocked: Boolean,
     showPrecisionEllipsis: Boolean,
     precision: Int,
     regionCode: String,
@@ -1694,7 +1745,9 @@ private fun LineRow(
             Column {
                 BasicTextField(
                     value = textFieldValue,
+                    readOnly = isLocked,
                     onValueChange = { newValue ->
+                        if (isLocked) return@BasicTextField
                         val filteredText = newValue.text.replace("\n", "")
 
                         // Handle Enter key (Line Splitting)

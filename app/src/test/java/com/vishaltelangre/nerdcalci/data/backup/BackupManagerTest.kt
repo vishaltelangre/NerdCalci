@@ -10,6 +10,7 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.ByteArrayInputStream
@@ -176,6 +177,44 @@ class BackupManagerTest {
     }
 
     @Test
+    fun `test import with isLocked metadata restores correctly`() = runBlocking {
+        val dao = FakeCalculatorDao()
+        val metadataJson = """{"isLocked":true}"""
+        val content = "# @metadata $metadataJson\n10 + 20"
+        val zipBytes = createMockZip("locked_file", content)
+
+        BackupManager.importFromZip(
+            mockContext,
+            dao,
+            { ByteArrayInputStream(zipBytes) },
+            onProgress = { _: Int, _: Int, _: String -> },
+            onConflict = { _: String, _: Long, _: Long -> ConflictResolution.REPLACE_WITH_FILE_FROM_ZIP }
+        )
+
+        val importedFile = dao.files.find { it.name == "locked_file" }!!
+        assertTrue(importedFile.isLocked)
+    }
+
+    @Test
+    fun `test import with missing isLocked metadata defaults to unlocked`() = runBlocking {
+        val dao = FakeCalculatorDao()
+        val metadataJson = """{"isPinned":true}""" // isLocked is missing
+        val content = "# @metadata $metadataJson\n10 + 20"
+        val zipBytes = createMockZip("unlocked_file", content)
+
+        BackupManager.importFromZip(
+            mockContext,
+            dao,
+            { ByteArrayInputStream(zipBytes) },
+            onProgress = { _: Int, _: Int, _: String -> },
+            onConflict = { _: String, _: Long, _: Long -> ConflictResolution.REPLACE_WITH_FILE_FROM_ZIP }
+        )
+
+        val importedFile = dao.files.find { it.name == "unlocked_file" }!!
+        assertFalse(importedFile.isLocked)
+    }
+
+    @Test
     fun `test import with sync enabled forces now timestamp`() = runBlocking {
         every { mockPrefs.getBoolean(SyncManager.PREF_SYNC_ENABLED, any()) } returns true
         
@@ -188,8 +227,8 @@ class BackupManagerTest {
             mockContext,
             dao,
             { ByteArrayInputStream(zipBytes) },
-            onProgress = { _, _, _ -> },
-            onConflict = { _, _, _ -> ConflictResolution.REPLACE_WITH_FILE_FROM_ZIP }
+            onProgress = { _: Int, _: Int, _: String -> },
+            onConflict = { _: String, _: Long, _: Long -> ConflictResolution.REPLACE_WITH_FILE_FROM_ZIP }
         )
 
         val importedFile = dao.files.find { it.name == "sync_file" }!!

@@ -385,6 +385,7 @@ object BackupManager {
                     metadata = FileMetadata(
                         id = file.syncId,
                         isPinned = file.isPinned,
+                        isLocked = file.isLocked,
                         lastModified = file.lastModified,
                         createdAt = file.createdAt,
                         contentHash = contentHash
@@ -556,6 +557,7 @@ object BackupManager {
                                     lastModified = finalModifiedTime,
                                     createdAt = finalCreateTime,
                                     isPinned = metadata.isPinned,
+                                    isLocked = metadata.isLocked,
                                     syncId = syncId
                                 )
                             )

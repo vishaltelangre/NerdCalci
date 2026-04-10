@@ -733,9 +733,22 @@ class CalculatorViewModel(
         updateUndoRedoState(fileId)
     }
 
+    private suspend fun isFileLocked(fileId: Long): Boolean {
+        return dao.getFileById(fileId)?.isLocked == true
+    }
+
+    fun toggleLockFile(fileId: Long) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val file = dao.getFileById(fileId) ?: return@launch
+            if (file.isTemporary) return@launch // Scratchpad cannot be locked
+            dao.toggleLockFile(fileId)
+        }
+    }
+
     fun undo(fileId: Long, rationalMode: Boolean? = null) {
         viewModelScope.launch(Dispatchers.IO) {
             calculationMutex.withLock {
+                if (isFileLocked(fileId)) return@withLock
                 val undoStack = undoStacks[fileId] ?: return@withLock
                 if (undoStack.isEmpty()) return@withLock
 
@@ -757,6 +770,7 @@ class CalculatorViewModel(
     fun redo(fileId: Long, rationalMode: Boolean? = null) {
         viewModelScope.launch(Dispatchers.IO) {
             calculationMutex.withLock {
+                if (isFileLocked(fileId)) return@withLock
                 val redoStack = redoStacks[fileId] ?: return@withLock
                 if (redoStack.isEmpty()) return@withLock
 
@@ -789,6 +803,7 @@ class CalculatorViewModel(
     fun clearHistory(fileId: Long) {
         viewModelScope.launch(Dispatchers.IO) {
             calculationMutex.withLock {
+                if (isFileLocked(fileId)) return@withLock
                 undoStacks[fileId]?.clear()
                 redoStacks[fileId]?.clear()
                 updateUndoRedoState(fileId)
@@ -818,6 +833,7 @@ class CalculatorViewModel(
 
     suspend fun updateLineInternal(updatedLine: LineEntity, rationalMode: Boolean? = null) {
         calculationMutex.withLock {
+            if (isFileLocked(updatedLine.fileId)) return@withLock
             // Save the user's current typing
             dao.updateLine(updatedLine)
 
@@ -877,6 +893,7 @@ class CalculatorViewModel(
     ): Long {
         return withContext(Dispatchers.IO) {
             calculationMutex.withLock {
+                if (isFileLocked(fileId)) return@withLock -1L
                 // Save state for undo
                 saveStateForUndo(fileId)
 
@@ -917,6 +934,7 @@ class CalculatorViewModel(
             calculationMutex.withLock {
                 val line = dao.getLineById(lineId) ?: return@withLock -1L
                 val fileId = line.fileId
+                if (isFileLocked(fileId)) return@withLock -1L
                 saveStateForUndo(fileId)
 
                 val originalExpression = currentExpression ?: line.expression
@@ -964,6 +982,7 @@ class CalculatorViewModel(
                 val currentLine = dao.getLineById(currentLineId) ?: return@withLock
 
                 val fileId = prevLine.fileId
+                if (isFileLocked(fileId)) return@withLock
                 saveStateForUndo(fileId)
 
                 val mergedExpression = prevLine.expression + currentLine.expression
@@ -984,6 +1003,7 @@ class CalculatorViewModel(
     fun deleteLine(line: LineEntity, rationalMode: Boolean? = null) {
         viewModelScope.launch(Dispatchers.IO) {
             calculationMutex.withLock {
+                if (isFileLocked(line.fileId)) return@withLock
                 // Save state for undo
                 saveStateForUndo(line.fileId)
 
@@ -1013,6 +1033,7 @@ class CalculatorViewModel(
     fun clearAllLines(fileId: Long) {
         viewModelScope.launch(Dispatchers.IO) {
             calculationMutex.withLock {
+                if (isFileLocked(fileId)) return@withLock
                 saveStateForUndo(fileId)
                 dao.clearAllLines(fileId)
             }
@@ -1021,6 +1042,7 @@ class CalculatorViewModel(
 
     private suspend fun performSyncAwareDelete(context: Context, fileId: Long): Boolean {
         val file = dao.getFileById(fileId) ?: return false
+        if (file.isLocked) return false
 
         if (SyncManager.isSyncActive(context)) {
             val deleteError: Throwable? = try {
@@ -1104,7 +1126,7 @@ class CalculatorViewModel(
                 val untitledRegex = Regex("""^Untitled(\s\(\d+\))?$""") // Matches "Untitled", "Untitled (1)", "Untitled (2)", etc.
                 val isUntitled = untitledRegex.matches(file.name)
 
-                if (isEmpty && isRecent && isUntitled) {
+                if (isEmpty && isRecent && isUntitled && !file.isLocked) {
                     dao.deleteFile(file)
                     // Purge history for this file
                     undoStacks.remove(fileId)
@@ -1117,6 +1139,7 @@ class CalculatorViewModel(
 
     suspend fun renameFile(context: Context, fileId: Long, newName: String): Boolean {
         return withContext(Dispatchers.IO) {
+            if (isFileLocked(fileId)) return@withContext false
             val trimmedName = newName.trim()
             if (trimmedName.isBlank()) return@withContext false
 

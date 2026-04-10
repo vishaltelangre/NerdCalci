@@ -240,9 +240,25 @@ internal fun FileItem(
                         onTogglePin()
                     }
                 )
+                if (!file.isTemporary) {
+                    DropdownMenuItem(
+                        text = { Text(if (file.isLocked) "Unlock" else "Lock") },
+                        leadingIcon = {
+                            Icon(
+                                if (file.isLocked) Icons.Default.LockOpen else Icons.Default.Lock,
+                                contentDescription = null
+                            )
+                        },
+                        onClick = {
+                            showMenu = false
+                            viewModel.toggleLockFile(file.id)
+                        }
+                    )
+                }
                 DropdownMenuItem(
                     text = { Text("Rename") },
                     leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
+                    enabled = !file.isLocked,
                     onClick = {
                         showMenu = false
                         showRenameDialog = true
@@ -259,6 +275,7 @@ internal fun FileItem(
                 DropdownMenuItem(
                     text = { Text("Delete") },
                     leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
+                    enabled = !file.isLocked,
                     onClick = {
                         showMenu = false
                         onDismiss()
@@ -359,8 +376,19 @@ internal fun FileRowCard(
                         Icon(
                             Icons.Filled.PushPin,
                             contentDescription = "Pinned",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(start = 4.dp)
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .padding(start = 4.dp)
+                                .size(16.dp)
+                        )
+                    }
+                    if (file.isLocked) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Icon(
+                            Icons.Default.Lock,
+                            contentDescription = "Locked",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp)
                         )
                     }
                 }
@@ -410,6 +438,7 @@ fun DismissibleFileItem(
     val haptic = LocalHapticFeedback.current
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
+            if (file.isLocked) return@rememberSwipeToDismissBoxState false
             value == SwipeToDismissBoxValue.EndToStart
         }
     )

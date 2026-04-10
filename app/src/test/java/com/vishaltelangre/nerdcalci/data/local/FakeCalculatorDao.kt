@@ -152,6 +152,10 @@ open class FakeCalculatorDao : CalculatorDao() {
         _files.value = _files.value.map { if (it.id == fileId) it.copy(syncId = newSyncId) else it }
     }
 
+    override suspend fun setFileLock(fileId: Long, isLocked: Boolean) {
+        _files.value = _files.value.map { if (it.id == fileId) it.copy(isLocked = isLocked) else it }
+    }
+
     override suspend fun internalDeleteLinesForFile(fileId: Long) {
         _lines.value = _lines.value.filter { it.fileId != fileId }
     }

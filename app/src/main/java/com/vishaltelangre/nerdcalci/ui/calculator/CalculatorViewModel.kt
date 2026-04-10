@@ -30,6 +30,8 @@ import com.vishaltelangre.nerdcalci.data.local.entities.FileSortDirection
 
 import com.vishaltelangre.nerdcalci.utils.Suggestion
 import com.vishaltelangre.nerdcalci.utils.SuggestionType
+import kotlin.comparisons.compareBy
+import kotlin.comparisons.thenBy
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -701,8 +703,11 @@ class CalculatorViewModel(
     private fun getFileComparator(criteria: FileSortCriteria): Comparator<FileEntity> {
         val comparator = when (criteria.option) {
             FileSortOption.NAME -> compareBy(String.CASE_INSENSITIVE_ORDER) { file: FileEntity -> file.name }
+                .thenBy { file: FileEntity -> file.id }
             FileSortOption.CREATED_AT -> compareBy { file: FileEntity -> file.createdAt }
+                .thenBy { file: FileEntity -> file.id }
             FileSortOption.MODIFIED_AT -> compareBy { file: FileEntity -> file.lastModified }
+                .thenBy { file: FileEntity -> file.id }
         }
         return if (criteria.direction == FileSortDirection.DESCENDING) {
             comparator.reversed()

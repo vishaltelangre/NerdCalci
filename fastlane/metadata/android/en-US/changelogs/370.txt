@@ -1,0 +1,4 @@
+- Added file sorting functionality (Issue #79).
+- Removed duplicate create and scratchpad shortcuts on home when there are no files to show (Issue #116).
+- Added ability to lock files to protect them from accidental edits and deletions (Issue #57).
+- File rows now show both created and modified timestamps.

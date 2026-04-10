@@ -56,5 +56,6 @@ object Constants {
     const val PREF_LAUNCH_MODE = "launch_mode"
     const val PREF_LAUNCH_FILE_ID = "launch_file_id"
     const val PREF_SHOW_PRECISION_ELLIPSIS = "show_precision_ellipsis"
+    const val PREF_FILE_SORT_CRITERIA = "file_sort_criteria"
     const val SCRATCHPAD_DISPLAY_NAME = "Scratchpad"
 }

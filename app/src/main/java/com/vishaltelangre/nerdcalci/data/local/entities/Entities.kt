@@ -17,6 +17,7 @@ data class FileEntity(
     val lastModified: Long = System.currentTimeMillis(),
     val createdAt: Long = System.currentTimeMillis(),
     val isPinned: Boolean = false,
+    val isLocked: Boolean = false,
     val syncId: String = UUID.randomUUID().toString(),
     val isTemporary: Boolean = false
 )

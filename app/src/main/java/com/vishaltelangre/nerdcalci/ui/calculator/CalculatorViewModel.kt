@@ -24,8 +24,15 @@ import com.vishaltelangre.nerdcalci.data.backup.RestoreResult
 import com.vishaltelangre.nerdcalci.data.local.CalculatorDao
 import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
+import com.vishaltelangre.nerdcalci.data.local.entities.FileSortCriteria
+import com.vishaltelangre.nerdcalci.data.local.entities.FileSortOption
+import com.vishaltelangre.nerdcalci.data.local.entities.FileSortDirection
+
 import com.vishaltelangre.nerdcalci.utils.Suggestion
 import com.vishaltelangre.nerdcalci.utils.SuggestionType
+import kotlin.comparisons.compareBy
+import kotlin.comparisons.thenBy
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -75,7 +82,8 @@ data class RestoreProgressState(
 
 class CalculatorViewModel(
     private val dao: CalculatorDao,
-    private val prefs: SharedPreferences? = null
+    private val prefs: SharedPreferences? = null,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : ViewModel() {
     private val _launchMode = MutableStateFlow(
         LaunchMode.fromPrefValue(prefs?.getString(Constants.PREF_LAUNCH_MODE, null)).let { mode ->
@@ -398,6 +406,16 @@ class CalculatorViewModel(
     )
     val rationalMode: StateFlow<Boolean> = _rationalMode
 
+    private val _fileSortCriteria = MutableStateFlow(
+        FileSortCriteria.fromJson(prefs?.getString(Constants.PREF_FILE_SORT_CRITERIA, null))
+    )
+    val fileSortCriteria: StateFlow<FileSortCriteria> = _fileSortCriteria.asStateFlow()
+
+    fun setFileSortCriteria(criteria: FileSortCriteria) {
+        _fileSortCriteria.value = criteria
+        prefs?.edit()?.putString(Constants.PREF_FILE_SORT_CRITERIA, criteria.toJson())?.apply()
+    }
+
     fun setLaunchMode(mode: LaunchMode) {
         _launchMode.value = mode
 
@@ -672,7 +690,32 @@ class CalculatorViewModel(
     private val _uiEvents = MutableSharedFlow<HomeUiEvent>()
     val uiEvents = _uiEvents.asSharedFlow()
 
-    val allFiles: Flow<List<FileEntity>> = dao.getAllFiles()
+    val allFiles: Flow<List<FileEntity>> = combine(
+        dao.getAllFiles(),
+        _fileSortCriteria
+    ) { files: List<FileEntity>, criteria: FileSortCriteria ->
+        files.sortedWith(
+            compareByDescending<FileEntity> { it.isPinned }
+                .thenComparing(getFileComparator(criteria))
+        )
+    }
+
+    private fun getFileComparator(criteria: FileSortCriteria): Comparator<FileEntity> {
+        val comparator = when (criteria.option) {
+            FileSortOption.NAME -> compareBy(String.CASE_INSENSITIVE_ORDER) { file: FileEntity -> file.name }
+                .thenBy { file: FileEntity -> file.id }
+            FileSortOption.CREATED_AT -> compareBy { file: FileEntity -> file.createdAt }
+                .thenBy { file: FileEntity -> file.id }
+            FileSortOption.MODIFIED_AT -> compareBy { file: FileEntity -> file.lastModified }
+                .thenBy { file: FileEntity -> file.id }
+        }
+        return if (criteria.direction == FileSortDirection.DESCENDING) {
+            comparator.reversed()
+        } else {
+            comparator
+        }
+    }
+
 
     fun getLines(fileId: Long): Flow<List<LineEntity>> = dao.getLinesForFile(fileId)
 
@@ -697,9 +740,24 @@ class CalculatorViewModel(
         updateUndoRedoState(fileId)
     }
 
+    private suspend fun isFileLocked(fileId: Long): Boolean {
+        return dao.getFileById(fileId)?.isLocked == true
+    }
+
+    fun toggleLockFile(fileId: Long) {
+        viewModelScope.launch(ioDispatcher) {
+            calculationMutex.withLock {
+                val file = dao.getFileById(fileId) ?: return@withLock
+                if (file.isTemporary) return@withLock // Scratchpad cannot be locked
+                dao.toggleLockFile(fileId)
+            }
+        }
+    }
+
     fun undo(fileId: Long, rationalMode: Boolean? = null) {
         viewModelScope.launch(Dispatchers.IO) {
             calculationMutex.withLock {
+                if (isFileLocked(fileId)) return@withLock
                 val undoStack = undoStacks[fileId] ?: return@withLock
                 if (undoStack.isEmpty()) return@withLock
 
@@ -721,6 +779,7 @@ class CalculatorViewModel(
     fun redo(fileId: Long, rationalMode: Boolean? = null) {
         viewModelScope.launch(Dispatchers.IO) {
             calculationMutex.withLock {
+                if (isFileLocked(fileId)) return@withLock
                 val redoStack = redoStacks[fileId] ?: return@withLock
                 if (redoStack.isEmpty()) return@withLock
 
@@ -753,6 +812,7 @@ class CalculatorViewModel(
     fun clearHistory(fileId: Long) {
         viewModelScope.launch(Dispatchers.IO) {
             calculationMutex.withLock {
+                if (isFileLocked(fileId)) return@withLock
                 undoStacks[fileId]?.clear()
                 redoStacks[fileId]?.clear()
                 updateUndoRedoState(fileId)
@@ -775,13 +835,14 @@ class CalculatorViewModel(
 
     // Update a line and recalculate everything from it downward
     fun updateLine(updatedLine: LineEntity, rationalMode: Boolean? = null) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             updateLineInternal(updatedLine, rationalMode)
         }
     }
 
     suspend fun updateLineInternal(updatedLine: LineEntity, rationalMode: Boolean? = null) {
         calculationMutex.withLock {
+            if (isFileLocked(updatedLine.fileId)) return@withLock
             // Save the user's current typing
             dao.updateLine(updatedLine)
 
@@ -841,6 +902,7 @@ class CalculatorViewModel(
     ): Long {
         return withContext(Dispatchers.IO) {
             calculationMutex.withLock {
+                if (isFileLocked(fileId)) return@withLock -1L
                 // Save state for undo
                 saveStateForUndo(fileId)
 
@@ -881,6 +943,7 @@ class CalculatorViewModel(
             calculationMutex.withLock {
                 val line = dao.getLineById(lineId) ?: return@withLock -1L
                 val fileId = line.fileId
+                if (isFileLocked(fileId)) return@withLock -1L
                 saveStateForUndo(fileId)
 
                 val originalExpression = currentExpression ?: line.expression
@@ -928,6 +991,7 @@ class CalculatorViewModel(
                 val currentLine = dao.getLineById(currentLineId) ?: return@withLock
 
                 val fileId = prevLine.fileId
+                if (isFileLocked(fileId)) return@withLock
                 saveStateForUndo(fileId)
 
                 val mergedExpression = prevLine.expression + currentLine.expression
@@ -946,8 +1010,9 @@ class CalculatorViewModel(
     }
 
     fun deleteLine(line: LineEntity, rationalMode: Boolean? = null) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             calculationMutex.withLock {
+                if (isFileLocked(line.fileId)) return@withLock
                 // Save state for undo
                 saveStateForUndo(line.fileId)
 
@@ -975,8 +1040,9 @@ class CalculatorViewModel(
     }
 
     fun clearAllLines(fileId: Long) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             calculationMutex.withLock {
+                if (isFileLocked(fileId)) return@withLock
                 saveStateForUndo(fileId)
                 dao.clearAllLines(fileId)
             }
@@ -985,6 +1051,7 @@ class CalculatorViewModel(
 
     private suspend fun performSyncAwareDelete(context: Context, fileId: Long): Boolean {
         val file = dao.getFileById(fileId) ?: return false
+        if (file.isLocked) return false
 
         if (SyncManager.isSyncActive(context)) {
             val deleteError: Throwable? = try {
@@ -1068,7 +1135,7 @@ class CalculatorViewModel(
                 val untitledRegex = Regex("""^Untitled(\s\(\d+\))?$""") // Matches "Untitled", "Untitled (1)", "Untitled (2)", etc.
                 val isUntitled = untitledRegex.matches(file.name)
 
-                if (isEmpty && isRecent && isUntitled) {
+                if (isEmpty && isRecent && isUntitled && !file.isLocked) {
                     dao.deleteFile(file)
                     // Purge history for this file
                     undoStacks.remove(fileId)
@@ -1080,34 +1147,38 @@ class CalculatorViewModel(
     }
 
     suspend fun renameFile(context: Context, fileId: Long, newName: String): Boolean {
-        return withContext(Dispatchers.IO) {
-            val trimmedName = newName.trim()
-            if (trimmedName.isBlank()) return@withContext false
+        return withContext(ioDispatcher) {
+            calculationMutex.withLock {
+                if (isFileLocked(fileId)) return@withLock false
+                val trimmedName = newName.trim()
+                if (trimmedName.isBlank()) return@withLock false
 
-            val finalName = if (trimmedName.length > Constants.MAX_FILE_NAME_LENGTH) {
-                trimmedName.substring(0, Constants.MAX_FILE_NAME_LENGTH).trim()
-            } else {
-                trimmedName
-            }
-
-            if (finalName.isBlank()) return@withContext false
-
-            // Check if name is taken by another file
-            if (dao.doesFileExist(finalName, fileId)) return@withContext false
-            val file = dao.getFileById(fileId)
-            if (file != null) {
-                if (SyncManager.isSyncActive(context)) {
-                    // Delete old external file in sync folder to prevent re-import as foreign file
-                    val deleteError = SyncManager.deleteExternalFile(context, file.name)
-                    if (deleteError != null) {
-                        val missingExternalFile = deleteError.message?.startsWith("External file not found:") == true
-                        if (!missingExternalFile) throw deleteError
-                    }
+                val finalName = if (trimmedName.length > Constants.MAX_FILE_NAME_LENGTH) {
+                    trimmedName.substring(0, Constants.MAX_FILE_NAME_LENGTH).trim()
+                } else {
+                    trimmedName
                 }
-                dao.updateFile(file.copy(name = finalName))
-                true
-            } else {
-                false
+
+                if (finalName.isBlank()) return@withLock false
+
+                // Check if name is taken by another file
+                if (dao.doesFileExist(finalName, fileId)) return@withLock false
+                val file = dao.getFileById(fileId)
+                if (file != null) {
+                    val oldName = file.name
+                    dao.updateFile(file.copy(name = finalName))
+
+                    if (SyncManager.isSyncActive(context)) {
+                        val renameError = SyncManager.renameExternalFile(context, oldName, finalName)
+                        if (renameError != null) {
+                            val missingExternalFile = renameError.message?.startsWith("External file not found:") == true
+                            if (!missingExternalFile) throw renameError
+                        }
+                    }
+                    true
+                } else {
+                    false
+                }
             }
         }
     }

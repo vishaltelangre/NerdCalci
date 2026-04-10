@@ -157,6 +157,37 @@ class SyncManagerTest {
     }
 
     @Test
+    fun `performSync includes isLocked in metadata for new local files`() = runBlocking {
+        every { prefs.getBoolean(SyncManager.PREF_SYNC_ENABLED, false) } returns true
+        every { prefs.getString(SyncManager.PREF_SYNC_FOLDER_URI, null) } returns "content://mock"
+        every { prefs.getAll() } returns emptyMap()
+        every { folder.listFiles() } returns emptyArray()
+
+        dao.addFile(
+            FileEntity(
+                id = 1L,
+                name = "Locked",
+                syncId = "",
+                lastModified = 1234L,
+                createdAt = 1234L,
+                isLocked = true
+            )
+        )
+        dao.addLine(
+            LineEntity(id = 1L, fileId = 1L, sortOrder = 0, expression = "1 + 1", result = "2")
+        )
+
+        val metadataSlot = slot<FileMetadata>()
+        coEvery { FileUtils.formatCanonicalFileContent(any(), capture(metadataSlot)) } answers { callOriginal() }
+
+        val result = SyncManager.performSync(context, dao)
+
+        assertTrue(result.isSuccess)
+        assertTrue(metadataSlot.isCaptured)
+        assertTrue(metadataSlot.captured.isLocked)
+    }
+
+    @Test
     fun `performSync uses canonical content independent of precision setting`() = runBlocking {
         every { prefs.getBoolean(SyncManager.PREF_SYNC_ENABLED, false) } returns true
         every { prefs.getString(SyncManager.PREF_SYNC_FOLDER_URI, null) } returns "content://mock"

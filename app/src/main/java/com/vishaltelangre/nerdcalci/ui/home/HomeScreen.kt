@@ -58,16 +58,21 @@ import androidx.lifecycle.viewModelScope
 import com.vishaltelangre.nerdcalci.R
 import com.vishaltelangre.nerdcalci.core.Constants
 import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
+import com.vishaltelangre.nerdcalci.data.local.entities.FileSortCriteria
+import com.vishaltelangre.nerdcalci.data.local.entities.FileSortOption
+import com.vishaltelangre.nerdcalci.data.local.entities.FileSortDirection
 import com.vishaltelangre.nerdcalci.ui.calculator.CalculatorViewModel
 import com.vishaltelangre.nerdcalci.ui.calculator.HomeUiEvent
 import com.vishaltelangre.nerdcalci.core.LaunchMode
 import com.vishaltelangre.nerdcalci.ui.components.SectionHeader
 import com.vishaltelangre.nerdcalci.ui.components.addDismissibleFileItems
+import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.filled.Check
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarHost
@@ -101,8 +106,10 @@ fun HomeScreen(
 ) {
     val context = LocalContext.current
     val files by viewModel.allFiles.collectAsState(initial = emptyList())
+    val fileSortCriteria by viewModel.fileSortCriteria.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
+    var showSortMenu by remember { mutableStateOf(false) }
 
     // Get app name from strings.xml
     val appName = context.getString(R.string.app_name)
@@ -159,75 +166,133 @@ fun HomeScreen(
 
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text(appName, color = MaterialTheme.colorScheme.onSurface) },
-                navigationIcon = {
-                    IconButton(onClick = onChangelogClick) {
-                        Icon(
-                            Icons.Default.RssFeed,
-                            "What's New",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                },
-                actions = {
-                    if (syncEnabled) {
-                        IconButton(
-                            onClick = { viewModel.syncFiles(context) },
-                            enabled = !isSyncing
-                        ) {
+            if (files.isNotEmpty()) {
+                TopAppBar(
+                    title = { Text(appName, color = MaterialTheme.colorScheme.onSurface) },
+                    navigationIcon = {
+                        IconButton(onClick = onChangelogClick) {
                             Icon(
-                                Icons.Default.Sync,
-                                contentDescription = "Sync files",
+                                Icons.Default.RssFeed,
+                                "What's New",
                                 tint = MaterialTheme.colorScheme.onSurface
                             )
                         }
-                    }
-                    IconButton(
-                        onClick = onSearchClick,
-                        enabled = files.isNotEmpty()
-                    ) {
-                        Icon(
-                            Icons.Default.Search,
-                            "Search",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                    IconButton(onClick = onSettingsClick) {
-                        Icon(
-                            Icons.Default.Settings,
-                            "Settings",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
+                    },
+                    actions = {
+                        if (syncEnabled) {
+                            IconButton(
+                                onClick = { viewModel.syncFiles(context) },
+                                enabled = !isSyncing
+                            ) {
+                                Icon(
+                                    Icons.Default.Sync,
+                                    contentDescription = "Sync files",
+                                    tint = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                        IconButton(onClick = onSearchClick) {
+                            Icon(
+                                Icons.Default.Search,
+                                "Search",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        IconButton(onClick = { showSortMenu = true }) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.Sort,
+                                "Sort",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                            SortMenu(
+                                expanded = showSortMenu,
+                                onDismissRequest = { showSortMenu = false },
+                                currentCriteria = fileSortCriteria,
+                                onCriteriaSelected = { criteria: FileSortCriteria ->
+                                    viewModel.setFileSortCriteria(criteria)
+                                    showSortMenu = false
+                                }
+                            )
+                        }
+                        IconButton(onClick = onSettingsClick) {
+                            Icon(
+                                Icons.Default.Settings,
+                                "Settings",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background
+                    )
                 )
-            )
+            } else {
+                CenterAlignedTopAppBar(
+                    title = { Text(appName, color = MaterialTheme.colorScheme.onSurface) },
+                    navigationIcon = {
+                        IconButton(onClick = onChangelogClick) {
+                            Icon(
+                                Icons.Default.RssFeed,
+                                "What's New",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    },
+                    actions = {
+                        if (syncEnabled) {
+                            IconButton(
+                                onClick = { viewModel.syncFiles(context) },
+                                enabled = !isSyncing
+                            ) {
+                                Icon(
+                                    Icons.Default.Sync,
+                                    contentDescription = "Sync files",
+                                    tint = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                        IconButton(onClick = onSettingsClick) {
+                            Icon(
+                                Icons.Default.Settings,
+                                "Settings",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background
+                    )
+                )
+            }
         },
         floatingActionButton = {
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+            AnimatedVisibility(
+                visible = files.isNotEmpty(),
+                enter = fadeIn() + slideInVertically { it },
+                exit = fadeOut() + slideOutVertically { it }
             ) {
-                if (showScratchpad) {
-                    scratchpadFileId?.let { id ->
-                        FloatingActionButton(
-                            onClick = { onFileClick(id) },
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                        ) {
-                            Icon(Icons.Default.FlashOn, contentDescription = "Open temporary scratchpad")
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    if (showScratchpad) {
+                        scratchpadFileId?.let { id ->
+                            FloatingActionButton(
+                                onClick = { onFileClick(id) },
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            ) {
+                                Icon(Icons.Default.FlashOn, contentDescription = "Open temporary scratchpad")
+                            }
                         }
                     }
-                }
 
-                FloatingActionButton(
-                    onClick = { createFile() },
-                    containerColor = MaterialTheme.colorScheme.primary
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "New Calculation")
+                    FloatingActionButton(
+                        onClick = { createFile() },
+                        containerColor = MaterialTheme.colorScheme.primary
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "New Calculation")
+                    }
                 }
             }
         },
@@ -390,7 +455,7 @@ private fun HomeFileList(
     ) {
 
         if (visiblePinnedFiles.isNotEmpty()) {
-            item { SectionHeader(title = "Pinned") }
+            item { SectionHeader(title = "PINNED") }
             addDismissibleFileItems(
                 files = visiblePinnedFiles,
                 excludedIds = excludedFileIds,
@@ -420,7 +485,7 @@ private fun HomeFileList(
         if (visibleUnpinnedFiles.isNotEmpty()) {
             item {
                 SectionHeader(
-                    title = if (visiblePinnedFiles.isNotEmpty()) "All files" else "Files"
+                    title = if (visiblePinnedFiles.isNotEmpty()) "ALL FILES" else "FILES"
                 )
             }
             addDismissibleFileItems(
@@ -446,6 +511,82 @@ private fun HomeFileList(
                 onUndo = { id: Long -> viewModel.undoHideFile(id) },
                 onDismiss = { id: Long -> viewModel.hideFile(id) },
                 viewModel = viewModel
+            )
+        }
+    }
+}
+
+@Composable
+fun SortMenu(
+    expanded: Boolean,
+    onDismissRequest: () -> Unit,
+    currentCriteria: FileSortCriteria,
+    onCriteriaSelected: (FileSortCriteria) -> Unit
+) {
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismissRequest
+    ) {
+        Text(
+            text = "Sort by",
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary
+        )
+
+        FileSortOption.entries.forEach { option ->
+            DropdownMenuItem(
+                text = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(
+                            selected = currentCriteria.option == option,
+                            onClick = null
+                        )
+                        Text(
+                            text = when (option) {
+                                FileSortOption.NAME -> "Name"
+                                FileSortOption.CREATED_AT -> "Date created"
+                                FileSortOption.MODIFIED_AT -> "Date modified"
+                            },
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                    }
+                },
+                onClick = {
+                    onCriteriaSelected(currentCriteria.copy(option = option))
+                }
+            )
+        }
+
+        HorizontalDivider()
+
+        Text(
+            text = "Order",
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary
+        )
+
+        FileSortDirection.entries.forEach { direction ->
+            DropdownMenuItem(
+                text = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(
+                            selected = currentCriteria.direction == direction,
+                            onClick = null
+                        )
+                        Text(
+                            text = when (direction) {
+                                FileSortDirection.ASCENDING -> "Ascending"
+                                FileSortDirection.DESCENDING -> "Descending"
+                            },
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                    }
+                },
+                onClick = {
+                    onCriteriaSelected(currentCriteria.copy(direction = direction))
+                }
             )
         }
     }

@@ -56,9 +56,13 @@ fun FileInfoDialog(
                 Spacer(modifier = Modifier.height(12.dp))
                 InfoRow(label = "Created at", value = dateFormat.format(file.createdAt))
                 Spacer(modifier = Modifier.height(12.dp))
-                InfoRow(label = "Last edited at", value = dateFormat.format(file.lastModified))
+                InfoRow(label = "Last modified at", value = dateFormat.format(file.lastModified))
                 Spacer(modifier = Modifier.height(12.dp))
                 InfoRow(label = "Number of lines", value = lineCount.toString())
+                Spacer(modifier = Modifier.height(12.dp))
+                InfoRow(label = "Locked?", value = if (file.isLocked) "Yes" else "No")
+                Spacer(modifier = Modifier.height(12.dp))
+                InfoRow(label = "Pinned?", value = if (file.isPinned) "Yes" else "No")
             }
         },
         confirmButton = {

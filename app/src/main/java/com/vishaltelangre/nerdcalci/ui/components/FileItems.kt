@@ -24,12 +24,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import java.text.SimpleDateFormat
+import android.text.format.DateUtils
+import java.util.Calendar
 import java.util.Locale
+import java.util.Date
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import androidx.compose.ui.text.font.FontWeight
@@ -233,9 +240,25 @@ internal fun FileItem(
                         onTogglePin()
                     }
                 )
+                if (!file.isTemporary) {
+                    DropdownMenuItem(
+                        text = { Text(if (file.isLocked) "Unlock" else "Lock") },
+                        leadingIcon = {
+                            Icon(
+                                if (file.isLocked) Icons.Default.LockOpen else Icons.Default.Lock,
+                                contentDescription = null
+                            )
+                        },
+                        onClick = {
+                            showMenu = false
+                            viewModel.toggleLockFile(file.id)
+                        }
+                    )
+                }
                 DropdownMenuItem(
                     text = { Text("Rename") },
                     leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
+                    enabled = !file.isLocked,
                     onClick = {
                         showMenu = false
                         showRenameDialog = true
@@ -252,6 +275,7 @@ internal fun FileItem(
                 DropdownMenuItem(
                     text = { Text("Delete") },
                     leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
+                    enabled = !file.isLocked,
                     onClick = {
                         showMenu = false
                         onDismiss()
@@ -289,6 +313,25 @@ internal fun FileItem(
             }
         )
     }
+}
+
+private fun formatFileDate(timestamp: Long): String {
+    val date = Date(timestamp)
+    val timeFormat = SimpleDateFormat("hh:mm a", Locale.getDefault())
+    val dateFormat = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+
+    return when {
+        DateUtils.isToday(timestamp) -> timeFormat.format(date)
+        isYesterday(timestamp) -> "YESTERDAY ${timeFormat.format(date)}"
+        else -> dateFormat.format(date)
+    }
+}
+
+private fun isYesterday(timestamp: Long): Boolean {
+    val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
+    val time = Calendar.getInstance().apply { timeInMillis = timestamp }
+    return yesterday.get(Calendar.YEAR) == time.get(Calendar.YEAR) &&
+            yesterday.get(Calendar.DAY_OF_YEAR) == time.get(Calendar.DAY_OF_YEAR)
 }
 
 @Composable
@@ -333,17 +376,44 @@ internal fun FileRowCard(
                         Icon(
                             Icons.Filled.PushPin,
                             contentDescription = "Pinned",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(start = 4.dp)
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .padding(start = 4.dp)
+                                .size(16.dp)
+                        )
+                    }
+                    if (file.isLocked) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Icon(
+                            Icons.Default.Lock,
+                            contentDescription = "Locked",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp)
                         )
                     }
                 }
+                val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
+                val labelStyle = SpanStyle(color = onSurfaceVariant.copy(alpha = 0.6f))
+                val valueStyle = SpanStyle(
+                    color = onSurfaceVariant.copy(alpha = 0.6f),
+                    fontWeight = FontWeight.Bold
+                )
+
                 Text(
-                    text = "Last edited: ${
-                        SimpleDateFormat("MMM dd, yyyy hh:mm a", Locale.getDefault()).format(file.lastModified)
-                    }",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = buildAnnotatedString {
+                        withStyle(labelStyle) { append("MODIFIED: ") }
+                        withStyle(valueStyle) { append(formatFileDate(file.lastModified).uppercase()) }
+                        withStyle(labelStyle) { append(" • ") }
+                        withStyle(labelStyle) { append("CREATED: ") }
+                        withStyle(valueStyle) { append(formatFileDate(file.createdAt).uppercase()) }
+                    },
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Normal
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 6.dp)
                 )
             }
             if (trailingContent != null) {
@@ -368,6 +438,7 @@ fun DismissibleFileItem(
     val haptic = LocalHapticFeedback.current
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
+            if (file.isLocked) return@rememberSwipeToDismissBoxState false
             value == SwipeToDismissBoxValue.EndToStart
         }
     )
@@ -448,6 +519,7 @@ fun SectionHeader(title: String) {
     Text(
         text = title,
         style = MaterialTheme.typography.titleSmall,
+        fontSize = 12.sp,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
     )

@@ -24,6 +24,10 @@ import com.vishaltelangre.nerdcalci.data.backup.RestoreResult
 import com.vishaltelangre.nerdcalci.data.local.CalculatorDao
 import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
+import com.vishaltelangre.nerdcalci.data.local.entities.FileSortCriteria
+import com.vishaltelangre.nerdcalci.data.local.entities.FileSortOption
+import com.vishaltelangre.nerdcalci.data.local.entities.FileSortDirection
+
 import com.vishaltelangre.nerdcalci.utils.Suggestion
 import com.vishaltelangre.nerdcalci.utils.SuggestionType
 import kotlinx.coroutines.Dispatchers
@@ -398,6 +402,16 @@ class CalculatorViewModel(
     )
     val rationalMode: StateFlow<Boolean> = _rationalMode
 
+    private val _fileSortCriteria = MutableStateFlow(
+        FileSortCriteria.fromJson(prefs?.getString(Constants.PREF_FILE_SORT_CRITERIA, null))
+    )
+    val fileSortCriteria: StateFlow<FileSortCriteria> = _fileSortCriteria.asStateFlow()
+
+    fun setFileSortCriteria(criteria: FileSortCriteria) {
+        _fileSortCriteria.value = criteria
+        prefs?.edit()?.putString(Constants.PREF_FILE_SORT_CRITERIA, criteria.toJson())?.apply()
+    }
+
     fun setLaunchMode(mode: LaunchMode) {
         _launchMode.value = mode
 
@@ -672,7 +686,29 @@ class CalculatorViewModel(
     private val _uiEvents = MutableSharedFlow<HomeUiEvent>()
     val uiEvents = _uiEvents.asSharedFlow()
 
-    val allFiles: Flow<List<FileEntity>> = dao.getAllFiles()
+    val allFiles: Flow<List<FileEntity>> = combine(
+        dao.getAllFiles(),
+        _fileSortCriteria
+    ) { files: List<FileEntity>, criteria: FileSortCriteria ->
+        files.sortedWith(
+            compareByDescending<FileEntity> { it.isPinned }
+                .thenComparing(getFileComparator(criteria))
+        )
+    }
+
+    private fun getFileComparator(criteria: FileSortCriteria): Comparator<FileEntity> {
+        val comparator = when (criteria.option) {
+            FileSortOption.NAME -> compareBy(String.CASE_INSENSITIVE_ORDER) { file: FileEntity -> file.name }
+            FileSortOption.CREATED_AT -> compareBy { file: FileEntity -> file.createdAt }
+            FileSortOption.MODIFIED_AT -> compareBy { file: FileEntity -> file.lastModified }
+        }
+        return if (criteria.direction == FileSortDirection.DESCENDING) {
+            comparator.reversed()
+        } else {
+            comparator
+        }
+    }
+
 
     fun getLines(fileId: Long): Flow<List<LineEntity>> = dao.getLinesForFile(fileId)
 

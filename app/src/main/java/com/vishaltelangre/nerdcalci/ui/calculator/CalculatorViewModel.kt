@@ -1160,15 +1160,16 @@ class CalculatorViewModel(
                 if (dao.doesFileExist(finalName, fileId)) return@withLock false
                 val file = dao.getFileById(fileId)
                 if (file != null) {
+                    val oldName = file.name
+                    dao.updateFile(file.copy(name = finalName))
+
                     if (SyncManager.isSyncActive(context)) {
-                        // Delete old external file in sync folder to prevent re-import as foreign file
-                        val deleteError = SyncManager.deleteExternalFile(context, file.name)
-                        if (deleteError != null) {
-                            val missingExternalFile = deleteError.message?.startsWith("External file not found:") == true
-                            if (!missingExternalFile) throw deleteError
+                        val renameError = SyncManager.renameExternalFile(context, oldName, finalName)
+                        if (renameError != null) {
+                            val missingExternalFile = renameError.message?.startsWith("External file not found:") == true
+                            if (!missingExternalFile) throw renameError
                         }
                     }
-                    dao.updateFile(file.copy(name = finalName))
                     true
                 } else {
                     false

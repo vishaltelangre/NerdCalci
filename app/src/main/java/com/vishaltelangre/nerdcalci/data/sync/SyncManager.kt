@@ -668,6 +668,52 @@ object SyncManager {
         return SyncResult(safFile.lastModified(), parsed.metadata.lastModified, computedHash, parsed.metadata.isPinned, parsed.metadata.isLocked)
     }
 
+    suspend fun renameExternalFile(context: Context, oldName: String, newName: String): Throwable? {
+        return withContext(Dispatchers.IO) {
+            try {
+                if (!isSyncActive(context)) {
+                    return@withContext IllegalStateException("Sync is disabled")
+                }
+                val prefs = prefs(context)
+                val folderUri = prefs.getString(PREF_SYNC_FOLDER_URI, null)
+                    ?: return@withContext IllegalStateException("Sync folder not set")
+                val folder = DocumentFile.fromTreeUri(context, Uri.parse(folderUri))
+                    ?: return@withContext IllegalStateException("Sync folder unavailable")
+
+                val oldNameWithExtension = "$oldName$EXPORT_FILE_EXTENSION"
+                val newNameWithExtension = "$newName$EXPORT_FILE_EXTENSION"
+                val safFile = folder.findFile(oldNameWithExtension)
+                    ?: return@withContext IllegalStateException("External file not found: $oldNameWithExtension")
+
+                // Get syncId from file before renaming it so we can update snapshot
+                val syncId = context.contentResolver.openInputStream(safFile.uri)?.use {
+                    FileUtils.readMetadataHeader(it.bufferedReader())?.id
+                }
+
+                if (!safFile.renameTo(newNameWithExtension)) {
+                    Log.e(TAG, "Failed to rename external file: $oldNameWithExtension to $newNameWithExtension")
+                    return@withContext IllegalStateException("Failed to rename external file: $oldNameWithExtension to $newNameWithExtension")
+                }
+
+                if (syncId != null) {
+                    val encodedMap = prefs.safeGetString(PREF_LAST_SYNC_FILES, null)
+                    val syncMap = decodeLastSyncMap(encodedMap).toMutableMap()
+                    val oldInfo = syncMap[syncId]
+                    if (oldInfo != null) {
+                        syncMap[syncId] = oldInfo.copy(filename = newNameWithExtension)
+                        prefs.edit()
+                            .putString(PREF_LAST_SYNC_FILES, encodeLastSyncMap(syncMap))
+                            .apply()
+                    }
+                }
+                null
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to rename external file", e)
+                e
+            }
+        }
+    }
+
     suspend fun deleteExternalFile(context: Context, fileName: String): Throwable? {
         return withContext(Dispatchers.IO) {
             try {

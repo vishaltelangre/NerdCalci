@@ -207,27 +207,33 @@ fun HomeScreen(
             )
         },
         floatingActionButton = {
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+            AnimatedVisibility(
+                visible = files.isNotEmpty(),
+                enter = fadeIn() + slideInVertically { it },
+                exit = fadeOut() + slideOutVertically { it }
             ) {
-                if (showScratchpad) {
-                    scratchpadFileId?.let { id ->
-                        FloatingActionButton(
-                            onClick = { onFileClick(id) },
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                        ) {
-                            Icon(Icons.Default.FlashOn, contentDescription = "Open temporary scratchpad")
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    if (showScratchpad) {
+                        scratchpadFileId?.let { id ->
+                            FloatingActionButton(
+                                onClick = { onFileClick(id) },
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            ) {
+                                Icon(Icons.Default.FlashOn, contentDescription = "Open temporary scratchpad")
+                            }
                         }
                     }
-                }
 
-                FloatingActionButton(
-                    onClick = { createFile() },
-                    containerColor = MaterialTheme.colorScheme.primary
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "New Calculation")
+                    FloatingActionButton(
+                        onClick = { createFile() },
+                        containerColor = MaterialTheme.colorScheme.primary
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "New Calculation")
+                    }
                 }
             }
         },

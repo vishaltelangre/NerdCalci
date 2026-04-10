@@ -203,6 +203,45 @@ class MixedUnitUsageTest {
     }
 
     @Test
+    fun `multiply speed by non-matching time`() {
+        testCalculate(
+            "1 mps * 1 s",
+            "1 mps * 1 ms",
+            "1 mps * 1 µs",
+            "1 mps * 1 ns",
+            "1 mps * 1 min",
+            "1 mps * 1 h",
+            "1 mps * 1 d",
+            "1 mps * 1 wk",
+            "1 mps * 1 mo",
+            "1 mps * 1 yr",
+            "1 mps * 1 lustrum",
+            "1 mps * 1 decade",
+            "1 mps * 1 century",
+            "1 mps * 1 millennium",
+            "1 mps * 1 decisecond",
+            "1 mps * 1 centisecond"
+        ) { result ->
+            assertEquals("1.0 m", result[0].result)
+            assertEquals("0.001 m", result[1].result)
+            assertEquals("1.0E-6 m", result[2].result)
+            assertEquals("1.0E-9 m", result[3].result)
+            assertEquals("60.0 m", result[4].result)
+            assertEquals("3600.0 m", result[5].result)
+            assertEquals("86400.0 m", result[6].result)
+            assertEquals("604800.0 m", result[7].result)
+            assertEquals("2629746.0 m", result[8].result)
+            assertEquals("31556952.0 m", result[9].result)
+            assertEquals("157784760.0 m", result[10].result)
+            assertEquals("315569520.0 m", result[11].result)
+            assertEquals("3155695200.0 m", result[12].result)
+            assertEquals("31556952000.0 m", result[13].result)
+            assertEquals("0.1 m", result[14].result)
+            assertEquals("0.01 m", result[15].result)
+        }
+    }
+
+    @Test
     fun `divide length by time`() {
         testCalculate(
             "10 m / 5 s",
@@ -216,6 +255,88 @@ class MixedUnitUsageTest {
             assertEquals("2.0 mph", result[2].result)
             assertEquals("2.000001727863263812754913827139376 kn", result[3].result) // Floating point error
             assertEquals("2.0 fps", result[4].result)
+        }
+    }
+
+    @Test
+    fun `divide non-matching length by time`() {
+        testCalculate(
+            "1 nm / 1 s",
+            "1 µm / 1 s",
+            "1 mm / 1 s",
+            "1 cm / 1 s",
+            "1 dm / 1 s",
+            "1 m / 1 s",
+            "1 km / 1 h",
+            "1 inch / 1 s",
+            "1 ft / 1 s",
+            "1 yd / 1 s",
+            "1 mi / 1 h",
+            "1 fur / 1 h",
+            "1 ftm / 1 h",
+            "1 NM / 1 h",
+            "1 ly / 1 s",
+            "1 Å / 1 s",
+            "1 pm / 1 s",
+            "1 au / 1 s"
+        ) {result ->
+            assertEquals("1.0E-9 mps", result[0].result)
+            assertEquals("1.0E-6 mps", result[1].result)
+            assertEquals("0.001 mps", result[2].result)
+            assertEquals("0.01 mps", result[3].result)
+            assertEquals("0.1 mps", result[4].result)
+            assertEquals("1.0 mps", result[5].result)
+            assertEquals("1.0 kmh", result[6].result)
+            assertEquals("0.08333333333333333333333333333333333 fps", result[7].result)
+            assertEquals("1.0 fps", result[8].result)
+            assertEquals("3.0 fps", result[9].result)
+            assertEquals("1.0 mph", result[10].result)
+            assertEquals("0.125 mph", result[11].result)
+            assertEquals("0.0009874738552689894332522101530973245 kn", result[12].result)
+            assertEquals("1.000000863931631906377456913569688 kn", result[13].result) // Floating point error
+            assertEquals("9.4607304725808E15 mps", result[14].result)
+            assertEquals("1.0E-10 mps", result[15].result)
+            assertEquals("1.0E-12 mps", result[16].result)
+            assertEquals("149597870700.0 mps", result[17].result)
+        }
+    }
+
+    @Test
+    fun `divide length by non-matching time`() {
+        testCalculate(
+            "1 m / 1 s",
+            "1 m / 1 ms",
+            "1 m / 1 µs",
+            "1 m / 1 ns",
+            "1 m / 1 min",
+            "1 m / 1 hr",
+            "1 m / 1 d",
+            "1 m / 1 wk",
+            "1 m / 1 mo",
+            "1 m / 1 yr",
+            "1 m / 1 lustrum",
+            "1 m / 1 decade",
+            "1 m / 1 century",
+            "1 m / 1 millennium",
+            "1 m / 1 ds",
+            "1 m / 1 cs"
+        ) { result ->
+            assertEquals("1.0 mps", result[0].result)
+            assertEquals("1000.0 mps", result[1].result)
+            assertEquals("1000000.0 mps", result[2].result)
+            assertEquals("1000000000.0 mps", result[3].result)
+            assertEquals("0.01666666666666666666666666666666667 mps", result[4].result)
+            assertEquals("0.0002777777777777777777777777777777778 mps", result[5].result)
+            assertEquals("0.00001157407407407407407407407407407407 mps", result[6].result)
+            assertEquals("1.653439153439153439153439153439153E-6 mps", result[7].result)
+            assertEquals("3.802648620817371715747452415556483E-7 mps", result[8].result)
+            assertEquals("3.16887385068114309645621034629707E-8 mps", result[9].result)
+            assertEquals("6.337747701362286192912420692594139E-9 mps", result[10].result)
+            assertEquals("3.16887385068114309645621034629707E-9 mps", result[11].result)
+            assertEquals("3.16887385068114309645621034629707E-10 mps", result[12].result)
+            assertEquals("3.16887385068114309645621034629707E-11 mps", result[13].result)
+            assertEquals("10.0 mps", result[14].result)
+            assertEquals("100.0 mps", result[15].result)
         }
     }
 }

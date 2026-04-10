@@ -193,8 +193,8 @@ class MixedUnitUsageTest {
             assertEquals("50.0 km", result[3].result)
             assertEquals("50.0 mi", result[4].result)
             assertEquals("50.0 mi", result[5].result)
-            assertEquals("49.99995680345572354211663066954644 NM", result[6].result) // Floating point error
-            assertEquals("49.99995680345572354211663066954644 NM", result[7].result)
+            assertEquals("49.99999999999999999999999999999999 NM", result[6].result) // Floating point error
+            assertEquals("49.99999999999999999999999999999999 NM", result[7].result)
             assertEquals("50.0 ft", result[8].result)
             assertEquals("50.0 ft", result[9].result)
             assertEquals("2997924580.0 m", result[10].result)
@@ -253,7 +253,7 @@ class MixedUnitUsageTest {
             assertEquals("2.0 mps", result[0].result)
             assertEquals("2.0 kmh", result[1].result)
             assertEquals("2.0 mph", result[2].result)
-            assertEquals("2.000001727863263812754913827139376 kn", result[3].result) // Floating point error
+            assertEquals("2.0 kn", result[3].result) // Floating point error
             assertEquals("2.0 fps", result[4].result)
         }
     }
@@ -292,8 +292,8 @@ class MixedUnitUsageTest {
             assertEquals("3.0 fps", result[9].result)
             assertEquals("1.0 mph", result[10].result)
             assertEquals("0.125 mph", result[11].result)
-            assertEquals("0.0009874738552689894332522101530973245 kn", result[12].result)
-            assertEquals("1.000000863931631906377456913569688 kn", result[13].result) // Floating point error
+            assertEquals("0.0009874730021598272138228941684665228 kn", result[12].result)
+            assertEquals("1.0 kn", result[13].result) // Floating point error
             assertEquals("9.4607304725808E15 mps", result[14].result)
             assertEquals("1.0E-10 mps", result[15].result)
             assertEquals("1.0E-12 mps", result[16].result)

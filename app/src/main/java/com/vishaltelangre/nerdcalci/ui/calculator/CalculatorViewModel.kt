@@ -30,6 +30,7 @@ import com.vishaltelangre.nerdcalci.data.local.entities.FileSortDirection
 
 import com.vishaltelangre.nerdcalci.utils.Suggestion
 import com.vishaltelangre.nerdcalci.utils.SuggestionType
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -79,7 +80,8 @@ data class RestoreProgressState(
 
 class CalculatorViewModel(
     private val dao: CalculatorDao,
-    private val prefs: SharedPreferences? = null
+    private val prefs: SharedPreferences? = null,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : ViewModel() {
     private val _launchMode = MutableStateFlow(
         LaunchMode.fromPrefValue(prefs?.getString(Constants.PREF_LAUNCH_MODE, null)).let { mode ->
@@ -738,10 +740,12 @@ class CalculatorViewModel(
     }
 
     fun toggleLockFile(fileId: Long) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val file = dao.getFileById(fileId) ?: return@launch
-            if (file.isTemporary) return@launch // Scratchpad cannot be locked
-            dao.toggleLockFile(fileId)
+        viewModelScope.launch(ioDispatcher) {
+            calculationMutex.withLock {
+                val file = dao.getFileById(fileId) ?: return@withLock
+                if (file.isTemporary) return@withLock // Scratchpad cannot be locked
+                dao.toggleLockFile(fileId)
+            }
         }
     }
 
@@ -826,7 +830,7 @@ class CalculatorViewModel(
 
     // Update a line and recalculate everything from it downward
     fun updateLine(updatedLine: LineEntity, rationalMode: Boolean? = null) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             updateLineInternal(updatedLine, rationalMode)
         }
     }
@@ -1001,7 +1005,7 @@ class CalculatorViewModel(
     }
 
     fun deleteLine(line: LineEntity, rationalMode: Boolean? = null) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             calculationMutex.withLock {
                 if (isFileLocked(line.fileId)) return@withLock
                 // Save state for undo
@@ -1031,7 +1035,7 @@ class CalculatorViewModel(
     }
 
     fun clearAllLines(fileId: Long) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             calculationMutex.withLock {
                 if (isFileLocked(fileId)) return@withLock
                 saveStateForUndo(fileId)

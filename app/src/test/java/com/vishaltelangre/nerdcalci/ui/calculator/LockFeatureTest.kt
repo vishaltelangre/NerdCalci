@@ -46,7 +46,7 @@ class LockFeatureTest {
         every { FileUtils.calculateHash(any<String>()) } returns "mock-hash"
 
         fakeDao = FakeCalculatorDao()
-        viewModel = CalculatorViewModel(fakeDao)
+        viewModel = CalculatorViewModel(fakeDao, ioDispatcher = UnconfinedTestDispatcher())
     }
 
     @After

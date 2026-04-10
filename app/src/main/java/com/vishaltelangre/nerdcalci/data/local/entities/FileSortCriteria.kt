@@ -1,5 +1,6 @@
 package com.vishaltelangre.nerdcalci.data.local.entities
 
+import org.json.JSONException
 import org.json.JSONObject
 
 enum class FileSortOption {
@@ -45,7 +46,7 @@ data class FileSortCriteria(
                     option = FileSortOption.fromString(obj.optString("option")),
                     direction = FileSortDirection.fromString(obj.optString("direction"))
                 )
-            } catch (e: Exception) {
+            } catch (e: JSONException) {
                 FileSortCriteria()
             }
         }

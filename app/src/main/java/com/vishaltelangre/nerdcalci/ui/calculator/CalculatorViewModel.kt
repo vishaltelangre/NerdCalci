@@ -1142,35 +1142,37 @@ class CalculatorViewModel(
     }
 
     suspend fun renameFile(context: Context, fileId: Long, newName: String): Boolean {
-        return withContext(Dispatchers.IO) {
-            if (isFileLocked(fileId)) return@withContext false
-            val trimmedName = newName.trim()
-            if (trimmedName.isBlank()) return@withContext false
+        return withContext(ioDispatcher) {
+            calculationMutex.withLock {
+                if (isFileLocked(fileId)) return@withLock false
+                val trimmedName = newName.trim()
+                if (trimmedName.isBlank()) return@withLock false
 
-            val finalName = if (trimmedName.length > Constants.MAX_FILE_NAME_LENGTH) {
-                trimmedName.substring(0, Constants.MAX_FILE_NAME_LENGTH).trim()
-            } else {
-                trimmedName
-            }
-
-            if (finalName.isBlank()) return@withContext false
-
-            // Check if name is taken by another file
-            if (dao.doesFileExist(finalName, fileId)) return@withContext false
-            val file = dao.getFileById(fileId)
-            if (file != null) {
-                if (SyncManager.isSyncActive(context)) {
-                    // Delete old external file in sync folder to prevent re-import as foreign file
-                    val deleteError = SyncManager.deleteExternalFile(context, file.name)
-                    if (deleteError != null) {
-                        val missingExternalFile = deleteError.message?.startsWith("External file not found:") == true
-                        if (!missingExternalFile) throw deleteError
-                    }
+                val finalName = if (trimmedName.length > Constants.MAX_FILE_NAME_LENGTH) {
+                    trimmedName.substring(0, Constants.MAX_FILE_NAME_LENGTH).trim()
+                } else {
+                    trimmedName
                 }
-                dao.updateFile(file.copy(name = finalName))
-                true
-            } else {
-                false
+
+                if (finalName.isBlank()) return@withLock false
+
+                // Check if name is taken by another file
+                if (dao.doesFileExist(finalName, fileId)) return@withLock false
+                val file = dao.getFileById(fileId)
+                if (file != null) {
+                    if (SyncManager.isSyncActive(context)) {
+                        // Delete old external file in sync folder to prevent re-import as foreign file
+                        val deleteError = SyncManager.deleteExternalFile(context, file.name)
+                        if (deleteError != null) {
+                            val missingExternalFile = deleteError.message?.startsWith("External file not found:") == true
+                            if (!missingExternalFile) throw deleteError
+                        }
+                    }
+                    dao.updateFile(file.copy(name = finalName))
+                    true
+                } else {
+                    false
+                }
             }
         }
     }

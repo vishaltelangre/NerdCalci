@@ -379,6 +379,64 @@ class MathEngineTest {
     }
 
     @Test
+    fun `all numeral multiplier aliases evaluate correctly`() = testCalculate(
+        "5 hundred", "raw(5 hundred)", "5 hundreds", "raw(5 hundreds)",
+        "5 thousand", "raw(5 thousand)", "5 thousands", "raw(5 thousands)",
+        "5 lakh", "raw(5 lakh)", "5 lakhs", "raw(5 lakhs)",
+        "5 million", "raw(5 million)", "5 millions", "raw(5 millions)",
+        "5 crore", "raw(5 crore)", "5 crores", "raw(5 crores)",
+        "5 billion", "raw(5 billion)", "5 billions", "raw(5 billions)",
+        "5 trillion", "raw(5 trillion)", "5 trillions", "raw(5 trillions)",
+        "1 quadrillion", "raw(1 quadrillion)", "1 quadrillions", "raw(1 quadrillions)",
+        "1 quintillion", "raw(1 quintillion)", "1 quintillions", "raw(1 quintillions)"
+    ) { result ->
+        assertEquals("500.0", result[0].result)
+        assertEquals("500", result[1].result)
+        assertEquals("500.0", result[2].result)
+        assertEquals("500", result[3].result)
+
+        assertEquals("5000.0", result[4].result)
+        assertEquals("5000", result[5].result)
+        assertEquals("5000.0", result[6].result)
+        assertEquals("5000", result[7].result)
+
+        assertEquals("500000.0", result[8].result)
+        assertEquals("500000", result[9].result)
+        assertEquals("500000.0", result[10].result)
+        assertEquals("500000", result[11].result)
+
+        assertEquals("5000000.0", result[12].result)
+        assertEquals("5000000", result[13].result)
+        assertEquals("5000000.0", result[14].result)
+        assertEquals("5000000", result[15].result)
+
+        assertEquals("50000000.0", result[16].result)
+        assertEquals("50000000", result[17].result)
+        assertEquals("50000000.0", result[18].result)
+        assertEquals("50000000", result[19].result)
+
+        assertEquals("5000000000.0", result[20].result)
+        assertEquals("5000000000", result[21].result)
+        assertEquals("5000000000.0", result[22].result)
+        assertEquals("5000000000", result[23].result)
+
+        assertEquals("5000000000000.0", result[24].result)
+        assertEquals("5000000000000", result[25].result)
+        assertEquals("5000000000000.0", result[26].result)
+        assertEquals("5000000000000", result[27].result)
+
+        assertEquals("1.0E15", result[28].result)
+        assertEquals("1000000000000000", result[29].result)
+        assertEquals("1.0E15", result[30].result)
+        assertEquals("1000000000000000", result[31].result)
+
+        assertEquals("1.0E18", result[32].result)
+        assertEquals("1000000000000000000", result[33].result)
+        assertEquals("1.0E18", result[34].result)
+        assertEquals("1000000000000000000", result[35].result)
+    }
+
+    @Test
     fun `decimal addition returns formatted result`() = testCalculate("1.5 + 2.3") { result ->
         assertEquals("3.8", result[0].result)
     }

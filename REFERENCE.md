@@ -844,15 +844,17 @@ em = 20
 
 NerdCalci expands numeric representations supporting standard numeral naming conventions efficiently with scalable word suffixes:
 
-| Word       | Multiplier          | Example      | Evaluates to |
-| :--------- | :------------------ | :----------- | :----------- |
-| `hundred`  | `100`               | `5 hundred`  | `500`        |
-| `thousand` | `1,000`             | `2 thousand` | `2000`       |
-| `lakh`     | `100,000`           | `10 lakh`    | `1000000`    |
-| `million`  | `1,000,000`         | `5 million`  | `5000000`    |
-| `crore`    | `10,000,000`        | `1.5 crore`  | `15000000`   |
-| `billion`  | `1,000,000,000`     | `1 billion`  | `1000000000` |
-| `trillion` | `1,000,000,000,000` | `1 trillion` | `1E12`       |
+| Word (Aliases)                | Multiplier                  | Example         | Evaluates to |
+| :---------------------------- | :-------------------------- | :-------------- | :----------- |
+| `hundred`, `hundreds`         | `100`                       | `5 hundreds`    | `500`        |
+| `thousand`, `thousands`       | `1,000`                     | `2 thousands`   | `2000`       |
+| `lakh`, `lakhs`               | `100,000`                   | `10 lakhs`      | `1000000`    |
+| `million`, `millions`         | `1,000,000`                 | `5 millions`    | `5000000`    |
+| `crore`, `crores`             | `10,000,000`                | `1.5 crores`    | `15000000`   |
+| `billion`, `billions`         | `1,000,000,000`             | `1 billion`     | `1000000000` |
+| `trillion`, `trillions`       | `1,000,000,000,000`         | `1 trillion`    | `1E12`       |
+| `quadrillion`, `quadrillions` | `1,000,000,000,000,000`     | `1 quadrillion` | `1E15`       |
+| `quintillion`, `quintillions` | `1,000,000,000,000,000,000` | `1 quintillion` | `1E18`       |
 
 ### Radix base conversions
 

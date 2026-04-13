@@ -585,13 +585,15 @@ class Parser(private val tokens: List<Token>) {
 
     private fun getNumeralMultiplier(word: String): BigDecimal? {
         return when (word.lowercase()) {
-            "hundred" -> BigDecimal("100")
-            "thousand" -> BigDecimal("1000")
-            "lakh" -> BigDecimal("100000")
-            "million" -> BigDecimal("1000000")
-            "crore" -> BigDecimal("10000000")
-            "billion" -> BigDecimal("1000000000")
-            "trillion" -> BigDecimal("1000000000000")
+            "hundred", "hundreds" -> BigDecimal("100")
+            "thousand", "thousands" -> BigDecimal("1000")
+            "lakh", "lakhs" -> BigDecimal("100000")
+            "million", "millions" -> BigDecimal("1000000")
+            "crore", "crores" -> BigDecimal("10000000")
+            "billion", "billions" -> BigDecimal("1000000000")
+            "trillion", "trillions" -> BigDecimal("1000000000000")
+            "quadrillion", "quadrillions" -> BigDecimal("1e15")
+            "quintillion", "quintillions" -> BigDecimal("1e18")
             else -> null
         }
     }

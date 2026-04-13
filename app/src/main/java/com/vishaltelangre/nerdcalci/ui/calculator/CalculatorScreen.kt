@@ -1872,10 +1872,11 @@ private fun LineRow(
                     ),
                     cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface),
                     visualTransformation = syntaxHighlightingTransformation,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Default),
                     keyboardActions = KeyboardActions(onDone = {
                         val actualText = if (lineNumber > 1) textFieldValue.text.removePrefix(" ") else textFieldValue.text
-                        onEnter(actualText, actualText.length)
+                        val cursorInActual = if (lineNumber > 1) (textFieldValue.selection.start - 1).coerceAtLeast(0) else textFieldValue.selection.start
+                        onEnter(actualText, cursorInActual)
                     }),
                     onTextLayout = { textLayoutResult = it },
                     decorationBox = { innerTextField ->

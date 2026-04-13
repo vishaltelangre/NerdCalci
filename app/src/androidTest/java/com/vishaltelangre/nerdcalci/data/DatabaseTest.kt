@@ -652,4 +652,48 @@ class DatabaseTest {
         val file = dao.getFileById(fileId)
         assertTrue(file!!.lastModified >= beforeTouch)
     }
+
+    // ==================== createJournalFileIfAbsent ====================
+
+    @Test
+    fun createJournalFileIfAbsent_newName_insertsFileAndOneLine() = runBlocking {
+        val name = "2024-01-01"
+        val createdAt = 1000L
+
+        val fileId = dao.createJournalFileIfAbsent(name, createdAt)
+
+        // A valid id should be returned
+        assertTrue(fileId > 0)
+
+        // Exactly one FileEntity with that name should exist
+        val file = dao.getFileByName(name)
+        assertNotNull(file)
+        assertEquals(fileId, file!!.id)
+        assertEquals(name, file.name)
+
+        // Exactly one LineEntity should exist for this file, with empty expression and result
+        val lines = dao.getLinesForFileSync(fileId)
+        assertEquals(1, lines.size)
+        assertEquals(fileId, lines[0].fileId)
+        assertEquals("", lines[0].expression)
+        assertEquals("", lines[0].result)
+    }
+
+    @Test
+    fun createJournalFileIfAbsent_existingName_returnsSameIdWithoutDuplicateLine() = runBlocking {
+        val name = "2024-01-02"
+        val createdAt = 2000L
+
+        // First call: creates the file and one empty line
+        val firstId = dao.createJournalFileIfAbsent(name, createdAt)
+        assertTrue(firstId > 0)
+
+        // Second call with the same name: must return the same id
+        val secondId = dao.createJournalFileIfAbsent(name, createdAt)
+        assertEquals(firstId, secondId)
+
+        // No additional LineEntity should have been created
+        val lines = dao.getLinesForFileSync(firstId)
+        assertEquals(1, lines.size)
+    }
 }

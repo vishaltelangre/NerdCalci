@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.7.1] - 2026-04-13
+### Added
+- Added support for plural numeral multipliers (hundreds, thousands, etc.) and quadrillion/quintillion scales (PR #122).
+
+### Fixed
+- Fixed Enter key behavior in the calculator to correctly split lines at the cursor position instead of appending a new line (PR #123).
+
+## [3.7.0] - 2026-04-10
+### Added
+- Added file sorting functionality (Issue #79).
+- Added ability to lock files to protect them from accidental edits and deletions (Issue #57).
+
+### Changed
+- Removed duplicate create and scratchpad shortcuts on home when there are no files to show (Issue #116).
+- File rows now show both created and modified timestamps.
+
+## [3.6.0] - 2026-04-09
+### Added
+- Added a global setting to show an ellipsis for truncated numbers that exceed the configured result precision (Issue #106).
+- Added a configurable setting to show or hide the temporary scratchpad shortcut on the home screen via a new bolt icon (Issue #109).
+
+### Fixed
+- Fixed an issue where changing "Auto-open a file on launch" settings caused unintended navigation.
+- Fixed an issue where the calculator's last sync time was not persisted across application restarts.
+
+## [3.5.0] - 2026-04-09
+### Added
+- Added flexible auto-open on launch modes: Choose between Home, Scratchpad, Daily Journal, or a Specific file (Issue #108).
+
+### Fixed
+- Fixed Rational mode resetting when splitting, merging, or deleting lines, and when using undo/redo (Issue #107).
+
 ## [3.4.2] - 2026-04-04
 ### Fixed
 - Made built-in math functions handle unit values more safely, with clearer errors when a function cannot use a given unit.

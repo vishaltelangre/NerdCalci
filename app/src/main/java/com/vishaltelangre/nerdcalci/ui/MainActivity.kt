@@ -56,9 +56,11 @@ import com.vishaltelangre.nerdcalci.data.backup.BackupLocationMode
 import com.vishaltelangre.nerdcalci.data.backup.BackupManager
 import com.vishaltelangre.nerdcalci.data.local.AppDatabase
 import com.vishaltelangre.nerdcalci.data.local.DatabaseMigrations
-import com.vishaltelangre.nerdcalci.di.CalculatorViewModelFactory
 import com.vishaltelangre.nerdcalci.ui.calculator.CalculatorScreen
+import com.vishaltelangre.nerdcalci.ui.calculator.HomeUiEvent
 import com.vishaltelangre.nerdcalci.ui.calculator.CalculatorViewModel
+import com.vishaltelangre.nerdcalci.di.CalculatorViewModelFactory
+import com.vishaltelangre.nerdcalci.core.LaunchMode
 import com.vishaltelangre.nerdcalci.ui.components.formatBackupLocationText
 import com.vishaltelangre.nerdcalci.ui.components.RestoreBackupListDialog
 import com.vishaltelangre.nerdcalci.ui.components.RestoreSourceDialog
@@ -144,10 +146,17 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
     val showNumbersShortcuts by viewModel.showNumbersShortcuts.collectAsState()
     val regionCode by viewModel.regionCode.collectAsState()
     val restoreProgress by viewModel.restoreProgress.collectAsState()
-    
+
     val syncEnabled by viewModel.syncEnabled.collectAsState()
     val syncFolderUri by viewModel.syncFolderUri.collectAsState()
     val lastSyncAt by viewModel.lastSyncAt.collectAsState()
+    val launchMode by viewModel.launchMode.collectAsState()
+    val launchFileId by viewModel.launchFileId.collectAsState()
+    val autoOpenFileId by viewModel.autoOpenFileId.collectAsState()
+    val isAutoOpenReady by viewModel.isAutoOpenReady.collectAsState()
+    val allFiles by viewModel.allFiles.collectAsState(initial = emptyList())
+    val showPrecisionEllipsis by viewModel.showPrecisionEllipsis.collectAsState()
+    val showScratchpad by viewModel.showScratchpad.collectAsState()
     val customBackupFolderSummary = remember(customBackupFolderUri) {
         val uriString = customBackupFolderUri
         if (uriString != null) {
@@ -239,63 +248,47 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
     val slideOutToLeft = slideOutHorizontally(animationSpec = tween(300), targetOffsetX = { fullWidth: Int -> -fullWidth / 3 })
     val slideInFromLeft = slideInHorizontally(animationSpec = tween(300), initialOffsetX = { fullWidth: Int -> -fullWidth / 3 })
     val slideOutToRight = slideOutHorizontally(animationSpec = tween(300), targetOffsetX = { fullWidth: Int -> fullWidth })
-    val launchAutoOpenScratchpad = rememberSaveable { mutableStateOf(viewModel.autoOpenScratchpad.value) }
+
+    val initialStartDestination = remember { if (viewModel.launchMode.value != LaunchMode.NOT_SET) "startup" else "home" }
 
     NavHost(
         navController = navController,
-        startDestination = if (launchAutoOpenScratchpad.value) "startup" else "home"
+        startDestination = initialStartDestination
     ) {
         composable("startup") {
-            val scratchpadFileId by viewModel.scratchpadFileId.collectAsState()
-            val isScratchpadReady by viewModel.isScratchpadReady.collectAsState()
             var timedOut by remember { mutableStateOf(false) }
 
             LaunchedEffect(Unit) {
                 delay(5_000L)
-                if (!isScratchpadReady || scratchpadFileId == null) {
+                if (!isAutoOpenReady) {
                     timedOut = true
                 }
             }
 
-            LaunchedEffect(timedOut) {
-                if (timedOut) {
+            LaunchedEffect(isAutoOpenReady, autoOpenFileId, timedOut) {
+                if (timedOut || (isAutoOpenReady && autoOpenFileId == null)) {
                     navController.navigate("home") {
                         popUpTo("startup") { inclusive = true }
                         launchSingleTop = true
                     }
-                }
-            }
-
-            if (isScratchpadReady && scratchpadFileId != null) {
-                CalculatorScreen(
-                    fileId = scratchpadFileId!!,
-                    viewModel = viewModel,
-                    regionCode = regionCode,
-                    onBack = {
+                } else if (isAutoOpenReady && autoOpenFileId != null) {
                         suppressHomeAutoOpenOnce = true
                         navController.navigate("home") {
                             popUpTo("startup") { inclusive = true }
                             launchSingleTop = true
                         }
-                    },
-                    onHelp = { navController.navigate("help") },
-                    onNavigateToFile = { newFileId ->
-                        navController.navigate("editor/$newFileId") {
-                            popUpTo("startup") { inclusive = true }
-                            launchSingleTop = true
-                        }
+                        navController.navigate("editor/$autoOpenFileId")
                     }
-                )
-            } else {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(32.dp),
-                        color = MaterialTheme.colorScheme.primary
-                    )
                 }
+
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(32.dp),
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
         }
 
@@ -312,8 +305,11 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
                     showHomeRestoreActionDialog = true
                 },
                 onSearchClick = { navController.navigate("search") },
-                launchAutoOpenScratchpad = launchAutoOpenScratchpad.value,
-                suppressAutoOpenScratchpad = suppressHomeAutoOpenOnce
+                launchMode = launchMode,
+                autoOpenFileId = autoOpenFileId,
+                isAutoOpenReady = isAutoOpenReady,
+                suppressAutoOpenScratchpad = suppressHomeAutoOpenOnce,
+                showScratchpad = showScratchpad
             )
         }
 
@@ -330,11 +326,13 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
             popEnterTransition = { slideInFromLeft },
             popExitTransition = { slideOutToRight }
         ) { backStackEntry ->
+            val showPrecisionEllipsis by viewModel.showPrecisionEllipsis.collectAsState()
             val fileId = backStackEntry.arguments?.getLong("fileId") ?: 0L
             CalculatorScreen(
                 fileId = fileId,
                 viewModel = viewModel,
                 regionCode = regionCode,
+                showPrecisionEllipsis = showPrecisionEllipsis,
                 onBack = { navController.popBackStack() },
                 onHelp = { navController.navigate("help") },
                 onNavigateToFile = { newFileId ->
@@ -359,7 +357,6 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
             val precision by viewModel.precision.collectAsState()
             val rationalMode by viewModel.rationalMode.collectAsState()
             val groupingSeparatorEnabled by viewModel.groupingSeparatorEnabled.collectAsState()
-            val autoOpenScratchpad by viewModel.autoOpenScratchpad.collectAsState()
 
             SettingsScreen(
                 currentTheme = currentTheme,
@@ -382,7 +379,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
                         }
                     }
                 },
-                onBackupNowAtDifferentLocation = { 
+                onBackupNowAtDifferentLocation = {
                     val timestamp = SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.getDefault()).format(Date())
                     val filename = "nerdcalci_backup_$timestamp.zip"
                     exportLauncher.launch(filename)
@@ -390,8 +387,8 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
                 lastBackupAt = lastBackupAt,
                 availableBackups = availableBackups,
                 onRestoreBackup = { backup -> viewModel.restoreFromBackup(context, backup) },
-                onRestoreFromDifferentLocation = { 
-                    importLauncher.launch(arrayOf(Constants.EXPORT_MIME_TYPE)) 
+                onRestoreFromDifferentLocation = {
+                    importLauncher.launch(arrayOf(Constants.EXPORT_MIME_TYPE))
                 },
                 precision = precision,
                 onPrecisionChange = { newPrecision -> viewModel.setPrecision(newPrecision) },
@@ -414,8 +411,21 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
                 onRationalModeChange = { viewModel.setRationalMode(it) },
                 groupingSeparatorEnabled = groupingSeparatorEnabled,
                 onGroupingSeparatorEnabledChange = { viewModel.setGroupingSeparatorEnabled(it) },
-                autoOpenScratchpad = autoOpenScratchpad,
-                onAutoOpenScratchpadChange = { viewModel.setAutoOpenScratchpad(it) },
+                showPrecisionEllipsis = showPrecisionEllipsis,
+                onShowPrecisionEllipsisChange = { viewModel.setShowPrecisionEllipsis(it) },
+                launchMode = launchMode,
+                launchFileId = launchFileId,
+                allFiles = allFiles,
+                onLaunchModeChange = { viewModel.setLaunchMode(it) },
+                onLaunchFileIdChange = { viewModel.setLaunchFileId(it) },
+                showScratchpad = showScratchpad,
+                onShowScratchpadChange = { viewModel.setShowScratchpad(it) },
+                onAutoValidateLaunchFile = {
+                    viewModel.validateSpecificFileSetting()
+                },
+                onValidateLaunchFile = { fileId, callback ->
+                    viewModel.validateLaunchFile(fileId, callback)
+                },
                 onHelp = { navController.navigate("help") },
                 onChangelog = { navController.navigate("changelog") },
                 onBack = { navController.popBackStack() }

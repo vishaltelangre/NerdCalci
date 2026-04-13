@@ -96,6 +96,7 @@ object SyncManager {
         val osLastModified: Long, // from file system
         val syncId: String,
         val isPinned: Boolean = false,
+        val isLocked: Boolean = false,
         val contentHash: String? = null,
         val documentFile: DocumentFile
     )
@@ -105,6 +106,7 @@ object SyncManager {
         val osTimestamp: Long, // OS file system time
         val metadataTimestamp: Long, // Internal "Last Modified" time
         val isPinned: Boolean = false,
+        val isLocked: Boolean = false,
         val contentHash: String? = null
     )
 
@@ -122,6 +124,7 @@ object SyncManager {
                     infoJson.getLong("osTimestamp"),
                     infoJson.optLong("metadataTimestamp", -1L),
                     infoJson.optBoolean("isPinned", false),
+                    infoJson.optBoolean("isLocked", false),
                     if (infoJson.has("contentHash")) infoJson.getString("contentHash") else null
                 )
                 map[syncId] = info
@@ -140,6 +143,7 @@ object SyncManager {
                 put("osTimestamp", info.osTimestamp)
                 put("metadataTimestamp", info.metadataTimestamp)
                 put("isPinned", info.isPinned)
+                put("isLocked", info.isLocked)
                 info.contentHash?.let { put("contentHash", it) }
             }
             json.put(syncId, infoJson)
@@ -198,6 +202,7 @@ object SyncManager {
                     var contentHash: String? = null
                     var metadataLastModified: Long = -1L
                     var isPinned: Boolean = false
+                    var isLocked: Boolean = false
 
                     val cachedEntry = snapshotByFilename[name]
                     if (cachedEntry != null && abs(cachedEntry.value.osTimestamp - osTime) < SYNC_TIMESTAMP_TOLERANCE_MS) {
@@ -205,6 +210,7 @@ object SyncManager {
                         metadataLastModified = cachedEntry.value.metadataTimestamp
                         contentHash = cachedEntry.value.contentHash
                         isPinned = cachedEntry.value.isPinned
+                        isLocked = cachedEntry.value.isLocked
                     } else {
                         context.contentResolver.openInputStream(file.uri)?.use { inputStream: java.io.InputStream ->
                             val metadata = FileUtils.readMetadataHeader(inputStream.bufferedReader())
@@ -212,6 +218,7 @@ object SyncManager {
                             metadataLastModified = metadata?.lastModified ?: -1L
                             contentHash = metadata?.contentHash
                             isPinned = metadata?.isPinned ?: false
+                            isLocked = metadata?.isLocked ?: false
                         }
                     }
 
@@ -224,6 +231,7 @@ object SyncManager {
                         osLastModified = osTime,
                         syncId = finalSyncId,
                         isPinned = isPinned,
+                        isLocked = isLocked,
                         contentHash = contentHash,
                         documentFile = file
                     )
@@ -367,9 +375,9 @@ object SyncManager {
                     } ?: ""
                 }
             }
-            if (computedHash == remoteHash && roomFile.isPinned == safFile.isPinned) {
-                Log.d(TAG, "DECISION: LOCAL_METADATA_ONLY_UPDATE for $currentFilenameForSnapshot (hashes and pin match)")
-                currentSyncSnapshot[syncId] = LastSyncInfo(currentFilenameForSnapshot, safFile.osLastModified, safFile.lastModified, roomFile.isPinned, computedHash)
+            if (computedHash == remoteHash && roomFile.isPinned == safFile.isPinned && roomFile.isLocked == safFile.isLocked) {
+                Log.d(TAG, "DECISION: LOCAL_METADATA_ONLY_UPDATE for $currentFilenameForSnapshot (hashes, pin, and lock match)")
+                currentSyncSnapshot[syncId] = LastSyncInfo(currentFilenameForSnapshot, safFile.osLastModified, safFile.lastModified, roomFile.isPinned, roomFile.isLocked, computedHash)
                 return
             }
 
@@ -384,21 +392,21 @@ object SyncManager {
 
                 // 2. Overwrite the original local file with the remote SAF entry
                 val result = importFromSaf(context, safFile.documentFile, dao)
-                currentSyncSnapshot[syncId] = LastSyncInfo(currentFilenameForSnapshot, result.osTimestamp, result.metadataTimestamp, result.isPinned, result.contentHash)
+                currentSyncSnapshot[syncId] = LastSyncInfo(currentFilenameForSnapshot, result.osTimestamp, result.metadataTimestamp, result.isPinned, result.isLocked, result.contentHash)
                 stats.inbound++
-            } else if (localChanged || roomFile.isPinned != safFile.isPinned) {
+            } else if (localChanged || roomFile.isPinned != safFile.isPinned || roomFile.isLocked != safFile.isLocked) {
                 Log.d(TAG, "DECISION: LOCAL_NEWER for $currentFilenameForSnapshot")
                 val result = writeToSaf(context, folder, roomFile, dao)
-                currentSyncSnapshot[syncId] = LastSyncInfo(currentFilenameForSnapshot, result.osTimestamp, roomFile.lastModified, roomFile.isPinned, result.contentHash)
+                currentSyncSnapshot[syncId] = LastSyncInfo(currentFilenameForSnapshot, result.osTimestamp, roomFile.lastModified, roomFile.isPinned, roomFile.isLocked, result.contentHash)
                 stats.outbound++
             } else {
                 Log.d(TAG, "DECISION: REMOTE_NEWER for $currentFilenameForSnapshot")
                 val result = importFromSaf(context, safFile.documentFile, dao)
-                currentSyncSnapshot[syncId] = LastSyncInfo(currentFilenameForSnapshot, result.osTimestamp, result.metadataTimestamp, result.isPinned, result.contentHash)
+                currentSyncSnapshot[syncId] = LastSyncInfo(currentFilenameForSnapshot, result.osTimestamp, result.metadataTimestamp, result.isPinned, result.isLocked, result.contentHash)
                 stats.inbound++
             }
         } else {
-            currentSyncSnapshot[syncId] = LastSyncInfo(currentFilenameForSnapshot, safFile.osLastModified, safFile.lastModified, safFile.isPinned, safFile.contentHash)
+            currentSyncSnapshot[syncId] = LastSyncInfo(currentFilenameForSnapshot, safFile.osLastModified, safFile.lastModified, safFile.isPinned, safFile.isLocked, safFile.contentHash)
         }
     }
 
@@ -440,10 +448,10 @@ object SyncManager {
             val localTime = roomFile.lastModified
             val lastSyncTime = lastInfo.metadataTimestamp
 
-            if (localTime > lastSyncTime + SYNC_TIMESTAMP_TOLERANCE_MS || roomFile.isPinned != lastInfo.isPinned) {
+            if (localTime > lastSyncTime + SYNC_TIMESTAMP_TOLERANCE_MS || roomFile.isPinned != lastInfo.isPinned || roomFile.isLocked != lastInfo.isLocked) {
                 Log.d(TAG, "DECISION: RE-UPLOAD (Locally Modified) for $expectedName")
                 val result = writeToSaf(context, folder, roomFile, dao)
-                currentSyncSnapshot[syncId] = LastSyncInfo(expectedName, result.osTimestamp, roomFile.lastModified, roomFile.isPinned, result.contentHash)
+                currentSyncSnapshot[syncId] = LastSyncInfo(expectedName, result.osTimestamp, roomFile.lastModified, roomFile.isPinned, roomFile.isLocked, result.contentHash)
                 stats.outbound++
             } else {
                 Log.d(TAG, "DECISION: DELETE_LOCAL for $expectedName")
@@ -454,7 +462,7 @@ object SyncManager {
             // NEW local file or first sync merge -> Upload
             Log.d(TAG, "DECISION: UPLOAD_NEW_LOCAL for $expectedName")
             val result = writeToSaf(context, folder, roomFile, dao)
-            currentSyncSnapshot[syncId] = LastSyncInfo(expectedName, result.osTimestamp, roomFile.lastModified, roomFile.isPinned, result.contentHash)
+            currentSyncSnapshot[syncId] = LastSyncInfo(expectedName, result.osTimestamp, roomFile.lastModified, roomFile.isPinned, roomFile.isLocked, result.contentHash)
             stats.outbound++
         }
     }
@@ -476,10 +484,10 @@ object SyncManager {
             val remoteTime = if (safFile.lastModified > 0) safFile.lastModified else safFile.osLastModified
             val lastSyncTime = if (safFile.lastModified > 0) lastInfo.metadataTimestamp else lastInfo.osTimestamp
 
-            if (remoteTime > lastSyncTime + SYNC_TIMESTAMP_TOLERANCE_MS || safFile.isPinned != lastInfo.isPinned) {
+            if (remoteTime > lastSyncTime + SYNC_TIMESTAMP_TOLERANCE_MS || safFile.isPinned != lastInfo.isPinned || safFile.isLocked != lastInfo.isLocked) {
                 Log.d(TAG, "DECISION: RE-DOWNLOAD (Remotely Modified) for $filename")
                 val result = importFromSaf(context, safFile.documentFile, dao)
-                currentSyncSnapshot[syncId] = LastSyncInfo(filename, result.osTimestamp, result.metadataTimestamp, result.isPinned, result.contentHash)
+                currentSyncSnapshot[syncId] = LastSyncInfo(filename, result.osTimestamp, result.metadataTimestamp, result.isPinned, result.isLocked, result.contentHash)
                 stats.inbound++
             } else {
                 Log.d(TAG, "DECISION: DELETE_REMOTE for $filename")
@@ -490,7 +498,7 @@ object SyncManager {
             // NEW remote file or first sync merge -> Download
             Log.d(TAG, "DECISION: DOWNLOAD_NEW_REMOTE for $filename")
             val result = importFromSaf(context, safFile.documentFile, dao)
-            currentSyncSnapshot[syncId] = LastSyncInfo(filename, result.osTimestamp, result.metadataTimestamp, result.isPinned, result.contentHash)
+            currentSyncSnapshot[syncId] = LastSyncInfo(filename, result.osTimestamp, result.metadataTimestamp, result.isPinned, result.isLocked, result.contentHash)
             stats.inbound++
         }
     }
@@ -499,7 +507,8 @@ object SyncManager {
         val osTimestamp: Long,
         val metadataTimestamp: Long,
         val contentHash: String,
-        val isPinned: Boolean
+        val isPinned: Boolean,
+        val isLocked: Boolean
     )
 
     private suspend fun writeToSaf(context: Context, folder: DocumentFile, file: FileEntity, dao: CalculatorDao): SyncResult {
@@ -515,6 +524,7 @@ object SyncManager {
                 version = 1,
                 id = file.syncId,
                 isPinned = file.isPinned,
+                isLocked = file.isLocked,
                 lastModified = file.lastModified,
                 createdAt = file.createdAt,
                 contentHash = contentHash
@@ -565,16 +575,16 @@ object SyncManager {
             }
         }
 
-        return SyncResult(finalFile.lastModified(), file.lastModified, contentHash, file.isPinned)
+        return SyncResult(finalFile.lastModified(), file.lastModified, contentHash, file.isPinned, file.isLocked)
     }
 
     private suspend fun importFromSaf(context: Context, safFile: DocumentFile, dao: CalculatorDao): SyncResult {
-        val fullFileName = safFile.name ?: return SyncResult(0L, 0L, "", false)
+        val fullFileName = safFile.name ?: return SyncResult(0L, 0L, "", false, false)
         val fileName = fullFileName.removeSuffix(EXPORT_FILE_EXTENSION)
 
         val content = context.contentResolver.openInputStream(safFile.uri)?.use { input ->
              BufferedReader(InputStreamReader(input)).readText()
-        } ?: return SyncResult(0L, 0L, "", false)
+        } ?: return SyncResult(0L, 0L, "", false, false)
 
         val parsed = FileUtils.parseFileContent(content)
         val metadata = parsed.metadata
@@ -599,6 +609,7 @@ object SyncManager {
             val updatedFile = existingFile.copy(
                 name = fileName,
                 isPinned = metadata.isPinned,
+                isLocked = metadata.isLocked,
                 lastModified = finalLastModified,
                 createdAt = if (metadata.createdAt != -1L) metadata.createdAt else existingFile.createdAt
             )
@@ -618,7 +629,8 @@ object SyncManager {
                 syncId = syncId,
                 lastModified = finalLastModified,
                 createdAt = metadata.createdAt.takeIf { it != -1L } ?: finalLastModified,
-                isPinned = metadata.isPinned
+                isPinned = metadata.isPinned,
+                isLocked = metadata.isLocked
             )
             dao.insertFile(newFile)
             dao.getFileBySyncId(syncId)?.id ?: throw Exception("Failed to retrieve inserted file")
@@ -653,7 +665,53 @@ object SyncManager {
             return writeToSaf(context, parent, importedFileEntity, dao)
         }
 
-        return SyncResult(safFile.lastModified(), parsed.metadata.lastModified, computedHash, parsed.metadata.isPinned)
+        return SyncResult(safFile.lastModified(), parsed.metadata.lastModified, computedHash, parsed.metadata.isPinned, parsed.metadata.isLocked)
+    }
+
+    suspend fun renameExternalFile(context: Context, oldName: String, newName: String): Throwable? {
+        return withContext(Dispatchers.IO) {
+            try {
+                if (!isSyncActive(context)) {
+                    return@withContext IllegalStateException("Sync is disabled")
+                }
+                val prefs = prefs(context)
+                val folderUri = prefs.getString(PREF_SYNC_FOLDER_URI, null)
+                    ?: return@withContext IllegalStateException("Sync folder not set")
+                val folder = DocumentFile.fromTreeUri(context, Uri.parse(folderUri))
+                    ?: return@withContext IllegalStateException("Sync folder unavailable")
+
+                val oldNameWithExtension = "$oldName$EXPORT_FILE_EXTENSION"
+                val newNameWithExtension = "$newName$EXPORT_FILE_EXTENSION"
+                val safFile = folder.findFile(oldNameWithExtension)
+                    ?: return@withContext IllegalStateException("External file not found: $oldNameWithExtension")
+
+                // Get syncId from file before renaming it so we can update snapshot
+                val syncId = context.contentResolver.openInputStream(safFile.uri)?.use {
+                    FileUtils.readMetadataHeader(it.bufferedReader())?.id
+                }
+
+                if (!safFile.renameTo(newNameWithExtension)) {
+                    Log.e(TAG, "Failed to rename external file: $oldNameWithExtension to $newNameWithExtension")
+                    return@withContext IllegalStateException("Failed to rename external file: $oldNameWithExtension to $newNameWithExtension")
+                }
+
+                if (syncId != null) {
+                    val encodedMap = prefs.safeGetString(PREF_LAST_SYNC_FILES, null)
+                    val syncMap = decodeLastSyncMap(encodedMap).toMutableMap()
+                    val oldInfo = syncMap[syncId]
+                    if (oldInfo != null) {
+                        syncMap[syncId] = oldInfo.copy(filename = newNameWithExtension)
+                        prefs.edit()
+                            .putString(PREF_LAST_SYNC_FILES, encodeLastSyncMap(syncMap))
+                            .apply()
+                    }
+                }
+                null
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to rename external file", e)
+                e
+            }
+        }
     }
 
     suspend fun deleteExternalFile(context: Context, fileName: String): Throwable? {

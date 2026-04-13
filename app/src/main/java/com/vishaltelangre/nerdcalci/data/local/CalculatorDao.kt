@@ -101,6 +101,16 @@ abstract class CalculatorDao {
 
     @Query("UPDATE files SET name = :name WHERE id = :fileId")
     protected abstract suspend fun internalRenameFile(fileId: Long, name: String)
+    
+    @Query("UPDATE files SET isLocked = :isLocked WHERE id = :fileId")
+    abstract suspend fun setFileLock(fileId: Long, isLocked: Boolean)
+
+    @Transaction
+    open suspend fun toggleLockFile(fileId: Long) {
+        val file = getFileById(fileId) ?: return
+        setFileLock(fileId, !file.isLocked)
+        touchFile(fileId)
+    }
 
     open suspend fun touchFile(fileId: Long, timestamp: Long = System.currentTimeMillis()) {
         updateFileTimestamp(fileId, timestamp)
@@ -164,6 +174,7 @@ abstract class CalculatorDao {
             name = newName,
             createdAt = now,
             isPinned = false,
+            isLocked = false,
             syncId = newSyncId,
             lastModified = lastModified ?: now
         )
@@ -183,6 +194,18 @@ abstract class CalculatorDao {
             doesFileExist(name)
         }
         val fileId = insertFile(FileEntity(name = uniqueName, lastModified = createdAt, createdAt = createdAt))
+        // Insert a default empty line
+        internalInsertLine(LineEntity(fileId = fileId, sortOrder = 0, expression = "", result = ""))
+        return fileId
+    }
+
+    @Transaction
+    open suspend fun createJournalFileIfAbsent(name: String, createdAt: Long): Long {
+        val existingFile = getFileByName(name)
+        if (existingFile != null) {
+            return existingFile.id
+        }
+        val fileId = insertFile(FileEntity(name = name, lastModified = createdAt, createdAt = createdAt))
         // Insert a default empty line
         internalInsertLine(LineEntity(fileId = fileId, sortOrder = 0, expression = "", result = ""))
         return fileId
@@ -222,7 +245,8 @@ abstract class CalculatorDao {
                 name = uniqueName,
                 lastModified = createdAt,
                 createdAt = createdAt,
-                isPinned = false
+                isPinned = false,
+                isLocked = false
             )
         )
 

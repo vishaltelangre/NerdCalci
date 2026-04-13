@@ -24,8 +24,15 @@ import com.vishaltelangre.nerdcalci.data.backup.RestoreResult
 import com.vishaltelangre.nerdcalci.data.local.CalculatorDao
 import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
+import com.vishaltelangre.nerdcalci.data.local.entities.FileSortCriteria
+import com.vishaltelangre.nerdcalci.data.local.entities.FileSortOption
+import com.vishaltelangre.nerdcalci.data.local.entities.FileSortDirection
+
 import com.vishaltelangre.nerdcalci.utils.Suggestion
 import com.vishaltelangre.nerdcalci.utils.SuggestionType
+import kotlin.comparisons.compareBy
+import kotlin.comparisons.thenBy
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,8 +47,11 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import com.vishaltelangre.nerdcalci.utils.FileUtils
+import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean
 import com.vishaltelangre.nerdcalci.data.sync.SyncManager
+import com.vishaltelangre.nerdcalci.core.LaunchMode
+import java.text.SimpleDateFormat
 
 sealed class HomeUiEvent {
     data class ShowMessage(val message: String) : HomeUiEvent()
@@ -72,23 +82,41 @@ data class RestoreProgressState(
 
 class CalculatorViewModel(
     private val dao: CalculatorDao,
-    private val prefs: SharedPreferences? = null
+    private val prefs: SharedPreferences? = null,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : ViewModel() {
-    private val _autoOpenScratchpad = MutableStateFlow(
-        prefs?.getBoolean(Constants.PREF_AUTO_OPEN_SCRATCHPAD, false) ?: false
+    private val _launchMode = MutableStateFlow(
+        LaunchMode.fromPrefValue(prefs?.getString(Constants.PREF_LAUNCH_MODE, null)).let { mode ->
+            if (mode == LaunchMode.NOT_SET && prefs?.getBoolean(Constants.PREF_AUTO_OPEN_SCRATCHPAD, false) == true) {
+                LaunchMode.SCRATCHPAD
+            } else {
+                mode
+            }
+        }
     )
-    val autoOpenScratchpad: StateFlow<Boolean> = _autoOpenScratchpad
+    val launchMode: StateFlow<LaunchMode> = _launchMode
+
+    private val _launchFileId = MutableStateFlow(
+        prefs?.getLong(Constants.PREF_LAUNCH_FILE_ID, -1L)?.takeIf { it != -1L }
+    )
+    val launchFileId: StateFlow<Long?> = _launchFileId
+
+    private val _autoOpenFileId = MutableStateFlow<Long?>(null)
+    val autoOpenFileId: StateFlow<Long?> = _autoOpenFileId
+
+    private val _isAutoOpenReady = MutableStateFlow(false)
+    val isAutoOpenReady: StateFlow<Boolean> = _isAutoOpenReady
+
+    private val _currentTheme = MutableStateFlow(
+        prefs?.getString(PREF_THEME, DEFAULT_THEME) ?: DEFAULT_THEME
+    )
+    val currentTheme: StateFlow<String> = _currentTheme
 
     private val _scratchpadFileId = MutableStateFlow<Long?>(null)
     val scratchpadFileId: StateFlow<Long?> = _scratchpadFileId
 
     private val _isScratchpadReady = MutableStateFlow(false)
     val isScratchpadReady: StateFlow<Boolean> = _isScratchpadReady
-
-    private val _currentTheme = MutableStateFlow(
-        prefs?.getString(PREF_THEME, DEFAULT_THEME) ?: DEFAULT_THEME
-    )
-    val currentTheme: StateFlow<String> = _currentTheme
 
     private val _precision = MutableStateFlow(
         (prefs?.getInt(Constants.SYNC_ENGINE_PRECISION, Constants.DEFAULT_PRECISION) ?: Constants.DEFAULT_PRECISION)
@@ -111,10 +139,20 @@ class CalculatorViewModel(
     )
     val syncFolderUri: StateFlow<String?> = _syncFolderUri
 
-    private val _lastSyncAt = MutableStateFlow(
+    private val _lastSyncAt = MutableStateFlow<Long?>(
         prefs?.getLong(SyncManager.PREF_LAST_SYNC_AT, 0L)?.takeIf { it > 0L }
     )
     val lastSyncAt: StateFlow<Long?> = _lastSyncAt
+
+    private val _showPrecisionEllipsis = MutableStateFlow(
+        prefs?.getBoolean(Constants.PREF_SHOW_PRECISION_ELLIPSIS, false) ?: false
+    )
+    val showPrecisionEllipsis: StateFlow<Boolean> = _showPrecisionEllipsis
+
+    private val _showScratchpad = MutableStateFlow(
+        prefs?.getBoolean(Constants.PREF_SHOW_SCRATCHPAD, true) ?: true
+    )
+    val showScratchpad: StateFlow<Boolean> = _showScratchpad
 
     // Mutex to ensure atomic recalculation cycles per fileId
     private val calculationMutex = Mutex()
@@ -127,9 +165,85 @@ class CalculatorViewModel(
     init {
         viewModelScope.launch {
             try {
+                // Perform migration if needed
+                migrateLaunchSettings()
+
+                // Initialize scratchpad (always needed for the "Open Scratchpad" button)
                 ensureScratchpadExists()
+
+                // Resolve which file to auto-open based on current mode
+                resolveAutoOpenFile()
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to initialize scratchpad", e)
+                Log.e(TAG, "Initialization failed", e)
+                _isAutoOpenReady.value = true // Fallback to home screen
+            }
+        }
+    }
+
+    private fun migrateLaunchSettings() {
+        val prefs = prefs ?: return
+        // If the new launch mode isn't set but the old toggle was true, migrate to SCRATCHPAD
+        if (!prefs.contains(Constants.PREF_LAUNCH_MODE) &&
+            prefs.getBoolean(Constants.PREF_AUTO_OPEN_SCRATCHPAD, false)) {
+            setLaunchMode(LaunchMode.SCRATCHPAD)
+        }
+
+        // TODO: Remove PREF_AUTO_OPEN_SCRATCHPAD in a future release
+        if (prefs.contains(Constants.PREF_AUTO_OPEN_SCRATCHPAD)) {
+            prefs.edit().remove(Constants.PREF_AUTO_OPEN_SCRATCHPAD).apply()
+        }
+    }
+
+    fun onValidateLaunchFile(fileId: Long, callback: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val exists = withContext(Dispatchers.IO) {
+                dao.getFileById(fileId) != null
+            }
+            callback(exists)
+        }
+    }
+
+    private suspend fun resolveAutoOpenFile() {
+        withContext(Dispatchers.IO) {
+            try {
+                val mode = _launchMode.value
+                val fileId = when (mode) {
+                    LaunchMode.NOT_SET -> null
+                    LaunchMode.SCRATCHPAD -> {
+                        if (!_showScratchpad.value) null else {
+                            // Wait for scratchpad to be ready if it's not yet
+                            var retry = 0
+                            while (_scratchpadFileId.value == null && retry < 10) {
+                                kotlinx.coroutines.delay(100)
+                                retry++
+                            }
+                            _scratchpadFileId.value
+                        }
+                    }
+                    LaunchMode.JOURNAL -> {
+                        val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+                        dao.createJournalFileIfAbsent(today, System.currentTimeMillis())
+                    }
+                    LaunchMode.SPECIFIC_FILE -> {
+                        val id = _launchFileId.value
+                        if (id != null && dao.getFileById(id) != null) {
+                            id
+                        } else {
+                            // Reset if file missing
+                            withContext(Dispatchers.Main) {
+                                setLaunchMode(LaunchMode.NOT_SET)
+                                prefs?.edit()?.remove(Constants.PREF_LAUNCH_FILE_ID)?.apply()
+                                _launchFileId.value = null
+                            }
+                            null
+                        }
+                    }
+                }
+                _autoOpenFileId.value = fileId
+            } finally {
+                _isAutoOpenReady.value = true
             }
         }
     }
@@ -292,9 +406,99 @@ class CalculatorViewModel(
     )
     val rationalMode: StateFlow<Boolean> = _rationalMode
 
-    fun setAutoOpenScratchpad(enabled: Boolean) {
-        _autoOpenScratchpad.value = enabled
-        prefs?.edit()?.putBoolean(Constants.PREF_AUTO_OPEN_SCRATCHPAD, enabled)?.apply()
+    private val _fileSortCriteria = MutableStateFlow(
+        FileSortCriteria.fromJson(prefs?.getString(Constants.PREF_FILE_SORT_CRITERIA, null))
+    )
+    val fileSortCriteria: StateFlow<FileSortCriteria> = _fileSortCriteria.asStateFlow()
+
+    fun setFileSortCriteria(criteria: FileSortCriteria) {
+        _fileSortCriteria.value = criteria
+        prefs?.edit()?.putString(Constants.PREF_FILE_SORT_CRITERIA, criteria.toJson())?.apply()
+    }
+
+    fun setLaunchMode(mode: LaunchMode) {
+        _launchMode.value = mode
+
+        // If switching to SCRATCHPAD auto-open mode, ensure scratchpad is visible on home
+        if (mode == LaunchMode.SCRATCHPAD) {
+            setShowScratchpad(true)
+        }
+
+        val editor = prefs?.edit()
+        if (mode != LaunchMode.SPECIFIC_FILE) {
+            _launchFileId.value = null
+            editor?.remove(Constants.PREF_LAUNCH_FILE_ID)
+        }
+        editor
+            ?.putString(Constants.PREF_LAUNCH_MODE, mode.prefValue)
+            ?.apply()
+    }
+
+    fun setShowScratchpad(show: Boolean) {
+        _showScratchpad.value = show
+        prefs?.edit()?.putBoolean(Constants.PREF_SHOW_SCRATCHPAD, show)?.apply()
+
+        // If the scratchpad is hidden from home, also ensure it's not set to auto-open on launch
+        if (!show && _launchMode.value == LaunchMode.SCRATCHPAD) {
+            setLaunchMode(LaunchMode.NOT_SET)
+        }
+    }
+
+    fun setLaunchFileId(fileId: Long?) {
+        _launchFileId.value = fileId
+        if (fileId != null) {
+            setLaunchMode(LaunchMode.SPECIFIC_FILE)
+        }
+
+        val prefs = prefs ?: return
+        if (fileId != null) {
+            prefs.edit().putLong(Constants.PREF_LAUNCH_FILE_ID, fileId).apply()
+        } else {
+            prefs.edit().remove(Constants.PREF_LAUNCH_FILE_ID).apply()
+        }
+    }
+
+    /**
+     * Validates that the specifically set launch file still exists.
+     * Resets to NOT_SET if it has been deleted.
+     */
+    fun validateSpecificFileSetting() {
+        validateLaunchFile()
+    }
+
+    /**
+     * Validates that the specifically set launch file still exists.
+     * Resets to NOT_SET if it has been deleted.
+     */
+    fun validateLaunchFile(fileId: Long? = null, onResult: ((Boolean) -> Unit)? = null) {
+        val id = fileId ?: if (_launchMode.value == LaunchMode.SPECIFIC_FILE) _launchFileId.value else null
+        if (id != null) {
+            viewModelScope.launch(Dispatchers.IO) {
+                val exists = dao.getFileById(id) != null
+                if (!exists && fileId == null) { // Only auto-reset if we're validating the CURRENT setting
+                    withContext(Dispatchers.Main) {
+                        setLaunchMode(LaunchMode.NOT_SET)
+                        prefs?.edit()?.remove(Constants.PREF_LAUNCH_FILE_ID)?.apply()
+                        _launchFileId.value = null
+                    }
+                }
+                withContext(Dispatchers.Main) {
+                    onResult?.invoke(exists)
+                }
+            }
+        } else {
+            // Handle the case where id == null but LaunchMode is SPECIFIC_FILE
+            if (_launchMode.value == LaunchMode.SPECIFIC_FILE) {
+                viewModelScope.launch(Dispatchers.Main) {
+                    setLaunchMode(LaunchMode.NOT_SET)
+                    prefs?.edit()?.remove(Constants.PREF_LAUNCH_FILE_ID)?.apply()
+                    _launchFileId.value = null
+                    onResult?.invoke(false)
+                }
+            } else {
+                onResult?.invoke(false)
+            }
+        }
     }
 
     fun setTheme(theme: String) {
@@ -321,6 +525,11 @@ class CalculatorViewModel(
     fun setShowSymbolsShortcuts(enabled: Boolean) {
         _showSymbolsShortcuts.value = enabled
         prefs?.edit()?.putBoolean(PREF_SHOW_SYMBOLS_SHORTCUTS, enabled)?.apply()
+    }
+
+    fun setShowPrecisionEllipsis(enabled: Boolean) {
+        _showPrecisionEllipsis.value = enabled
+        prefs?.edit()?.putBoolean(Constants.PREF_SHOW_PRECISION_ELLIPSIS, enabled)?.apply()
     }
 
     fun setRationalMode(enabled: Boolean) {
@@ -481,7 +690,32 @@ class CalculatorViewModel(
     private val _uiEvents = MutableSharedFlow<HomeUiEvent>()
     val uiEvents = _uiEvents.asSharedFlow()
 
-    val allFiles: Flow<List<FileEntity>> = dao.getAllFiles()
+    val allFiles: Flow<List<FileEntity>> = combine(
+        dao.getAllFiles(),
+        _fileSortCriteria
+    ) { files: List<FileEntity>, criteria: FileSortCriteria ->
+        files.sortedWith(
+            compareByDescending<FileEntity> { it.isPinned }
+                .thenComparing(getFileComparator(criteria))
+        )
+    }
+
+    private fun getFileComparator(criteria: FileSortCriteria): Comparator<FileEntity> {
+        val comparator = when (criteria.option) {
+            FileSortOption.NAME -> compareBy(String.CASE_INSENSITIVE_ORDER) { file: FileEntity -> file.name }
+                .thenBy { file: FileEntity -> file.id }
+            FileSortOption.CREATED_AT -> compareBy { file: FileEntity -> file.createdAt }
+                .thenBy { file: FileEntity -> file.id }
+            FileSortOption.MODIFIED_AT -> compareBy { file: FileEntity -> file.lastModified }
+                .thenBy { file: FileEntity -> file.id }
+        }
+        return if (criteria.direction == FileSortDirection.DESCENDING) {
+            comparator.reversed()
+        } else {
+            comparator
+        }
+    }
+
 
     fun getLines(fileId: Long): Flow<List<LineEntity>> = dao.getLinesForFile(fileId)
 
@@ -506,9 +740,24 @@ class CalculatorViewModel(
         updateUndoRedoState(fileId)
     }
 
-    fun undo(fileId: Long) {
+    private suspend fun isFileLocked(fileId: Long): Boolean {
+        return dao.getFileById(fileId)?.isLocked == true
+    }
+
+    fun toggleLockFile(fileId: Long) {
+        viewModelScope.launch(ioDispatcher) {
+            calculationMutex.withLock {
+                val file = dao.getFileById(fileId) ?: return@withLock
+                if (file.isTemporary) return@withLock // Scratchpad cannot be locked
+                dao.toggleLockFile(fileId)
+            }
+        }
+    }
+
+    fun undo(fileId: Long, rationalMode: Boolean? = null) {
         viewModelScope.launch(Dispatchers.IO) {
             calculationMutex.withLock {
+                if (isFileLocked(fileId)) return@withLock
                 val undoStack = undoStacks[fileId] ?: return@withLock
                 if (undoStack.isEmpty()) return@withLock
 
@@ -520,16 +769,17 @@ class CalculatorViewModel(
 
                 // Restore previous state
                 val previousSnapshot = undoStack.removeAt(undoStack.size - 1)
-                restoreSnapshot(fileId, previousSnapshot)
+                restoreSnapshot(fileId, previousSnapshot, rationalMode)
 
                 updateUndoRedoState(fileId)
             }
         }
     }
 
-    fun redo(fileId: Long) {
+    fun redo(fileId: Long, rationalMode: Boolean? = null) {
         viewModelScope.launch(Dispatchers.IO) {
             calculationMutex.withLock {
+                if (isFileLocked(fileId)) return@withLock
                 val redoStack = redoStacks[fileId] ?: return@withLock
                 if (redoStack.isEmpty()) return@withLock
 
@@ -541,19 +791,19 @@ class CalculatorViewModel(
 
                 // Restore redo state
                 val redoSnapshot = redoStack.removeAt(redoStack.size - 1)
-                restoreSnapshot(fileId, redoSnapshot)
+                restoreSnapshot(fileId, redoSnapshot, rationalMode)
 
                 updateUndoRedoState(fileId)
             }
         }
     }
 
-    private suspend fun restoreSnapshot(fileId: Long, snapshot: FileSnapshot) {
+    private suspend fun restoreSnapshot(fileId: Long, snapshot: FileSnapshot, rationalMode: Boolean? = null) {
         dao.restoreLines(fileId, snapshot.lines)
 
         // Recalculate everything and batch-write results in one transaction
         val allLines = dao.getLinesForFileSync(fileId)
-        val effectiveRationalMode = _rationalMode.value
+        val effectiveRationalMode = rationalMode ?: _rationalMode.value
         val calculatedLines = MathEngine.calculate(allLines, createFileContextLoader(fileId, effectiveRationalMode), rationalMode = effectiveRationalMode)
         val versionedLines = calculatedLines.map { it.copy(version = it.version + 1) }
         dao.updateLines(fileId, versionedLines)
@@ -562,6 +812,7 @@ class CalculatorViewModel(
     fun clearHistory(fileId: Long) {
         viewModelScope.launch(Dispatchers.IO) {
             calculationMutex.withLock {
+                if (isFileLocked(fileId)) return@withLock
                 undoStacks[fileId]?.clear()
                 redoStacks[fileId]?.clear()
                 updateUndoRedoState(fileId)
@@ -584,13 +835,14 @@ class CalculatorViewModel(
 
     // Update a line and recalculate everything from it downward
     fun updateLine(updatedLine: LineEntity, rationalMode: Boolean? = null) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             updateLineInternal(updatedLine, rationalMode)
         }
     }
 
     suspend fun updateLineInternal(updatedLine: LineEntity, rationalMode: Boolean? = null) {
         calculationMutex.withLock {
+            if (isFileLocked(updatedLine.fileId)) return@withLock
             // Save the user's current typing
             dao.updateLine(updatedLine)
 
@@ -650,6 +902,7 @@ class CalculatorViewModel(
     ): Long {
         return withContext(Dispatchers.IO) {
             calculationMutex.withLock {
+                if (isFileLocked(fileId)) return@withLock -1L
                 // Save state for undo
                 saveStateForUndo(fileId)
 
@@ -690,6 +943,7 @@ class CalculatorViewModel(
             calculationMutex.withLock {
                 val line = dao.getLineById(lineId) ?: return@withLock -1L
                 val fileId = line.fileId
+                if (isFileLocked(fileId)) return@withLock -1L
                 saveStateForUndo(fileId)
 
                 val originalExpression = currentExpression ?: line.expression
@@ -737,6 +991,7 @@ class CalculatorViewModel(
                 val currentLine = dao.getLineById(currentLineId) ?: return@withLock
 
                 val fileId = prevLine.fileId
+                if (isFileLocked(fileId)) return@withLock
                 saveStateForUndo(fileId)
 
                 val mergedExpression = prevLine.expression + currentLine.expression
@@ -755,8 +1010,9 @@ class CalculatorViewModel(
     }
 
     fun deleteLine(line: LineEntity, rationalMode: Boolean? = null) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             calculationMutex.withLock {
+                if (isFileLocked(line.fileId)) return@withLock
                 // Save state for undo
                 saveStateForUndo(line.fileId)
 
@@ -784,8 +1040,9 @@ class CalculatorViewModel(
     }
 
     fun clearAllLines(fileId: Long) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             calculationMutex.withLock {
+                if (isFileLocked(fileId)) return@withLock
                 saveStateForUndo(fileId)
                 dao.clearAllLines(fileId)
             }
@@ -794,6 +1051,7 @@ class CalculatorViewModel(
 
     private suspend fun performSyncAwareDelete(context: Context, fileId: Long): Boolean {
         val file = dao.getFileById(fileId) ?: return false
+        if (file.isLocked) return false
 
         if (SyncManager.isSyncActive(context)) {
             val deleteError: Throwable? = try {
@@ -877,7 +1135,7 @@ class CalculatorViewModel(
                 val untitledRegex = Regex("""^Untitled(\s\(\d+\))?$""") // Matches "Untitled", "Untitled (1)", "Untitled (2)", etc.
                 val isUntitled = untitledRegex.matches(file.name)
 
-                if (isEmpty && isRecent && isUntitled) {
+                if (isEmpty && isRecent && isUntitled && !file.isLocked) {
                     dao.deleteFile(file)
                     // Purge history for this file
                     undoStacks.remove(fileId)
@@ -889,34 +1147,38 @@ class CalculatorViewModel(
     }
 
     suspend fun renameFile(context: Context, fileId: Long, newName: String): Boolean {
-        return withContext(Dispatchers.IO) {
-            val trimmedName = newName.trim()
-            if (trimmedName.isBlank()) return@withContext false
+        return withContext(ioDispatcher) {
+            calculationMutex.withLock {
+                if (isFileLocked(fileId)) return@withLock false
+                val trimmedName = newName.trim()
+                if (trimmedName.isBlank()) return@withLock false
 
-            val finalName = if (trimmedName.length > Constants.MAX_FILE_NAME_LENGTH) {
-                trimmedName.substring(0, Constants.MAX_FILE_NAME_LENGTH).trim()
-            } else {
-                trimmedName
-            }
-
-            if (finalName.isBlank()) return@withContext false
-
-            // Check if name is taken by another file
-            if (dao.doesFileExist(finalName, fileId)) return@withContext false
-            val file = dao.getFileById(fileId)
-            if (file != null) {
-                if (SyncManager.isSyncActive(context)) {
-                    // Delete old external file in sync folder to prevent re-import as foreign file
-                    val deleteError = SyncManager.deleteExternalFile(context, file.name)
-                    if (deleteError != null) {
-                        val missingExternalFile = deleteError.message?.startsWith("External file not found:") == true
-                        if (!missingExternalFile) throw deleteError
-                    }
+                val finalName = if (trimmedName.length > Constants.MAX_FILE_NAME_LENGTH) {
+                    trimmedName.substring(0, Constants.MAX_FILE_NAME_LENGTH).trim()
+                } else {
+                    trimmedName
                 }
-                dao.updateFile(file.copy(name = finalName))
-                true
-            } else {
-                false
+
+                if (finalName.isBlank()) return@withLock false
+
+                // Check if name is taken by another file
+                if (dao.doesFileExist(finalName, fileId)) return@withLock false
+                val file = dao.getFileById(fileId)
+                if (file != null) {
+                    val oldName = file.name
+                    dao.updateFile(file.copy(name = finalName))
+
+                    if (SyncManager.isSyncActive(context)) {
+                        val renameError = SyncManager.renameExternalFile(context, oldName, finalName)
+                        if (renameError != null) {
+                            val missingExternalFile = renameError.message?.startsWith("External file not found:") == true
+                            if (!missingExternalFile) throw renameError
+                        }
+                    }
+                    true
+                } else {
+                    false
+                }
             }
         }
     }

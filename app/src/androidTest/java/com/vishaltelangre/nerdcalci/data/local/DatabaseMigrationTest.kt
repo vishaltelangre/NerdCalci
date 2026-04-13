@@ -113,11 +113,31 @@ class DatabaseMigrationTest {
 
     @Test
     @Throws(IOException::class)
+    fun migrate6To7() {
+        helper.createDatabase(TEST_DB, 6).apply {
+            execSQL("INSERT INTO files (id, name, lastModified, isPinned, createdAt, syncId, isTemporary) VALUES (1, 'Lock File', 1000, 0, 1000, 'sync-id', 0)")
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 7, true, DatabaseMigrations.MIGRATION_6_7)
+
+        val cursor = db.query("SELECT * FROM files WHERE id = 1")
+        assertEquals(1, cursor.count)
+        cursor.moveToFirst()
+
+        val lockIndex = cursor.getColumnIndex("isLocked")
+        assertEquals(0, cursor.getInt(lockIndex)) // Existing files should be 0 (false)
+
+        cursor.close()
+    }
+
+    @Test
+    @Throws(IOException::class)
     fun migrateAll() {
         helper.createDatabase(TEST_DB, 1).apply {
             close()
         }
-        helper.runMigrationsAndValidate(TEST_DB, 6, true, *DatabaseMigrations.ALL_MIGRATIONS)
+        helper.runMigrationsAndValidate(TEST_DB, 7, true, *DatabaseMigrations.ALL_MIGRATIONS)
     }
 
     // Static assertTrue proxy for brevity

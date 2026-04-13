@@ -1,0 +1,2 @@
+- Support plural numeral multipliers (hundreds, thousands, etc.) and extended support for quadrillion and quintillion scales (PR #122).
+- Fix Enter key behavior to split current line at cursor position instead of appending new line (PR #123).

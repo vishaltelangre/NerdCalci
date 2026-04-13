@@ -1631,9 +1631,9 @@ private fun LineRow(
     }
 
     // Sync with database updates
-    LaunchedEffect(line.expression, line.version, lineNumber) {
+    LaunchedEffect(line.expression, line.version, lineNumber, isFocused) {
         // Hard bail: never overwrite local state while the user is typing.
-        if (isFocusedRef.value) return@LaunchedEffect
+        if (isFocused) return@LaunchedEffect
 
         val newDisplayText = if (lineNumber > 1) " " + line.expression else line.expression
         if (textFieldValue.text != newDisplayText) {

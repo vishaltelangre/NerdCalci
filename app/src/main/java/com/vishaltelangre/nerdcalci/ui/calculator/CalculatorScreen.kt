@@ -1391,8 +1391,12 @@ private fun LineRow(
         mutableStateOf(TextFieldValue(text = displayText))
     }
 
-    // Track the last expression and version sent to the ViewModel to prevent race conditions
-    // between local state and database updates during rapid typing.
+
+    var isFocused by remember { mutableStateOf(false) }
+    val isFocusedRef = remember { derivedStateOf { isFocused } }
+
+    // Track the last expression and version sent to the ViewModel.
+    // Used only for the unfocused sync path — not for stale-echo detection while typing.
     var lastSentExpression by remember(line.id) { mutableStateOf<String?>(null) }
     var lastSentVersion by remember(line.id) { mutableStateOf(line.version) }
 
@@ -1422,7 +1426,7 @@ private fun LineRow(
             isNonFirstLine = lineNumber > 1
         )
     }
-    var isFocused by remember { mutableStateOf(false) }
+
     val focusRequester = remember { FocusRequester() }
 
     // Autocomplete suggestions
@@ -1628,20 +1632,16 @@ private fun LineRow(
 
     // Sync with database updates
     LaunchedEffect(line.expression, line.version, lineNumber) {
-        // Only update local state if the database version is newer than or equal to what we last sent,
-        // or if the field is not focused (meaning it's an external update like a recalculation).
-        // This prevents "echo" updates from the database from overwriting the current text field
-        // during rapid typing, which is the root cause of cursor synchronization issues.
-        val isStaleEcho = isFocused && line.version < lastSentVersion
+        // Hard bail: never overwrite local state while the user is typing.
+        if (isFocusedRef.value) return@LaunchedEffect
 
-        if (!isStaleEcho && (line.expression != lastSentExpression || textFieldValue.text != displayText)) {
-            val selection = TextRange(
-                textFieldValue.selection.start.coerceIn(0, displayText.length),
-                textFieldValue.selection.end.coerceIn(0, displayText.length)
-            )
+        val newDisplayText = if (lineNumber > 1) " " + line.expression else line.expression
+        if (textFieldValue.text != newDisplayText) {
+            val clampedStart = textFieldValue.selection.start.coerceIn(0, newDisplayText.length)
+            val clampedEnd = textFieldValue.selection.end.coerceIn(0, newDisplayText.length)
             textFieldValue = textFieldValue.copy(
-                text = displayText,
-                selection = selection
+                text = newDisplayText,
+                selection = TextRange(clampedStart, clampedEnd)
             )
             // Sync our local tracking with the actual DB state
             lastSentExpression = line.expression

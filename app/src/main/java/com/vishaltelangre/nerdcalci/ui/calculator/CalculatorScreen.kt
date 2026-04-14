@@ -1393,7 +1393,6 @@ private fun LineRow(
 
 
     var isFocused by remember { mutableStateOf(false) }
-    val isFocusedRef = remember { derivedStateOf { isFocused } }
 
     // Track the last expression and version sent to the ViewModel.
     // Used only for the unfocused sync path — not for stale-echo detection while typing.
@@ -1635,12 +1634,11 @@ private fun LineRow(
         // Hard bail: never overwrite local state while the user is typing.
         if (isFocused) return@LaunchedEffect
 
-        val newDisplayText = if (lineNumber > 1) " " + line.expression else line.expression
-        if (textFieldValue.text != newDisplayText) {
-            val clampedStart = textFieldValue.selection.start.coerceIn(0, newDisplayText.length)
-            val clampedEnd = textFieldValue.selection.end.coerceIn(0, newDisplayText.length)
+        if (textFieldValue.text != displayText) {
+            val clampedStart = textFieldValue.selection.start.coerceIn(0, displayText.length)
+            val clampedEnd = textFieldValue.selection.end.coerceIn(0, displayText.length)
             textFieldValue = textFieldValue.copy(
-                text = newDisplayText,
+                text = displayText,
                 selection = TextRange(clampedStart, clampedEnd)
             )
             // Sync our local tracking with the actual DB state

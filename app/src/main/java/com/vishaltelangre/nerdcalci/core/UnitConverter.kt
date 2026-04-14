@@ -88,6 +88,9 @@ object UnitConverter {
         UnitRule(UnitCategory.NUMERAL_SYSTEM, UnitCategory.NUMERAL_SYSTEM, result = { _, _ -> "unitless" }),
         UnitRule(UnitCategory.LENGTH, UnitCategory.TIME, result = { left, right ->
             matchLengthToSpeed(left.symbols[0])
+        }),
+        UnitRule(UnitCategory.LENGTH, UnitCategory.SPEED, result = { left, right ->
+            matchSpeedToTime(right.symbols[0])
         })
     )
 
@@ -664,6 +667,21 @@ object UnitConverter {
         "ly" -> "mps"
         "Å" -> "mps"
         "au" -> "mps"
+        "px" -> "mps"
+        "pixel" -> "mps"
+        "pixels" -> "mps"
+        "pt" -> "mps"
+        "em" -> "mps"
+        else -> null
+    }
+
+    private fun matchSpeedToTime(speed: String): String? = when(speed) {
+        "mps" -> "s"
+        "kmh" -> "h"
+        "mph" -> "h"
+        "kn" -> "h"
+        "fps" -> "s"
+        "speed of light" -> "s"
         else -> null
     }
 

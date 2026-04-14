@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.7.2] - 2026-04-15
+### Added
+- Added multi-word energy units (gigajoules, TNT-equivalent variants), "dozen" multiplier, and physical derivation rules for speed, time, and distance (PR #110).
+
+### Fixed
+- Fixed an editor synchronization issue that caused cursor jumping or text overwriting during rapid typing (PR #121).
+
 ## [3.7.1] - 2026-04-13
 ### Added
 - Added support for plural numeral multipliers (hundreds, thousands, etc.) and quadrillion/quintillion scales (PR #122).

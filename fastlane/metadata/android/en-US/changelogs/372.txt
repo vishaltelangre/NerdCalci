@@ -1,0 +1,2 @@
+- Added multi-word energy units (gigajoules, TNT variants), "dozen" multiplier, and speed-time-distance derivation rules (PR #110).
+- Fixed an editor sync issue that caused cursor jumping or text overwriting during rapid typing (PR #121).

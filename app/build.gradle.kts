@@ -11,8 +11,8 @@ android {
     defaultConfig {
         applicationId = "com.vishaltelangre.nerdcalci"
         minSdk = 23
-        versionCode = 371
-        versionName = "3.7.1"
+        versionCode = 372
+        versionName = "3.7.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

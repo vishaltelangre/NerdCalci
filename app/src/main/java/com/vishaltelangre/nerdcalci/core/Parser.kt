@@ -585,6 +585,7 @@ class Parser(private val tokens: List<Token>) {
 
     private fun getNumeralMultiplier(word: String): BigDecimal? {
         return when (word.lowercase()) {
+            "dozen", "dozens" -> BigDecimal("12")
             "hundred", "hundreds" -> BigDecimal("100")
             "thousand", "thousands" -> BigDecimal("1000")
             "lakh", "lakhs" -> BigDecimal("100000")

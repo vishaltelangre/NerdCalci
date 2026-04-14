@@ -3178,7 +3178,43 @@ class UnitConversionStaticTest {
         "10 BTU in J",
         "10 J in BTU",
         "10 btu in J",
-        "10 J in btu"
+        "10 J in btu",
+        "10 GJ in J",
+        "10 J in GJ",
+        "10 gigajoule in J",
+        "10 J in gigajoule",
+        "10 gigajoules in J",
+        "10 J in gigajoules",
+        "10 tTNT in J",
+        "10 J in tTNT",
+        "10 ton of TNT in J",
+        "10 J in ton of TNT",
+        "10 tons of TNT in J",
+        "10 J in tons of TNT",
+        "10 tonne of TNT in J",
+        "10 J in tonne of TNT",
+        "10 tonnes of TNT in J",
+        "10 J in tonnes of TNT",
+        "10 ktTNT in J",
+        "10 J in ktTNT",
+        "10 kiloton of TNT in J",
+        "10 J in kiloton of TNT",
+        "10 kilotons of TNT in J",
+        "10 J in kilotons of TNT",
+        "10 kilotonne of TNT in J",
+        "10 J in kilotonne of TNT",
+        "10 kilotonnes of TNT in J",
+        "10 J in kilotonnes of TNT",
+        "10 MtTNT in J",
+        "10 J in MtTNT",
+        "10 megaton of TNT in J",
+        "10 J in megaton of TNT",
+        "10 megatons of TNT in J",
+        "10 J in megatons of TNT",
+        "10 megatonne of TNT in J",
+        "10 J in megatonne of TNT",
+        "10 megatonnes of TNT in J",
+        "10 J in megatonnes of TNT"
     ) { result ->
         val val0 = result[0].result.substringBefore(' ').toDoubleOrNull()
         assertNotNull(val0)
@@ -3360,6 +3396,117 @@ class UnitConversionStaticTest {
         val val59 = result[59].result.substringBefore(' ').toDoubleOrNull()
         assertNotNull(val59)
         assertEquals("J to btu", 0.009478171203133172, val59!!, 0.05)
+        val val60 = result[60].result.substringBefore(' ').toDoubleOrNull()
+        assertNotNull(val60)
+        assertEquals("GJ to J", 1.0E10, val60!!, 0.05)
+        val val61 = result[61].result.substringBefore(' ').toDoubleOrNull()
+        assertNotNull(val61)
+        assertEquals("J to GJ", 1.0E-8, val61!!, 0.05)
+        val val62 = result[62].result.substringBefore(' ').toDoubleOrNull()
+        assertNotNull(val62)
+        assertEquals("gigajoule to J", 1.0E10, val62!!, 0.05)
+        val val63 = result[63].result.substringBefore(' ').toDoubleOrNull()
+        assertNotNull(val63)
+        assertEquals("J to gigajoule", 1.0E-8, val63!!, 0.05)
+        val val64 = result[64].result.substringBefore(' ').toDoubleOrNull()
+        assertNotNull(val64)
+        assertEquals("gigajoules to J", 1.0E10, val64!!, 0.05)
+        val val65 = result[65].result.substringBefore(' ').toDoubleOrNull()
+        assertNotNull(val65)
+        assertEquals("J to gigajoules", 1.0E-8, val65!!, 0.05)
+
+        val val66 = result[66].result.substringBefore(' ').toDoubleOrNull()
+        assertNotNull(val66)
+        assertEquals("tTNT to J", 4.184E10, val66!!, 0.05)
+        val val67 = result[67].result.substringBefore(' ').toDoubleOrNull()
+        assertNotNull(val67)
+        assertEquals("J to tTNT", 2.3900573614E-9, val67!!, 0.05)
+        val val68 = result[68].result.substringBefore(' ').toDoubleOrNull()
+        assertNotNull(val68)
+        assertEquals("ton of TNT to J", 4.184E10, val68!!, 0.05)
+        val val69 = result[69].result.substringBefore(' ').toDoubleOrNull()
+        assertNotNull(val69)
+        assertEquals("J to ton of TNT", 2.3900573614E-9, val69!!, 0.05)
+        val val70 = result[70].result.substringBefore(' ').toDoubleOrNull()
+        assertNotNull(val70)
+        assertEquals("tons of TNT to J", 4.184E10, val70!!, 0.05)
+        val val71 = result[71].result.substringBefore(' ').toDoubleOrNull()
+        assertNotNull(val71)
+        assertEquals("J to tons of TNT", 2.3900573614E-9, val71!!, 0.05)
+        val val72 = result[72].result.substringBefore(' ').toDoubleOrNull()
+        assertNotNull(val72)
+        assertEquals("tonne of TNT to J", 4.184E10, val72!!, 0.05)
+        val val73 = result[73].result.substringBefore(' ').toDoubleOrNull()
+        assertNotNull(val73)
+        assertEquals("J to tonne of TNT", 2.3900573614E-9, val73!!, 0.05)
+        val val74 = result[74].result.substringBefore(' ').toDoubleOrNull()
+        assertNotNull(val74)
+        assertEquals("tonnes of TNT to J", 4.184E10, val74!!, 0.05)
+        val val75 = result[75].result.substringBefore(' ').toDoubleOrNull()
+        assertNotNull(val75)
+        assertEquals("J to tonnes of TNT", 2.3900573614E-9, val75!!, 0.05)
+
+        val val76 = result[76].result.substringBefore(' ').toDoubleOrNull()
+        assertNotNull(val76)
+        assertEquals("ktTNT to J", 4.184E13, val76!!, 0.05)
+        val val77 = result[77].result.substringBefore(' ').toDoubleOrNull()
+        assertNotNull(val77)
+        assertEquals("J to ktTNT", 2.3900573614E-12, val77!!, 0.05)
+        val val78 = result[78].result.substringBefore(' ').toDoubleOrNull()
+        assertNotNull(val78)
+        assertEquals("kiloton of TNT to J", 4.184E13, val78!!, 0.05)
+        val val79 = result[79].result.substringBefore(' ').toDoubleOrNull()
+        assertNotNull(val79)
+        assertEquals("J to kiloton of TNT", 2.3900573614E-12, val79!!, 0.05)
+        val val80 = result[80].result.substringBefore(' ').toDoubleOrNull()
+        assertNotNull(val80)
+        assertEquals("kilotons of TNT to J", 4.184E13, val80!!, 0.05)
+        val val81 = result[81].result.substringBefore(' ').toDoubleOrNull()
+        assertNotNull(val81)
+        assertEquals("J to kilotons of TNT", 2.3900573614E-12, val81!!, 0.05)
+        val val82 = result[82].result.substringBefore(' ').toDoubleOrNull()
+        assertNotNull(val82)
+        assertEquals("kilotonne of TNT to J", 4.184E13, val82!!, 0.05)
+        val val83 = result[83].result.substringBefore(' ').toDoubleOrNull()
+        assertNotNull(val83)
+        assertEquals("J to kilotonne of TNT", 2.3900573614E-12, val83!!, 0.05)
+        val val84 = result[84].result.substringBefore(' ').toDoubleOrNull()
+        assertNotNull(val84)
+        assertEquals("kilotonnes of TNT to J", 4.184E13, val84!!, 0.05)
+        val val85 = result[85].result.substringBefore(' ').toDoubleOrNull()
+        assertNotNull(val85)
+        assertEquals("J to kilotonnes of TNT", 2.3900573614E-12, val85!!, 0.05)
+
+        val val86 = result[86].result.substringBefore(' ').toDoubleOrNull()
+        assertNotNull(val86)
+        assertEquals("MtTNT to J", 4.184E16, val86!!, 0.05)
+        val val87 = result[87].result.substringBefore(' ').toDoubleOrNull()
+        assertNotNull(val87)
+        assertEquals("J to MtTNT", 2.3900573614E-15, val87!!, 0.05)
+        val val88 = result[88].result.substringBefore(' ').toDoubleOrNull()
+        assertNotNull(val88)
+        assertEquals("megaton of TNT to J", 4.184E16, val88!!, 0.05)
+        val val89 = result[89].result.substringBefore(' ').toDoubleOrNull()
+        assertNotNull(val89)
+        assertEquals("J to megaton of TNT", 2.3900573614E-15, val89!!, 0.05)
+        val val90 = result[90].result.substringBefore(' ').toDoubleOrNull()
+        assertNotNull(val90)
+        assertEquals("megatons of TNT to J", 4.184E16, val90!!, 0.05)
+        val val91 = result[91].result.substringBefore(' ').toDoubleOrNull()
+        assertNotNull(val91)
+        assertEquals("J to megatons of TNT", 2.3900573614E-15, val91!!, 0.05)
+        val val92 = result[92].result.substringBefore(' ').toDoubleOrNull()
+        assertNotNull(val92)
+        assertEquals("megatonne of TNT to J", 4.184E16, val92!!, 0.05)
+        val val93 = result[93].result.substringBefore(' ').toDoubleOrNull()
+        assertNotNull(val93)
+        assertEquals("J to megatonne of TNT", 2.3900573614E-15, val93!!, 0.05)
+        val val94 = result[94].result.substringBefore(' ').toDoubleOrNull()
+        assertNotNull(val94)
+        assertEquals("megatonnes of TNT to J", 4.184E16, val94!!, 0.05)
+        val val95 = result[95].result.substringBefore(' ').toDoubleOrNull()
+        assertNotNull(val95)
+        assertEquals("J to megatonnes of TNT", 2.3900573614E-15, val95!!, 0.05)
     }
 
     @Test

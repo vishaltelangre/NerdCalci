@@ -198,7 +198,7 @@ class CalculatorViewModel(
 
     fun onValidateLaunchFile(fileId: Long, callback: (Boolean) -> Unit) {
         viewModelScope.launch {
-            val exists = withContext(Dispatchers.IO) {
+            val exists = withContext(ioDispatcher) {
                 dao.getFileById(fileId) != null
             }
             callback(exists)
@@ -206,7 +206,7 @@ class CalculatorViewModel(
     }
 
     private suspend fun resolveAutoOpenFile() {
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             try {
                 val mode = _launchMode.value
                 val fileId = when (mode) {
@@ -274,7 +274,7 @@ class CalculatorViewModel(
     }
 
     private suspend fun ensureScratchpadExists() {
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             try {
                 val existing = dao.getTemporaryFile()
                 if (existing != null) {
@@ -473,7 +473,7 @@ class CalculatorViewModel(
     fun validateLaunchFile(fileId: Long? = null, onResult: ((Boolean) -> Unit)? = null) {
         val id = fileId ?: if (_launchMode.value == LaunchMode.SPECIFIC_FILE) _launchFileId.value else null
         if (id != null) {
-            viewModelScope.launch(Dispatchers.IO) {
+            viewModelScope.launch(ioDispatcher) {
                 val exists = dao.getFileById(id) != null
                 if (!exists && fileId == null) { // Only auto-reset if we're validating the CURRENT setting
                     withContext(Dispatchers.Main) {
@@ -627,7 +627,7 @@ class CalculatorViewModel(
     }
 
     fun refreshBackups(context: Context) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             _availableBackups.value = BackupManager.listBackups(context)
             _lastBackupAt.value = (prefs ?: BackupManager.prefs(context))
                 .getLong(BackupManager.PREF_LAST_BACKUP_AT, 0L)
@@ -719,7 +719,7 @@ class CalculatorViewModel(
 
     fun getLines(fileId: Long): Flow<List<LineEntity>> = dao.getLinesForFile(fileId)
 
-    suspend fun getLineCount(fileId: Long): Int = withContext(Dispatchers.IO) {
+    suspend fun getLineCount(fileId: Long): Int = withContext(ioDispatcher) {
         dao.getLineCountForFile(fileId)
     }
 
@@ -755,7 +755,7 @@ class CalculatorViewModel(
     }
 
     fun undo(fileId: Long, rationalMode: Boolean? = null) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             calculationMutex.withLock {
                 if (isFileLocked(fileId)) return@withLock
                 val undoStack = undoStacks[fileId] ?: return@withLock
@@ -777,7 +777,7 @@ class CalculatorViewModel(
     }
 
     fun redo(fileId: Long, rationalMode: Boolean? = null) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             calculationMutex.withLock {
                 if (isFileLocked(fileId)) return@withLock
                 val redoStack = redoStacks[fileId] ?: return@withLock
@@ -810,7 +810,7 @@ class CalculatorViewModel(
     }
 
     fun clearHistory(fileId: Long) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             calculationMutex.withLock {
                 if (isFileLocked(fileId)) return@withLock
                 undoStacks[fileId]?.clear()
@@ -821,7 +821,7 @@ class CalculatorViewModel(
     }
 
     fun recalculateFile(fileId: Long, rationalMode: Boolean? = null) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             calculationMutex.withLock {
                 val allLines = dao.getLinesForFileSync(fileId)
                 val effectiveRationalMode = rationalMode ?: _rationalMode.value
@@ -865,7 +865,7 @@ class CalculatorViewModel(
     }
 
     suspend fun getLineErrorMessage(fileId: Long, targetLineId: Long, rationalMode: Boolean? = null): String? {
-        return withContext(Dispatchers.IO) {
+        return withContext(ioDispatcher) {
             val file = dao.getFileById(fileId) ?: return@withContext null
             val allLines = dao.getLinesForFileSync(fileId)
             val targetIndex = allLines.indexOfFirst { it.id == targetLineId }
@@ -875,7 +875,7 @@ class CalculatorViewModel(
     }
 
     fun createNewFile(context: Context, onCreated: (Long) -> Unit = {}) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             val fileId = dao.createNewFile("Untitled", System.currentTimeMillis())
             if (SyncManager.isSyncActive(context)) {
                 syncFiles(context)
@@ -885,7 +885,7 @@ class CalculatorViewModel(
     }
 
     fun duplicateFile(sourceFileId: Long, onCreated: (Long) -> Unit = {}) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             val fileId = dao.duplicateFile(sourceFileId, System.currentTimeMillis())
             if (fileId != null) {
                 withContext(Dispatchers.Main) { onCreated(fileId) }
@@ -900,7 +900,7 @@ class CalculatorViewModel(
         afterLineId: Long? = null,
         rationalMode: Boolean? = null
     ): Long {
-        return withContext(Dispatchers.IO) {
+        return withContext(ioDispatcher) {
             calculationMutex.withLock {
                 if (isFileLocked(fileId)) return@withLock -1L
                 // Save state for undo
@@ -939,7 +939,7 @@ class CalculatorViewModel(
         currentExpression: String? = null,
         rationalMode: Boolean? = null
     ): Long {
-        return withContext(Dispatchers.IO) {
+        return withContext(ioDispatcher) {
             calculationMutex.withLock {
                 val line = dao.getLineById(lineId) ?: return@withLock -1L
                 val fileId = line.fileId
@@ -985,7 +985,7 @@ class CalculatorViewModel(
         currentLineId: Long,
         rationalMode: Boolean? = null
     ) {
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             calculationMutex.withLock {
                 val prevLine = dao.getLineById(prevLineId) ?: return@withLock
                 val currentLine = dao.getLineById(currentLineId) ?: return@withLock
@@ -1081,7 +1081,7 @@ class CalculatorViewModel(
     }
 
     suspend fun deleteFile(context: Context, fileId: Long): Boolean {
-        return withContext(Dispatchers.IO) {
+        return withContext(ioDispatcher) {
             calculationMutex.withLock {
                 performSyncAwareDelete(context, fileId)
             }
@@ -1089,7 +1089,7 @@ class CalculatorViewModel(
     }
 
     fun hideFile(fileId: Long) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             calculationMutex.withLock {
                 if (!_excludedFileIds.value.contains(fileId)) {
                     _excludedFileIds.value = _excludedFileIds.value + fileId
@@ -1099,7 +1099,7 @@ class CalculatorViewModel(
     }
 
     fun undoHideFile(fileId: Long) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             calculationMutex.withLock {
                 _excludedFileIds.value = _excludedFileIds.value - fileId
             }
@@ -1107,7 +1107,7 @@ class CalculatorViewModel(
     }
 
     fun permanentDeleteExclusions(context: Context) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             calculationMutex.withLock {
                 val idsToDelete = _excludedFileIds.value
                 if (idsToDelete.isEmpty()) return@withLock
@@ -1124,7 +1124,7 @@ class CalculatorViewModel(
      * the home screen with accidentally created empty files.
      */
     suspend fun deleteFileIfEmptyAndRecent(fileId: Long) {
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             calculationMutex.withLock {
                 val file = dao.getFileById(fileId) ?: return@withLock
                 val lines = dao.getLinesForFileSync(fileId)
@@ -1184,14 +1184,14 @@ class CalculatorViewModel(
     }
 
     suspend fun doesFileExist(name: String, excludeId: Long? = null): Boolean {
-        return withContext(Dispatchers.IO) {
+        return withContext(ioDispatcher) {
             if (excludeId == null) dao.doesFileExist(name) else dao.doesFileExist(name, excludeId)
         }
     }
 
     fun togglePinFile(fileId: Long) {
         viewModelScope.launch {
-            val success = withContext(Dispatchers.IO) {
+            val success = withContext(ioDispatcher) {
                 dao.togglePinFileIfAllowed(fileId, Constants.MAX_PINNED_FILES)
             }
             if (!success) {
@@ -1246,7 +1246,7 @@ class CalculatorViewModel(
     }
 
     suspend fun copyFileToClipboard(context: Context, fileId: Long): Result<String> {
-        return withContext(Dispatchers.IO) {
+        return withContext(ioDispatcher) {
             try {
                 val lines = dao.getLinesForFileSync(fileId)
                 val content = FileUtils.formatFileContent(lines, precision.value)

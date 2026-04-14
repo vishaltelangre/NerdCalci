@@ -1,9 +1,35 @@
 package com.vishaltelangre.nerdcalci.core
 
-import org.junit.Assert.assertEquals
+import org.junit.Assert.*
 import org.junit.Test
+import com.vishaltelangre.nerdcalci.core.testCalculate
+import com.vishaltelangre.nerdcalci.core.assertError
 
 class MixedUnitUsageTest {
+
+    private val lengthSymbols = UnitConverter.UNITS
+        .filter { it.category == UnitCategory.LENGTH }
+        .flatMap { it.symbols }
+
+    private val timeSymbols = UnitConverter.UNITS
+        .filter { it.category == UnitCategory.TIME }
+        .flatMap { it.symbols }
+
+    private val speedSymbols = UnitConverter.UNITS
+        .filter { it.category == UnitCategory.SPEED }
+        .flatMap { it.symbols }
+
+    private fun isSpeedUnit(result: String): Boolean {
+        return speedSymbols.any { result.endsWith(it) || result.contains(" $it") }
+    }
+
+    private fun isLengthUnit(result: String): Boolean {
+        return lengthSymbols.any { result.endsWith(it) || result.contains(" $it") }
+    }
+
+    private fun isTimeUnit(result: String): Boolean {
+        return timeSymbols.any { result.endsWith(it) || result.contains(" $it") }
+    }
 
     @Test
     fun `basic mixed unit addition fails`() {
@@ -128,9 +154,24 @@ class MixedUnitUsageTest {
 
     @Test
     fun `scalar mixed with unitless passes`() {
-        testCalculate("30 + 1 thousand", "1 thousand + 30") { result ->
+        testCalculate(
+            "30 + 1 thousand",
+            "1 thousand + 30",
+            "4 dozen",
+            "raw(4 dozen)",
+            "4 dozens",
+            "raw(4 dozens)",
+            "1 dozen + 1",
+            "raw(1 dozen + 1)"
+        ) { result ->
             assertEquals("1030.0", result[0].result)
             assertEquals("1030.0", result[1].result)
+            assertEquals("48.0", result[2].result)
+            assertEquals("48", result[3].result)
+            assertEquals("48.0", result[4].result)
+            assertEquals("48", result[5].result)
+            assertEquals("13.0", result[6].result)
+            assertEquals("13", result[7].result)
         }
     }
 
@@ -168,6 +209,231 @@ class MixedUnitUsageTest {
         testCalculate("distance = 10 km", "distance++", "distance--") { result ->
             assertEquals("11.0 km", result[1].result)
             assertEquals("10.0 km", result[2].result)
+        }
+    }
+
+    @Test
+    fun `multiply speed by time`() {
+        testCalculate(
+            "10 mps * 5 s",
+            "5 s * 10 mps",
+            "10 kmh * 5 h",
+            "5 h * 10 kmh",
+            "10 mph * 5 h",
+            "5 h * 10 mph",
+            "10 kn * 5 h",
+            "5 h * 10 kn",
+            "10 fps * 5 s",
+            "5 s * 10 fps",
+            "1 speed of light * 10 s",
+            "10 s * 1 speed of light"
+        ) { result ->
+            assertEquals("50.0 m", result[0].result)
+            assertEquals("50.0 m", result[1].result)
+            assertEquals("50.0 km", result[2].result)
+            assertEquals("50.0 km", result[3].result)
+            assertEquals("50.0 mi", result[4].result)
+            assertEquals("50.0 mi", result[5].result)
+            // Near 50.0 NM (handles floating point discrepancies)
+            assertResultNear("50.0 NM", result[6].result)
+            assertResultNear("50.0 NM", result[7].result)
+            assertEquals("50.0 ft", result[8].result)
+            assertEquals("50.0 ft", result[9].result)
+            assertEquals("2997924580.0 m", result[10].result)
+            assertEquals("2997924580.0 m", result[11].result)
+        }
+    }
+
+    @Test
+    fun `multiply speed by non-matching time`() {
+        testCalculate(
+            "1 mps * 1 s",
+            "1 mps * 1 ms",
+            "1 mps * 1 µs",
+            "1 mps * 1 ns",
+            "1 mps * 1 min",
+            "1 mps * 1 h",
+            "1 mps * 1 d",
+            "1 mps * 1 wk",
+            "1 mps * 1 mo",
+            "1 mps * 1 yr",
+            "1 mps * 1 lustrum",
+            "1 mps * 1 decade",
+            "1 mps * 1 century",
+            "1 mps * 1 millennium",
+            "1 mps * 1 decisecond",
+            "1 mps * 1 centisecond"
+        ) { result ->
+            assertEquals("1.0 m", result[0].result)
+            assertEquals("0.001 m", result[1].result)
+            assertEquals("1.0E-6 m", result[2].result)
+            assertEquals("1.0E-9 m", result[3].result)
+            assertEquals("60.0 m", result[4].result)
+            assertEquals("3600.0 m", result[5].result)
+            assertEquals("86400.0 m", result[6].result)
+            assertEquals("604800.0 m", result[7].result)
+            assertEquals("2629746.0 m", result[8].result)
+            assertEquals("31556952.0 m", result[9].result)
+            assertEquals("157784760.0 m", result[10].result)
+            assertEquals("315569520.0 m", result[11].result)
+            assertEquals("3155695200.0 m", result[12].result)
+            assertEquals("31556952000.0 m", result[13].result)
+            assertEquals("0.1 m", result[14].result)
+            assertEquals("0.01 m", result[15].result)
+        }
+    }
+
+    @Test
+    fun `divide length by time`() {
+        testCalculate(
+            "10 m / 5 s",
+            "10 km / 5 h",
+            "10 mi / 5 h",
+            "10 NM / 5 h",
+            "10 ft / 5 s"
+        ) { result ->
+            assertEquals("2.0 mps", result[0].result)
+            assertEquals("2.0 kmh", result[1].result)
+            assertEquals("2.0 mph", result[2].result)
+            assertResultNear("2.0 kn", result[3].result)
+            assertEquals("2.0 fps", result[4].result)
+        }
+    }
+
+    @Test
+    fun `divide non-matching length by time`() {
+        testCalculate(
+            "1 nm / 1 s",
+            "1 µm / 1 s",
+            "1 mm / 1 s",
+            "1 cm / 1 s",
+            "1 dm / 1 s",
+            "1 m / 1 s",
+            "1 km / 1 h",
+            "1 inch / 1 s",
+            "1 ft / 1 s",
+            "1 yd / 1 s",
+            "1 mi / 1 h",
+            "1 fur / 1 h",
+            "1 ftm / 1 h",
+            "1 NM / 1 h",
+            "1 ly / 1 s",
+            "1 Å / 1 s",
+            "1 pm / 1 s",
+            "1 au / 1 s"
+        ) {result ->
+            assertEquals("1.0E-9 mps", result[0].result)
+            assertEquals("1.0E-6 mps", result[1].result)
+            assertEquals("0.001 mps", result[2].result)
+            assertEquals("0.01 mps", result[3].result)
+            assertEquals("0.1 mps", result[4].result)
+            assertEquals("1.0 mps", result[5].result)
+            assertEquals("1.0 kmh", result[6].result)
+            assertEquals("0.08333333333333333333333333333333333 fps", result[7].result)
+            assertEquals("1.0 fps", result[8].result)
+            assertEquals("3.0 fps", result[9].result)
+            assertEquals("1.0 mph", result[10].result)
+            assertEquals("0.125 mph", result[11].result)
+            assertResultNear("0.000987473 kn", result[12].result)
+            assertResultNear("1.0 kn", result[13].result)
+            assertEquals("9.4607304725808E15 mps", result[14].result)
+            assertEquals("1.0E-10 mps", result[15].result)
+            assertEquals("1.0E-12 mps", result[16].result)
+            assertEquals("149597870700.0 mps", result[17].result)
+        }
+    }
+
+    @Test
+    fun `divide length by non-matching time`() {
+        testCalculate(
+            "1 m / 1 s",
+            "1 m / 1 ms",
+            "1 m / 1 µs",
+            "1 m / 1 ns",
+            "1 m / 1 min",
+            "1 m / 1 hr",
+            "1 m / 1 d",
+            "1 m / 1 wk",
+            "1 m / 1 mo",
+            "1 m / 1 yr",
+            "1 m / 1 lustrum",
+            "1 m / 1 decade",
+            "1 m / 1 century",
+            "1 m / 1 millennium",
+            "1 m / 1 ds",
+            "1 m / 1 cs"
+        ) { result ->
+            assertEquals("1.0 mps", result[0].result)
+            assertEquals("1000.0 mps", result[1].result)
+            assertEquals("1000000.0 mps", result[2].result)
+            assertEquals("1000000000.0 mps", result[3].result)
+            assertEquals("0.01666666666666666666666666666666667 mps", result[4].result)
+            assertEquals("0.0002777777777777777777777777777777778 mps", result[5].result)
+            assertEquals("0.00001157407407407407407407407407407407 mps", result[6].result)
+            assertEquals("1.653439153439153439153439153439153E-6 mps", result[7].result)
+            assertEquals("3.802648620817371715747452415556483E-7 mps", result[8].result)
+            assertEquals("3.16887385068114309645621034629707E-8 mps", result[9].result)
+            assertEquals("6.337747701362286192912420692594139E-9 mps", result[10].result)
+            assertEquals("3.16887385068114309645621034629707E-9 mps", result[11].result)
+            assertEquals("3.16887385068114309645621034629707E-10 mps", result[12].result)
+            assertEquals("3.16887385068114309645621034629707E-11 mps", result[13].result)
+            assertEquals("10.0 mps", result[14].result)
+            assertEquals("100.0 mps", result[15].result)
+        }
+    }
+
+    private fun assertResultNear(expected: String, actual: String, tolerance: Double = 1e-9) {
+        val expectedParts = expected.split(" ")
+        val actualParts = actual.split(" ")
+
+        assertEquals("Unit mismatch", expectedParts.last(), actualParts.last())
+
+        val expectedVal = expectedParts.first().toDouble()
+        val actualVal = actualParts.first().toDouble()
+
+        assertEquals("Value too far from expected", expectedVal, actualVal, tolerance)
+    }
+
+    @Test
+    fun `length divided by time yields speed results`() {
+        lengthSymbols.forEach { l ->
+            timeSymbols.forEach { t ->
+                testCalculate("1 $l / 1 $t") { result ->
+                    assertFalse("Division failed for 1 $l / 1 $t", result[0].result == "Err")
+                    assertTrue("Result for 1 $l / 1 $t is not a speed unit: ${result[0].result}",
+                        isSpeedUnit(result[0].result))
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `speed multiplied by time yields length results`() {
+        speedSymbols.forEach { s ->
+            timeSymbols.forEach { t ->
+                testCalculate("1 $s * 1 $t", "1 $t * 1 $s") { result ->
+                    assertFalse("Multiplication failed for 1 $s * 1 $t", result[0].result == "Err")
+                    assertTrue("Result for 1 $s * 1 $t is not a length unit: ${result[0].result}",
+                        isLengthUnit(result[0].result))
+
+                    assertFalse("Multiplication failed for 1 $t * 1 $s", result[1].result == "Err")
+                    assertTrue("Result for 1 $t * 1 $s is not a length unit: ${result[1].result}",
+                        isLengthUnit(result[1].result))
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `length divided by speed yields time results`() {
+        lengthSymbols.forEach { l ->
+            speedSymbols.forEach { s ->
+                testCalculate("1 $l / 1 $s") { result ->
+                    assertFalse("Division failed for 1 $l / 1 $s", result[0].result == "Err")
+                    assertTrue("Result for 1 $l / 1 $s is not a time unit: ${result[0].result}",
+                        isTimeUnit(result[0].result))
+                }
+            }
         }
     }
 }

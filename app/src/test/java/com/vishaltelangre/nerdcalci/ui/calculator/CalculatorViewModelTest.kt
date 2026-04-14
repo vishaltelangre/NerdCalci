@@ -20,7 +20,7 @@ import org.junit.rules.TestWatcher
 import org.junit.runner.Description
 
 class MainDispatcherRule(
-    val testDispatcher: TestDispatcher = UnconfinedTestDispatcher()
+    val testDispatcher: TestDispatcher = UnconfinedTestDispatcher(TestCoroutineScheduler())
 ) : TestWatcher() {
     override fun starting(description: Description) {
         Dispatchers.setMain(testDispatcher)
@@ -48,7 +48,7 @@ class CalculatorViewModelTest {
         every { Log.w(any<String>(), any<String>()) } returns 0
 
         fakeDao = FakeCalculatorDao()
-        viewModel = CalculatorViewModel(fakeDao)
+        viewModel = CalculatorViewModel(fakeDao, ioDispatcher = mainDispatcherRule.testDispatcher)
     }
 
     @After

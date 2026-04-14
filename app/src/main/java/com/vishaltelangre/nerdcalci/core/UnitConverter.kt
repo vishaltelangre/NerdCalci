@@ -51,6 +51,12 @@ object UnitConverter {
         }),
         UnitRule(UnitCategory.LENGTH, UnitCategory.AREA, result = { left, right ->
             sameAreaLengthFamily(right, left)?.let { cubeSymbolForFamily(it) }
+        }),
+        UnitRule(UnitCategory.SPEED, UnitCategory.TIME, result = { left, right ->
+            matchSpeedToLength(left.symbols[0])
+        }),
+        UnitRule(UnitCategory.TIME, UnitCategory.SPEED, result = { left, right ->
+            matchSpeedToLength(right.symbols[0])
         })
     )
 
@@ -79,7 +85,13 @@ object UnitConverter {
         UnitRule(UnitCategory.DATA_RATE, UnitCategory.DATA_RATE, result = { _, _ -> "unitless" }),
         UnitRule(UnitCategory.FORCE, UnitCategory.FORCE, result = { _, _ -> "unitless" }),
         UnitRule(UnitCategory.PRESSURE, UnitCategory.PRESSURE, result = { _, _ -> "unitless" }),
-        UnitRule(UnitCategory.NUMERAL_SYSTEM, UnitCategory.NUMERAL_SYSTEM, result = { _, _ -> "unitless" })
+        UnitRule(UnitCategory.NUMERAL_SYSTEM, UnitCategory.NUMERAL_SYSTEM, result = { _, _ -> "unitless" }),
+        UnitRule(UnitCategory.LENGTH, UnitCategory.TIME, result = { left, right ->
+            matchLengthToSpeed(left.symbols[0])
+        }),
+        UnitRule(UnitCategory.LENGTH, UnitCategory.SPEED, result = { left, right ->
+            matchSpeedToTime(right.symbols[0])
+        })
     )
 
     // Base units:
@@ -202,7 +214,7 @@ object UnitConverter {
         Unit("Meter per second", listOf("mps", "meters per second"), UnitCategory.SPEED, BigDecimal.ONE),
         Unit("Kilometer per hour", listOf("kmh", "kph", "kmph", "kilometers per hour"), UnitCategory.SPEED, BigDecimal.ONE.divide(BigDecimal("3.6"), JavaMathContext.DECIMAL128)),
         Unit("Miles per hour", listOf("mph", "miph", "miles per hour"), UnitCategory.SPEED, BigDecimal("0.44704")),
-        Unit("Knot", listOf("kn", "knot", "knots"), UnitCategory.SPEED, BigDecimal("0.514444")),
+        Unit("Knot", listOf("kn", "knot", "knots"), UnitCategory.SPEED, BigDecimal("5093").divide(BigDecimal("9900"), JavaMathContext.DECIMAL128)),
         Unit("Feet per second", listOf("fps", "feet per second"), UnitCategory.SPEED, BigDecimal("0.3048")),
         Unit("Speed of light", listOf("speed of light"), UnitCategory.SPEED, BigDecimal("299792458.0")),
 
@@ -249,6 +261,7 @@ object UnitConverter {
         Unit("Joule", listOf("J", "joule", "joules"), UnitCategory.ENERGY, BigDecimal.ONE),
         Unit("Kilojoule", listOf("kJ", "kilojoule", "kilojoules"), UnitCategory.ENERGY, BigDecimal("1000.0")),
         Unit("Megajoule", listOf("MJ", "megajoule", "megajoules"), UnitCategory.ENERGY, BigDecimal("1e6")),
+        Unit("Gigajoule", listOf("GJ", "gigajoule", "gigajoules"), UnitCategory.ENERGY, BigDecimal("1e9")),
         Unit("Calorie", listOf("cal", "calorie", "calories"), UnitCategory.ENERGY, BigDecimal("4.184")),
         Unit("Kilocalorie", listOf("kCal", "kcal", "kilocalorie", "kilocalories"), UnitCategory.ENERGY, BigDecimal("4184.0")),
         Unit("Watt hour", listOf("Wh", "watt hour", "watt hours"), UnitCategory.ENERGY, BigDecimal("3600.0")),
@@ -256,6 +269,9 @@ object UnitConverter {
         Unit("Electron volt", listOf("eV", "electronvolt", "electron volts"), UnitCategory.ENERGY, BigDecimal("1.602176634e-19")),
         Unit("Foot pound-force", listOf("ft lbf", "ft_lbf", "foot_pound"), UnitCategory.ENERGY, BigDecimal("1.3558179483314")),
         Unit("British thermal unit", listOf("BTU", "btu"), UnitCategory.ENERGY, BigDecimal("1055.05585262")),
+        Unit("Tons of TNT equivalent", listOf("tTNT", "ton of TNT", "tons of TNT", "tonne of TNT", "tonnes of TNT"), UnitCategory.ENERGY, BigDecimal("4.184e9")),
+        Unit("Kilotons of TNT equivalent", listOf("ktTNT", "kiloton of TNT", "kilotons of TNT", "kilotonne of TNT", "kilotonnes of TNT"), UnitCategory.ENERGY, BigDecimal("4.184e12")),
+        Unit("Megatons of TNT equivalent", listOf("MtTNT", "megaton of TNT", "megatons of TNT", "megatonne of TNT", "megatonnes of TNT"), UnitCategory.ENERGY, BigDecimal("4.184e15")),
 
         // --- POWER --- (Base: Watt)
         Unit("Watt", listOf("W", "watt", "watts"), UnitCategory.POWER, BigDecimal.ONE),
@@ -340,6 +356,7 @@ object UnitConverter {
         Unit("Binary", listOf("bin", "binary"), UnitCategory.NUMERAL_SYSTEM, BigDecimal("2.0")),
 
         // --- SCALAR MULTIPLIERS ---
+        Unit("Dozens", listOf("dozen", "dozens"), UnitCategory.SCALAR, BigDecimal("12.0")),
         Unit("Hundred", listOf("hundred", "hundreds"), UnitCategory.SCALAR, BigDecimal("100.0")),
         Unit("Thousand", listOf("thousand", "thousands"), UnitCategory.SCALAR, BigDecimal("1000.0")),
         Unit("Lakh", listOf("lakh", "lakhs"), UnitCategory.SCALAR, BigDecimal("100000.0")),
@@ -618,6 +635,53 @@ object UnitConverter {
         "m" -> findUnit("m³")?.symbols?.first()
         "inch" -> findUnit("in³")?.symbols?.first()
         "ft" -> findUnit("ft³")?.symbols?.first()
+        else -> null
+    }
+
+    private fun matchSpeedToLength(speed: String): String? = when (speed) {
+        "mps" -> "m"
+        "kmh" -> "km"
+        "mph" -> "mi"
+        "kn" -> "NM"
+        "fps" -> "ft"
+        "speed of light" -> "m"
+        else -> null
+    }
+
+    private fun matchLengthToSpeed(length: String): String? = when(length) {
+        "pm" -> "mps"
+        "nm" -> "mps"
+        "µm" -> "mps"
+        "mm" -> "mps"
+        "cm" -> "mps"
+        "dm" -> "mps"
+        "m" -> "mps"
+        "km" -> "kmh"
+        "fur" -> "mph"
+        "mi" -> "mph"
+        "ftm" -> "kn"
+        "NM" -> "kn"
+        "inch" -> "fps"
+        "ft" -> "fps"
+        "yd" -> "fps"
+        "ly" -> "mps"
+        "Å" -> "mps"
+        "au" -> "mps"
+        "px" -> "mps"
+        "pixel" -> "mps"
+        "pixels" -> "mps"
+        "pt" -> "mps"
+        "em" -> "mps"
+        else -> null
+    }
+
+    private fun matchSpeedToTime(speed: String): String? = when(speed) {
+        "mps" -> "s"
+        "kmh" -> "h"
+        "mph" -> "h"
+        "kn" -> "h"
+        "fps" -> "s"
+        "speed of light" -> "s"
         else -> null
     }
 

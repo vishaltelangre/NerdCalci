@@ -75,7 +75,7 @@ fun LegalSettingsScreen(
                 icon = Icons.Default.Attribution,
                 title = "License",
                 subtitle = Constants.LICENSE,
-                onClick = null
+                onClick = { openUrl(Constants.LICENSE_URL) }
             )
             SettingsItem(
                 icon = Icons.Default.Code,

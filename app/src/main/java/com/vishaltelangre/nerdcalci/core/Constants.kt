@@ -16,6 +16,7 @@ object Constants {
     const val PRIVACY_POLICY_URL = "https://github.com/vishaltelangre/NerdCalci/blob/main/PRIVACY.md"
     const val TERMS_OF_SERVICE_URL = "https://github.com/vishaltelangre/NerdCalci/blob/main/TERMS.md"
     const val SUPPORT_ISSUES_URL = "https://github.com/vishaltelangre/NerdCalci/issues/new"
+    const val LICENSE_URL = "https://github.com/vishaltelangre/NerdCalci/blob/main/LICENSE"
     const val DEVELOPER_NAME = "Vishal Telangre"
     const val DEVELOPER_TWITTER_URL = "https://x.com/suruwat"
     const val BUY_ME_COFFEE_URL = "https://buymeacoffee.com/vishaltelangre"

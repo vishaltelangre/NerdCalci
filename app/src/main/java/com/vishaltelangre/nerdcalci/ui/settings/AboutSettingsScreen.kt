@@ -5,6 +5,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -15,9 +17,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -115,10 +117,7 @@ fun AboutSettingsScreen(
                 }
             }
 
-            HorizontalDivider(
-                modifier = Modifier.padding(horizontal = 32.dp, vertical = 8.dp),
-                color = MaterialTheme.colorScheme.outlineVariant
-            )
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Developer Info
             SettingsItem(
@@ -128,16 +127,12 @@ fun AboutSettingsScreen(
                 onClick = { openUrl(Constants.DEVELOPER_TWITTER_URL) }
             )
 
-            // Buy me a coffee badge
-            Image(
-                painter = painterResource(id = R.drawable.buy_me_coffee),
-                contentDescription = "Buy me a coffee",
-                modifier = Modifier
-                    .padding(top = 16.dp, start = 16.dp)
-                    .height(50.dp)
-                    .clickable {
-                        openUrl(Constants.BUY_ME_COFFEE_URL)
-                    }
+            // Support the developer
+            SettingsItem(
+                icon = Icons.Default.Favorite,
+                title = "Buy me a coffee",
+                subtitle = "Support the development of NerdCalci",
+                onClick = { openUrl(Constants.BUY_ME_COFFEE_URL) }
             )
         }
     }

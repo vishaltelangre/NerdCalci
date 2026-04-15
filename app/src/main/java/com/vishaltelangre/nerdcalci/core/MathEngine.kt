@@ -6,6 +6,7 @@ import java.math.MathContext as JavaMathContext
 import java.util.Locale
 import com.vishaltelangre.nerdcalci.core.Rational
 import com.vishaltelangre.nerdcalci.utils.RegionUtils
+import android.os.Build
 
 /** A user-defined function local to a specific file. */
 data class LocalFunction(val name: String, val params: List<String>, val body: List<Statement>)
@@ -344,7 +345,7 @@ object MathEngine {
             val resultValue = result.value ?: BigDecimal.ZERO
             val resultUnit = result.unit?.let { UnitConverter.findUnit(it) }
             val resultCategory = resultUnit?.category
-            
+
             if (expectedCategory != null) {
                 // Block contains physical units: all lines must match that category
                 if (!isPhysicalCategory(resultCategory) || resultCategory != expectedCategory) {
@@ -373,7 +374,7 @@ object MathEngine {
         }
 
         if (blockResults.isEmpty()) return EvaluationResult(BigDecimal.ZERO)
-        
+
         // Use logic similar to sum for dimension checking
         var expectedCategory: UnitCategory? = null
         var firstUnitSymbol: String? = null
@@ -414,7 +415,7 @@ object MathEngine {
                     throw EvalException("Average of physical and unitless values is not supported")
                 }
             }
-            
+
             sumValue = sumValue.add(resultValue)
             count++
         }
@@ -622,9 +623,30 @@ object MathEngine {
             return sign + groupedInteger + formattedDecimal
         }
 
-        val formatter = java.text.DecimalFormat()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            val icuSymbols = android.icu.text.DecimalFormatSymbols(locale)
+            icuSymbols.decimalSeparator = symbols.decimalSeparator
+            icuSymbols.groupingSeparator = symbols.groupingSeparator
+            icuSymbols.zeroDigit = '0'
+
+            val icuFormatter = android.icu.text.NumberFormat.getInstance(locale) as android.icu.text.DecimalFormat
+            icuFormatter.decimalFormatSymbols = icuSymbols
+            icuFormatter.isGroupingUsed = groupingSeparatorEnabled
+            if (groupingSeparatorEnabled && icuFormatter.groupingSize == 0) {
+                icuFormatter.groupingSize = 3
+            }
+            icuFormatter.maximumFractionDigits = precision
+            icuFormatter.minimumFractionDigits = if (forcePrecision) precision else if (alwaysDecimal) 1 else 0
+
+            return icuFormatter.format(roundedValue)
+        }
+
+        val formatter = java.text.NumberFormat.getInstance(locale) as java.text.DecimalFormat
         formatter.decimalFormatSymbols = symbols
         formatter.isGroupingUsed = groupingSeparatorEnabled
+        if (groupingSeparatorEnabled && formatter.groupingSize == 0) {
+            formatter.groupingSize = 3
+        }
         formatter.maximumFractionDigits = precision
         formatter.minimumFractionDigits = if (forcePrecision) precision else if (alwaysDecimal) 1 else 0
 

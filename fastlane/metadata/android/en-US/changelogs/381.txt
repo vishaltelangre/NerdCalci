@@ -1,0 +1,6 @@
+- Implemented locale-aware number formatting (Issue #131).
+- Fixed broken application links in Help/About (Issue #128).
+- Fixed visibility issues for dividers and backgrounds in "Dynamic color" mode (Issue #127).
+- Improved scrolling for empty states in landscape orientation (Issue #129).
+- Fixed swipe-to-delete behavior for locked files (Issue #130).
+- Refined three-dot menu height for better visibility (Issue #132).

@@ -121,7 +121,9 @@ class UnitConversionStaticTest {
             "10 centisecond in s",
             "10 s in centisecond",
             "10 centiseconds in s",
-            "10 s in centiseconds"
+            "10 s in centiseconds",
+            "10 lustra in s",
+            "10 s in lustra"
         ) { result ->
         val val0 = result[0].result.substringBefore(' ').toDoubleOrNull()
         assertNotNull(val0)
@@ -459,6 +461,12 @@ class UnitConversionStaticTest {
         val val111 = result[111].result.substringBefore(' ').toDoubleOrNull()
         assertNotNull(val111)
         assertEquals("s to centiseconds", 1000.0, val111!!, 0.05)
+        val val112 = result[112].result.substringBefore(' ').toDoubleOrNull()
+        assertNotNull(val112)
+        assertEquals("lustra to s", 1.5778476E9, val112!!, 0.05)
+        val val113 = result[113].result.substringBefore(' ').toDoubleOrNull()
+        assertNotNull(val113)
+        assertEquals("s to lustra", 6.337747701362287E-8, val113!!, 0.05)
     }
 
     @Test

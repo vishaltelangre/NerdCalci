@@ -120,7 +120,7 @@ object UnitConverter {
         Unit("Week", listOf("wk", "wks", "week", "weeks"), UnitCategory.TIME, BigDecimal("604800.0")),
         Unit("Month", listOf("mo", "mnth", "mnths", "month", "months"), UnitCategory.TIME, BigDecimal("2629746.0")), // 30.436875 days
         Unit("Year", listOf("y", "yr", "yrs", "year", "years"), UnitCategory.TIME, BigDecimal("31556952.0")), // 365.2425 days
-        Unit("Lustrum", listOf("lustrum", "lustrums"), UnitCategory.TIME, BigDecimal("157784760.0")),
+        Unit("Lustrum", listOf("lustrum", "lustrums", "lustra"), UnitCategory.TIME, BigDecimal("157784760.0")),
         Unit("Decade", listOf("decade", "decades"), UnitCategory.TIME, BigDecimal("315569520.0")),
         Unit("Century", listOf("century", "centuries"), UnitCategory.TIME, BigDecimal("3155695200.0")),
         Unit("Millennium", listOf("millennium", "millennia", "millenniums"), UnitCategory.TIME, BigDecimal("31556952000.0")),

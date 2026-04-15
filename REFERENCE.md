@@ -580,7 +580,7 @@ cos(60 degree) # 0.5
 | Week        | `wk`, `wks`, `week`, `weeks`              | `10 wk`         |
 | Month       | `mo`, `mnth`, `mnths`, `month`, `months`  | `10 mo`         |
 | Year        | `y`, `yr`, `yrs`, `year`, `years`         | `10 y`          |
-| Lustrum     | `lustrum`, `lustrums`                     | `10 lustrum`    |
+| Lustrum     | `lustrum`, `lustrums`, `lustra`           | `10 lustrum`    |
 | Decade      | `decade`, `decades`                       | `10 decade`     |
 | Century     | `century`, `centuries`                    | `10 century`    |
 | Millennium  | `millennium`, `millennia`, `millenniums`  | `10 millennium` |

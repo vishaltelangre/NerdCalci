@@ -64,7 +64,7 @@ fun SettingsMainScreen(
             SettingsCategoryItem(
                 icon = Icons.Default.Palette,
                 title = "Appearance",
-                subtitle = "Theme options",
+                subtitle = "Theme and color options",
                 onClick = onNavigateToAppearance,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
             )

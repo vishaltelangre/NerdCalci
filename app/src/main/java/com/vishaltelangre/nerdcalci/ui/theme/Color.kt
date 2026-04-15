@@ -2,15 +2,55 @@ package com.vishaltelangre.nerdcalci.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Dark mode
-val PrimaryDark = Color(0xFFD0BCFF)
-val SecondaryDark = Color(0xFFCCC2DC)
-val TertiaryDark = Color(0xFFEFB8C8)
+// Palette: Midnight Glow (Default)
+val MidPrimaryDark = Color(0xFFD0BCFF)
+val MidSecondaryDark = Color(0xFFCCC2DC)
+val MidTertiaryDark = Color(0xFFEFB8C8)
+val MidPrimaryLight = Color(0xFF6750A4)
+val MidSecondaryLight = Color(0xFF625B71)
+val MidTertiaryLight = Color(0xFF7D5260)
+val MidPrimaryContainerDark = Color(0xFF4F378B)
+val MidPrimaryContainerLight = Color(0xFFEADDFF)
 
-// Light mode
-val PrimaryLight = Color(0xFF6650a4)
-val SecondaryLight = Color(0xFF625b71)
-val TertiaryLight = Color(0xFF7D5260)
+// Palette: Solar Flare
+val SolarPrimaryDark = Color(0xFFFFB74D)
+val SolarSecondaryDark = Color(0xFFFF9800)
+val SolarTertiaryDark = Color(0xFFFB8C00)
+val SolarPrimaryLight = Color(0xFFE65100)
+val SolarSecondaryLight = Color(0xFFF57C00)
+val SolarTertiaryLight = Color(0xFFFFB300)
+val SolarPrimaryContainerDark = Color(0xFF632B00)
+val SolarPrimaryContainerLight = Color(0xFFFFDDB3)
+
+// Palette: Arctic Frost
+val ArcticPrimaryDark = Color(0xFF80DEEA)
+val ArcticSecondaryDark = Color(0xFF26C6DA)
+val ArcticTertiaryDark = Color(0xFF00BCD4)
+val ArcticPrimaryLight = Color(0xFF006064)
+val ArcticSecondaryLight = Color(0xFF00838F)
+val ArcticTertiaryLight = Color(0xFF0097A7)
+val ArcticPrimaryContainerDark = Color(0xFF004D40)
+val ArcticPrimaryContainerLight = Color(0xFFB2EBF2)
+
+// Palette: Nature's Breath
+val NaturePrimaryDark = Color(0xFF81C784)
+val NatureSecondaryDark = Color(0xFF43A047)
+val NatureTertiaryDark = Color(0xFF2E7D32)
+val NaturePrimaryLight = Color(0xFF1B5E20)
+val NatureSecondaryLight = Color(0xFF2E7D32)
+val NatureTertiaryLight = Color(0xFF388E3C)
+val NaturePrimaryContainerDark = Color(0xFF003300)
+val NaturePrimaryContainerLight = Color(0xFFC8E6C9)
+
+// Palette: Royal Velvet
+val RoyalPrimaryDark = Color(0xFFE57373)
+val RoyalSecondaryDark = Color(0xFFD32F2F)
+val RoyalTertiaryDark = Color(0xFFB71C1C)
+val RoyalPrimaryLight = Color(0xFF880E4F)
+val RoyalSecondaryLight = Color(0xFFAD1457)
+val RoyalTertiaryLight = Color(0xFFC2185B)
+val RoyalPrimaryContainerDark = Color(0xFF4A0000)
+val RoyalPrimaryContainerLight = Color(0xFFFFCDD2)
 
 // Calculator result color
 val ResultSuccess = Color(0xFF00C853)

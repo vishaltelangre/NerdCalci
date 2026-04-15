@@ -108,13 +108,20 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val currentTheme by viewModel.currentTheme.collectAsState()
+            val colorPalette by viewModel.colorPalette.collectAsState()
+            val dynamicColorEnabled by viewModel.dynamicColorEnabled.collectAsState()
+
             val isDarkTheme = when (currentTheme) {
                 "light" -> false
                 "dark" -> true
                 else -> androidx.compose.foundation.isSystemInDarkTheme()
             }
 
-            NerdCalciTheme(darkTheme = isDarkTheme) {
+            NerdCalciTheme(
+                darkTheme = isDarkTheme,
+                colorPalette = colorPalette,
+                dynamicColor = dynamicColorEnabled
+            ) {
                 // Update system bar appearance to match theme
                 val view = LocalView.current
                 if (!view.isInEditMode) {
@@ -381,9 +388,16 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
             popExitTransition = { slideOutToRight }
         ) {
             val currentTheme by viewModel.currentTheme.collectAsState()
+            val colorPalette by viewModel.colorPalette.collectAsState()
+            val dynamicColorEnabled by viewModel.dynamicColorEnabled.collectAsState()
+            
             AppearanceSettingsScreen(
                 currentTheme = currentTheme,
                 onThemeChange = { theme -> viewModel.setTheme(theme) },
+                colorPalette = colorPalette,
+                onColorPaletteChange = { palette -> viewModel.setColorPalette(palette) },
+                dynamicColorEnabled = dynamicColorEnabled,
+                onDynamicColorEnabledChange = { enabled -> viewModel.setDynamicColorEnabled(enabled) },
                 onBack = { navController.popBackStack() }
             )
         }

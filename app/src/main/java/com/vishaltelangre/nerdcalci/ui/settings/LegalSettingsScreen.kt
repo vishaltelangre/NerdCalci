@@ -1,7 +1,5 @@
 package com.vishaltelangre.nerdcalci.ui.settings
 
-import android.content.ActivityNotFoundException
-import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.vishaltelangre.nerdcalci.core.Constants
+import com.vishaltelangre.nerdcalci.core.IntentUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,18 +33,6 @@ fun LegalSettingsScreen(
 ) {
     val context = LocalContext.current
 
-    fun openUrl(url: String) {
-        val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
-        try {
-            if (intent.resolveActivity(context.packageManager) != null) {
-                context.startActivity(intent)
-            } else {
-                Toast.makeText(context, "No app can open this link", Toast.LENGTH_SHORT).show()
-            }
-        } catch (e: ActivityNotFoundException) {
-            Toast.makeText(context, "No app can open this link", Toast.LENGTH_SHORT).show()
-        }
-    }
 
     Scaffold(
         topBar = {
@@ -73,25 +60,25 @@ fun LegalSettingsScreen(
                 icon = Icons.Default.PrivacyTip,
                 title = "Privacy policy",
                 subtitle = Constants.PRIVACY_POLICY_URL.removePrefix("https://"),
-                onClick = { openUrl(Constants.PRIVACY_POLICY_URL) }
+                onClick = { IntentUtils.openUrl(context, Constants.PRIVACY_POLICY_URL) }
             )
             SettingsItem(
                 icon = Icons.Default.Description,
                 title = "Terms of service",
                 subtitle = Constants.TERMS_OF_SERVICE_URL.removePrefix("https://"),
-                onClick = { openUrl(Constants.TERMS_OF_SERVICE_URL) }
+                onClick = { IntentUtils.openUrl(context, Constants.TERMS_OF_SERVICE_URL) }
             )
             SettingsItem(
                 icon = Icons.Default.Attribution,
                 title = "License",
                 subtitle = Constants.LICENSE,
-                onClick = { openUrl(Constants.LICENSE_URL) }
+                onClick = { IntentUtils.openUrl(context, Constants.LICENSE_URL) }
             )
             SettingsItem(
                 icon = Icons.Default.Code,
                 title = "View source code",
                 subtitle = Constants.SOURCE_CODE_URL.removePrefix("https://"),
-                onClick = { openUrl(Constants.SOURCE_CODE_URL) }
+                onClick = { IntentUtils.openUrl(context, Constants.SOURCE_CODE_URL) }
             )
         }
     }

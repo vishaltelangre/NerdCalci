@@ -17,6 +17,8 @@ object Constants {
     const val TERMS_OF_SERVICE_URL = "https://github.com/vishaltelangre/NerdCalci/blob/main/TERMS.md"
     const val SUPPORT_ISSUES_URL = "https://github.com/vishaltelangre/NerdCalci/issues/new"
     const val DEVELOPER_NAME = "Vishal Telangre"
+    const val DEVELOPER_TWITTER_URL = "https://x.com/suruwat"
+    const val BUY_ME_COFFEE_URL = "https://buymeacoffee.com/vishaltelangre"
     const val LICENSE = "GNU General Public License v3.0"
 
     // File management

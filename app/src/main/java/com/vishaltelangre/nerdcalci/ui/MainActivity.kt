@@ -67,7 +67,14 @@ import com.vishaltelangre.nerdcalci.ui.components.RestoreSourceDialog
 import com.vishaltelangre.nerdcalci.ui.components.RestoreProgressDialog
 import com.vishaltelangre.nerdcalci.ui.components.RestoreCompleteDialog
 import com.vishaltelangre.nerdcalci.ui.home.HomeScreen
-import com.vishaltelangre.nerdcalci.ui.settings.SettingsScreen
+import com.vishaltelangre.nerdcalci.ui.settings.AboutSettingsScreen
+import com.vishaltelangre.nerdcalci.ui.settings.AppearanceSettingsScreen
+import com.vishaltelangre.nerdcalci.ui.settings.CalculatorSettingsScreen
+import com.vishaltelangre.nerdcalci.ui.settings.DataSyncSettingsScreen
+import com.vishaltelangre.nerdcalci.ui.settings.SettingsMainScreen
+import com.vishaltelangre.nerdcalci.ui.settings.HomeStartupSettingsScreen
+import com.vishaltelangre.nerdcalci.ui.settings.HelpFeedbackSettingsScreen
+import com.vishaltelangre.nerdcalci.ui.settings.LegalSettingsScreen
 import com.vishaltelangre.nerdcalci.ui.changelog.ChangelogScreen
 import com.vishaltelangre.nerdcalci.ui.help.HelpScreen
 import com.vishaltelangre.nerdcalci.ui.search.SearchScreen
@@ -354,20 +361,108 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
             popEnterTransition = { slideInFromLeft },
             popExitTransition = { slideOutToRight }
         ) {
-            LaunchedEffect(Unit) {
-                viewModel.refreshBackups(context)
-            }
+            SettingsMainScreen(
+                onNavigateToAppearance = { navController.navigate("settings_appearance") },
+                onNavigateToCalculator = { navController.navigate("settings_calculator") },
+                onNavigateToHomeStartup = { navController.navigate("settings_home_startup") },
+                onNavigateToDataSync = { navController.navigate("settings_data_sync") },
+                onNavigateToHelpFeedback = { navController.navigate("settings_help_feedback") },
+                onNavigateToLegal = { navController.navigate("settings_legal") },
+                onNavigateToAbout = { navController.navigate("settings_about") },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            "settings_appearance",
+            enterTransition = { slideInFromRight },
+            exitTransition = { slideOutToLeft },
+            popEnterTransition = { slideInFromLeft },
+            popExitTransition = { slideOutToRight }
+        ) {
+            val currentTheme by viewModel.currentTheme.collectAsState()
+            AppearanceSettingsScreen(
+                currentTheme = currentTheme,
+                onThemeChange = { theme -> viewModel.setTheme(theme) },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            "settings_calculator",
+            enterTransition = { slideInFromRight },
+            exitTransition = { slideOutToLeft },
+            popEnterTransition = { slideInFromLeft },
+            popExitTransition = { slideOutToRight }
+        ) {
             val precision by viewModel.precision.collectAsState()
             val rationalMode by viewModel.rationalMode.collectAsState()
             val groupingSeparatorEnabled by viewModel.groupingSeparatorEnabled.collectAsState()
+            val showPrecisionEllipsis by viewModel.showPrecisionEllipsis.collectAsState()
+            val editorFontSize by viewModel.editorFontSize.collectAsState()
 
-            SettingsScreen(
-                currentTheme = currentTheme,
-                onThemeChange = { theme -> viewModel.setTheme(theme) },
+            CalculatorSettingsScreen(
+                precision = precision,
+                onPrecisionChange = { viewModel.setPrecision(it) },
+                rationalMode = rationalMode,
+                onRationalModeChange = { viewModel.setRationalMode(it) },
+                regionCode = regionCode,
+                onRegionCodeChange = { viewModel.setRegionCode(it) },
+                groupingSeparatorEnabled = groupingSeparatorEnabled,
+                onGroupingSeparatorEnabledChange = { viewModel.setGroupingSeparatorEnabled(it) },
+                showPrecisionEllipsis = showPrecisionEllipsis,
+                onShowPrecisionEllipsisChange = { viewModel.setShowPrecisionEllipsis(it) },
+                editorFontSize = editorFontSize,
+                onEditorFontSizeChange = { viewModel.setEditorFontSize(it) },
+                showLineNumbers = showLineNumbers,
+                onShowLineNumbersChange = { viewModel.setShowLineNumbers(it) },
+                showSuggestions = showSuggestions,
+                onShowSuggestionsChange = { viewModel.setShowSuggestions(it) },
+                showSymbolsShortcuts = showSymbolsShortcuts,
+                onShowSymbolsShortcutsChange = { viewModel.setShowSymbolsShortcuts(it) },
+                showNumbersShortcuts = showNumbersShortcuts,
+                onShowNumbersShortcutsChange = { viewModel.setShowNumbersShortcuts(it) },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            "settings_home_startup",
+            enterTransition = { slideInFromRight },
+            exitTransition = { slideOutToLeft },
+            popEnterTransition = { slideInFromLeft },
+            popExitTransition = { slideOutToRight }
+        ) {
+            HomeStartupSettingsScreen(
+                launchMode = launchMode,
+                onLaunchModeChange = { viewModel.setLaunchMode(it) },
+                launchFileId = launchFileId,
+                onLaunchFileIdChange = { viewModel.setLaunchFileId(it) },
+                allFiles = allFiles,
+                onValidateLaunchFile = { fileId, callback ->
+                    viewModel.validateLaunchFile(fileId, callback)
+                },
+                showScratchpad = showScratchpad,
+                onShowScratchpadChange = { viewModel.setShowScratchpad(it) },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            "settings_data_sync",
+            enterTransition = { slideInFromRight },
+            exitTransition = { slideOutToLeft },
+            popEnterTransition = { slideInFromLeft },
+            popExitTransition = { slideOutToRight }
+        ) {
+            LaunchedEffect(Unit) {
+                viewModel.refreshBackups(context)
+            }
+            DataSyncSettingsScreen(
                 autoBackupEnabled = autoBackupEnabled,
-                onAutoBackupEnabledChange = { enabled -> viewModel.setAutoBackupEnabled(context, enabled) },
+                onAutoBackupEnabledChange = { viewModel.setAutoBackupEnabled(context, it) },
                 backupFrequency = backupFrequency,
-                onBackupFrequencyChange = { frequency -> viewModel.setBackupFrequency(context, frequency) },
+                onBackupFrequencyChange = { viewModel.setBackupFrequency(context, it) },
                 backupLocationMode = backupLocationMode,
                 backupLocationSummary = customBackupFolderSummary,
                 onChooseBackupFolder = { backupFolderLauncher.launch(null) },
@@ -389,50 +484,70 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
                 },
                 lastBackupAt = lastBackupAt,
                 availableBackups = availableBackups,
-                onRestoreBackup = { backup -> viewModel.restoreFromBackup(context, backup) },
+                onRestoreBackup = { viewModel.restoreFromBackup(context, it) },
                 onRestoreFromDifferentLocation = {
                     importLauncher.launch(arrayOf(Constants.EXPORT_MIME_TYPE))
                 },
-                precision = precision,
-                onPrecisionChange = { newPrecision -> viewModel.setPrecision(newPrecision) },
-                showLineNumbers = showLineNumbers,
-                onShowLineNumbersChange = { newShowLineNumbers -> viewModel.setShowLineNumbers(newShowLineNumbers) },
-                showSuggestions = showSuggestions,
-                onShowSuggestionsChange = { newShowSuggestions -> viewModel.setShowSuggestions(newShowSuggestions) },
-                showSymbolsShortcuts = showSymbolsShortcuts,
-                onShowSymbolsShortcutsChange = { viewModel.setShowSymbolsShortcuts(it) },
-                showNumbersShortcuts = showNumbersShortcuts,
-                onShowNumbersShortcutsChange = { viewModel.setShowNumbersShortcuts(it) },
-                regionCode = regionCode,
-                onRegionCodeChange = { viewModel.setRegionCode(it) },
                 syncEnabled = syncEnabled,
                 onSyncEnabledChange = { viewModel.setSyncEnabled(context, it) },
                 syncFolderUri = syncFolderUri,
                 onChooseSyncFolder = { syncFolderLauncher.launch(null) },
                 lastSyncAt = lastSyncAt,
-                rationalMode = rationalMode,
-                onRationalModeChange = { viewModel.setRationalMode(it) },
-                groupingSeparatorEnabled = groupingSeparatorEnabled,
-                onGroupingSeparatorEnabledChange = { viewModel.setGroupingSeparatorEnabled(it) },
-                showPrecisionEllipsis = showPrecisionEllipsis,
-                onShowPrecisionEllipsisChange = { viewModel.setShowPrecisionEllipsis(it) },
-                launchMode = launchMode,
-                launchFileId = launchFileId,
-                allFiles = allFiles,
-                onLaunchModeChange = { viewModel.setLaunchMode(it) },
-                onLaunchFileIdChange = { viewModel.setLaunchFileId(it) },
-                showScratchpad = showScratchpad,
-                onShowScratchpadChange = { viewModel.setShowScratchpad(it) },
-                editorFontSize = editorFontSize,
-                onEditorFontSizeChange = { viewModel.setEditorFontSize(it) },
-                onAutoValidateLaunchFile = {
-                    viewModel.validateSpecificFileSetting()
-                },
-                onValidateLaunchFile = { fileId, callback ->
-                    viewModel.validateLaunchFile(fileId, callback)
-                },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            "settings_help_feedback",
+            enterTransition = { slideInFromRight },
+            exitTransition = { slideOutToLeft },
+            popEnterTransition = { slideInFromLeft },
+            popExitTransition = { slideOutToRight }
+        ) {
+            HelpFeedbackSettingsScreen(
                 onHelp = { navController.navigate("help") },
                 onChangelog = { navController.navigate("changelog") },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            "settings_legal",
+            enterTransition = { slideInFromRight },
+            exitTransition = { slideOutToLeft },
+            popEnterTransition = { slideInFromLeft },
+            popExitTransition = { slideOutToRight }
+        ) {
+            LegalSettingsScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            "settings_about",
+            enterTransition = { slideInFromRight },
+            exitTransition = { slideOutToLeft },
+            popEnterTransition = { slideInFromLeft },
+            popExitTransition = { slideOutToRight }
+        ) {
+            val context = LocalContext.current
+            val appVersion = remember {
+                try {
+                    val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+                    val versionName = packageInfo.versionName ?: "Unknown"
+                    val versionCode = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                        packageInfo.longVersionCode
+                    } else {
+                        @Suppress("DEPRECATION")
+                        packageInfo.versionCode.toLong()
+                    }
+                    "v$versionName ($versionCode)"
+                } catch (e: Exception) {
+                    "Unknown"
+                }
+            }
+            AboutSettingsScreen(
+                appVersion = appVersion,
                 onBack = { navController.popBackStack() }
             )
         }

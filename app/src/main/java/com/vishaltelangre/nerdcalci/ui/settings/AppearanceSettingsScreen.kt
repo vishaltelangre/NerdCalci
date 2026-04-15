@@ -4,8 +4,10 @@ import android.os.Build
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import com.google.android.material.color.DynamicColors
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -49,8 +51,11 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -133,16 +138,25 @@ fun AppearanceSettingsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            val palettes = remember {
+            val context = LocalContext.current
+            val isDarkTheme = when (currentTheme) {
+                "light" -> false
+                "dark" -> true
+                else -> isSystemInDarkTheme()
+            }
+
+            val currentColorScheme = MaterialTheme.colorScheme
+            val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+            val palettes = remember(isDarkTheme, dynamicColorEnabled, configuration) {
                 buildList {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && DynamicColors.isDynamicColorAvailable()) {
                         add(
                             PaletteInfo(
                                 id = "dynamic",
                                 name = "Dynamic color",
-                                primary = Color(0xFF4285F4),
-                                secondary = Color(0xFF34A853),
-                                tertiary = Color(0xFFFBBC05),
+                                primary = if (dynamicColorEnabled) currentColorScheme.primary else (if (isDarkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)).primary,
+                                secondary = if (dynamicColorEnabled) currentColorScheme.secondary else (if (isDarkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)).secondary,
+                                tertiary = if (dynamicColorEnabled) currentColorScheme.tertiary else (if (isDarkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)).tertiary,
                                 description = "Use colors from your wallpaper"
                             )
                         )

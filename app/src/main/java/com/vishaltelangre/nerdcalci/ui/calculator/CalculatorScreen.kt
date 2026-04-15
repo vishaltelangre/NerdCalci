@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -104,6 +105,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -124,7 +126,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.IntSize
@@ -715,9 +716,15 @@ fun CalculatorScreen(
                                     tint = MaterialTheme.colorScheme.onSurface
                                 )
                             }
+                            val configuration = LocalConfiguration.current
+                            val screenHeight = configuration.screenHeightDp.dp
                             DropdownMenu(
                                 expanded = showMenu,
-                                onDismissRequest = { showMenu = false }) {
+                                onDismissRequest = { showMenu = false },
+                                modifier = Modifier
+                                    .heightIn(max = screenHeight * 0.8f)
+                                    .navigationBarsPadding()
+                            ) {
                                 DropdownMenuItem(
                                     text = { Text("Help") },
                                     leadingIcon = {
@@ -1077,7 +1084,8 @@ fun CalculatorScreen(
                     modifier = Modifier
                         .width(120.dp)
                         .fillMaxHeight()
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .background(MaterialTheme.colorScheme.surface)
+                        .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.15f))
                 )
             }
 
@@ -1197,7 +1205,7 @@ fun CalculatorScreen(
                     if (index < lines.size - 1) {
                         HorizontalDivider(
                             thickness = 1.dp,
-                            color = MaterialTheme.colorScheme.outlineVariant
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.20f)
                         )
                     }
                 }

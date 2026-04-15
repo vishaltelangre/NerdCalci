@@ -81,6 +81,7 @@ import com.vishaltelangre.nerdcalci.ui.changelog.ChangelogScreen
 import com.vishaltelangre.nerdcalci.ui.help.HelpScreen
 import com.vishaltelangre.nerdcalci.ui.search.SearchScreen
 import com.vishaltelangre.nerdcalci.ui.theme.NerdCalciTheme
+import com.google.android.material.color.DynamicColors
 import com.vishaltelangre.nerdcalci.utils.FileUtils
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -91,6 +92,8 @@ import java.util.Locale
 class MainActivity : ComponentActivity() {
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     override fun onCreate(savedInstanceState: Bundle?) {
+        DynamicColors.applyToActivitiesIfAvailable(this.application)
+        DynamicColors.applyIfAvailable(this)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 

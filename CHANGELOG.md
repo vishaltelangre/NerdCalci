@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.8.1] - 2026-04-16
+### Added
+- Implemented locale-aware number formatting using ICU for diverse regional separator support (Issue #131).
+
+### Fixed
+- Fixed non-scrollable empty state in landscape mode ensuring accessibility in all orientations (Issue #129).
+- Fixed broken application links in Help, Legal, and About sections (Issue #128).
+- Fixed result pane dividers and file row background visibility issues when using "Dynamic color" palettes (Issue #127).
+- Fixed swipe-to-delete interaction to respect file lock status (Issue #130).
+- Improved dropdown menu behavior by using dynamic height for three-dot menus (Issue #132).
+
 ## [3.8.0] - 2026-04-15
 ### Added
 - Reorganized and revamped settings screen.

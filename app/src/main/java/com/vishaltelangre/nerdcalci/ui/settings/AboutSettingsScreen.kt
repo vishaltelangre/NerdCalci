@@ -1,6 +1,5 @@
 package com.vishaltelangre.nerdcalci.ui.settings
 
-import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -39,6 +38,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import android.widget.ImageView
 import com.vishaltelangre.nerdcalci.R
 import com.vishaltelangre.nerdcalci.core.Constants
+import com.vishaltelangre.nerdcalci.core.IntentUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,14 +48,6 @@ fun AboutSettingsScreen(
 ) {
     val context = LocalContext.current
 
-    fun openUrl(url: String) {
-        val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
-        if (intent.resolveActivity(context.packageManager) != null) {
-            context.startActivity(intent)
-        } else {
-            Toast.makeText(context, "No app can open this link", Toast.LENGTH_SHORT).show()
-        }
-    }
 
     Scaffold(
         topBar = {
@@ -129,7 +121,7 @@ fun AboutSettingsScreen(
                 icon = Icons.Default.AccountCircle,
                 title = Constants.DEVELOPER_NAME,
                 subtitle = "Creator of NerdCalci",
-                onClick = { openUrl(Constants.DEVELOPER_TWITTER_URL) }
+                onClick = { IntentUtils.openUrl(context, Constants.DEVELOPER_TWITTER_URL) }
             )
 
             // Support the developer
@@ -137,7 +129,7 @@ fun AboutSettingsScreen(
                 icon = Icons.Default.Favorite,
                 title = "Buy me a coffee",
                 subtitle = "Support the development of NerdCalci",
-                onClick = { openUrl(Constants.BUY_ME_COFFEE_URL) }
+                onClick = { IntentUtils.openUrl(context, Constants.BUY_ME_COFFEE_URL) }
             )
         }
     }

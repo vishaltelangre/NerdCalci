@@ -11,6 +11,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
+import com.google.android.material.color.DynamicColors
 
 private val MidnightDarkColorScheme = darkColorScheme(
     primary = MidPrimaryDark,
@@ -31,7 +32,9 @@ private val MidnightDarkColorScheme = darkColorScheme(
     surfaceContainerLowest = Color(0xFF0F0F0F),
     onBackground = Color.White,
     onSurface = Color.White,
-    onSurfaceVariant = Color(0xFFAAAAAA)
+    onSurfaceVariant = Color(0xFFAAAAAA),
+    outline = MidOutlineDark,
+    outlineVariant = MidOutlineVariantDark
 )
 
 private val MidnightLightColorScheme = lightColorScheme(
@@ -52,7 +55,9 @@ private val MidnightLightColorScheme = lightColorScheme(
     surfaceContainerLow = Color(0xFFF7F7F7),
     surfaceContainerLowest = Color(0xFFFFFFFF),
     onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F)
+    onSurface = Color(0xFF1C1B1F),
+    outline = MidOutlineLight,
+    outlineVariant = MidOutlineVariantLight
 )
 
 private val SolarFlareDarkColorScheme = darkColorScheme(
@@ -74,7 +79,9 @@ private val SolarFlareDarkColorScheme = darkColorScheme(
     surfaceContainerLowest = Color(0xFF15110F),
     onBackground = Color.White,
     onSurface = Color.White,
-    onSurfaceVariant = Color(0xFFAAAAAA)
+    onSurfaceVariant = Color(0xFFAAAAAA),
+    outline = SolarOutlineDark,
+    outlineVariant = SolarOutlineVariantDark
 )
 
 private val SolarFlareLightColorScheme = lightColorScheme(
@@ -95,7 +102,9 @@ private val SolarFlareLightColorScheme = lightColorScheme(
     surfaceContainerLow = Color(0xFFFFF7EF),
     surfaceContainerLowest = Color(0xFFFFFFFF),
     onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F)
+    onSurface = Color(0xFF1C1B1F),
+    outline = SolarOutlineLight,
+    outlineVariant = SolarOutlineVariantLight
 )
 
 private val ArcticFrostDarkColorScheme = darkColorScheme(
@@ -117,7 +126,9 @@ private val ArcticFrostDarkColorScheme = darkColorScheme(
     surfaceContainerLowest = Color(0xFF0C1011),
     onBackground = Color.White,
     onSurface = Color.White,
-    onSurfaceVariant = Color(0xFFAAAAAA)
+    onSurfaceVariant = Color(0xFFAAAAAA),
+    outline = ArcticOutlineDark,
+    outlineVariant = ArcticOutlineVariantDark
 )
 
 private val ArcticFrostLightColorScheme = lightColorScheme(
@@ -138,7 +149,9 @@ private val ArcticFrostLightColorScheme = lightColorScheme(
     surfaceContainerLow = Color(0xFFF2FBFC),
     surfaceContainerLowest = Color(0xFFFFFFFF),
     onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F)
+    onSurface = Color(0xFF1C1B1F),
+    outline = ArcticOutlineLight,
+    outlineVariant = ArcticOutlineVariantLight
 )
 
 private val NaturesBreathDarkColorScheme = darkColorScheme(
@@ -160,7 +173,9 @@ private val NaturesBreathDarkColorScheme = darkColorScheme(
     surfaceContainerLowest = Color(0xFF0C140C),
     onBackground = Color.White,
     onSurface = Color.White,
-    onSurfaceVariant = Color(0xFFAAAAAA)
+    onSurfaceVariant = Color(0xFFAAAAAA),
+    outline = NatureOutlineDark,
+    outlineVariant = NatureOutlineVariantDark
 )
 
 private val NaturesBreathLightColorScheme = lightColorScheme(
@@ -181,7 +196,9 @@ private val NaturesBreathLightColorScheme = lightColorScheme(
     surfaceContainerLow = Color(0xFFF7FBEF),
     surfaceContainerLowest = Color(0xFFFFFFFF),
     onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F)
+    onSurface = Color(0xFF1C1B1F),
+    outline = NatureOutlineLight,
+    outlineVariant = NatureOutlineVariantLight
 )
 
 private val RoyalVelvetDarkColorScheme = darkColorScheme(
@@ -203,7 +220,9 @@ private val RoyalVelvetDarkColorScheme = darkColorScheme(
     surfaceContainerLowest = Color(0xFF120C0D),
     onBackground = Color.White,
     onSurface = Color.White,
-    onSurfaceVariant = Color(0xFFAAAAAA)
+    onSurfaceVariant = Color(0xFFAAAAAA),
+    outline = RoyalOutlineDark,
+    outlineVariant = RoyalOutlineVariantDark
 )
 
 private val RoyalVelvetLightColorScheme = lightColorScheme(
@@ -224,7 +243,9 @@ private val RoyalVelvetLightColorScheme = lightColorScheme(
     surfaceContainerLow = Color(0xFFFFF2F4),
     surfaceContainerLowest = Color(0xFFFFFFFF),
     onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F)
+    onSurface = Color(0xFF1C1B1F),
+    outline = RoyalOutlineLight,
+    outlineVariant = RoyalOutlineVariantLight
 )
 
 @Composable
@@ -235,7 +256,7 @@ fun NerdCalciTheme(
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && DynamicColors.isDynamicColorAvailable() -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -40,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -118,10 +120,14 @@ fun HelpScreen(onBack: () -> Unit) {
                                     tint = MaterialTheme.colorScheme.onSurface
                                 )
                             }
+                            val configuration = LocalConfiguration.current
+                            val screenHeight = configuration.screenHeightDp.dp
                             DropdownMenu(
                                 expanded = showTocMenu,
                                 onDismissRequest = { showTocMenu = false },
-                                modifier = Modifier.heightIn(max = 480.dp)
+                                modifier = Modifier
+                                    .heightIn(max = screenHeight * 0.8f)
+                                    .navigationBarsPadding()
                             ) {
                                 tocItems.forEach { item ->
                                     val cleanTitle = item.title.replace("\\&", "&")
@@ -212,7 +218,7 @@ private fun scrollToAnchor(
     var matchOffset = -1
     var currentOffset = 0
     val slugAnchor = slugify(anchor)
- 
+
     for (i in lines.indices) {
         val lineText = lines[i].trim()
         val cleanText = if (lineText.startsWith("#")) {
@@ -221,14 +227,14 @@ private fun scrollToAnchor(
             lineText
         }
         val slugClean = slugify(cleanText)
- 
+
         if (slugClean.isNotEmpty() && slugClean == slugAnchor) {
             matchOffset = currentOffset
             break
         }
         currentOffset += lines[i].length + 1
     }
- 
+
     if (matchOffset != -1) {
         textView.layout?.let { layout ->
             val lineIndex = layout.getLineForOffset(matchOffset)

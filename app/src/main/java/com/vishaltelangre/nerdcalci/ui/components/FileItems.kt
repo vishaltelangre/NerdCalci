@@ -151,7 +151,7 @@ fun DeletedUndoItem(
         modifier = modifier
             .fillMaxWidth(),
         shape = androidx.compose.ui.graphics.RectangleShape,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.error)
     ) {
         Row(
             modifier = Modifier
@@ -163,7 +163,7 @@ fun DeletedUndoItem(
         ) {
             Text(
                 text = "Deleted \"${file.name}\"",
-                color = MaterialTheme.colorScheme.onErrorContainer,
+                color = MaterialTheme.colorScheme.onError,
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -180,14 +180,14 @@ fun DeletedUndoItem(
                 ) {
                     Text(
                         text = "UNDO",
-                        color = MaterialTheme.colorScheme.error,
+                        color = MaterialTheme.colorScheme.onError,
                         style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
                     )
                 }
                 Text(
                     text = "${secondsLeft}s left",
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f)
+                    color = MaterialTheme.colorScheme.onError.copy(alpha = 0.7f)
                 )
             }
         }
@@ -225,7 +225,8 @@ internal fun FileItem(
             }
             DropdownMenu(
                 expanded = showMenu,
-                onDismissRequest = { showMenu = false }
+                onDismissRequest = { showMenu = false },
+                modifier = Modifier.navigationBarsPadding()
             ) {
                 DropdownMenuItem(
                     text = { Text(if (file.isPinned) "Unpin" else "Pin") },
@@ -347,7 +348,7 @@ internal fun FileRowCard(
             .fillMaxWidth()
             .clickable { onClick() },
         shape = androidx.compose.ui.graphics.RectangleShape,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
     ) {
         Row(
             modifier = Modifier
@@ -436,9 +437,10 @@ fun DismissibleFileItem(
     modifier: Modifier = Modifier
 ) {
     val haptic = LocalHapticFeedback.current
+    val currentIsLocked by rememberUpdatedState(file.isLocked)
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
-            if (file.isLocked) return@rememberSwipeToDismissBoxState false
+            if (currentIsLocked) return@rememberSwipeToDismissBoxState false
             value == SwipeToDismissBoxValue.EndToStart
         }
     )
@@ -462,6 +464,7 @@ fun DismissibleFileItem(
     SwipeToDismissBox(
         state = dismissState,
         enableDismissFromStartToEnd = false,
+        enableDismissFromEndToStart = !file.isLocked,
         backgroundContent = { SwipeToDismissBackground(dismissState) },
         modifier = modifier
             .fillMaxWidth()
@@ -485,7 +488,7 @@ fun SwipeToDismissBackground(dismissState: SwipeToDismissBoxState) {
     val color by animateColorAsState(
         when (dismissState.targetValue) {
             SwipeToDismissBoxValue.Settled -> Color.Transparent
-            SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.errorContainer
+            SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.error
             SwipeToDismissBoxValue.StartToEnd -> Color.Transparent
         }, label = "dismiss_background_color"
     )
@@ -509,7 +512,7 @@ fun SwipeToDismissBackground(dismissState: SwipeToDismissBoxState) {
             icon,
             contentDescription = "Delete",
             modifier = Modifier.scale(scale),
-            tint = MaterialTheme.colorScheme.onErrorContainer
+            tint = MaterialTheme.colorScheme.onError
         )
     }
 }

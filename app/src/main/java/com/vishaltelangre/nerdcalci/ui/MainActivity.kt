@@ -2,8 +2,10 @@ package com.vishaltelangre.nerdcalci.ui
 
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -557,7 +559,8 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
                         packageInfo.versionCode.toLong()
                     }
                     "v$versionName ($versionCode)"
-                } catch (e: Exception) {
+                } catch (e: PackageManager.NameNotFoundException) {
+                    Log.e("MainActivity", "Failed to retrieve app version information", e)
                     "Unknown"
                 }
             }

@@ -201,7 +201,7 @@ fun ChangelogSectionItem(section: ChangelogSection) {
 
         Card(
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
             ),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
             modifier = Modifier.fillMaxWidth(),

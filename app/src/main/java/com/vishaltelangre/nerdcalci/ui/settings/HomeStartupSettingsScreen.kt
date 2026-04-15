@@ -56,6 +56,7 @@ fun HomeStartupSettingsScreen(
     onShowScratchpadChange: (Boolean) -> Unit,
     allFiles: List<FileEntity>,
     onValidateLaunchFile: (Long, (Boolean) -> Unit) -> Unit,
+    onChooseOtherMode: () -> Unit,
     onBack: () -> Unit
 ) {
     var showLaunchModeDialog by remember { mutableStateOf(false) }
@@ -153,6 +154,10 @@ fun HomeStartupSettingsScreen(
                 onLaunchModeChange(LaunchMode.SPECIFIC_FILE)
                 onLaunchFileIdChange(fileId)
             },
+            onChooseOtherMode = {
+                showSelectFileDialog = false
+                onChooseOtherMode()
+            },
             onDismiss = { showSelectFileDialog = false }
         )
     }
@@ -227,6 +232,7 @@ private fun SelectAutoOpenFileDialog(
     files: List<FileEntity>,
     currentFileId: Long?,
     onSelect: (Long) -> Unit,
+    onChooseOtherMode: () -> Unit,
     onDismiss: () -> Unit
 ) {
     AlertDialog(
@@ -234,7 +240,20 @@ private fun SelectAutoOpenFileDialog(
         title = { Text("Select file") },
         text = {
             if (files.isEmpty()) {
-                Text("No files available to select.")
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "No files are available yet.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = "Create a file first, or choose another launch mode for now.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             } else {
                 val sortedFiles = remember(files) { files.sortedBy { it.name } }
                 LazyColumn(
@@ -280,7 +299,11 @@ private fun SelectAutoOpenFileDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            if (files.isEmpty()) {
+                TextButton(onClick = onChooseOtherMode) { Text("Choose another launch mode") }
+            } else {
+                TextButton(onClick = onDismiss) { Text("Cancel") }
+            }
         }
     )
 }

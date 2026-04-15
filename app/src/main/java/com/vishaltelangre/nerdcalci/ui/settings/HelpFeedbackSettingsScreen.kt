@@ -1,6 +1,8 @@
 package com.vishaltelangre.nerdcalci.ui.settings
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -35,7 +37,15 @@ fun HelpFeedbackSettingsScreen(
 
     fun openUrl(url: String) {
         val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
-        context.startActivity(intent)
+        try {
+            if (intent.resolveActivity(context.packageManager) != null) {
+                context.startActivity(intent)
+            } else {
+                Toast.makeText(context, "No app can open this link", Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: ActivityNotFoundException) {
+            Toast.makeText(context, "No app can open this link", Toast.LENGTH_SHORT).show()
+        }
     }
 
     Scaffold(

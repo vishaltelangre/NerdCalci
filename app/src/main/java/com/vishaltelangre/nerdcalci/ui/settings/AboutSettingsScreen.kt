@@ -1,6 +1,7 @@
 package com.vishaltelangre.nerdcalci.ui.settings
 
 import android.content.Intent
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -49,7 +50,11 @@ fun AboutSettingsScreen(
 
     fun openUrl(url: String) {
         val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
-        context.startActivity(intent)
+        if (intent.resolveActivity(context.packageManager) != null) {
+            context.startActivity(intent)
+        } else {
+            Toast.makeText(context, "No app can open this link", Toast.LENGTH_SHORT).show()
+        }
     }
 
     Scaffold(

@@ -1870,7 +1870,8 @@ private fun LineRow(
                     textStyle = MaterialTheme.typography.bodyLarge.copy(
                         color = MaterialTheme.colorScheme.onSurface,
                         fontFamily = FiraCodeFamily,
-                        fontSize = editorFontSize.sp
+                        fontSize = editorFontSize.sp,
+                        lineHeight = (editorFontSize * 1.35f).sp
                     ),
                     cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface),
                     visualTransformation = syntaxHighlightingTransformation,
@@ -1888,7 +1889,8 @@ private fun LineRow(
                                 style = MaterialTheme.typography.bodyLarge.copy(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontFamily = FiraCodeFamily,
-                                    fontSize = editorFontSize.sp
+                                    fontSize = editorFontSize.sp,
+                                    lineHeight = (editorFontSize * 1.35f).sp
                                 )
                             )
                         }
@@ -2028,7 +2030,8 @@ private fun LineRow(
                         style = MaterialTheme.typography.bodyLarge.copy(
                             fontFamily = FiraCodeFamily,
                             fontWeight = FontWeight.Bold,
-                            fontSize = editorFontSize.sp
+                            fontSize = editorFontSize.sp,
+                            lineHeight = (editorFontSize * 1.35f).sp
                         ),
                         color = resultColor
                     )

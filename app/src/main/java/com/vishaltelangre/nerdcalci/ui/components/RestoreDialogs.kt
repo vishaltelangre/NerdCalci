@@ -1,6 +1,5 @@
 package com.vishaltelangre.nerdcalci.ui.components
 
-import android.text.format.DateFormat
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -53,6 +52,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
+import com.vishaltelangre.nerdcalci.ui.formatFriendlyDateTime
+import com.vishaltelangre.nerdcalci.ui.labelValueText
 
 @Composable
 fun RestoreSourceDialog(
@@ -172,9 +173,8 @@ fun RestoreBackupListDialog(
                 Spacer(modifier = Modifier.height(8.dp))
                 backups.forEach { backup ->
                     Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onBackupSelected(backup) },
+                        onClick = { onBackupSelected(backup) },
+                        modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
@@ -443,18 +443,6 @@ fun RestoreCompleteDialog(
             TextButton(onClick = onDismiss) { Text("OK") }
         }
     )
-}
-
-private fun labelValueText(label: String, value: String) = buildAnnotatedString {
-    withStyle(style = SpanStyle(fontWeight = FontWeight.SemiBold)) {
-        append(label)
-    }
-    append(" ")
-    append(value)
-}
-
-private fun formatFriendlyDateTime(value: Long): String {
-    return DateFormat.format("MMM d, yyyy h:mm a", Date(value)).toString()
 }
 
 fun formatBackupLocationText(

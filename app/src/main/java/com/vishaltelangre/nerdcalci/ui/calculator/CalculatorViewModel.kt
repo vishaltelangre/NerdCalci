@@ -160,7 +160,11 @@ class CalculatorViewModel(
     val showPrecisionEllipsis: StateFlow<Boolean> = _showPrecisionEllipsis
 
     private val _editorFontSize = MutableStateFlow(
-        prefs?.getFloat(Constants.PREF_EDITOR_FONT_SIZE, Constants.DEFAULT_EDITOR_FONT_SIZE) ?: Constants.DEFAULT_EDITOR_FONT_SIZE
+        (prefs?.getFloat(Constants.PREF_EDITOR_FONT_SIZE, Constants.DEFAULT_EDITOR_FONT_SIZE)
+            ?: Constants.DEFAULT_EDITOR_FONT_SIZE).coerceIn(
+            Constants.MIN_EDITOR_FONT_SIZE,
+            Constants.MAX_EDITOR_FONT_SIZE
+        )
     )
     val editorFontSize: StateFlow<Float> = _editorFontSize
 

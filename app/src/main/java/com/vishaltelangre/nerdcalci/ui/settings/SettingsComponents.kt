@@ -27,11 +27,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import com.vishaltelangre.nerdcalci.ui.labelValueText
 
 @Composable
 fun SettingsSection(title: String, modifier: Modifier = Modifier) {
@@ -332,12 +330,4 @@ fun formatRelativeTime(value: Long): String {
         System.currentTimeMillis(),
         DateUtils.MINUTE_IN_MILLIS
     ).toString()
-}
-
-fun labelValueText(label: String, value: String) = buildAnnotatedString {
-    withStyle(style = SpanStyle(fontWeight = FontWeight.SemiBold)) {
-        append(label)
-    }
-    append(" ")
-    append(value)
 }

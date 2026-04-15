@@ -458,6 +458,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
                 },
                 showScratchpad = showScratchpad,
                 onShowScratchpadChange = { viewModel.setShowScratchpad(it) },
+                onChooseOtherMode = { navController.popBackStack() },
                 onBack = { navController.popBackStack() }
             )
         }

@@ -70,6 +70,7 @@ fun CalculatorSettingsScreen(
 ) {
     var showRegionDialog by remember { mutableStateOf(false) }
     var sliderValue by remember(precision) { mutableStateOf(precision.toFloat()) }
+    var editorFontSizeSlider by remember(editorFontSize) { mutableStateOf(editorFontSize) }
 
     Scaffold(
         topBar = {
@@ -188,8 +189,9 @@ fun CalculatorSettingsScreen(
             SettingsSliderItem(
                 icon = Icons.Default.Info,
                 title = "Font size",
-                value = editorFontSize,
-                onValueChange = onEditorFontSizeChange,
+                value = editorFontSizeSlider,
+                onValueChange = { editorFontSizeSlider = it },
+                onValueChangeFinished = { onEditorFontSizeChange(editorFontSizeSlider) },
                 valueRange = Constants.MIN_EDITOR_FONT_SIZE..Constants.MAX_EDITOR_FONT_SIZE,
                 steps = (Constants.MAX_EDITOR_FONT_SIZE - Constants.MIN_EDITOR_FONT_SIZE - 1).roundToInt(),
                 valueFormatter = { it.roundToInt().toString() }

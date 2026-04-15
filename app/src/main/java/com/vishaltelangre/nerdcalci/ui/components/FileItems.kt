@@ -151,7 +151,7 @@ fun DeletedUndoItem(
         modifier = modifier
             .fillMaxWidth(),
         shape = androidx.compose.ui.graphics.RectangleShape,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF44336))
     ) {
         Row(
             modifier = Modifier
@@ -163,7 +163,7 @@ fun DeletedUndoItem(
         ) {
             Text(
                 text = "Deleted \"${file.name}\"",
-                color = MaterialTheme.colorScheme.onErrorContainer,
+                color = Color.White,
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -180,14 +180,14 @@ fun DeletedUndoItem(
                 ) {
                     Text(
                         text = "UNDO",
-                        color = MaterialTheme.colorScheme.error,
+                        color = Color.White,
                         style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
                     )
                 }
                 Text(
                     text = "${secondsLeft}s left",
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f)
+                    color = Color.White.copy(alpha = 0.7f)
                 )
             }
         }
@@ -436,9 +436,10 @@ fun DismissibleFileItem(
     modifier: Modifier = Modifier
 ) {
     val haptic = LocalHapticFeedback.current
+    val currentIsLocked by rememberUpdatedState(file.isLocked)
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
-            if (file.isLocked) return@rememberSwipeToDismissBoxState false
+            if (currentIsLocked) return@rememberSwipeToDismissBoxState false
             value == SwipeToDismissBoxValue.EndToStart
         }
     )
@@ -462,6 +463,7 @@ fun DismissibleFileItem(
     SwipeToDismissBox(
         state = dismissState,
         enableDismissFromStartToEnd = false,
+        enableDismissFromEndToStart = !file.isLocked,
         backgroundContent = { SwipeToDismissBackground(dismissState) },
         modifier = modifier
             .fillMaxWidth()
@@ -485,7 +487,7 @@ fun SwipeToDismissBackground(dismissState: SwipeToDismissBoxState) {
     val color by animateColorAsState(
         when (dismissState.targetValue) {
             SwipeToDismissBoxValue.Settled -> Color.Transparent
-            SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.errorContainer
+            SwipeToDismissBoxValue.EndToStart -> Color(0xFFF44336)
             SwipeToDismissBoxValue.StartToEnd -> Color.Transparent
         }, label = "dismiss_background_color"
     )
@@ -509,7 +511,7 @@ fun SwipeToDismissBackground(dismissState: SwipeToDismissBoxState) {
             icon,
             contentDescription = "Delete",
             modifier = Modifier.scale(scale),
-            tint = MaterialTheme.colorScheme.onErrorContainer
+            tint = Color.White
         )
     }
 }

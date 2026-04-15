@@ -1077,7 +1077,8 @@ fun CalculatorScreen(
                     modifier = Modifier
                         .width(120.dp)
                         .fillMaxHeight()
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .background(MaterialTheme.colorScheme.surface)
+                        .background(Color.Black.copy(alpha = 0.15f))
                 )
             }
 
@@ -1197,7 +1198,7 @@ fun CalculatorScreen(
                     if (index < lines.size - 1) {
                         HorizontalDivider(
                             thickness = 1.dp,
-                            color = MaterialTheme.colorScheme.outlineVariant
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.20f)
                         )
                     }
                 }

@@ -225,7 +225,8 @@ internal fun FileItem(
             }
             DropdownMenu(
                 expanded = showMenu,
-                onDismissRequest = { showMenu = false }
+                onDismissRequest = { showMenu = false },
+                modifier = Modifier.navigationBarsPadding()
             ) {
                 DropdownMenuItem(
                     text = { Text(if (file.isPinned) "Unpin" else "Pin") },

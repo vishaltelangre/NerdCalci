@@ -459,6 +459,7 @@ fun CalculatorScreen(
     viewModel: CalculatorViewModel,
     regionCode: String,
     showPrecisionEllipsis: Boolean,
+    editorFontSize: Float,
     onBack: () -> Unit,
     onHelp: () -> Unit,
     onNavigateToFile: (Long) -> Unit = {}
@@ -1098,6 +1099,7 @@ fun CalculatorScreen(
                         isLocked = isLocked,
                         precision = precision,
                         regionCode = regionCode,
+                        editorFontSize = editorFontSize,
                         numberWidth = numberWidth,
                         availableVariables = availableVariables,
                         fileVariables = fileVariables,
@@ -1353,6 +1355,7 @@ private fun LineRow(
     showPrecisionEllipsis: Boolean,
     precision: Int,
     regionCode: String,
+    editorFontSize: Float,
     numberWidth: Dp,
     availableVariables: Set<Suggestion>,
     fileVariables: Map<String, String> = emptyMap(),
@@ -1866,7 +1869,8 @@ private fun LineRow(
                         },
                     textStyle = MaterialTheme.typography.bodyLarge.copy(
                         color = MaterialTheme.colorScheme.onSurface,
-                        fontFamily = FiraCodeFamily
+                        fontFamily = FiraCodeFamily,
+                        fontSize = editorFontSize.sp
                     ),
                     cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface),
                     visualTransformation = syntaxHighlightingTransformation,
@@ -1883,7 +1887,8 @@ private fun LineRow(
                                 "Type here...",
                                 style = MaterialTheme.typography.bodyLarge.copy(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontFamily = FiraCodeFamily
+                                    fontFamily = FiraCodeFamily,
+                                    fontSize = editorFontSize.sp
                                 )
                             )
                         }
@@ -2022,7 +2027,8 @@ private fun LineRow(
                         ),
                         style = MaterialTheme.typography.bodyLarge.copy(
                             fontFamily = FiraCodeFamily,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            fontSize = editorFontSize.sp
                         ),
                         color = resultColor
                     )

@@ -58,6 +58,7 @@ import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Slider
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -149,6 +150,8 @@ fun SettingsScreen(
     onLaunchFileIdChange: (Long?) -> Unit,
     showScratchpad: Boolean,
     onShowScratchpadChange: (Boolean) -> Unit,
+    editorFontSize: Float,
+    onEditorFontSizeChange: (Float) -> Unit,
     allFiles: List<FileEntity>,
     onAutoValidateLaunchFile: () -> Unit,
     onValidateLaunchFile: (Long, (Boolean) -> Unit) -> Unit,
@@ -307,6 +310,16 @@ fun SettingsScreen(
                 )
 
             }
+
+            SettingsSliderItem(
+                icon = Icons.Default.Info,
+                title = "Editor font size",
+                editorFontSize,
+                onEditorFontSizeChange,
+                valueRange = Constants.MIN_EDITOR_FONT_SIZE..Constants.MAX_EDITOR_FONT_SIZE,
+                steps = (Constants.MAX_EDITOR_FONT_SIZE - Constants.MIN_EDITOR_FONT_SIZE - 1).roundToInt(),
+                valueFormatter = { it.roundToInt().toString() }
+            )
 
             SettingsToggleItem(
                 icon = Icons.Default.FormatListNumbered,
@@ -1004,6 +1017,52 @@ private fun SettingsSection(title: String) {
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
     )
+}
+
+@Composable
+private fun SettingsSliderItem(
+    icon: ImageVector,
+    title: String,
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    valueRange: ClosedFloatingPointRange<Float>,
+    steps: Int,
+    valueFormatter: (Float) -> String,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = valueFormatter(value),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        Slider(
+            value = value,
+            onValueChange = onValueChange,
+            valueRange = valueRange,
+            steps = steps,
+            modifier = Modifier.padding(top = 8.dp)
+        )
+    }
 }
 
 @Composable

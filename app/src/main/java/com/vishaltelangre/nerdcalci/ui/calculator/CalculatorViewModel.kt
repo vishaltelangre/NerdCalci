@@ -149,6 +149,11 @@ class CalculatorViewModel(
     )
     val showPrecisionEllipsis: StateFlow<Boolean> = _showPrecisionEllipsis
 
+    private val _editorFontSize = MutableStateFlow(
+        prefs?.getFloat(Constants.PREF_EDITOR_FONT_SIZE, Constants.DEFAULT_EDITOR_FONT_SIZE) ?: Constants.DEFAULT_EDITOR_FONT_SIZE
+    )
+    val editorFontSize: StateFlow<Float> = _editorFontSize
+
     private val _showScratchpad = MutableStateFlow(
         prefs?.getBoolean(Constants.PREF_SHOW_SCRATCHPAD, true) ?: true
     )
@@ -540,6 +545,12 @@ class CalculatorViewModel(
     fun setShowNumbersShortcuts(enabled: Boolean) {
         _showNumbersShortcuts.value = enabled
         prefs?.edit()?.putBoolean(PREF_SHOW_NUMBERS_SHORTCUTS, enabled)?.apply()
+    }
+
+    fun setEditorFontSize(size: Float) {
+        val clampedSize = size.coerceIn(Constants.MIN_EDITOR_FONT_SIZE, Constants.MAX_EDITOR_FONT_SIZE)
+        _editorFontSize.value = clampedSize
+        prefs?.edit()?.putFloat(Constants.PREF_EDITOR_FONT_SIZE, clampedSize)?.apply()
     }
 
     fun setRegionCode(code: String) {

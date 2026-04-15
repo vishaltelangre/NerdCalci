@@ -157,6 +157,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
     val allFiles by viewModel.allFiles.collectAsState(initial = emptyList())
     val showPrecisionEllipsis by viewModel.showPrecisionEllipsis.collectAsState()
     val showScratchpad by viewModel.showScratchpad.collectAsState()
+    val editorFontSize by viewModel.editorFontSize.collectAsState()
     val customBackupFolderSummary = remember(customBackupFolderUri) {
         val uriString = customBackupFolderUri
         if (uriString != null) {
@@ -173,6 +174,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
         mode = backupLocationMode,
         customFolderSummary = customBackupFolderSummary
     )
+
     var showHomeRestoreActionDialog by remember { mutableStateOf(false) }
     var showHomeRestoreListDialog by remember { mutableStateOf(false) }
     var suppressHomeAutoOpenOnce by rememberSaveable { mutableStateOf(false) }
@@ -333,6 +335,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
                 viewModel = viewModel,
                 regionCode = regionCode,
                 showPrecisionEllipsis = showPrecisionEllipsis,
+                editorFontSize = editorFontSize,
                 onBack = { navController.popBackStack() },
                 onHelp = { navController.navigate("help") },
                 onNavigateToFile = { newFileId ->
@@ -420,6 +423,8 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
                 onLaunchFileIdChange = { viewModel.setLaunchFileId(it) },
                 showScratchpad = showScratchpad,
                 onShowScratchpadChange = { viewModel.setShowScratchpad(it) },
+                editorFontSize = editorFontSize,
+                onEditorFontSizeChange = { viewModel.setEditorFontSize(it) },
                 onAutoValidateLaunchFile = {
                     viewModel.validateSpecificFileSetting()
                 },

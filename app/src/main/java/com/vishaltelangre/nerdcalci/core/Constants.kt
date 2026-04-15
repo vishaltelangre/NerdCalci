@@ -41,7 +41,7 @@ object Constants {
      */
     const val VAR_FUNC_NAME_PATTERN = "^[a-zA-Z_][a-zA-Z0-9_]*$"
 
-    // Calculator settings
+    // Decimal precision settings
     const val SYNC_ENGINE_PRECISION = "precision"
     const val DEFAULT_PRECISION = 2
     const val MIN_PRECISION = 0
@@ -58,4 +58,10 @@ object Constants {
     const val PREF_SHOW_PRECISION_ELLIPSIS = "show_precision_ellipsis"
     const val PREF_FILE_SORT_CRITERIA = "file_sort_criteria"
     const val SCRATCHPAD_DISPLAY_NAME = "Scratchpad"
+
+    // Editor font size settings
+    const val PREF_EDITOR_FONT_SIZE = "editor_font_size"
+    const val DEFAULT_EDITOR_FONT_SIZE = 16f
+    const val MIN_EDITOR_FONT_SIZE = 6f
+    const val MAX_EDITOR_FONT_SIZE = 30f
 }

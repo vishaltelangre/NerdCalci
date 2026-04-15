@@ -229,15 +229,6 @@ fun HomeScreen(
             } else {
                 CenterAlignedTopAppBar(
                     title = { Text(appName, color = MaterialTheme.colorScheme.onSurface) },
-                    navigationIcon = {
-                        IconButton(onClick = onChangelogClick) {
-                            Icon(
-                                Icons.Default.RssFeed,
-                                "What's New",
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                    },
                     actions = {
                         if (syncEnabled) {
                             IconButton(

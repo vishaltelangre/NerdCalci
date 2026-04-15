@@ -111,6 +111,16 @@ class CalculatorViewModel(
         prefs?.getString(PREF_THEME, DEFAULT_THEME) ?: DEFAULT_THEME
     )
     val currentTheme: StateFlow<String> = _currentTheme
+ 
+    private val _colorPalette = MutableStateFlow(
+        prefs?.getString(Constants.PREF_COLOR_PALETTE, DEFAULT_PALETTE) ?: DEFAULT_PALETTE
+    )
+    val colorPalette: StateFlow<String> = _colorPalette
+ 
+    private val _dynamicColorEnabled = MutableStateFlow(
+        prefs?.getBoolean(Constants.PREF_DYNAMIC_COLOR, false) ?: false
+    )
+    val dynamicColorEnabled: StateFlow<Boolean> = _dynamicColorEnabled
 
     private val _scratchpadFileId = MutableStateFlow<Long?>(null)
     val scratchpadFileId: StateFlow<Long?> = _scratchpadFileId
@@ -148,6 +158,15 @@ class CalculatorViewModel(
         prefs?.getBoolean(Constants.PREF_SHOW_PRECISION_ELLIPSIS, false) ?: false
     )
     val showPrecisionEllipsis: StateFlow<Boolean> = _showPrecisionEllipsis
+
+    private val _editorFontSize = MutableStateFlow(
+        (prefs?.getFloat(Constants.PREF_EDITOR_FONT_SIZE, Constants.DEFAULT_EDITOR_FONT_SIZE)
+            ?: Constants.DEFAULT_EDITOR_FONT_SIZE).coerceIn(
+            Constants.MIN_EDITOR_FONT_SIZE,
+            Constants.MAX_EDITOR_FONT_SIZE
+        )
+    )
+    val editorFontSize: StateFlow<Float> = _editorFontSize
 
     private val _showScratchpad = MutableStateFlow(
         prefs?.getBoolean(Constants.PREF_SHOW_SCRATCHPAD, true) ?: true
@@ -332,6 +351,7 @@ class CalculatorViewModel(
         private const val PREF_REGION_CODE = "number_format_region_code"
         private const val PREF_GROUPING_SEPARATOR_ENABLED = "number_format_grouping_separator_enabled"
         private const val DEFAULT_THEME = "system"
+        private const val DEFAULT_PALETTE = "midnight"
     }
 
     private val syncInProgress = AtomicBoolean(false)
@@ -505,6 +525,16 @@ class CalculatorViewModel(
         _currentTheme.value = theme
         prefs?.edit()?.putString(PREF_THEME, theme)?.apply()
     }
+ 
+    fun setColorPalette(palette: String) {
+        _colorPalette.value = palette
+        prefs?.edit()?.putString(Constants.PREF_COLOR_PALETTE, palette)?.apply()
+    }
+ 
+    fun setDynamicColorEnabled(enabled: Boolean) {
+        _dynamicColorEnabled.value = enabled
+        prefs?.edit()?.putBoolean(Constants.PREF_DYNAMIC_COLOR, enabled)?.apply()
+    }
 
     fun setPrecision(precision: Int) {
         val clampedPrecision = precision.coerceIn(Constants.MIN_PRECISION, Constants.MAX_PRECISION)
@@ -540,6 +570,12 @@ class CalculatorViewModel(
     fun setShowNumbersShortcuts(enabled: Boolean) {
         _showNumbersShortcuts.value = enabled
         prefs?.edit()?.putBoolean(PREF_SHOW_NUMBERS_SHORTCUTS, enabled)?.apply()
+    }
+
+    fun setEditorFontSize(size: Float) {
+        val clampedSize = size.coerceIn(Constants.MIN_EDITOR_FONT_SIZE, Constants.MAX_EDITOR_FONT_SIZE)
+        _editorFontSize.value = clampedSize
+        prefs?.edit()?.putFloat(Constants.PREF_EDITOR_FONT_SIZE, clampedSize)?.apply()
     }
 
     fun setRegionCode(code: String) {

@@ -16,7 +16,10 @@ object Constants {
     const val PRIVACY_POLICY_URL = "https://github.com/vishaltelangre/NerdCalci/blob/main/PRIVACY.md"
     const val TERMS_OF_SERVICE_URL = "https://github.com/vishaltelangre/NerdCalci/blob/main/TERMS.md"
     const val SUPPORT_ISSUES_URL = "https://github.com/vishaltelangre/NerdCalci/issues/new"
+    const val LICENSE_URL = "https://github.com/vishaltelangre/NerdCalci/blob/main/LICENSE"
     const val DEVELOPER_NAME = "Vishal Telangre"
+    const val DEVELOPER_TWITTER_URL = "https://x.com/suruwat"
+    const val BUY_ME_COFFEE_URL = "https://buymeacoffee.com/vishaltelangre"
     const val LICENSE = "GNU General Public License v3.0"
 
     // File management
@@ -41,7 +44,7 @@ object Constants {
      */
     const val VAR_FUNC_NAME_PATTERN = "^[a-zA-Z_][a-zA-Z0-9_]*$"
 
-    // Calculator settings
+    // Decimal precision settings
     const val SYNC_ENGINE_PRECISION = "precision"
     const val DEFAULT_PRECISION = 2
     const val MIN_PRECISION = 0
@@ -57,5 +60,13 @@ object Constants {
     const val PREF_LAUNCH_FILE_ID = "launch_file_id"
     const val PREF_SHOW_PRECISION_ELLIPSIS = "show_precision_ellipsis"
     const val PREF_FILE_SORT_CRITERIA = "file_sort_criteria"
+    const val PREF_COLOR_PALETTE = "color_palette"
+    const val PREF_DYNAMIC_COLOR = "dynamic_color"
     const val SCRATCHPAD_DISPLAY_NAME = "Scratchpad"
+
+    // Editor font size settings
+    const val PREF_EDITOR_FONT_SIZE = "editor_font_size"
+    const val DEFAULT_EDITOR_FONT_SIZE = 16f
+    const val MIN_EDITOR_FONT_SIZE = 6f
+    const val MAX_EDITOR_FONT_SIZE = 30f
 }

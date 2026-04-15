@@ -1,0 +1,4 @@
+- Reorganized and revamped settings screen.
+- Added a setting to change editor font size (Issue #125).
+- Added option to choose from various color palettes to match your mood.
+- Added 'lustra' as a valid plural for 'lustrum' time unit (Issue #124).

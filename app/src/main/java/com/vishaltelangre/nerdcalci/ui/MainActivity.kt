@@ -2,8 +2,10 @@ package com.vishaltelangre.nerdcalci.ui
 
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -25,7 +27,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -67,7 +69,14 @@ import com.vishaltelangre.nerdcalci.ui.components.RestoreSourceDialog
 import com.vishaltelangre.nerdcalci.ui.components.RestoreProgressDialog
 import com.vishaltelangre.nerdcalci.ui.components.RestoreCompleteDialog
 import com.vishaltelangre.nerdcalci.ui.home.HomeScreen
-import com.vishaltelangre.nerdcalci.ui.settings.SettingsScreen
+import com.vishaltelangre.nerdcalci.ui.settings.AboutSettingsScreen
+import com.vishaltelangre.nerdcalci.ui.settings.AppearanceSettingsScreen
+import com.vishaltelangre.nerdcalci.ui.settings.CalculatorSettingsScreen
+import com.vishaltelangre.nerdcalci.ui.settings.DataSyncSettingsScreen
+import com.vishaltelangre.nerdcalci.ui.settings.SettingsMainScreen
+import com.vishaltelangre.nerdcalci.ui.settings.HomeStartupSettingsScreen
+import com.vishaltelangre.nerdcalci.ui.settings.HelpFeedbackSettingsScreen
+import com.vishaltelangre.nerdcalci.ui.settings.LegalSettingsScreen
 import com.vishaltelangre.nerdcalci.ui.changelog.ChangelogScreen
 import com.vishaltelangre.nerdcalci.ui.help.HelpScreen
 import com.vishaltelangre.nerdcalci.ui.search.SearchScreen
@@ -101,13 +110,20 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val currentTheme by viewModel.currentTheme.collectAsState()
+            val colorPalette by viewModel.colorPalette.collectAsState()
+            val dynamicColorEnabled by viewModel.dynamicColorEnabled.collectAsState()
+
             val isDarkTheme = when (currentTheme) {
                 "light" -> false
                 "dark" -> true
                 else -> androidx.compose.foundation.isSystemInDarkTheme()
             }
 
-            NerdCalciTheme(darkTheme = isDarkTheme) {
+            NerdCalciTheme(
+                darkTheme = isDarkTheme,
+                colorPalette = colorPalette,
+                dynamicColor = dynamicColorEnabled
+            ) {
                 // Update system bar appearance to match theme
                 val view = LocalView.current
                 if (!view.isInEditMode) {
@@ -157,6 +173,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
     val allFiles by viewModel.allFiles.collectAsState(initial = emptyList())
     val showPrecisionEllipsis by viewModel.showPrecisionEllipsis.collectAsState()
     val showScratchpad by viewModel.showScratchpad.collectAsState()
+    val editorFontSize by viewModel.editorFontSize.collectAsState()
     val customBackupFolderSummary = remember(customBackupFolderUri) {
         val uriString = customBackupFolderUri
         if (uriString != null) {
@@ -173,6 +190,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
         mode = backupLocationMode,
         customFolderSummary = customBackupFolderSummary
     )
+
     var showHomeRestoreActionDialog by remember { mutableStateOf(false) }
     var showHomeRestoreListDialog by remember { mutableStateOf(false) }
     var suppressHomeAutoOpenOnce by rememberSaveable { mutableStateOf(false) }
@@ -333,6 +351,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
                 viewModel = viewModel,
                 regionCode = regionCode,
                 showPrecisionEllipsis = showPrecisionEllipsis,
+                editorFontSize = editorFontSize,
                 onBack = { navController.popBackStack() },
                 onHelp = { navController.navigate("help") },
                 onNavigateToFile = { newFileId ->
@@ -351,20 +370,116 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
             popEnterTransition = { slideInFromLeft },
             popExitTransition = { slideOutToRight }
         ) {
-            LaunchedEffect(Unit) {
-                viewModel.refreshBackups(context)
-            }
+            SettingsMainScreen(
+                onNavigateToAppearance = { navController.navigate("settings_appearance") },
+                onNavigateToCalculator = { navController.navigate("settings_calculator") },
+                onNavigateToHomeStartup = { navController.navigate("settings_home_startup") },
+                onNavigateToDataSync = { navController.navigate("settings_data_sync") },
+                onNavigateToHelpFeedback = { navController.navigate("settings_help_feedback") },
+                onNavigateToLegal = { navController.navigate("settings_legal") },
+                onNavigateToAbout = { navController.navigate("settings_about") },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            "settings_appearance",
+            enterTransition = { slideInFromRight },
+            exitTransition = { slideOutToLeft },
+            popEnterTransition = { slideInFromLeft },
+            popExitTransition = { slideOutToRight }
+        ) {
+            val currentTheme by viewModel.currentTheme.collectAsState()
+            val colorPalette by viewModel.colorPalette.collectAsState()
+            val dynamicColorEnabled by viewModel.dynamicColorEnabled.collectAsState()
+            
+            AppearanceSettingsScreen(
+                currentTheme = currentTheme,
+                onThemeChange = { theme -> viewModel.setTheme(theme) },
+                colorPalette = colorPalette,
+                onColorPaletteChange = { palette -> viewModel.setColorPalette(palette) },
+                dynamicColorEnabled = dynamicColorEnabled,
+                onDynamicColorEnabledChange = { enabled -> viewModel.setDynamicColorEnabled(enabled) },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            "settings_calculator",
+            enterTransition = { slideInFromRight },
+            exitTransition = { slideOutToLeft },
+            popEnterTransition = { slideInFromLeft },
+            popExitTransition = { slideOutToRight }
+        ) {
             val precision by viewModel.precision.collectAsState()
             val rationalMode by viewModel.rationalMode.collectAsState()
             val groupingSeparatorEnabled by viewModel.groupingSeparatorEnabled.collectAsState()
+            val showPrecisionEllipsis by viewModel.showPrecisionEllipsis.collectAsState()
+            val editorFontSize by viewModel.editorFontSize.collectAsState()
 
-            SettingsScreen(
-                currentTheme = currentTheme,
-                onThemeChange = { theme -> viewModel.setTheme(theme) },
+            CalculatorSettingsScreen(
+                precision = precision,
+                onPrecisionChange = { viewModel.setPrecision(it) },
+                rationalMode = rationalMode,
+                onRationalModeChange = { viewModel.setRationalMode(it) },
+                regionCode = regionCode,
+                onRegionCodeChange = { viewModel.setRegionCode(it) },
+                groupingSeparatorEnabled = groupingSeparatorEnabled,
+                onGroupingSeparatorEnabledChange = { viewModel.setGroupingSeparatorEnabled(it) },
+                showPrecisionEllipsis = showPrecisionEllipsis,
+                onShowPrecisionEllipsisChange = { viewModel.setShowPrecisionEllipsis(it) },
+                editorFontSize = editorFontSize,
+                onEditorFontSizeChange = { viewModel.setEditorFontSize(it) },
+                showLineNumbers = showLineNumbers,
+                onShowLineNumbersChange = { viewModel.setShowLineNumbers(it) },
+                showSuggestions = showSuggestions,
+                onShowSuggestionsChange = { viewModel.setShowSuggestions(it) },
+                showSymbolsShortcuts = showSymbolsShortcuts,
+                onShowSymbolsShortcutsChange = { viewModel.setShowSymbolsShortcuts(it) },
+                showNumbersShortcuts = showNumbersShortcuts,
+                onShowNumbersShortcutsChange = { viewModel.setShowNumbersShortcuts(it) },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            "settings_home_startup",
+            enterTransition = { slideInFromRight },
+            exitTransition = { slideOutToLeft },
+            popEnterTransition = { slideInFromLeft },
+            popExitTransition = { slideOutToRight }
+        ) {
+            HomeStartupSettingsScreen(
+                launchMode = launchMode,
+                onLaunchModeChange = { viewModel.setLaunchMode(it) },
+                launchFileId = launchFileId,
+                onLaunchFileIdChange = { viewModel.setLaunchFileId(it) },
+                allFiles = allFiles,
+                onValidateLaunchFile = { fileId, callback ->
+                    viewModel.validateLaunchFile(fileId, callback)
+                },
+                showScratchpad = showScratchpad,
+                onShowScratchpadChange = { viewModel.setShowScratchpad(it) },
+                onChooseOtherMode = { navController.popBackStack() },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            "settings_data_sync",
+            enterTransition = { slideInFromRight },
+            exitTransition = { slideOutToLeft },
+            popEnterTransition = { slideInFromLeft },
+            popExitTransition = { slideOutToRight }
+        ) {
+            LaunchedEffect(Unit) {
+                viewModel.refreshBackups(context)
+            }
+            DataSyncSettingsScreen(
                 autoBackupEnabled = autoBackupEnabled,
-                onAutoBackupEnabledChange = { enabled -> viewModel.setAutoBackupEnabled(context, enabled) },
+                onAutoBackupEnabledChange = { viewModel.setAutoBackupEnabled(context, it) },
                 backupFrequency = backupFrequency,
-                onBackupFrequencyChange = { frequency -> viewModel.setBackupFrequency(context, frequency) },
+                onBackupFrequencyChange = { viewModel.setBackupFrequency(context, it) },
                 backupLocationMode = backupLocationMode,
                 backupLocationSummary = customBackupFolderSummary,
                 onChooseBackupFolder = { backupFolderLauncher.launch(null) },
@@ -386,48 +501,71 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
                 },
                 lastBackupAt = lastBackupAt,
                 availableBackups = availableBackups,
-                onRestoreBackup = { backup -> viewModel.restoreFromBackup(context, backup) },
+                onRestoreBackup = { viewModel.restoreFromBackup(context, it) },
                 onRestoreFromDifferentLocation = {
                     importLauncher.launch(arrayOf(Constants.EXPORT_MIME_TYPE))
                 },
-                precision = precision,
-                onPrecisionChange = { newPrecision -> viewModel.setPrecision(newPrecision) },
-                showLineNumbers = showLineNumbers,
-                onShowLineNumbersChange = { newShowLineNumbers -> viewModel.setShowLineNumbers(newShowLineNumbers) },
-                showSuggestions = showSuggestions,
-                onShowSuggestionsChange = { newShowSuggestions -> viewModel.setShowSuggestions(newShowSuggestions) },
-                showSymbolsShortcuts = showSymbolsShortcuts,
-                onShowSymbolsShortcutsChange = { viewModel.setShowSymbolsShortcuts(it) },
-                showNumbersShortcuts = showNumbersShortcuts,
-                onShowNumbersShortcutsChange = { viewModel.setShowNumbersShortcuts(it) },
-                regionCode = regionCode,
-                onRegionCodeChange = { viewModel.setRegionCode(it) },
                 syncEnabled = syncEnabled,
                 onSyncEnabledChange = { viewModel.setSyncEnabled(context, it) },
                 syncFolderUri = syncFolderUri,
                 onChooseSyncFolder = { syncFolderLauncher.launch(null) },
                 lastSyncAt = lastSyncAt,
-                rationalMode = rationalMode,
-                onRationalModeChange = { viewModel.setRationalMode(it) },
-                groupingSeparatorEnabled = groupingSeparatorEnabled,
-                onGroupingSeparatorEnabledChange = { viewModel.setGroupingSeparatorEnabled(it) },
-                showPrecisionEllipsis = showPrecisionEllipsis,
-                onShowPrecisionEllipsisChange = { viewModel.setShowPrecisionEllipsis(it) },
-                launchMode = launchMode,
-                launchFileId = launchFileId,
-                allFiles = allFiles,
-                onLaunchModeChange = { viewModel.setLaunchMode(it) },
-                onLaunchFileIdChange = { viewModel.setLaunchFileId(it) },
-                showScratchpad = showScratchpad,
-                onShowScratchpadChange = { viewModel.setShowScratchpad(it) },
-                onAutoValidateLaunchFile = {
-                    viewModel.validateSpecificFileSetting()
-                },
-                onValidateLaunchFile = { fileId, callback ->
-                    viewModel.validateLaunchFile(fileId, callback)
-                },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            "settings_help_feedback",
+            enterTransition = { slideInFromRight },
+            exitTransition = { slideOutToLeft },
+            popEnterTransition = { slideInFromLeft },
+            popExitTransition = { slideOutToRight }
+        ) {
+            HelpFeedbackSettingsScreen(
                 onHelp = { navController.navigate("help") },
                 onChangelog = { navController.navigate("changelog") },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            "settings_legal",
+            enterTransition = { slideInFromRight },
+            exitTransition = { slideOutToLeft },
+            popEnterTransition = { slideInFromLeft },
+            popExitTransition = { slideOutToRight }
+        ) {
+            LegalSettingsScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            "settings_about",
+            enterTransition = { slideInFromRight },
+            exitTransition = { slideOutToLeft },
+            popEnterTransition = { slideInFromLeft },
+            popExitTransition = { slideOutToRight }
+        ) {
+            val context = LocalContext.current
+            val appVersion = remember {
+                try {
+                    val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+                    val versionName = packageInfo.versionName ?: "Unknown"
+                    val versionCode = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                        packageInfo.longVersionCode
+                    } else {
+                        @Suppress("DEPRECATION")
+                        packageInfo.versionCode.toLong()
+                    }
+                    "v$versionName ($versionCode)"
+                } catch (e: PackageManager.NameNotFoundException) {
+                    Log.e("MainActivity", "Failed to retrieve app version information", e)
+                    "Unknown"
+                }
+            }
+            AboutSettingsScreen(
+                appVersion = appVersion,
                 onBack = { navController.popBackStack() }
             )
         }

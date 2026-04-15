@@ -71,6 +71,7 @@ fun CalculatorSettingsScreen(
     var showRegionDialog by remember { mutableStateOf(false) }
     var sliderValue by remember(precision) { mutableStateOf(precision.toFloat()) }
     var editorFontSizeSlider by remember(editorFontSize) { mutableStateOf(editorFontSize) }
+    val availableRegions = remember { RegionUtils.getAvailableRegions() }
 
     Scaffold(
         topBar = {
@@ -119,12 +120,12 @@ fun CalculatorSettingsScreen(
                 icon = Icons.Default.Public,
                 title = "Region",
                 value = if (regionCode == RegionUtils.SYSTEM_DEFAULT) {
-                    val systemCountryName = RegionUtils.getAvailableRegions()
+                    val systemCountryName = availableRegions
                         .find { it.first == java.util.Locale.getDefault().country }?.second
                         ?: java.util.Locale.getDefault().displayCountry
                     if (systemCountryName.isNotEmpty()) "System default ($systemCountryName)" else "System default"
                 } else
-                    RegionUtils.getAvailableRegions().find { it.first == regionCode }?.second
+                    availableRegions.find { it.first == regionCode }?.second
                         ?: regionCode,
                 onClick = { showRegionDialog = true }
             )

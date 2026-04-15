@@ -151,7 +151,7 @@ fun DeletedUndoItem(
         modifier = modifier
             .fillMaxWidth(),
         shape = androidx.compose.ui.graphics.RectangleShape,
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFF44336))
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.error)
     ) {
         Row(
             modifier = Modifier
@@ -163,7 +163,7 @@ fun DeletedUndoItem(
         ) {
             Text(
                 text = "Deleted \"${file.name}\"",
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onError,
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -180,14 +180,14 @@ fun DeletedUndoItem(
                 ) {
                     Text(
                         text = "UNDO",
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onError,
                         style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
                     )
                 }
                 Text(
                     text = "${secondsLeft}s left",
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color.White.copy(alpha = 0.7f)
+                    color = MaterialTheme.colorScheme.onError.copy(alpha = 0.7f)
                 )
             }
         }
@@ -488,7 +488,7 @@ fun SwipeToDismissBackground(dismissState: SwipeToDismissBoxState) {
     val color by animateColorAsState(
         when (dismissState.targetValue) {
             SwipeToDismissBoxValue.Settled -> Color.Transparent
-            SwipeToDismissBoxValue.EndToStart -> Color(0xFFF44336)
+            SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.error
             SwipeToDismissBoxValue.StartToEnd -> Color.Transparent
         }, label = "dismiss_background_color"
     )
@@ -512,7 +512,7 @@ fun SwipeToDismissBackground(dismissState: SwipeToDismissBoxState) {
             icon,
             contentDescription = "Delete",
             modifier = Modifier.scale(scale),
-            tint = Color.White
+            tint = MaterialTheme.colorScheme.onError
         )
     }
 }

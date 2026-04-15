@@ -1085,7 +1085,7 @@ fun CalculatorScreen(
                         .width(120.dp)
                         .fillMaxHeight()
                         .background(MaterialTheme.colorScheme.surface)
-                        .background(Color.Black.copy(alpha = 0.15f))
+                        .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.15f))
                 )
             }
 

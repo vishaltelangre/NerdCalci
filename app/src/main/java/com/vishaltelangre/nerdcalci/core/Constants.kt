@@ -61,7 +61,6 @@ object Constants {
     const val PREF_SHOW_PRECISION_ELLIPSIS = "show_precision_ellipsis"
     const val PREF_FILE_SORT_CRITERIA = "file_sort_criteria"
     const val PREF_COLOR_PALETTE = "color_palette"
-    const val PREF_DYNAMIC_COLOR = "dynamic_color"
     const val SCRATCHPAD_DISPLAY_NAME = "Scratchpad"
 
     // Editor font size settings

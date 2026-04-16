@@ -1,0 +1,2 @@
+- Removed the buggy and unreliable "Dynamic color" feature.
+- Fixed "No files yet" flickering on launch (Issue #135).

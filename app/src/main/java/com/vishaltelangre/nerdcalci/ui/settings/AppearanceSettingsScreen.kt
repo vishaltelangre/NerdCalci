@@ -1,19 +1,14 @@
 package com.vishaltelangre.nerdcalci.ui.settings
 
-import android.os.Build
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import com.google.android.material.color.DynamicColors
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.defaultMinSize
@@ -21,9 +16,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -33,29 +25,21 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.LightMode
-import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -71,8 +55,6 @@ fun AppearanceSettingsScreen(
     onThemeChange: (String) -> Unit,
     colorPalette: String,
     onColorPaletteChange: (String) -> Unit,
-    dynamicColorEnabled: Boolean,
-    onDynamicColorEnabledChange: (Boolean) -> Unit,
     onBack: () -> Unit
 ) {
     Scaffold(
@@ -138,35 +120,15 @@ fun AppearanceSettingsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            val context = LocalContext.current
-            val isDarkTheme = when (currentTheme) {
-                "light" -> false
-                "dark" -> true
-                else -> isSystemInDarkTheme()
-            }
-
-            val currentColorScheme = MaterialTheme.colorScheme
             val configuration = androidx.compose.ui.platform.LocalConfiguration.current
-            val palettes = remember(isDarkTheme, dynamicColorEnabled, configuration) {
-                buildList {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && DynamicColors.isDynamicColorAvailable()) {
-                        add(
-                            PaletteInfo(
-                                id = "dynamic",
-                                name = "Dynamic color",
-                                primary = if (dynamicColorEnabled) currentColorScheme.primary else (if (isDarkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)).primary,
-                                secondary = if (dynamicColorEnabled) currentColorScheme.secondary else (if (isDarkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)).secondary,
-                                tertiary = if (dynamicColorEnabled) currentColorScheme.tertiary else (if (isDarkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)).tertiary,
-                                description = "Use colors from your wallpaper"
-                            )
-                        )
-                    }
-                    add(PaletteInfo("midnight", "Midnight Glow", MidPrimaryLight, MidSecondaryLight, MidTertiaryLight))
-                    add(PaletteInfo("solar", "Solar Flare", SolarPrimaryLight, SolarSecondaryLight, SolarTertiaryLight))
-                    add(PaletteInfo("arctic", "Arctic Frost", ArcticPrimaryLight, ArcticSecondaryLight, ArcticTertiaryLight))
-                    add(PaletteInfo("nature", "Nature's Breath", NaturePrimaryLight, NatureSecondaryLight, NatureTertiaryLight))
-                    add(PaletteInfo("royal", "Royal Velvet", RoyalPrimaryLight, RoyalSecondaryLight, RoyalTertiaryLight))
-                }
+            val palettes = remember(configuration) {
+                listOf(
+                    PaletteInfo("midnight", "Midnight Glow", MidPrimaryLight, MidSecondaryLight, MidTertiaryLight),
+                    PaletteInfo("solar", "Solar Flare", SolarPrimaryLight, SolarSecondaryLight, SolarTertiaryLight),
+                    PaletteInfo("arctic", "Arctic Frost", ArcticPrimaryLight, ArcticSecondaryLight, ArcticTertiaryLight),
+                    PaletteInfo("nature", "Nature's Breath", NaturePrimaryLight, NatureSecondaryLight, NatureTertiaryLight),
+                    PaletteInfo("royal", "Royal Velvet", RoyalPrimaryLight, RoyalSecondaryLight, RoyalTertiaryLight)
+                )
             }
 
             SettingsSection(title = "Color palettes")
@@ -176,22 +138,13 @@ fun AppearanceSettingsScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 palettes.forEach { palette ->
-                    val isSelected = if (palette.id == "dynamic") {
-                        dynamicColorEnabled
-                    } else {
-                        !dynamicColorEnabled && colorPalette == palette.id
-                    }
+                    val isSelected = colorPalette == palette.id
 
                     PaletteItem(
                         info = palette,
                         isSelected = isSelected,
                         onClick = {
-                            if (palette.id == "dynamic") {
-                                onDynamicColorEnabledChange(true)
-                            } else {
-                                onDynamicColorEnabledChange(false)
-                                onColorPaletteChange(palette.id)
-                            }
+                            onColorPaletteChange(palette.id)
                         }
                     )
                 }

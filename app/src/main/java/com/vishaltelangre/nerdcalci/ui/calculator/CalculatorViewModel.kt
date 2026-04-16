@@ -117,11 +117,6 @@ class CalculatorViewModel(
     )
     val colorPalette: StateFlow<String> = _colorPalette
  
-    private val _dynamicColorEnabled = MutableStateFlow(
-        prefs?.getBoolean(Constants.PREF_DYNAMIC_COLOR, false) ?: false
-    )
-    val dynamicColorEnabled: StateFlow<Boolean> = _dynamicColorEnabled
-
     private val _scratchpadFileId = MutableStateFlow<Long?>(null)
     val scratchpadFileId: StateFlow<Long?> = _scratchpadFileId
 
@@ -531,11 +526,6 @@ class CalculatorViewModel(
         prefs?.edit()?.putString(Constants.PREF_COLOR_PALETTE, palette)?.apply()
     }
  
-    fun setDynamicColorEnabled(enabled: Boolean) {
-        _dynamicColorEnabled.value = enabled
-        prefs?.edit()?.putBoolean(Constants.PREF_DYNAMIC_COLOR, enabled)?.apply()
-    }
-
     fun setPrecision(precision: Int) {
         val clampedPrecision = precision.coerceIn(Constants.MIN_PRECISION, Constants.MAX_PRECISION)
         _precision.value = clampedPrecision

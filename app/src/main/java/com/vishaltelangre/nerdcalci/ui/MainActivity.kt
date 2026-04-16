@@ -81,7 +81,6 @@ import com.vishaltelangre.nerdcalci.ui.changelog.ChangelogScreen
 import com.vishaltelangre.nerdcalci.ui.help.HelpScreen
 import com.vishaltelangre.nerdcalci.ui.search.SearchScreen
 import com.vishaltelangre.nerdcalci.ui.theme.NerdCalciTheme
-import com.google.android.material.color.DynamicColors
 import com.vishaltelangre.nerdcalci.utils.FileUtils
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -92,8 +91,6 @@ import java.util.Locale
 class MainActivity : ComponentActivity() {
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     override fun onCreate(savedInstanceState: Bundle?) {
-        DynamicColors.applyToActivitiesIfAvailable(this.application)
-        DynamicColors.applyIfAvailable(this)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
@@ -114,7 +111,6 @@ class MainActivity : ComponentActivity() {
         setContent {
             val currentTheme by viewModel.currentTheme.collectAsState()
             val colorPalette by viewModel.colorPalette.collectAsState()
-            val dynamicColorEnabled by viewModel.dynamicColorEnabled.collectAsState()
 
             val isDarkTheme = when (currentTheme) {
                 "light" -> false
@@ -124,8 +120,7 @@ class MainActivity : ComponentActivity() {
 
             NerdCalciTheme(
                 darkTheme = isDarkTheme,
-                colorPalette = colorPalette,
-                dynamicColor = dynamicColorEnabled
+                colorPalette = colorPalette
             ) {
                 // Update system bar appearance to match theme
                 val view = LocalView.current
@@ -153,6 +148,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val currentTheme by viewModel.currentTheme.collectAsState()
+    val colorPalette by viewModel.colorPalette.collectAsState()
     val autoBackupEnabled by viewModel.autoBackupEnabled.collectAsState()
     val backupFrequency by viewModel.backupFrequency.collectAsState()
     val backupLocationMode by viewModel.backupLocationMode.collectAsState()
@@ -392,17 +388,11 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
             popEnterTransition = { slideInFromLeft },
             popExitTransition = { slideOutToRight }
         ) {
-            val currentTheme by viewModel.currentTheme.collectAsState()
-            val colorPalette by viewModel.colorPalette.collectAsState()
-            val dynamicColorEnabled by viewModel.dynamicColorEnabled.collectAsState()
-            
             AppearanceSettingsScreen(
                 currentTheme = currentTheme,
                 onThemeChange = { theme -> viewModel.setTheme(theme) },
                 colorPalette = colorPalette,
                 onColorPaletteChange = { palette -> viewModel.setColorPalette(palette) },
-                dynamicColorEnabled = dynamicColorEnabled,
-                onDynamicColorEnabledChange = { enabled -> viewModel.setDynamicColorEnabled(enabled) },
                 onBack = { navController.popBackStack() }
             )
         }

@@ -108,7 +108,7 @@ fun HomeScreen(
     showScratchpad: Boolean = true
 ) {
     val context = LocalContext.current
-    val files by viewModel.allFiles.collectAsState(initial = emptyList())
+    val files by viewModel.allFiles.collectAsState(initial = null)
     val fileSortCriteria by viewModel.fileSortCriteria.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
@@ -164,12 +164,12 @@ fun HomeScreen(
         }
     }
 
-    val visiblePinnedFiles = files.filter { it.isPinned }
-    val visibleUnpinnedFiles = files.filterNot { it.isPinned }
+    val visiblePinnedFiles = files?.filter { it.isPinned } ?: emptyList()
+    val visibleUnpinnedFiles = files?.filterNot { it.isPinned } ?: emptyList()
 
     Scaffold(
         topBar = {
-            if (files.isNotEmpty()) {
+                if (files?.isNotEmpty() == true) {
                 TopAppBar(
                     title = { Text(appName, color = MaterialTheme.colorScheme.onSurface) },
                     navigationIcon = {
@@ -261,7 +261,7 @@ fun HomeScreen(
         },
         floatingActionButton = {
             AnimatedVisibility(
-                visible = files.isNotEmpty(),
+                visible = files?.isNotEmpty() == true,
                 enter = fadeIn() + slideInVertically { it },
                 exit = fadeOut() + slideOutVertically { it }
             ) {
@@ -293,7 +293,19 @@ fun HomeScreen(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        if (files.isEmpty()) {
+        if (files == null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(32.dp),
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        } else if (files!!.isEmpty()) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()

@@ -294,17 +294,13 @@ fun HomeScreen(
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         if (files == null) {
+            // Show a blank screen with proper background during the initial load
+            // to prevent the "No files yet" flickering
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(32.dp),
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
+                    .padding(padding)
+            )
         } else if (files!!.isEmpty()) {
             Column(
                 modifier = Modifier

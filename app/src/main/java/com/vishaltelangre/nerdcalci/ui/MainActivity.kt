@@ -302,10 +302,8 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(32.dp),
-                    color = MaterialTheme.colorScheme.primary
-                )
+                // Keep the box empty to maintain a consistent background while loading,
+                // avoiding visual artifacts like the small dot indicator.
             }
         }
 

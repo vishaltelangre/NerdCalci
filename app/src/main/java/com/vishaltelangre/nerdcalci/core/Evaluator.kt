@@ -552,6 +552,11 @@ class Evaluator(
 
         // Handle scaling multiplication/division inheritance
         val resultUnit = if (expr.op == TokenKind.STAR || expr.op == TokenKind.SLASH) {
+            if (expr.op == TokenKind.SLASH && !isPhysicalUnit(leftUnit) && isPhysicalUnit(rightUnit)) {
+                val rightDesc = getDimensionDescription(rightUnit)
+                throw EvalException("Division of unitless value by `$rightDesc` is not supported")
+            }
+
             if (leftEval.explicitUnitless || rightEval.explicitUnitless ||
                 leftUnit?.category == UnitCategory.SCALAR || rightUnit?.category == UnitCategory.SCALAR) {
                 null

@@ -63,6 +63,35 @@ class MixedUnitUsageTest {
     }
 
     @Test
+    fun `unitless divided by physical unit fails`() {
+        testCalculate(
+            "4 / 4sqft",
+            "1 / 1km",
+            "1 / 1inch",
+            "1 / 1hr"
+        ) { result ->
+            assertError("Division of unitless value by `Square feet` is not supported", result, 0)
+            assertError("Division of unitless value by `Kilometer` is not supported", result, 1)
+            assertError("Division of unitless value by `Inch` is not supported", result, 2)
+            assertError("Division of unitless value by `Hour` is not supported", result, 3)
+        }
+    }
+
+    @Test
+    fun `physical unit divided by unitless passes`() {
+        testCalculate("4sqft / 4") { result ->
+            assertEquals("1.0 ft\u00B2", result[0].result)
+        }
+    }
+
+    @Test
+    fun `unitless divided by scalar unit passes`() {
+        testCalculate("1 / 1 dozen") { result ->
+            assertEquals("0.08333333333333333333333333333333333", result[0].result)
+        }
+    }
+
+    @Test
     fun `nested mixed unit expressions inherit from the smallest unit`() {
         testCalculate("(1m + 1cm) + 1mm", "10kg + (500g + 10mg)") { result ->
             assertEquals("1011.0 mm", result[0].result)

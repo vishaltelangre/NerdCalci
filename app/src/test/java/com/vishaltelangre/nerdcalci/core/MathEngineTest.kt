@@ -1813,6 +1813,31 @@ class MathEngineTest {
     }
 
     @Test
+    fun `formatDisplayResult switches to scientific notation for small non-zero values rounding to zero`() = runBlocking {
+        val precision = 2
+        val locale = java.util.Locale.US
+
+        // 324/93543 ~= 0.003463...
+        // At precision 2, it rounds to 0.00 -> Should use scientific notation
+        assertEquals("3.46E-3", MathEngine.formatDisplayResult("0.003463", precision, locale))
+
+        // 0.0051 rounds to 0.01 at precision 2 -> Should NOT be scientific
+        assertEquals("0.01", MathEngine.formatDisplayResult("0.0051", precision, locale))
+
+        // 0.0049 rounds to 0.00 at precision 2 -> Should be scientific
+        assertEquals("4.90E-3", MathEngine.formatDisplayResult("0.0049", precision, locale))
+
+        // Absolute zero should remain "0"
+        assertEquals("0", MathEngine.formatDisplayResult("0", precision, locale))
+
+        // Precision 0 should still round to 0 for non-extremely-small values
+        assertEquals("0", MathEngine.formatDisplayResult("0.333", 0, locale))
+
+        // But extremely small values (< 0.001) should still be scientific
+        assertEquals("1E-4", MathEngine.formatDisplayResult("0.0001", 0, locale))
+    }
+
+    @Test
     fun `formatDisplayResult respects explicit locales`() = runBlocking {
         val raw = "1234.567"
         assertEquals("1,234.57", MathEngine.formatDisplayResult(raw, 2, java.util.Locale.ROOT))

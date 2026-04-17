@@ -521,9 +521,12 @@ object MathEngine {
             }
             formatNumeralSystem(value.toLong(), radix) to false
         } else {
+            val roundsToZero = value.signum() != 0 && safePrecision > 0 &&
+                    value.abs() < BigDecimal("0.5").movePointLeft(safePrecision)
             val isScientific = numStr.contains('E', ignoreCase = true) ||
                     value.abs() >= BigDecimal("1000000000000000") || // 10^15
-                    (value.abs() < BigDecimal("0.001") && value.abs() > BigDecimal.ZERO)
+                    (value.abs() < BigDecimal("0.001") && value.signum() != 0) ||
+                    roundsToZero
 
             val truncated = if (isScientific) {
                 isScientificTruncated(value, safePrecision)

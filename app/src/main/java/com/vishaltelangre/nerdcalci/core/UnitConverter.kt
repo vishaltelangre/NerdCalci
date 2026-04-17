@@ -514,7 +514,11 @@ object UnitConverter {
     }
 
     fun toBase(value: Rational, unit: Unit, variables: Map<String, EvaluationResult>): Rational {
-        return unit.customRationalToBase?.invoke(value, variables) ?: (value * unit.factorRational)
+        unit.customRationalToBase?.let { return it(value, variables) }
+        unit.customToBase?.let {
+            return Rational.fromBigDecimalSmart(it(value.toBigDecimal(JavaMathContext.DECIMAL128), variables))
+        }
+        return value * unit.factorRational
     }
 
     fun fromBase(value: BigDecimal, unit: Unit, variables: Map<String, EvaluationResult>): BigDecimal {
@@ -526,7 +530,11 @@ object UnitConverter {
     }
 
     fun fromBase(value: Rational, unit: Unit, variables: Map<String, EvaluationResult>): Rational {
-        return unit.customRationalFromBase?.invoke(value, variables) ?: (value / unit.factorRational)
+        unit.customRationalFromBase?.let { return it(value, variables) }
+        unit.customFromBase?.let {
+            return Rational.fromBigDecimalSmart(it(value.toBigDecimal(JavaMathContext.DECIMAL128), variables))
+        }
+        return value / unit.factorRational
     }
 
     fun convert(value: BigDecimal, from: Unit, to: Unit, variables: Map<String, EvaluationResult>): BigDecimal {
@@ -538,6 +546,20 @@ object UnitConverter {
     }
 
     fun convert(value: BigDecimal, fromToken: String, toToken: String, variables: Map<String, EvaluationResult>): BigDecimal {
+        val from = findUnit(fromToken) ?: throw EvalException("Unknown unit `$fromToken`")
+        val to = findUnit(toToken) ?: throw EvalException("Unknown unit `$toToken`")
+        return convert(value, from, to, variables)
+    }
+
+    fun convert(value: Rational, from: Unit, to: Unit, variables: Map<String, EvaluationResult>): Rational {
+        if (from.category != to.category) {
+            throw EvalException("Conversion of `${from.name}` to `${to.name}` is not supported")
+        }
+        val baseValue = toBase(value, from, variables)
+        return fromBase(baseValue, to, variables)
+    }
+
+    fun convert(value: Rational, fromToken: String, toToken: String, variables: Map<String, EvaluationResult>): Rational {
         val from = findUnit(fromToken) ?: throw EvalException("Unknown unit `$fromToken`")
         val to = findUnit(toToken) ?: throw EvalException("Unknown unit `$toToken`")
         return convert(value, from, to, variables)

@@ -1827,6 +1827,9 @@ class MathEngineTest {
         // 0.0049 rounds to 0.00 at precision 2 -> Should be scientific
         assertEquals("4.90E-3", MathEngine.formatDisplayResult("0.0049", precision, locale))
 
+        // Extremely small non-zero values (like 1e-17) should be scientific
+        assertEquals("1.00E-17", MathEngine.formatDisplayResult("1e-17", precision, locale))
+
         // Absolute zero should remain "0"
         assertEquals("0", MathEngine.formatDisplayResult("0", precision, locale))
 

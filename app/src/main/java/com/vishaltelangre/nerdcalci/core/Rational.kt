@@ -106,7 +106,7 @@ data class Rational(private val initialNumerator: BigInteger, private val initia
                 
                 val currentRational = Rational(n1, d1)
                 val diff = (currentRational.toBigDecimal(JavaMathContext.DECIMAL128) - absoluteValue).abs()
-                if (diff <= tolerance) break
+                if (diff <= tolerance && !(n1 == BigInteger.ZERO && absoluteValue.signum() > 0)) break
                 
                 val fractionalPart = currentVal - a.toBigDecimal()
                 if (fractionalPart.signum() == 0) break

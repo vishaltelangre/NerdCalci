@@ -1,5 +1,5 @@
 - Stabilized Rational mode with smart rational approximation for irrational numbers (Issue #140).
-- Error for ambiguous division of unitless values by quantities with units (Issue #138).
+- Throws an error for ambiguous division of unitless values by quantities with units (Issue #138).
 - Small non-zero values now use scientific notation instead of rounding to 0.00 (Issue #141).
 - Optimized app startup by removing flickering loading indicator (Issue #139).
 - Reduced app size by enabling R8 minification and resource shrinking, and removing unused legacy Material library dependency.

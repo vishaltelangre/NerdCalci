@@ -1,6 +1,7 @@
 package com.vishaltelangre.nerdcalci.core
 
 import java.math.BigDecimal
+import java.math.BigInteger
 import org.junit.Test
 import org.junit.Assert.*
 
@@ -72,5 +73,35 @@ class UnitConverterTest {
         val mpg = UnitConverter.findUnit("mpg")
         val result = UnitConverter.deriveForDivision(l100km, mpg)
         assertNull("Same-category reciprocal division should return null", result)
+    }
+
+    @Test
+    fun `test rational toBase with custom rational converter (Temperature)`() {
+        val celsius = UnitConverter.findUnit("C")!!
+        val input = Rational.fromLong(100)
+        val result = UnitConverter.toBase(input, celsius, emptyMap())
+        // Celsius to Kelvin: 100 + 273.15 = 373.15
+        // 373.15 as rational: 37315/100 = 7463/20
+        assertEquals(Rational(BigInteger.valueOf(7463), BigInteger.valueOf(20)), result)
+    }
+
+    @Test
+    fun `test rational toBase with fallback to custom BigDecimal converter (Pixel)`() {
+        val pixel = UnitConverter.findUnit("px")!!
+        val input = Rational.fromLong(96)
+        // Default ppi is 96. 96px = 1 inch = 0.0254 meters.
+        // 0.0254 = 254/10000 = 127/5000
+        val result = UnitConverter.toBase(input, pixel, emptyMap())
+        assertEquals(Rational(BigInteger.valueOf(127), BigInteger.valueOf(5000)), result)
+    }
+
+    @Test
+    fun `test rational convert between non-base units (Temperature)`() {
+        val celsius = UnitConverter.findUnit("C")!!
+        val fahrenheit = UnitConverter.findUnit("F")!!
+        val input = Rational.fromLong(100) // 100°C
+        val result = UnitConverter.convert(input, celsius, fahrenheit, emptyMap())
+        // 100°C = 212°F
+        assertEquals(Rational.fromLong(212), result)
     }
 }

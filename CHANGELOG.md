@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [3.8.3] - 2026-04-17
 ### Fixed
 - Stabilized Rational mode with smart rational approximation for irrational numbers (Issue #140).
-- It would now throw an error for mathematically ambiguous division of unitless values by quantities with physical units (Issue #138).
+- Throws an error for mathematically ambiguous division of unitless values by quantities with physical units (Issue #138).
 - Small non-zero values now switch to scientific notation instead of rounding to `0.00` (Issue #141).
 - Optimized app startup by removing flickering loading indicator (Issue #139).
 

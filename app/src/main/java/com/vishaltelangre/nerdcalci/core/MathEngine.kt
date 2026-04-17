@@ -243,20 +243,29 @@ object MathEngine {
                             formatNumeralSystem(result.value.toLong(), u.factor.toInt())
                         }
                     } else {
-                        val displayValue = UnitConverter.fromBase(result.value, u, isolatedContext.variables).let { value ->
-                            if (u.category == UnitCategory.TEMPERATURE) value.setScale(10, java.math.RoundingMode.HALF_UP) else value
-                        }
                         val formattedValue = if (!result.forceFloat && (isolatedContext.rationalMode || result.explicitRational)) {
-                            Rational.toRational(displayValue).toString()
+                            if (result.rationalValue != null) {
+                                UnitConverter.fromBase(result.rationalValue, u, isolatedContext.variables).toString()
+                            } else {
+                                val displayValue = UnitConverter.fromBase(result.value, u, isolatedContext.variables)
+                                Rational.fromBigDecimalSmart(displayValue).toString()
+                            }
                         } else {
+                            val displayValue = UnitConverter.fromBase(result.value, u, isolatedContext.variables).let { value ->
+                                if (u.category == UnitCategory.TEMPERATURE) value.setScale(10, java.math.RoundingMode.HALF_UP) else value
+                            }
                             formatBigDecimal(displayValue)
                         }
                         "$formattedValue ${result.unit}"
                     }
+                } else if (!result.forceFloat && (isolatedContext.rationalMode || result.explicitRational)) {
+                    if (result.rationalValue != null) {
+                        result.rationalValue.toString()
+                    } else {
+                        Rational.fromBigDecimalSmart(result.value).toString()
+                    }
                 } else if (result.explicitUnitless && result.value.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) == 0) {
                     result.value.toLong().toString()
-                } else if (!result.forceFloat && (isolatedContext.rationalMode || result.explicitRational) && result.rationalValue != null) {
-                    result.rationalValue.toString()
                 } else {
                     formatBigDecimal(result.value)
                 }

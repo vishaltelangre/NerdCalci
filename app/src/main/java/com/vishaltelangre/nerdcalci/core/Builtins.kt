@@ -78,7 +78,7 @@ object Builtins {
                 throw EvalException("This function requires unitless inputs")
             }
             val resultValue = body(args.map { it.value ?: BigDecimal.ZERO })
-            return EvaluationResult(resultValue, rationalValue = Rational.toRational(resultValue))
+            return EvaluationResult(resultValue, rationalValue = Rational.fromBigDecimalSmart(resultValue))
         }
     }
 
@@ -95,7 +95,7 @@ object Builtins {
                 return EvaluationResult(
                     resultValue,
                     explicitUnitless = input.explicitUnitless,
-                    rationalValue = Rational.toRational(resultValue)
+                    rationalValue = Rational.fromBigDecimalSmart(resultValue)
                 )
             }
             val displayValue = UnitConverter.fromBase(input.value ?: BigDecimal.ZERO, inputUnit, variables)
@@ -105,7 +105,7 @@ object Builtins {
                 baseValue,
                 unit = input.unit,
                 explicitUnitless = false,
-                rationalValue = Rational.toRational(baseValue)
+                rationalValue = Rational.fromBigDecimalSmart(baseValue)
             )
         }
     }
@@ -128,7 +128,7 @@ object Builtins {
                 resultValue,
                 unit = null,
                 explicitUnitless = true,
-                rationalValue = Rational.toRational(resultValue)
+                rationalValue = Rational.fromBigDecimalSmart(resultValue)
             )
         }
     }
@@ -141,7 +141,7 @@ object Builtins {
         ): EvaluationResult {
             val input = args.first()
             val value = input.value ?: BigDecimal.ZERO
-            val rational = input.rationalValue ?: Rational.toRational(value)
+            val rational = Rational.fromBigDecimalSmart(value)
             return input.copy(value = value, rationalValue = rational, explicitRational = true)
         }
     }
@@ -167,7 +167,7 @@ object Builtins {
                 resultValue,
                 unit = null,
                 explicitUnitless = false,
-                rationalValue = Rational.toRational(resultValue)
+                rationalValue = Rational.fromBigDecimalSmart(resultValue)
             )
         }
     }
@@ -182,7 +182,7 @@ object Builtins {
             val inputUnit = input.unit?.let { UnitConverter.findUnit(it) }
             if (inputUnit == null) {
                 val resultValue = body(args.map { it.value ?: BigDecimal.ZERO })
-                return EvaluationResult(resultValue, rationalValue = Rational.toRational(resultValue))
+                return EvaluationResult(resultValue, rationalValue = Rational.fromBigDecimalSmart(resultValue))
             }
             val derivedUnit = UnitConverter.deriveForRoot(inputUnit, exponent)
                 ?: throw EvalException(
@@ -198,7 +198,7 @@ object Builtins {
                 return EvaluationResult(
                     transformedDisplayValue,
                     explicitUnitless = false,
-                    rationalValue = Rational.toRational(transformedDisplayValue)
+                    rationalValue = Rational.fromBigDecimalSmart(transformedDisplayValue)
                 )
             }
             val derived = UnitConverter.findUnit(derivedUnit) ?: throw EvalException(
@@ -213,7 +213,7 @@ object Builtins {
                 baseValue,
                 unit = derived.symbols.first(),
                 explicitUnitless = false,
-                rationalValue = Rational.toRational(baseValue)
+                rationalValue = Rational.fromBigDecimalSmart(baseValue)
             )
         }
     }

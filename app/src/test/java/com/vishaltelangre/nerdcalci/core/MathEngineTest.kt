@@ -1813,6 +1813,34 @@ class MathEngineTest {
     }
 
     @Test
+    fun `formatDisplayResult switches to scientific notation for small non-zero values rounding to zero`() = runBlocking {
+        val precision = 2
+        val locale = java.util.Locale.US
+
+        // 324/93543 ~= 0.003463...
+        // At precision 2, it rounds to 0.00 -> Should use scientific notation
+        assertEquals("3.46E-3", MathEngine.formatDisplayResult("0.003463", precision, locale))
+
+        // 0.0051 rounds to 0.01 at precision 2 -> Should NOT be scientific
+        assertEquals("0.01", MathEngine.formatDisplayResult("0.0051", precision, locale))
+
+        // 0.0049 rounds to 0.00 at precision 2 -> Should be scientific
+        assertEquals("4.90E-3", MathEngine.formatDisplayResult("0.0049", precision, locale))
+
+        // Extremely small non-zero values (like 1e-17) should be scientific
+        assertEquals("1.00E-17", MathEngine.formatDisplayResult("1e-17", precision, locale))
+
+        // Absolute zero should remain "0"
+        assertEquals("0", MathEngine.formatDisplayResult("0", precision, locale))
+
+        // Precision 0 should still round to 0 for non-extremely-small values
+        assertEquals("0", MathEngine.formatDisplayResult("0.333", 0, locale))
+
+        // But extremely small values (< 0.001) should still be scientific
+        assertEquals("1E-4", MathEngine.formatDisplayResult("0.0001", 0, locale))
+    }
+
+    @Test
     fun `formatDisplayResult respects explicit locales`() = runBlocking {
         val raw = "1234.567"
         assertEquals("1,234.57", MathEngine.formatDisplayResult(raw, 2, java.util.Locale.ROOT))
@@ -2768,6 +2796,104 @@ class MathEngineTest {
         }
         testCalculate("1 / 3", rationalMode = true) {
             assertEquals("1/3", it[0].result)
+        }
+    }
+
+    @Test
+    fun `rational mode formatting for irrationals and units`() = runBlocking {
+        testCalculate("PI", rationalMode = true) {
+            assertEquals("80143857/25510582", it[0].result)
+        }
+        testCalculate("pi °C", rationalMode = true) {
+            assertEquals("80143857/25510582 °C", it[0].result)
+        }
+        testCalculate("e", rationalMode = true) {
+            assertEquals("28245729/10391023", it[0].result)
+        }
+        testCalculate("e km", rationalMode = true) {
+            assertEquals("28245729/10391023 km", it[0].result)
+        }
+        testCalculate("e degC", rationalMode = true) {
+            assertEquals("28245729/10391023 °C", it[0].result)
+        }
+        testCalculate("2000 / 6000", rationalMode = true) {
+            assertEquals("1/3", it[0].result)
+        }
+        testCalculate("1000 / 16", rationalMode = true) {
+            assertEquals("125/2", it[0].result)
+        }
+        testCalculate("x = 1.01234567895", "x °C", rationalMode = true) {
+            assertEquals("20246913579/20000000000", it[0].result)
+            assertEquals("20246913579/20000000000 °C", it[1].result)
+        }
+        testCalculate("1.0123456789", rationalMode = true) {
+            assertEquals("10123456789/10000000000", it[0].result)
+        }
+
+        testCalculate("(1/3) km + (1/3) km", rationalMode = true) {
+            assertEquals("2/3 km", it[0].result)
+        }
+        testCalculate("(1/3) m + (1/6) m", rationalMode = true) {
+            assertEquals("1/2 m", it[0].result)
+        }
+        testCalculate("(1/3) °C + (1/3) °C", rationalMode = true) {
+            assertEquals("2/3 °C", it[0].result)
+        }
+
+        testCalculate("1/3 + 1/6", rationalMode = true) {
+            assertEquals("1/2", it[0].result)
+        }
+        testCalculate("2/3 * 3/4", rationalMode = true) {
+            assertEquals("1/2", it[0].result)
+        }
+        testCalculate("1/2 / 2", rationalMode = true) {
+            assertEquals("1/4", it[0].result)
+        }
+        testCalculate("1 / (1/3)", rationalMode = true) {
+            assertEquals("3", it[0].result)
+        }
+
+        // Variable Propagation
+        testCalculate("x = 1/3", "x + 1/3", rationalMode = true) {
+            assertEquals("1/3", it[0].result)
+            assertEquals("2/3", it[1].result)
+        }
+        testCalculate("y = 1000 / 16", "y", rationalMode = true) {
+            assertEquals("125/2", it[0].result)
+            assertEquals("125/2", it[1].result)
+        }
+
+        // Unit Math & Conversions
+        testCalculate("(1/3) m", rationalMode = true) {
+            assertEquals("1/3 m", it[0].result)
+        }
+        testCalculate("(1/3) m to cm", rationalMode = true) {
+            assertEquals("100/3 cm", it[0].result)
+        }
+
+        // Smart Approximation
+        testCalculate("rational(0.33333333333333333333)", rationalMode = false) {
+            assertEquals("1/3", it[0].result)
+        }
+        testCalculate("0.125", rationalMode = true) {
+            assertEquals("1/8", it[0].result)
+        }
+        testCalculate("1.1", rationalMode = true) {
+            assertEquals("11/10", it[0].result)
+        }
+
+        // Roots
+        testCalculate("sqrt(1/4)", rationalMode = true) {
+            assertEquals("1/2", it[0].result)
+        }
+        testCalculate("cbrt(1/27)", rationalMode = true) {
+            assertEquals("1/3", it[0].result)
+        }
+
+        // Compound Assignments
+        testCalculate("z = 1/3", "z += 1/3", rationalMode = true) {
+            assertEquals("1/3", it[0].result)
+            assertEquals("2/3", it[1].result)
         }
     }
 }

@@ -1,6 +1,7 @@
 package com.vishaltelangre.nerdcalci.core
 
 import java.math.BigDecimal
+import java.math.BigInteger
 import java.math.MathContext as JavaMathContext
 import kotlin.math.PI
 
@@ -28,8 +29,13 @@ data class Unit(
     val category: UnitCategory,
     val factor: BigDecimal = BigDecimal.ONE,
     val customToBase: ((BigDecimal, Map<String, EvaluationResult>) -> BigDecimal)? = null,
-    val customFromBase: ((BigDecimal, Map<String, EvaluationResult>) -> BigDecimal)? = null
-)
+    val customFromBase: ((BigDecimal, Map<String, EvaluationResult>) -> BigDecimal)? = null,
+    val rationalFactor: Rational? = null,
+    val customRationalToBase: ((Rational, Map<String, EvaluationResult>) -> Rational)? = null,
+    val customRationalFromBase: ((Rational, Map<String, EvaluationResult>) -> Rational)? = null
+) {
+    val factorRational: Rational = rationalFactor ?: Rational.toRational(factor)
+}
 
 object UnitConverter {
     private val CUBIC_METER_TO_LITER = BigDecimal("1000.0")
@@ -227,28 +233,40 @@ object UnitConverter {
         // --- TEMPERATURE --- (Base: Kelvin)
         Unit("Celsius", listOf("°C", "C", "celsius", "degC", "degree celsius"), UnitCategory.TEMPERATURE, BigDecimal.ONE,
             customToBase = { v, _ -> v.add(BigDecimal("273.15")) },
-            customFromBase = { v, _ -> v.subtract(BigDecimal("273.15")) }
+            customFromBase = { v, _ -> v.subtract(BigDecimal("273.15")) },
+            customRationalToBase = { v, _ -> v + Rational(BigInteger.valueOf(5463), BigInteger.valueOf(20)) },
+            customRationalFromBase = { v, _ -> v - Rational(BigInteger.valueOf(5463), BigInteger.valueOf(20)) }
         ),
         Unit("Fahrenheit", listOf("°F", "F", "fahrenheit", "degF", "degree fahrenheit"), UnitCategory.TEMPERATURE, BigDecimal.ONE,
             customToBase = { v, _ -> v.subtract(BigDecimal("32.0")).multiply(BigDecimal("5.0")).divide(BigDecimal("9.0"), JavaMathContext.DECIMAL128).add(BigDecimal("273.15")) },
-            customFromBase = { v, _ -> v.subtract(BigDecimal("273.15")).multiply(BigDecimal("9.0")).divide(BigDecimal("5.0"), JavaMathContext.DECIMAL128).add(BigDecimal("32.0")) }
+            customFromBase = { v, _ -> v.subtract(BigDecimal("273.15")).multiply(BigDecimal("9.0")).divide(BigDecimal("5.0"), JavaMathContext.DECIMAL128).add(BigDecimal("32.0")) },
+            customRationalToBase = { v, _ -> (v - Rational.fromLong(32)) * Rational(BigInteger.valueOf(5), BigInteger.valueOf(9)) + Rational(BigInteger.valueOf(5463), BigInteger.valueOf(20)) },
+            customRationalFromBase = { v, _ -> (v - Rational(BigInteger.valueOf(5463), BigInteger.valueOf(20))) * Rational(BigInteger.valueOf(9), BigInteger.valueOf(5)) + Rational.fromLong(32) }
         ),
         Unit("Kelvin", listOf("K", "kelvin"), UnitCategory.TEMPERATURE, BigDecimal.ONE),
         Unit("Reaumur", listOf("°Re", "Re", "reaumur", "Réaumur"), UnitCategory.TEMPERATURE, BigDecimal.ONE,
             customToBase = { v, _ -> v.divide(BigDecimal("0.8"), JavaMathContext.DECIMAL128).add(BigDecimal("273.15")) },
-            customFromBase = { v, _ -> v.subtract(BigDecimal("273.15")).multiply(BigDecimal("0.8")) }
+            customFromBase = { v, _ -> v.subtract(BigDecimal("273.15")).multiply(BigDecimal("0.8")) },
+            customRationalToBase = { v, _ -> v * Rational(BigInteger.valueOf(5), BigInteger.valueOf(4)) + Rational(BigInteger.valueOf(5463), BigInteger.valueOf(20)) },
+            customRationalFromBase = { v, _ -> (v - Rational(BigInteger.valueOf(5463), BigInteger.valueOf(20))) * Rational(BigInteger.valueOf(4), BigInteger.valueOf(5)) }
         ),
         Unit("Rømer", listOf("°Rø", "Rø", "romer", "Rømer"), UnitCategory.TEMPERATURE, BigDecimal.ONE,
             customToBase = { v, _ -> v.subtract(BigDecimal("7.5")).multiply(BigDecimal("40.0")).divide(BigDecimal("21.0"), JavaMathContext.DECIMAL128).add(BigDecimal("273.15")) },
-            customFromBase = { v, _ -> v.subtract(BigDecimal("273.15")).multiply(BigDecimal("21.0")).divide(BigDecimal("40.0"), JavaMathContext.DECIMAL128).add(BigDecimal("7.5")) }
+            customFromBase = { v, _ -> v.subtract(BigDecimal("273.15")).multiply(BigDecimal("21.0")).divide(BigDecimal("40.0"), JavaMathContext.DECIMAL128).add(BigDecimal("7.5")) },
+            customRationalToBase = { v, _ -> (v - Rational(BigInteger.valueOf(15), BigInteger.valueOf(2))) * Rational(BigInteger.valueOf(40), BigInteger.valueOf(21)) + Rational(BigInteger.valueOf(5463), BigInteger.valueOf(20)) },
+            customRationalFromBase = { v, _ -> (v - Rational(BigInteger.valueOf(5463), BigInteger.valueOf(20))) * Rational(BigInteger.valueOf(21), BigInteger.valueOf(40)) + Rational(BigInteger.valueOf(15), BigInteger.valueOf(2)) }
         ),
         Unit("Delisle", listOf("°De", "De", "delisle"), UnitCategory.TEMPERATURE, BigDecimal.ONE,
             customToBase = { v, _ -> BigDecimal("373.15").subtract(v.multiply(BigDecimal("2.0")).divide(BigDecimal("3.0"), JavaMathContext.DECIMAL128)) },
-            customFromBase = { v, _ -> BigDecimal("373.15").subtract(v).multiply(BigDecimal("1.5")) }
+            customFromBase = { v, _ -> BigDecimal("373.15").subtract(v).multiply(BigDecimal("1.5")) },
+            customRationalToBase = { v, _ -> Rational(BigInteger.valueOf(7463), BigInteger.valueOf(20)) - (v * Rational(BigInteger.valueOf(2), BigInteger.valueOf(3))) },
+            customRationalFromBase = { v, _ -> (Rational(BigInteger.valueOf(7463), BigInteger.valueOf(20)) - v) * Rational(BigInteger.valueOf(3), BigInteger.valueOf(2)) }
         ),
         Unit("Rankine", listOf("°Ra", "Ra", "rankine"), UnitCategory.TEMPERATURE, BigDecimal.ONE,
             customToBase = { v, _ -> v.divide(BigDecimal("1.8"), JavaMathContext.DECIMAL128) },
-            customFromBase = { v, _ -> v.multiply(BigDecimal("1.8")) }
+            customFromBase = { v, _ -> v.multiply(BigDecimal("1.8")) },
+            customRationalToBase = { v, _ -> v * Rational(BigInteger.valueOf(5), BigInteger.valueOf(9)) },
+            customRationalFromBase = { v, _ -> v * Rational(BigInteger.valueOf(9), BigInteger.valueOf(5)) }
         ),
 
         // --- FREQUENCY --- (Base: Hertz)
@@ -495,12 +513,28 @@ object UnitConverter {
         return unit.customToBase?.invoke(value, variables) ?: value.multiply(unit.factor)
     }
 
+    fun toBase(value: Rational, unit: Unit, variables: Map<String, EvaluationResult>): Rational {
+        unit.customRationalToBase?.let { return it(value, variables) }
+        unit.customToBase?.let {
+            return Rational.fromBigDecimalSmart(it(value.toBigDecimal(JavaMathContext.DECIMAL128), variables))
+        }
+        return value * unit.factorRational
+    }
+
     fun fromBase(value: BigDecimal, unit: Unit, variables: Map<String, EvaluationResult>): BigDecimal {
         return unit.customFromBase?.invoke(value, variables) ?: try {
             value.divide(unit.factor)
         } catch (e: ArithmeticException) {
             value.divide(unit.factor, JavaMathContext.DECIMAL128)
         }
+    }
+
+    fun fromBase(value: Rational, unit: Unit, variables: Map<String, EvaluationResult>): Rational {
+        unit.customRationalFromBase?.let { return it(value, variables) }
+        unit.customFromBase?.let {
+            return Rational.fromBigDecimalSmart(it(value.toBigDecimal(JavaMathContext.DECIMAL128), variables))
+        }
+        return value / unit.factorRational
     }
 
     fun convert(value: BigDecimal, from: Unit, to: Unit, variables: Map<String, EvaluationResult>): BigDecimal {
@@ -512,6 +546,20 @@ object UnitConverter {
     }
 
     fun convert(value: BigDecimal, fromToken: String, toToken: String, variables: Map<String, EvaluationResult>): BigDecimal {
+        val from = findUnit(fromToken) ?: throw EvalException("Unknown unit `$fromToken`")
+        val to = findUnit(toToken) ?: throw EvalException("Unknown unit `$toToken`")
+        return convert(value, from, to, variables)
+    }
+
+    fun convert(value: Rational, from: Unit, to: Unit, variables: Map<String, EvaluationResult>): Rational {
+        if (from.category != to.category) {
+            throw EvalException("Conversion of `${from.name}` to `${to.name}` is not supported")
+        }
+        val baseValue = toBase(value, from, variables)
+        return fromBase(baseValue, to, variables)
+    }
+
+    fun convert(value: Rational, fromToken: String, toToken: String, variables: Map<String, EvaluationResult>): Rational {
         val from = findUnit(fromToken) ?: throw EvalException("Unknown unit `$fromToken`")
         val to = findUnit(toToken) ?: throw EvalException("Unknown unit `$toToken`")
         return convert(value, from, to, variables)

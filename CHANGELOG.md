@@ -5,11 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.8.3] - 2026-04-17
+### Fixed
+- Stabilized Rational mode with smart rational approximation for irrational numbers (Issue #140).
+- Throws an error for mathematically ambiguous division of unitless values by quantities with physical units (Issue #138).
+- Small non-zero values now switch to scientific notation instead of rounding to `0.00` (Issue #141).
+- Optimized app startup by removing flickering loading indicator (Issue #139).
+
+### Changed
+- Reduced app size by enabling R8 minification and resource shrinking, and removing unused legacy Material library dependency.
+
 ## [3.8.2] - 2026-04-16
 ### Fixed
 - Fixed "No files yet" flickering on launch (Issue #135).
 
-### Removed
+### Changed
 - Removed the buggy and unreliable "Dynamic color" feature.
 
 ## [3.8.1] - 2026-04-16

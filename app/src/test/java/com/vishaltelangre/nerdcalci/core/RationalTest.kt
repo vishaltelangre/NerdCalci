@@ -89,4 +89,17 @@ class RationalTest {
         assertTrue(whole.isWhole())
         assertFalse(fraction.isWhole())
     }
+
+    @Test
+    fun testFromBigDecimalSmart() {
+        // Simple fractions
+        assertEquals("1/3", Rational.fromBigDecimalSmart(BigDecimal("0.3333333333333333")).toString())
+        assertEquals("1/7", Rational.fromBigDecimalSmart(BigDecimal("0.14285714285714285")).toString())
+        
+        // Very small non-zero values (should not collapse to 0)
+        assertEquals("1/100000000000000000", Rational.fromBigDecimalSmart(BigDecimal("1e-17")).toString())
+        
+        // Zero should still be zero
+        assertEquals("0", Rational.fromBigDecimalSmart(BigDecimal.ZERO).toString())
+    }
 }

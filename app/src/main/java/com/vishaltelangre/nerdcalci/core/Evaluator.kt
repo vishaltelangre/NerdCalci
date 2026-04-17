@@ -91,7 +91,8 @@ class Evaluator(
             // Note: UnitConverter currently works with BigDecimal.
             // We'll keep using BigDecimal for result.value but update rationalValue.
             val resultValue = UnitConverter.toBase(rawValue, unit, variables)
-            val resultRationalValue = Rational.toRational(resultValue)
+            val baseRational = eval.rationalValue ?: Rational.toRational(rawValue)
+            val resultRationalValue = UnitConverter.toBase(baseRational, unit, variables)
             EvaluationResult(resultValue, unit.symbols.first(), rationalValue = resultRationalValue)
         }
         is Expr.UnitConversion -> {
@@ -129,7 +130,7 @@ class Evaluator(
         // Check user variables first, then injection errors, then built-in constants
         variables[name]?.let { return it }
         injectionErrors[name]?.let { throw it }
-        Builtins.constantValue(name)?.let { return EvaluationResult(it, rationalValue = Rational.toRational(it)) }
+        Builtins.constantValue(name)?.let { return EvaluationResult(it, rationalValue = Rational.fromBigDecimalSmart(it)) }
         throw UndefinedVariableException(name)
     }
 
@@ -193,7 +194,8 @@ class Evaluator(
             }
 
             val resultValue = UnitConverter.toBase(value, fromUnit, variables)
-            val resultRationalValue = Rational.toRational(resultValue)
+            val currentRational = eval.rationalValue ?: Rational.toRational(value)
+            val resultRationalValue = UnitConverter.toBase(currentRational, fromUnit, variables)
             return EvaluationResult(resultValue, toUnit.symbols.first(), rationalValue = resultRationalValue)
         }
 
@@ -368,6 +370,20 @@ class Evaluator(
         }
     }
 
+    private fun scalarRationalValue(
+        result: EvaluationResult,
+        unit: NerdUnit?,
+        forceDisplayValue: Boolean,
+        rational: Rational
+    ): Rational {
+        if (unit == null) return rational
+        return when {
+            unit.category == UnitCategory.SCALAR -> rational
+            forceDisplayValue || result.explicitUnitless -> UnitConverter.fromBase(rational, unit, variables)
+            else -> rational
+        }
+    }
+
     private suspend fun evaluateBinaryOp(expr: Expr.BinaryOp): EvaluationResult {
         val leftEval = evaluate(expr.left)
         val rightEval = evaluate(expr.right)
@@ -424,10 +440,16 @@ class Evaluator(
                 ?: throw EvalException("Temperature unit is unavailable")
             val resultDisplay = applyOp(leftScalar, expr.op, rightScalar)
             val resultBase = UnitConverter.toBase(resultDisplay, tempUnit, variables)
+
+            val leftRationalScalar = scalarRationalValue(leftEval, leftUnit, leftUsesDisplayValue, leftRational)
+            val rightRationalScalar = scalarRationalValue(rightEval, rightUnit, rightUsesDisplayValue, rightRational)
+            val resultDisplayRational = applyRationalOp(leftRationalScalar, expr.op, rightRationalScalar)
+            val resultBaseRational = UnitConverter.toBase(resultDisplayRational, tempUnit, variables)
+
             return EvaluationResult(
                 resultBase,
                 tempUnit.symbols.first(),
-                rationalValue = Rational.toRational(resultBase)
+                rationalValue = resultBaseRational
             )
         }
 
@@ -474,11 +496,16 @@ class Evaluator(
                     val leftCanonical = UnitConverter.fromBase(leftVal, canonicalUnit, variables)
                     val rightCanonical = UnitConverter.fromBase(rightVal, canonicalUnit, variables)
                     val resultCanonical = applyOp(leftCanonical, expr.op, rightCanonical)
-                    // Rational for temperature is tricky due to offsets, thus we fall back to BigDecimal scaling
+                    
+                    val leftCanonicalRational = UnitConverter.fromBase(leftRational, canonicalUnit, variables)
+                    val rightCanonicalRational = UnitConverter.fromBase(rightRational, canonicalUnit, variables)
+                    val resultCanonicalRational = applyRationalOp(leftCanonicalRational, expr.op, rightCanonicalRational)
+                    val resultBaseRational = UnitConverter.toBase(resultCanonicalRational, canonicalUnit, variables)
+                    
                     return EvaluationResult(
                         UnitConverter.toBase(resultCanonical, canonicalUnit, variables),
                         canonicalUnit.symbols.first(),
-                        rationalValue = Rational.toRational(UnitConverter.toBase(resultCanonical, canonicalUnit, variables))
+                        rationalValue = resultBaseRational
                     )
                 }
 
@@ -525,6 +552,11 @@ class Evaluator(
 
         // Handle scaling multiplication/division inheritance
         val resultUnit = if (expr.op == TokenKind.STAR || expr.op == TokenKind.SLASH) {
+            if (expr.op == TokenKind.SLASH && !isPhysicalUnit(leftUnit) && isPhysicalUnit(rightUnit)) {
+                val rightDesc = getDimensionDescription(rightUnit)
+                throw EvalException("Division of unitless value by `$rightDesc` is not supported")
+            }
+
             if (leftEval.explicitUnitless || rightEval.explicitUnitless ||
                 leftUnit?.category == UnitCategory.SCALAR || rightUnit?.category == UnitCategory.SCALAR) {
                 null
@@ -633,7 +665,7 @@ class Evaluator(
                 val leftDouble = left.toBigDecimal(mc).toDouble()
                 val rightDouble = right.toBigDecimal(mc).toDouble()
                 val resultDouble = leftDouble.pow(rightDouble)
-                Rational.toRational(BigDecimal(resultDouble, mc))
+                Rational.fromBigDecimalSmart(BigDecimal(resultDouble, mc))
             }
         }
         else -> throw EvalException("Unknown operator: `$op`")

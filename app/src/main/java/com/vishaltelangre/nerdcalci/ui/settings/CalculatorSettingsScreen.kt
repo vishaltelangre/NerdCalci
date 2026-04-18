@@ -1,7 +1,9 @@
 package com.vishaltelangre.nerdcalci.ui.settings
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -92,9 +94,9 @@ fun CalculatorSettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
                 .verticalScroll(rememberScrollState())
         ) {
+            Spacer(modifier = Modifier.height(padding.calculateTopPadding()))
             SettingsSection(title = "Math logic")
 
             SettingsSliderItem(
@@ -229,6 +231,7 @@ fun CalculatorSettingsScreen(
                 checked = showNumbersShortcuts,
                 onCheckedChange = onShowNumbersShortcutsChange
             )
+            Spacer(modifier = Modifier.height(padding.calculateBottomPadding()))
         }
     }
 

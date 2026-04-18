@@ -81,9 +81,9 @@ fun HomeStartupSettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
                 .verticalScroll(rememberScrollState())
         ) {
+            Spacer(modifier = Modifier.height(padding.calculateTopPadding()))
             SettingsSection(title = "Home screen shortcuts")
 
             SettingsToggleItem(
@@ -127,6 +127,7 @@ fun HomeStartupSettingsScreen(
                     }
                 }
             )
+            Spacer(modifier = Modifier.height(padding.calculateBottomPadding()))
         }
     }
 

@@ -104,9 +104,9 @@ fun DataSyncSettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
                 .verticalScroll(rememberScrollState())
         ) {
+            Spacer(modifier = Modifier.height(padding.calculateTopPadding()))
             SettingsSection(title = "Backup")
 
             SettingsToggleItem(
@@ -188,6 +188,7 @@ fun DataSyncSettingsScreen(
                     )
                 }
             }
+            Spacer(modifier = Modifier.height(padding.calculateBottomPadding()))
         }
     }
 

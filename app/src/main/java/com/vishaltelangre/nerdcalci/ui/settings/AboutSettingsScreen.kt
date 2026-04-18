@@ -68,11 +68,11 @@ fun AboutSettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
                 .verticalScroll(rememberScrollState())
                 .padding(vertical = 8.dp),
             horizontalAlignment = Alignment.Start
         ) {
+            androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(padding.calculateTopPadding()))
             // App Logo and Version (Centered)
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -131,6 +131,7 @@ fun AboutSettingsScreen(
                 subtitle = "Support the development of NerdCalci",
                 onClick = { IntentUtils.openUrl(context, Constants.BUY_ME_COFFEE_URL) }
             )
+            androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(padding.calculateBottomPadding()))
         }
     }
 }

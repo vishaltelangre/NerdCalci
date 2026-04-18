@@ -2,7 +2,9 @@ package com.vishaltelangre.nerdcalci.ui.settings
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -54,9 +56,9 @@ fun HelpFeedbackSettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
                 .verticalScroll(rememberScrollState())
         ) {
+            Spacer(modifier = Modifier.height(padding.calculateTopPadding()))
             SettingsItem(
                 icon = Icons.AutoMirrored.Filled.Help,
                 title = "Help",
@@ -75,6 +77,7 @@ fun HelpFeedbackSettingsScreen(
                 subtitle = Constants.SUPPORT_ISSUES_URL.removePrefix("https://"),
                 onClick = { IntentUtils.openUrl(context, Constants.SUPPORT_ISSUES_URL) }
             )
+            Spacer(modifier = Modifier.height(padding.calculateBottomPadding()))
         }
     }
 }

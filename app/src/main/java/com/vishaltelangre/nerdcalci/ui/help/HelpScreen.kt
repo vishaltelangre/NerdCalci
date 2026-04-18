@@ -8,8 +8,12 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -37,6 +41,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -182,18 +187,13 @@ fun HelpScreen(onBack: () -> Unit) {
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            HelpScreenContent(
-                contentText = contentText,
-                scrollState = scrollState,
-                onTextViewReady = { textViewRef = it },
-                onPositionReady = { androidViewTop = it }
-            )
-        }
+        HelpScreenContent(
+            contentText = contentText,
+            scrollState = scrollState,
+            onTextViewReady = { textViewRef = it },
+            onPositionReady = { androidViewTop = it },
+            paddingValues = padding
+        )
     }
 }
 
@@ -251,7 +251,8 @@ private fun HelpScreenContent(
     contentText: String,
     scrollState: ScrollState,
     onTextViewReady: (TextView) -> Unit,
-    onPositionReady: (Float) -> Unit
+    onPositionReady: (Float) -> Unit,
+    paddingValues: PaddingValues
 ) {
     val context = LocalContext.current
     val primaryColor = MaterialTheme.colorScheme.primary.toArgb()
@@ -283,6 +284,7 @@ private fun HelpScreenContent(
             .fillMaxSize()
             .verticalScroll(scrollState)
     ) {
+        Spacer(modifier = Modifier.height(paddingValues.calculateTopPadding()))
         AndroidView(
             modifier = Modifier
                 .fillMaxWidth()
@@ -301,5 +303,6 @@ private fun HelpScreenContent(
                 markwon.setMarkdown(textView, contentText)
             }
         )
+        Spacer(modifier = Modifier.height(paddingValues.calculateBottomPadding()))
     }
 }

@@ -21,9 +21,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,6 +32,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.Delete
@@ -40,14 +42,11 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.UploadFile
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,6 +55,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewModelScope
 import com.vishaltelangre.nerdcalci.R
@@ -69,27 +69,8 @@ import com.vishaltelangre.nerdcalci.ui.calculator.HomeUiEvent
 import com.vishaltelangre.nerdcalci.core.LaunchMode
 import com.vishaltelangre.nerdcalci.ui.components.SectionHeader
 import com.vishaltelangre.nerdcalci.ui.components.addDismissibleFileItems
-import androidx.compose.material.icons.automirrored.filled.Sort
-import androidx.compose.material.icons.filled.Check
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -131,7 +112,6 @@ fun HomeScreen(
 
     val syncEnabled by viewModel.syncEnabled.collectAsState()
     val isSyncing by viewModel.isSyncing.collectAsState()
-    val lastSyncAt by viewModel.lastSyncAt.collectAsState()
 
     // Cleanup "Deleted" items when the user interact with the list or navigates away
     DisposableEffect(Unit) {
@@ -169,7 +149,7 @@ fun HomeScreen(
 
     Scaffold(
         topBar = {
-                if (files?.isNotEmpty() == true) {
+            if (files?.isNotEmpty() == true) {
                 TopAppBar(
                     title = { Text(appName, color = MaterialTheme.colorScheme.onSurface) },
                     navigationIcon = {
@@ -305,8 +285,8 @@ fun HomeScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding)
                     .verticalScroll(rememberScrollState())
+                    .padding(padding)
                     .padding(horizontal = 20.dp, vertical = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
@@ -406,7 +386,6 @@ fun HomeScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding)
             ) {
                 if (syncEnabled) {
                     PullToRefreshBox(
@@ -422,7 +401,8 @@ fun HomeScreen(
                             coroutineScope = coroutineScope,
                             snackbarHostState = snackbarHostState,
                             context = context,
-                            viewModel = viewModel
+                            viewModel = viewModel,
+                            paddingValues = padding
                         )
                     }
                 } else {
@@ -434,7 +414,8 @@ fun HomeScreen(
                         coroutineScope = coroutineScope,
                         snackbarHostState = snackbarHostState,
                         context = context,
-                        viewModel = viewModel
+                        viewModel = viewModel,
+                        paddingValues = padding
                     )
                 }
             }
@@ -451,11 +432,17 @@ private fun HomeFileList(
     coroutineScope: CoroutineScope,
     snackbarHostState: SnackbarHostState,
     context: android.content.Context,
-    viewModel: CalculatorViewModel
+    viewModel: CalculatorViewModel,
+    paddingValues: PaddingValues
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 96.dp)
+        contentPadding = PaddingValues(
+            top = paddingValues.calculateTopPadding(),
+            bottom = paddingValues.calculateBottomPadding() + 96.dp,
+            start = paddingValues.calculateLeftPadding(LayoutDirection.Ltr),
+            end = paddingValues.calculateRightPadding(LayoutDirection.Ltr)
+        )
     ) {
 
         if (visiblePinnedFiles.isNotEmpty()) {

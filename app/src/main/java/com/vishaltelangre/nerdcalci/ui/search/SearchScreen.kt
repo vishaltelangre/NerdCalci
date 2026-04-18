@@ -121,7 +121,9 @@ fun SearchScreen(
                     containerColor = MaterialTheme.colorScheme.background,
                     dividerColor = MaterialTheme.colorScheme.outlineVariant
                 ),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
             ) {
                 Text(
                     text = if (trimmedQuery.isBlank()) {

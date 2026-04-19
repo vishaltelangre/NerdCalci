@@ -138,6 +138,7 @@ NerdCalci supports standard scientific notation (E-notation) using an uppercase 
 ```text
 1E2         # evaluates to 100
 1.23E-5     # evaluates to 1.23E-5
+1.23E-2     # evaluates to 0.0123, with precision 4
 500E+2      # evaluates to 50,000
 ```
 ## 2. Variables and state

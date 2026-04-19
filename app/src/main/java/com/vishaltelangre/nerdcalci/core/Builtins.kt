@@ -282,8 +282,8 @@ object Builtins {
     )
 
     /** Built-in constants accessible as bare identifiers. */
-    const val PI_STR = "3.1415926535897932384626433832795028841971"
-    const val E_STR = "2.7182818284590452353602874713526624977572"
+    private const val PI_STR = "3.1415926535897932384626433832795028841971"
+    private const val E_STR = "2.7182818284590452353602874713526624977572"
     private val constants: Map<String, BigDecimal> = mapOf(
         "PI" to BigDecimal(PI_STR),
         "pi" to BigDecimal(PI_STR),

@@ -89,10 +89,13 @@ import androidx.compose.material3.VerticalDivider
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.border
 import android.widget.Toast
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalDensity
+import androidx.navigation.NavHostController
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
@@ -101,23 +104,17 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.navigation.NavHostController
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.buildAnnotatedString
@@ -134,6 +131,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
@@ -143,11 +141,9 @@ import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.geometry.Size
 import com.vishaltelangre.nerdcalci.core.Constants
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
 import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
@@ -559,6 +555,54 @@ fun CalculatorScreen(
     // Check if keyboard is visible
     val density = LocalDensity.current
     val imeInsets = WindowInsets.ime
+
+    // Auto-focus and scroll to newly created lines
+    LaunchedEffect(lines, pendingScrollLineId) {
+        val targetId = pendingScrollLineId ?: return@LaunchedEffect
+
+        // Wait a bit for the keyboard/toolbar to settle before calculating scroll
+        delay(50)
+
+        val targetIndex = lines.indexOfFirst { it.id == targetId }
+        if (targetIndex >= 0) {
+            val layoutInfo = listState.layoutInfo
+            val visibleItems = layoutInfo.visibleItemsInfo
+            val targetVisibleItem = visibleItems.find { it.index == targetIndex }
+
+            // If the item is below the viewport or at the bottom edge,
+            // scroll so it stays at the bottom (pushing previous lines up).
+            // We include a 48dp margin at the bottom for breathing room and to clear the toolbar.
+            val viewportHeight = layoutInfo.viewportSize.height
+            val bottomMarginPx = (48 * density.density).toInt()
+
+            if (targetVisibleItem == null) {
+                // Not visible at all
+                val lastVisibleIndex = visibleItems.lastOrNull()?.index ?: -1
+                if (targetIndex > lastVisibleIndex) {
+                    // It's below. Scroll so it's at the bottom + margin.
+                    // Since we don't know the exact height yet, we use a reasonable default (48dp).
+                    val estimatedItemHeight = (48 * density.density).toInt()
+                    listState.animateScrollToItem(targetIndex, -(viewportHeight - estimatedItemHeight - bottomMarginPx))
+                } else {
+                    // It's above. Scroll to top.
+                    listState.animateScrollToItem(targetIndex)
+                }
+            } else {
+                // Item is partially or fully visible.
+                val isFullyVisible = targetVisibleItem.offset >= layoutInfo.viewportStartOffset &&
+                    (targetVisibleItem.offset + targetVisibleItem.size) <= viewportHeight - bottomMarginPx
+
+                if (!isFullyVisible || targetVisibleItem.offset + targetVisibleItem.size > viewportHeight - bottomMarginPx - 10) {
+                    // If it's near or past the bottom margin, dock it at the bottom margin.
+                    val offset = viewportHeight - targetVisibleItem.size - bottomMarginPx
+                    listState.animateScrollToItem(targetIndex, -offset)
+                }
+            }
+            pendingScrollLineId = null
+        }
+    }
+
+    // Check if keyboard is visible
     val isKeyboardVisible = imeInsets.getBottom(density) > 0
 
     // Theme-aware colors - respect app theme setting, not system
@@ -583,7 +627,9 @@ fun CalculatorScreen(
     }
 
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .imePadding(),
         topBar = {
             Column {
                 TopAppBar(
@@ -945,7 +991,7 @@ fun CalculatorScreen(
         },
         bottomBar = {
             if (isKeyboardVisible && (effectiveShowSymbolsShortcuts || effectiveShowNumbersShortcuts)) {
-                Column(modifier = Modifier.navigationBarsPadding()) {
+                Column {
                     HorizontalDivider(
                         thickness = 1.dp,
                         color = MaterialTheme.colorScheme.outlineVariant
@@ -997,59 +1043,11 @@ fun CalculatorScreen(
             }
         }
     ) { paddingValues ->
-        // Auto-focus and scroll to newly created or focused lines
-        LaunchedEffect(lines, pendingScrollLineId, currentlyFocusedLineId, paddingValues) {
-            val targetId = pendingScrollLineId ?: currentlyFocusedLineId ?: return@LaunchedEffect
-
-            // Short delay to allow layout/keyboard to stabilize
-            delay(100)
-
-            val targetIndex = lines.indexOfFirst { it.id == targetId }
-            if (targetIndex >= 0) {
-                val layoutInfo = listState.layoutInfo
-                val visibleItems = layoutInfo.visibleItemsInfo
-                val targetVisibleItem = visibleItems.find { it.index == targetIndex }
-
-                // Usable bottom margin: Shortcuts bar + system navigation
-                val bottomPaddingPx = with(density) { paddingValues.calculateBottomPadding().roundToPx() }
-                val extraMarginPx = (16 * density.density).toInt()
-                val bottomMarginPx = bottomPaddingPx + extraMarginPx
-                val viewportHeight = layoutInfo.viewportSize.height
-
-                if (targetVisibleItem == null) {
-                    // Not currently visible. Scroll to it.
-                    val lastVisibleIndex = visibleItems.lastOrNull()?.index ?: -1
-                    if (targetIndex > lastVisibleIndex) {
-                        // Below the viewport. Dock at bottom margin.
-                        val itemHeight = (48 * density.density).toInt() // Fallback estimate
-                        listState.animateScrollToItem(targetIndex, -(viewportHeight - itemHeight - bottomMarginPx))
-                    } else {
-                        // Above the viewport. Scroll to top.
-                        listState.animateScrollToItem(targetIndex)
-                    }
-                } else {
-                    // Item is visible, but check if it's in the "danger zone" (behind shortcuts)
-                    val itemBottomPx = targetVisibleItem.offset + targetVisibleItem.size
-                    val maxUsableY = viewportHeight - bottomMarginPx
-
-                    if (itemBottomPx > maxUsableY || targetVisibleItem.offset < layoutInfo.viewportStartOffset) {
-                        // Dock at the bottom margin so it's fully clear of the shortcuts bar
-                        val targetOffset = viewportHeight - targetVisibleItem.size - bottomMarginPx
-                        listState.animateScrollToItem(targetIndex, -targetOffset)
-                    }
-                }
-
-                // Clear the pending trigger if it was an Enter/Split action
-                if (pendingScrollLineId == targetId) {
-                    pendingScrollLineId = null
-                }
-            }
-        }
-
         // Editor area
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(paddingValues)
         ) {
             val textMeasurer = rememberTextMeasurer()
             val gutterStyle = MaterialTheme.typography.bodySmall.copy(
@@ -1065,51 +1063,36 @@ fun CalculatorScreen(
             val numberWidth = (digitWidth * maxLineDigits)
             val gutterOffset = 16.dp + numberWidth // 8dp start + 8dp end padding
 
-            // LazyColumn with lines
-            val outlineVariant = MaterialTheme.colorScheme.outlineVariant
-            val surfaceVariant = MaterialTheme.colorScheme.surfaceVariant
-            val dens = LocalDensity.current
+            // Full-height vertical dividers as background
+            Row(modifier = Modifier.fillMaxSize()) {
+                if (effectiveShowLineNumbers) {
+                    Box(modifier = Modifier.width(gutterOffset))
+                    VerticalDivider(
+                        modifier = Modifier.fillMaxHeight(),
+                        thickness = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
+                }
+                Box(modifier = Modifier.weight(1f))
+                VerticalDivider(
+                    modifier = Modifier.fillMaxHeight(),
+                    thickness = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
+                // Continuous background for the result column
+                Box(
+                    modifier = Modifier
+                        .width(120.dp)
+                        .fillMaxHeight()
+                        .background(MaterialTheme.colorScheme.surface)
+                        .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.15f))
+                )
+            }
 
+            // LazyColumn with lines
             LazyColumn(
                 state = listState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .imePadding()
-                    .drawBehind {
-                        val canvasSize = size
-                        val gutterOffsetPx = with(dens) { gutterOffset.toPx() }
-                        val resultPaneWidthPx = with(dens) { 120.dp.toPx() }
-                        val dividerWidthPx = 1.dp.toPx()
-
-                        // 1. Draw Gutter Vertical Divider
-                        if (effectiveShowLineNumbers) {
-                            val gutterDividerX = gutterOffsetPx
-                            drawLine(
-                                color = outlineVariant.copy(alpha = 0.6f),
-                                start = Offset(gutterDividerX, 0f),
-                                end = Offset(gutterDividerX, canvasSize.height),
-                                strokeWidth = dividerWidthPx
-                            )
-                        }
-
-                        // 2. Draw Result Column Background Pane
-                        val resultPaneStartX = canvasSize.width - resultPaneWidthPx
-                        drawRect(
-                            color = surfaceVariant.copy(alpha = 0.5f),
-                            size = Size(resultPaneWidthPx, canvasSize.height),
-                            topLeft = Offset(resultPaneStartX, 0f)
-                        )
-
-                        // 3. Draw Result Vertical Divider
-                        val resultDividerX = resultPaneStartX - (dividerWidthPx / 2)
-                        drawLine(
-                            color = outlineVariant.copy(alpha = 0.6f),
-                            start = Offset(resultDividerX, 0f),
-                            end = Offset(resultDividerX, canvasSize.height),
-                            strokeWidth = dividerWidthPx
-                        )
-                    },
-                contentPadding = paddingValues
+                modifier = Modifier.fillMaxSize()
             ) {
 
                 itemsIndexed(lines, key = { _, line -> line.id }) { index, line ->
@@ -1156,6 +1139,16 @@ fun CalculatorScreen(
                         groupingSeparatorEnabled = effectiveGroupingSeparatorEnabled,
                         onValueChange = { newValue, newVersion ->
                             viewModel.updateLine(line.copy(expression = newValue, version = newVersion), effectiveRationalMode)
+                            // Scroll to this line only if it's being edited but off-screen
+                            if (currentlyFocusedLineId == line.id) {
+                                coroutineScope.launch {
+                                    val visibleItems = listState.layoutInfo.visibleItemsInfo
+                                    val isVisible = visibleItems.any { it.index == index }
+                                    if (!isVisible) {
+                                        listState.animateScrollToItem(index)
+                                    }
+                                }
+                            }
                         },
                         onEnter = { expression, splitIndex ->
                             coroutineScope.launch {
@@ -1946,6 +1939,7 @@ private fun LineRow(
             modifier = Modifier
                 .width(120.dp)
                 .fillMaxHeight()
+                .background(MaterialTheme.colorScheme.surfaceVariant)
                 .padding(horizontal = 12.dp, vertical = 10.dp),
             contentAlignment = Alignment.TopEnd
         ) {

@@ -76,9 +76,9 @@ fun AppearanceSettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(padding)
                 .verticalScroll(rememberScrollState())
         ) {
-            Spacer(modifier = Modifier.height(padding.calculateTopPadding()))
             SettingsSection(title = "App theme")
 
             SingleChoiceSegmentedButtonRow(
@@ -150,7 +150,7 @@ fun AppearanceSettingsScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(padding.calculateBottomPadding()))
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }

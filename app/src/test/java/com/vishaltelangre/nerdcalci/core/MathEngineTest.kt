@@ -2017,15 +2017,21 @@ class MathEngineTest {
         "(9)^(9^9)",
         "(9)^(9)^(9)",
         "2^1000001",
+        "2^-1000001",
+        "2^-2147483648",
+        "2^1000000.5",
         "2^1000000"
     ) { result ->
-        assertError("Calculation result is too large", result, 0)
+        assertError("Exponent is too large (max 1000000)", result, 0)
         assertError("Exponent is too large (max 1000000)", result, 1)
         assertEquals("1.966270504755529136180759085269121E77", result[2].result)
         assertError("Exponent is too large (max 1000000)", result, 3)
         assertError("Exponent is too large (max 1000000)", result, 4)
         assertError("Exponent is too large (max 1000000)", result, 5)
-        assertEquals("9.900656229295898250697923616301903E301029", result[6].result)
+        assertError("Exponent is too large (max 1000000)", result, 6)
+        assertError("Exponent is too large (max 1000000)", result, 7)
+        assertError("Exponent is too large (max 1000000)", result, 8)
+        assertEquals("9.900656229295898250697923616301903E301029", result[9].result)
     }
 
     @Test

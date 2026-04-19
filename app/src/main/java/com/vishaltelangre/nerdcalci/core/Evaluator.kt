@@ -633,27 +633,21 @@ class Evaluator(
             left.remainder(right, mc)
         }
         TokenKind.CARET   -> {
-            val exponent: Int? = try {
-                right.toIntOrNullExact()
-            } catch (e: ArithmeticException) {
-                null
+            val limit = BigDecimal(Constants.MAX_POWER_EXPONENT)
+            if (right.abs() > limit) {
+                throw ArithmeticException("Exponent is too large (max ${Constants.MAX_POWER_EXPONENT})")
             }
 
+            val exponent: Int? = right.toIntOrNullExact()
+
             if (exponent == null) {
-                // Exponent doesn't fit in an Int. If base > 1 and exponent is positive, it's definitely an overflow.
+                // Fallback to Double for non-integer exponents that are within magnitude limits
                 val rightDouble = right.toDouble()
-                if (left.abs() > BigDecimal.ONE && rightDouble > 0) {
-                    throw ArithmeticException("Calculation result is too large")
-                }
-                // Fallback to Double for non-integer or very large/small exponents that might still be small results
                 val result = left.toDouble().pow(rightDouble)
                 if (result.isInfinite()) throw ArithmeticException("Calculation result is too large")
                 if (result.isNaN()) throw ArithmeticException("Undefined")
                 BigDecimal(result, mc)
             } else {
-                if (Math.abs(exponent) > Constants.MAX_POWER_EXPONENT) {
-                    throw ArithmeticException("Exponent is too large (max ${Constants.MAX_POWER_EXPONENT})")
-                }
                 try {
                     left.pow(exponent, mc)
                 } catch (e: Exception) {

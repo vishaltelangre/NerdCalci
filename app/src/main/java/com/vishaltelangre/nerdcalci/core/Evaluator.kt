@@ -39,10 +39,6 @@ class Evaluator(
 ) {
     private val mc = JavaMathContext.DECIMAL128
 
-    companion object {
-        private const val MAX_EXACT_EXPONENT = 10_000
-        private const val MAX_POWER_EXPONENT = 1_000_000
-    }
 
     suspend fun evaluate(expr: Expr): EvaluationResult = when (expr) {
         is Expr.NumberLiteral  -> EvaluationResult(expr.value, rationalValue = Rational.toRational(expr.value))
@@ -655,8 +651,8 @@ class Evaluator(
                 if (result.isNaN()) throw ArithmeticException("Undefined")
                 BigDecimal(result, mc)
             } else {
-                if (Math.abs(exponent) > MAX_POWER_EXPONENT) {
-                    throw ArithmeticException("Exponent is too large (max 1,000,000)")
+                if (Math.abs(exponent) > Constants.MAX_POWER_EXPONENT) {
+                    throw ArithmeticException("Exponent is too large (max ${Constants.MAX_POWER_EXPONENT})")
                 }
                 try {
                     left.pow(exponent, mc)
@@ -688,7 +684,7 @@ class Evaluator(
                 null
             }
 
-            if (exponentVal == null || exponentVal.abs() > BigInteger.valueOf(MAX_EXACT_EXPONENT.toLong())) {
+            if (exponentVal == null || exponentVal.abs() > BigInteger.valueOf(Constants.MAX_EXACT_EXPONENT.toLong())) {
                 // Exponent too large for exact rational power; degrade to approximated BigDecimal
                 val base = left.toBigDecimal(mc)
                 val exponent = right.toBigDecimal(mc)

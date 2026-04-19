@@ -99,11 +99,21 @@ class Lexer(private val source: String) {
         }
 
         val lexeme = source.substring(start, pos)
-        val value = try {
-            BigDecimal(lexeme)
-        } catch (e: Exception) {
-            BigDecimal.ZERO
+
+        // Exponent safety check to prevent hangups on massive scale
+        val eIdx = lexeme.indexOf('E')
+        if (eIdx >= 0) {
+            val expPart = lexeme.substring(eIdx + 1)
+            // Skip the optional sign for range check
+            val expDigits = if (expPart.startsWith('+') || expPart.startsWith('-')) expPart.substring(1) else expPart
+
+            val expValue = expDigits.toLongOrNull()
+            if (expValue == null || expValue > Constants.MAX_POWER_EXPONENT) {
+                throw ArithmeticException("Exponent is too large (max ${Constants.MAX_POWER_EXPONENT})")
+            }
         }
+
+        val value = BigDecimal(lexeme)
         return Token(TokenKind.NUMBER, lexeme, value, start)
     }
 

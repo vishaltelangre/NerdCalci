@@ -573,6 +573,21 @@ object MathEngine {
         return s
     }
 
+    /** Calculates the length of [BigDecimal.toPlainString] without allocating the string. */
+    private fun getPlainLength(value: BigDecimal): Int {
+        val precision = value.precision()
+        val scale = value.scale()
+        val sign = if (value.signum() < 0) 1 else 0
+        return when {
+            scale == 0 -> sign + precision
+            scale > 0 -> {
+                if (precision > scale) sign + precision + 1 // e.g. "123.45"
+                else sign + 2 + scale // e.g. "0.00123"
+            }
+            else -> sign + precision + Math.abs(scale) // e.g. "123000" (where scale < 0)
+        }
+    }
+
     private fun getSafeSymbols(locale: Locale, groupingSeparatorEnabled: Boolean = true): java.text.DecimalFormatSymbols {
         var symbols = java.text.DecimalFormatSymbols.getInstance(locale)
 
@@ -678,11 +693,8 @@ object MathEngine {
 
 
     private fun isScientificTruncated(value: BigDecimal, precision: Int): Boolean {
-        if (value.compareTo(BigDecimal.ZERO) == 0) return false
-        val exponent = value.precision() - value.scale() - 1
-        val mantissa = value.movePointLeft(exponent)
-        val roundedMantissa = mantissa.setScale(precision.coerceAtLeast(0), java.math.RoundingMode.HALF_UP)
-        return mantissa.compareTo(roundedMantissa) != 0
+        // Use precision-based check for scientific notation truncation
+        return value.stripTrailingZeros().precision() > (precision + 1)
     }
 
     private fun formatScientific(

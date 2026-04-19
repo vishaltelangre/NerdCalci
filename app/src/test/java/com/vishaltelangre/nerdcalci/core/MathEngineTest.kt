@@ -994,14 +994,21 @@ class MathEngineTest {
     }
 
     @Test
-    fun `scientific notation works`() = testCalculate(
+    fun `scientific notation works correctly`() = testCalculate(
         "1E2",
         "1.23E4",
         "1E-2",
         "1.5E+3",
         "1E2 - e",
         "1E-2 - e",
-        "1.23E-5"
+        "1.23E-5",
+        "1E5",
+        "1E1000000",
+        "1E100000000000000000000000",
+        "50E100000",
+        "1E5 + 2E5",
+        "2E10 * 3E10",
+        "1E1000 / 1E500"
     ) { result ->
         assertEquals("100.0", result[0].result)
         assertEquals("12300.0", result[1].result)
@@ -1010,6 +1017,14 @@ class MathEngineTest {
         assertEquals("97.2817181715409547646397125286473375022428", result[4].result) // 100 - e
         assertEquals("-2.7082818284590452353602874713526624977572", result[5].result) // 0.01 - e
         assertEquals("0.0000123", result[6].result)
+        assertEquals("100000.0", result[7].result)
+        assertEquals("1.0E1000000", result[8].result)
+        assertError("Exponent is too large (max 1000000)", result, 9)
+        // 50E100000 = 5 * 10^100001. formatDisplayResult converts 5E100001 to 5.00E100001 with default precision 2.
+        assertEquals("5.00E100001", MathEngine.formatDisplayResult(result[10].result, 2))
+        assertEquals("300000.0", result[11].result)
+        assertEquals("6.0E20", result[12].result) // >= 10^15 switches to scientific
+        assertEquals("1.0E500", result[13].result)
     }
 
     @Test
@@ -2005,11 +2020,11 @@ class MathEngineTest {
         "2^1000000"
     ) { result ->
         assertError("Calculation result is too large", result, 0)
-        assertError("Exponent is too large (max 1,000,000)", result, 1)
+        assertError("Exponent is too large (max 1000000)", result, 1)
         assertEquals("1.966270504755529136180759085269121E77", result[2].result)
-        assertError("Exponent is too large (max 1,000,000)", result, 3)
-        assertError("Exponent is too large (max 1,000,000)", result, 4)
-        assertError("Exponent is too large (max 1,000,000)", result, 5)
+        assertError("Exponent is too large (max 1000000)", result, 3)
+        assertError("Exponent is too large (max 1000000)", result, 4)
+        assertError("Exponent is too large (max 1000000)", result, 5)
         assertEquals("9.900656229295898250697923616301903E301029", result[6].result)
     }
 

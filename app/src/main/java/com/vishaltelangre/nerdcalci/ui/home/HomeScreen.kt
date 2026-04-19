@@ -458,7 +458,7 @@ private fun HomeFileList(
                         }
                     }
                 },
-                onDuplicate = { id -> viewModel.duplicateFile(id) { onFileClick(it) } },
+                onDuplicate = { id -> viewModel.duplicateFile(context, id) { onFileClick(it) } },
                 onDelete = { id ->
                     coroutineScope.launch {
                         if (!viewModel.deleteFile(context, id)) {
@@ -490,7 +490,7 @@ private fun HomeFileList(
                         }
                     }
                 },
-                onDuplicate = { id -> viewModel.duplicateFile(id) { onFileClick(it) } },
+                onDuplicate = { id -> viewModel.duplicateFile(context, id) { onFileClick(it) } },
                 onDelete = { id ->
                     coroutineScope.launch {
                         if (!viewModel.deleteFile(context, id)) {

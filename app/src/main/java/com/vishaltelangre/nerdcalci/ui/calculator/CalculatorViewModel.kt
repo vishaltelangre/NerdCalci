@@ -910,10 +910,13 @@ class CalculatorViewModel(
         }
     }
 
-    fun duplicateFile(sourceFileId: Long, onCreated: (Long) -> Unit = {}) {
+    fun duplicateFile(context: Context, sourceFileId: Long, onCreated: (Long) -> Unit = {}) {
         viewModelScope.launch(ioDispatcher) {
             val fileId = dao.duplicateFile(sourceFileId, System.currentTimeMillis())
             if (fileId != null) {
+                if (SyncManager.isSyncActive(context)) {
+                    syncFiles(context)
+                }
                 withContext(Dispatchers.Main) { onCreated(fileId) }
             }
         }
@@ -1196,10 +1199,7 @@ class CalculatorViewModel(
 
                     if (SyncManager.isSyncActive(context)) {
                         val renameError = SyncManager.renameExternalFile(context, oldName, finalName)
-                        if (renameError != null) {
-                            val missingExternalFile = renameError.message?.startsWith("External file not found:") == true
-                            if (!missingExternalFile) throw renameError
-                        }
+                        if (renameError != null) throw renameError
                     }
                     true
                 } else {

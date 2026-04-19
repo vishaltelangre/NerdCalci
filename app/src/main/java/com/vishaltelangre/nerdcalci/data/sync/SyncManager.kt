@@ -683,7 +683,7 @@ object SyncManager {
                 val oldNameWithExtension = "$oldName$EXPORT_FILE_EXTENSION"
                 val newNameWithExtension = "$newName$EXPORT_FILE_EXTENSION"
                 val safFile = folder.findFile(oldNameWithExtension)
-                    ?: return@withContext IllegalStateException("External file not found: $oldNameWithExtension")
+                    ?: return@withContext null // Success: if it's already missing, nothing to rename
 
                 // Get syncId from file before renaming it so we can update snapshot
                 val syncId = context.contentResolver.openInputStream(safFile.uri)?.use {
@@ -728,7 +728,7 @@ object SyncManager {
 
                 val fileNameWithExtension = "$fileName$EXPORT_FILE_EXTENSION"
                 val safFile = folder.findFile(fileNameWithExtension)
-                    ?: return@withContext IllegalStateException("External file not found: $fileNameWithExtension")
+                    ?: return@withContext null // Success: if it's already missing, goal is achieved
 
                 // Get syncId from file before deleting it so we can clean up snapshot
                 val syncId = context.contentResolver.openInputStream(safFile.uri)?.use {

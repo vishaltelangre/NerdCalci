@@ -1986,6 +1986,45 @@ class MathEngineTest {
     }
 
     @Test
+    fun `power operator handles large exponents and nested powers`() = testCalculate(
+        "10^10^10",
+        "9^9^9",
+        "(9^9)^9",
+        "(9)^(9^9)",
+        "(9)^(9)^(9)",
+        "2^1000001",
+        "2^1000000"
+    ) { result ->
+        assertError("Calculation result is too large", result, 0)
+        assertError("Exponent is too large (max 1,000,000)", result, 1)
+        assertEquals("1.966270504755529136180759085269121E77", result[2].result)
+        assertError("Exponent is too large (max 1,000,000)", result, 3)
+        assertError("Exponent is too large (max 1,000,000)", result, 4)
+        assertError("Exponent is too large (max 1,000,000)", result, 5)
+        assertEquals("9.900656229295898250697923616301903E301029", result[6].result)
+    }
+
+    @Test
+    fun `power operator handles safety limits in rational mode`() = runBlocking {
+        val lines = listOf(
+            LineEntity(fileId = 1L, sortOrder = 0, expression = "2^10001"), // Exceeds MAX_EXACT_EXPONENT (10,000)
+            LineEntity(fileId = 1L, sortOrder = 1, expression = "2^10")    // Within limit
+        )
+        val results = MathEngine.calculate(lines, rationalMode = true)
+
+        // 2^10001 fallback to BigDecimal approximation (DECIMAL128 = 34 digits)
+        // results[0].result is a literal string (num.toString() because denominator is 1)
+        val expectedStart = "399012623376151676976748432536717"
+        val actualResult = results[0].result
+        assertTrue(actualResult.startsWith(expectedStart))
+        assertEquals(3011, actualResult.length)
+        assertTrue(actualResult.substring(expectedStart.length).all { it == '0' })
+
+        // 2^10 should still be exact 1024
+        assertEquals("1024", results[1].result)
+    }
+
+    @Test
     fun `lineno, linenumber, and currentLineNumber returns correct current line number`() = testCalculate(
         "lineno",
         "linenumber",

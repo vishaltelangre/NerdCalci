@@ -79,6 +79,25 @@ class Lexer(private val source: String) {
             while (pos < source.length && source[pos].isDigit()) pos++
         }
 
+        // Exponent part (Uppercase 'E' only to distinguish from 'e')
+        if (pos < source.length && source[pos] == 'E') {
+            val savedPos = pos
+            pos++ // consume 'E'
+
+            // Optional sign
+            if (pos < source.length && (source[pos] == '+' || source[pos] == '-')) {
+                pos++
+            }
+
+            // Must have at least one digit after E (and optional sign)
+            if (pos < source.length && source[pos].isDigit()) {
+                while (pos < source.length && source[pos].isDigit()) pos++
+            } else {
+                // Not a valid exponent, backtrack
+                pos = savedPos
+            }
+        }
+
         val lexeme = source.substring(start, pos)
         val value = try {
             BigDecimal(lexeme)

@@ -6,6 +6,7 @@
   - [Modulo](#modulo)
   - [Exponentiation](#exponentiation)
   - [Grouping](#grouping)
+  - [Scientific notation](#scientific-notation)
 - [2. Variables and state](#2-variables-and-state)
   - [Assignment](#assignment)
   - [Compound assignment](#compound-assignment)
@@ -130,6 +131,15 @@ Overrides standard precedence.
 (2 + 3) * 4 # evaluates to 20
 ```
 
+### Scientific notation
+
+NerdCalci supports standard scientific notation (E-notation) using an uppercase **`E`**. This is particularly useful for working with very large or very small numbers.
+
+```text
+1E2         # evaluates to 100
+1.23E-5     # evaluates to 1.23E-5
+500E+2      # evaluates to 50,000
+```
 ## 2. Variables and state
 
 NerdCalci maintains variable state seamlessly across multiple lines. You can assign a value on one line and use it in subsequent lines.
@@ -218,7 +228,7 @@ NerdCalci includes a wide array of built-in math functions.
 
 | Function   | Example      | Result      | Description                  |
 | ---------- | ------------ | ----------- | ---------------------------- |
-| `log(x)`   | `log(E)`     | 1           | Natural logarithm            |
+| `log(x)`   | `log(e)`     | 1           | Natural logarithm            |
 | `log10(x)` | `log10(100)` | 2           | Base 10 logarithm            |
 | `log2(x)`  | `log2(8)`    | 3           | Base 2 logarithm             |
 | `log1p(x)` | `log1p(x)`   | `ln(1 + x)` | Natural logarithm of 1 + x   |
@@ -255,7 +265,7 @@ NerdCalci provides common mathematical constants.
 | Constant        | Value | Description                                 |
 | --------------- | ----- | ------------------------------------------- |
 | `PI`, `pi`, `π` | 3.14  | Ratio of circle's circumference to diameter |
-| `E`, `e`        | 2.72  | Euler's number                              |
+| `e`             | 2.72  | Euler's number                              |
 
 ## 6. Comments
 

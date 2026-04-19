@@ -869,7 +869,7 @@ class MathEngineTest {
     fun `logarithm functions work`() = testCalculate(
         "log10(1000)",
         "log2(8)",
-        "log(E)" // Natural log of E should be 1
+        "log(e)" // Natural log of e should be 1
     ) { result ->
         assertEquals("3.0", result[0].result)
         assertEquals("3.0", result[1].result)
@@ -967,42 +967,50 @@ class MathEngineTest {
     @Test
     fun `constants work`() = testCalculate(
         "PI",
-        "E",
         "PI * 2",
-        "E + 1",
         "pi",
         "π",
-        "e"
+        "e",
+        "e+1"
     ) { result ->
         val piValue = result[0].result.toDoubleOrNull()
         assertNotNull("PI should return a number, got: ${result[0].result}", piValue)
         assertTrue("PI should be ~3.14, got: $piValue", piValue!! >= 3.14 && piValue <= 3.15)
 
-        val eValue = result[1].result.toDoubleOrNull()
-        assertNotNull("E should return a number, got: ${result[1].result}", eValue)
-        assertTrue("E should be ~2.72, got: $eValue", eValue!! >= 2.71 && eValue <= 2.73)
-
-        val piTimesTwo = result[2].result.toDoubleOrNull()
-        assertNotNull("PI * 2 should return a number, got: ${result[2].result}", piTimesTwo)
+        val piTimesTwo = result[1].result.toDoubleOrNull()
+        assertNotNull("PI * 2 should return a number, got: ${result[1].result}", piTimesTwo)
         assertTrue("PI * 2 should be ~6.28, got: $piTimesTwo", piTimesTwo!! >= 6.28 && piTimesTwo <= 6.29)
 
-        val ePlusOne = result[3].result.toDoubleOrNull()
-        assertNotNull("E + 1 should return a number, got: ${result[3].result}", ePlusOne)
-        assertTrue("E + 1 should be ~3.71, got: $ePlusOne", ePlusOne!! >= 3.71 && ePlusOne <= 3.73)
+        assertEquals(result[0].result, result[2].result) // pi
+        assertEquals(result[0].result, result[3].result) // π
 
-        val piValueLower = result[4].result.toDoubleOrNull()
-        assertNotNull("pi should return a number, got: ${result[4].result}", piValueLower)
-        assertTrue("pi should be ~3.14, got: $piValueLower", piValueLower!! >= 3.14 && piValueLower <= 3.15)
-
-        val piValueSymbol = result[5].result.toDoubleOrNull()
-        assertNotNull("π should return a number, got: ${result[5].result}", piValueSymbol)
-        assertTrue("π should be ~3.14, got: $piValueSymbol", piValueSymbol!! >= 3.14 && piValueSymbol <= 3.15)
-
-        val eValueLower = result[6].result.toDoubleOrNull()
-        assertNotNull("e should return a number, got: ${result[6].result}", eValueLower)
+        val eValueLower = result[4].result.toDoubleOrNull()
+        assertNotNull("e should return a number, got: ${result[4].result}", eValueLower)
         assertTrue("e should be ~2.72, got: $eValueLower", eValueLower!! >= 2.71 && eValueLower <= 2.73)
+
+        val ePlusOne = result[5].result.toDoubleOrNull()
+        assertNotNull("e+1 should return a number, got: ${result[5].result}", ePlusOne)
+        assertTrue("e+1 should be ~3.72, got: $ePlusOne", ePlusOne!! >= 3.71 && ePlusOne <= 3.73)
     }
 
+    @Test
+    fun `scientific notation works`() = testCalculate(
+        "1E2",
+        "1.23E4",
+        "1E-2",
+        "1.5E+3",
+        "1E2 - e",
+        "1E-2 - e",
+        "1.23E-5"
+    ) { result ->
+        assertEquals("100.0", result[0].result)
+        assertEquals("12300.0", result[1].result)
+        assertEquals("0.01", result[2].result)
+        assertEquals("1500.0", result[3].result)
+        assertEquals("97.2817181715409547646397125286473375022428", result[4].result) // 100 - e
+        assertEquals("-2.7082818284590452353602874713526624977572", result[5].result) // 0.01 - e
+        assertEquals("0.0000123", result[6].result)
+    }
 
     @Test
     fun `functions can be used with variables`() = testCalculate(
@@ -1777,8 +1785,9 @@ class MathEngineTest {
     }
 
     @Test
-    fun `assignment to constant E is not allowed`() = testCalculate("E = 4") { result ->
-        assertError("`E` is a reserved name and cannot be changed", result, 0)
+    fun `assignment to E is now allowed`() = testCalculate("E = 4", "E * 2") { result ->
+        assertEquals("4.0", result[0].result)
+        assertEquals("8.0", result[1].result)
     }
 
     @Test

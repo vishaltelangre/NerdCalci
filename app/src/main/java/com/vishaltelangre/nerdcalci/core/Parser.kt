@@ -484,7 +484,7 @@ class Parser(private val tokens: List<Token>) {
     /**
      * Reject assignment to reserved names.
      *
-     * Built-in functions (sin, sqrt, pow, ...) and constants (PI, E) cannot be
+     * Built-in functions (sin, sqrt, pow, ...) and constants (PI, e) cannot be
      * used as variable names. For example, `sin = 5` is an error.
      */
     private fun requireAssignable(name: String, position: Int) {

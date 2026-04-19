@@ -1,0 +1,3 @@
+- Stabilized the power operator (^) with safety limits and human-friendly error reporting (Issue #149).
+- Added support for scientific E-notation and ensured that Euler's number constant is only through 'e' (Issue #150).
+- Fixed deletion and renaming issues for newly duplicated files when synchronization is enabled (Issue #148).

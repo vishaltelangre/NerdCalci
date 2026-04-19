@@ -883,7 +883,7 @@ fun CalculatorScreen(
                                     },
                                     onClick = {
                                         showMenu = false
-                                        viewModel.duplicateFile(fileId) { newFileId ->
+                                        viewModel.duplicateFile(context, fileId) { newFileId ->
                                             onNavigateToFile(newFileId)
                                         }
                                     }

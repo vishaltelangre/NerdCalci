@@ -170,7 +170,7 @@ class LockFeatureTest {
         fakeDao.insertLine(LineEntity(id = 10L, fileId = fileId, expression = "1+1", sortOrder = 0))
 
         val capturedNewId = CompletableDeferred<Long?>()
-        viewModel.duplicateFile(fileId) { newId ->
+        viewModel.duplicateFile(mockContext, fileId) { newId ->
             capturedNewId.complete(newId)
         }
 

@@ -1,6 +1,7 @@
 package com.vishaltelangre.nerdcalci.ui.calculator
 
 import android.util.Log
+import android.content.Context
 import android.content.SharedPreferences
 import com.vishaltelangre.nerdcalci.data.local.FakeCalculatorDao
 import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
@@ -38,6 +39,7 @@ class CalculatorViewModelTest {
 
     private lateinit var viewModel: CalculatorViewModel
     private lateinit var fakeDao: FakeCalculatorDao
+    private val mockContext = mockk<Context>(relaxed = true)
 
     @Before
     fun setup() {
@@ -89,7 +91,7 @@ class CalculatorViewModelTest {
 
         // When duplicating it
         val capturedNewId = CompletableDeferred<Long?>()
-        viewModel.duplicateFile(10L) { newId ->
+        viewModel.duplicateFile(mockContext, 10L) { newId ->
             capturedNewId.complete(newId)
         }
         

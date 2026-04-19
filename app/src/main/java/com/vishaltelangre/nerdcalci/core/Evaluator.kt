@@ -39,6 +39,7 @@ class Evaluator(
 ) {
     private val mc = JavaMathContext.DECIMAL128
 
+
     suspend fun evaluate(expr: Expr): EvaluationResult = when (expr) {
         is Expr.NumberLiteral  -> EvaluationResult(expr.value, rationalValue = Rational.toRational(expr.value))
         is Expr.PercentLiteral -> {
@@ -496,12 +497,12 @@ class Evaluator(
                     val leftCanonical = UnitConverter.fromBase(leftVal, canonicalUnit, variables)
                     val rightCanonical = UnitConverter.fromBase(rightVal, canonicalUnit, variables)
                     val resultCanonical = applyOp(leftCanonical, expr.op, rightCanonical)
-                    
+
                     val leftCanonicalRational = UnitConverter.fromBase(leftRational, canonicalUnit, variables)
                     val rightCanonicalRational = UnitConverter.fromBase(rightRational, canonicalUnit, variables)
                     val resultCanonicalRational = applyRationalOp(leftCanonicalRational, expr.op, rightCanonicalRational)
                     val resultBaseRational = UnitConverter.toBase(resultCanonicalRational, canonicalUnit, variables)
-                    
+
                     return EvaluationResult(
                         UnitConverter.toBase(resultCanonical, canonicalUnit, variables),
                         canonicalUnit.symbols.first(),
@@ -539,7 +540,7 @@ class Evaluator(
             TokenKind.STAR, TokenKind.SLASH -> UnitConverter.deriveUnitScale(leftUnit, rightUnit, expr.op)
             TokenKind.CARET -> if (leftUnit != null) {
                 val exponent = rightVal.toIntOrNullExact()
-                if (exponent == 3 && leftUnit?.category == UnitCategory.LENGTH) {
+                if (exponent == 3 && leftUnit.category == UnitCategory.LENGTH) {
                     BigDecimal("1000.0")
                 } else {
                     BigDecimal.ONE
@@ -632,10 +633,29 @@ class Evaluator(
             left.remainder(right, mc)
         }
         TokenKind.CARET   -> {
-            try {
-                left.pow(right.intValueExact(), mc)
-            } catch (e: Exception) {
-                BigDecimal(left.toDouble().pow(right.toDouble()), mc)
+            val limit = BigDecimal(Constants.MAX_POWER_EXPONENT)
+            if (right.abs() > limit) {
+                throw ArithmeticException("Exponent is too large (max ${Constants.MAX_POWER_EXPONENT})")
+            }
+
+            val exponent: Int? = right.toIntOrNullExact()
+
+            if (exponent == null) {
+                // Fallback to Double for non-integer exponents that are within magnitude limits
+                val rightDouble = right.toDouble()
+                val result = left.toDouble().pow(rightDouble)
+                if (result.isInfinite()) throw ArithmeticException("Calculation result is too large")
+                if (result.isNaN()) throw ArithmeticException("Undefined")
+                BigDecimal(result, mc)
+            } else {
+                try {
+                    left.pow(exponent, mc)
+                } catch (e: Exception) {
+                    val result = left.toDouble().pow(exponent.toDouble())
+                    if (result.isInfinite()) throw ArithmeticException("Calculation result is too large")
+                    if (result.isNaN()) throw ArithmeticException("Undefined")
+                    BigDecimal(result, mc)
+                }
             }
         }
         else -> throw EvalException("Unknown operator: `$op`")
@@ -652,20 +672,24 @@ class Evaluator(
             left - (right * Rational.toRational(div))
         }
         TokenKind.CARET   -> {
-            try {
-                val exponent = right.toBigDecimal(mc).toBigIntegerExact().toInt()
+            val exponentVal = try {
+                right.toBigDecimal(mc).toBigIntegerExact()
+            } catch (e: ArithmeticException) {
+                null
+            }
+
+            if (exponentVal == null || exponentVal.abs() > BigInteger.valueOf(Constants.MAX_EXACT_EXPONENT.toLong())) {
+                // Exponent too large for exact rational power; degrade to approximated BigDecimal
+                val base = left.toBigDecimal(mc)
+                val exponent = right.toBigDecimal(mc)
+                Rational.toRational(applyOp(base, TokenKind.CARET, exponent))
+            } else {
+                val exponent = exponentVal.toInt()
                 if (exponent >= 0) {
                     Rational(left.num.pow(exponent), left.den.pow(exponent))
                 } else {
                     Rational(left.den.pow(-exponent), left.num.pow(-exponent))
                 }
-            } catch (e: Exception) {
-                // Fallback to double-based approximation for non-integer exponents
-                println("Evaluator: falling back to double approximation for power: ${e.message}")
-                val leftDouble = left.toBigDecimal(mc).toDouble()
-                val rightDouble = right.toBigDecimal(mc).toDouble()
-                val resultDouble = leftDouble.pow(rightDouble)
-                Rational.fromBigDecimalSmart(BigDecimal(resultDouble, mc))
             }
         }
         else -> throw EvalException("Unknown operator: `$op`")

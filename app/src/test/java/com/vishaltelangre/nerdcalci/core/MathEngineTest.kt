@@ -869,7 +869,7 @@ class MathEngineTest {
     fun `logarithm functions work`() = testCalculate(
         "log10(1000)",
         "log2(8)",
-        "log(E)" // Natural log of E should be 1
+        "log(e)" // Natural log of e should be 1
     ) { result ->
         assertEquals("3.0", result[0].result)
         assertEquals("3.0", result[1].result)
@@ -967,42 +967,65 @@ class MathEngineTest {
     @Test
     fun `constants work`() = testCalculate(
         "PI",
-        "E",
         "PI * 2",
-        "E + 1",
         "pi",
         "π",
-        "e"
+        "e",
+        "e+1"
     ) { result ->
         val piValue = result[0].result.toDoubleOrNull()
         assertNotNull("PI should return a number, got: ${result[0].result}", piValue)
         assertTrue("PI should be ~3.14, got: $piValue", piValue!! >= 3.14 && piValue <= 3.15)
 
-        val eValue = result[1].result.toDoubleOrNull()
-        assertNotNull("E should return a number, got: ${result[1].result}", eValue)
-        assertTrue("E should be ~2.72, got: $eValue", eValue!! >= 2.71 && eValue <= 2.73)
-
-        val piTimesTwo = result[2].result.toDoubleOrNull()
-        assertNotNull("PI * 2 should return a number, got: ${result[2].result}", piTimesTwo)
+        val piTimesTwo = result[1].result.toDoubleOrNull()
+        assertNotNull("PI * 2 should return a number, got: ${result[1].result}", piTimesTwo)
         assertTrue("PI * 2 should be ~6.28, got: $piTimesTwo", piTimesTwo!! >= 6.28 && piTimesTwo <= 6.29)
 
-        val ePlusOne = result[3].result.toDoubleOrNull()
-        assertNotNull("E + 1 should return a number, got: ${result[3].result}", ePlusOne)
-        assertTrue("E + 1 should be ~3.71, got: $ePlusOne", ePlusOne!! >= 3.71 && ePlusOne <= 3.73)
+        assertEquals(result[0].result, result[2].result) // pi
+        assertEquals(result[0].result, result[3].result) // π
 
-        val piValueLower = result[4].result.toDoubleOrNull()
-        assertNotNull("pi should return a number, got: ${result[4].result}", piValueLower)
-        assertTrue("pi should be ~3.14, got: $piValueLower", piValueLower!! >= 3.14 && piValueLower <= 3.15)
-
-        val piValueSymbol = result[5].result.toDoubleOrNull()
-        assertNotNull("π should return a number, got: ${result[5].result}", piValueSymbol)
-        assertTrue("π should be ~3.14, got: $piValueSymbol", piValueSymbol!! >= 3.14 && piValueSymbol <= 3.15)
-
-        val eValueLower = result[6].result.toDoubleOrNull()
-        assertNotNull("e should return a number, got: ${result[6].result}", eValueLower)
+        val eValueLower = result[4].result.toDoubleOrNull()
+        assertNotNull("e should return a number, got: ${result[4].result}", eValueLower)
         assertTrue("e should be ~2.72, got: $eValueLower", eValueLower!! >= 2.71 && eValueLower <= 2.73)
+
+        val ePlusOne = result[5].result.toDoubleOrNull()
+        assertNotNull("e+1 should return a number, got: ${result[5].result}", ePlusOne)
+        assertTrue("e+1 should be ~3.72, got: $ePlusOne", ePlusOne!! >= 3.71 && ePlusOne <= 3.73)
     }
 
+    @Test
+    fun `scientific notation works correctly`() = testCalculate(
+        "1E2",
+        "1.23E4",
+        "1E-2",
+        "1.5E+3",
+        "1E2 - e",
+        "1E-2 - e",
+        "1.23E-5",
+        "1E5",
+        "1E1000000",
+        "1E100000000000000000000000",
+        "50E100000",
+        "1E5 + 2E5",
+        "2E10 * 3E10",
+        "1E1000 / 1E500"
+    ) { result ->
+        assertEquals("100.0", result[0].result)
+        assertEquals("12300.0", result[1].result)
+        assertEquals("0.01", result[2].result)
+        assertEquals("1500.0", result[3].result)
+        assertEquals("97.2817181715409547646397125286473375022428", result[4].result) // 100 - e
+        assertEquals("-2.7082818284590452353602874713526624977572", result[5].result) // 0.01 - e
+        assertEquals("0.0000123", result[6].result)
+        assertEquals("100000.0", result[7].result)
+        assertEquals("1.0E1000000", result[8].result)
+        assertError("Exponent is too large (max 1000000)", result, 9)
+        // 50E100000 = 5 * 10^100001. formatDisplayResult converts 5E100001 to 5.00E100001 with default precision 2.
+        assertEquals("5.00E100001", MathEngine.formatDisplayResult(result[10].result, 2))
+        assertEquals("300000.0", result[11].result)
+        assertEquals("6.0E20", result[12].result) // >= 10^15 switches to scientific
+        assertEquals("1.0E500", result[13].result)
+    }
 
     @Test
     fun `functions can be used with variables`() = testCalculate(
@@ -1777,8 +1800,9 @@ class MathEngineTest {
     }
 
     @Test
-    fun `assignment to constant E is not allowed`() = testCalculate("E = 4") { result ->
-        assertError("`E` is a reserved name and cannot be changed", result, 0)
+    fun `assignment to E is now allowed`() = testCalculate("E = 4", "E * 2") { result ->
+        assertEquals("4.0", result[0].result)
+        assertEquals("8.0", result[1].result)
     }
 
     @Test
@@ -1983,6 +2007,51 @@ class MathEngineTest {
     @Test
     fun `factorial rejects inputs beyond supported limit`() = testCalculate("factorial(1001)") { result ->
         assertError("Factorial is only supported up to 1000", result, 0)
+    }
+
+    @Test
+    fun `power operator handles large exponents and nested powers`() = testCalculate(
+        "10^10^10",
+        "9^9^9",
+        "(9^9)^9",
+        "(9)^(9^9)",
+        "(9)^(9)^(9)",
+        "2^1000001",
+        "2^-1000001",
+        "2^-2147483648",
+        "2^1000000.5",
+        "2^1000000"
+    ) { result ->
+        assertError("Exponent is too large (max 1000000)", result, 0)
+        assertError("Exponent is too large (max 1000000)", result, 1)
+        assertEquals("1.966270504755529136180759085269121E77", result[2].result)
+        assertError("Exponent is too large (max 1000000)", result, 3)
+        assertError("Exponent is too large (max 1000000)", result, 4)
+        assertError("Exponent is too large (max 1000000)", result, 5)
+        assertError("Exponent is too large (max 1000000)", result, 6)
+        assertError("Exponent is too large (max 1000000)", result, 7)
+        assertError("Exponent is too large (max 1000000)", result, 8)
+        assertEquals("9.900656229295898250697923616301903E301029", result[9].result)
+    }
+
+    @Test
+    fun `power operator handles safety limits in rational mode`() = runBlocking {
+        val lines = listOf(
+            LineEntity(fileId = 1L, sortOrder = 0, expression = "2^10001"), // Exceeds MAX_EXACT_EXPONENT (10,000)
+            LineEntity(fileId = 1L, sortOrder = 1, expression = "2^10")    // Within limit
+        )
+        val results = MathEngine.calculate(lines, rationalMode = true)
+
+        // 2^10001 fallback to BigDecimal approximation (DECIMAL128 = 34 digits)
+        // results[0].result is a literal string (num.toString() because denominator is 1)
+        val expectedStart = "399012623376151676976748432536717"
+        val actualResult = results[0].result
+        assertTrue(actualResult.startsWith(expectedStart))
+        assertEquals(3011, actualResult.length)
+        assertTrue(actualResult.substring(expectedStart.length).all { it == '0' })
+
+        // 2^10 should still be exact 1024
+        assertEquals("1024", results[1].result)
     }
 
     @Test

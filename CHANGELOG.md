@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.8.4] - 2026-04-19
+### Added
+- Added support for scientific E-notation (e.g. `1E5`) and ensured that Euler's number constant is only available through `e` (Issue #150).
+
+### Fixed
+- Stabilized the power operator (`^`) with safety limits and human-friendly error reporting to prevent application freezes (Issue #149).
+- Resolved a bug where deleting or renaming a newly duplicated file would fail if external synchronization was active but the file hadn't been synced yet (Issue #148).
+
 ## [3.8.3] - 2026-04-17
 ### Fixed
 - Stabilized Rational mode with smart rational approximation for irrational numbers (Issue #140).

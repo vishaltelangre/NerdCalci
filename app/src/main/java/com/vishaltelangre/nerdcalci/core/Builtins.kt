@@ -9,7 +9,7 @@ import kotlin.math.*
  * Registry of built-in mathematical functions and constants.
  *
  * Functions are dispatched by name and arity.
- * Constants (`PI`, `E`) are exposed via [constantValue] for bare-identifier access.
+ * Constants (`PI`, `e`) are exposed via [constantValue] for bare-identifier access.
  */
 object Builtins {
 
@@ -282,12 +282,13 @@ object Builtins {
     )
 
     /** Built-in constants accessible as bare identifiers. */
+    private const val PI_STR = "3.1415926535897932384626433832795028841971"
+    private const val E_STR = "2.7182818284590452353602874713526624977572"
     private val constants: Map<String, BigDecimal> = mapOf(
-        "PI" to BigDecimal("3.1415926535897932384626433832795028841971"),
-        "pi" to BigDecimal("3.1415926535897932384626433832795028841971"),
-        "π"  to BigDecimal("3.1415926535897932384626433832795028841971"),
-        "E"  to BigDecimal("2.7182818284590452353602874713526624977572"),
-        "e"  to BigDecimal("2.7182818284590452353602874713526624977572"),
+        "PI" to BigDecimal(PI_STR),
+        "pi" to BigDecimal(PI_STR),
+        "π"  to BigDecimal(PI_STR),
+        "e"  to BigDecimal(E_STR),
     )
 
     val functionNames: Set<String> get() = functions.keys

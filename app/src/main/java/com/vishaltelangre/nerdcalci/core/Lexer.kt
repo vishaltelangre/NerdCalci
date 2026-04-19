@@ -79,12 +79,41 @@ class Lexer(private val source: String) {
             while (pos < source.length && source[pos].isDigit()) pos++
         }
 
-        val lexeme = source.substring(start, pos)
-        val value = try {
-            BigDecimal(lexeme)
-        } catch (e: Exception) {
-            BigDecimal.ZERO
+        // Exponent part (Uppercase 'E' only to distinguish from 'e')
+        if (pos < source.length && source[pos] == 'E') {
+            val savedPos = pos
+            pos++ // consume 'E'
+
+            // Optional sign
+            if (pos < source.length && (source[pos] == '+' || source[pos] == '-')) {
+                pos++
+            }
+
+            // Must have at least one digit after E (and optional sign)
+            if (pos < source.length && source[pos].isDigit()) {
+                while (pos < source.length && source[pos].isDigit()) pos++
+            } else {
+                // Not a valid exponent, backtrack
+                pos = savedPos
+            }
         }
+
+        val lexeme = source.substring(start, pos)
+
+        // Exponent safety check to prevent hangups on massive scale
+        val eIdx = lexeme.indexOf('E')
+        if (eIdx >= 0) {
+            val expPart = lexeme.substring(eIdx + 1)
+            // Skip the optional sign for range check
+            val expDigits = if (expPart.startsWith('+') || expPart.startsWith('-')) expPart.substring(1) else expPart
+
+            val expValue = expDigits.toLongOrNull()
+            if (expValue == null || expValue > Constants.MAX_POWER_EXPONENT) {
+                throw ArithmeticException("Exponent is too large (max ${Constants.MAX_POWER_EXPONENT})")
+            }
+        }
+
+        val value = BigDecimal(lexeme)
         return Token(TokenKind.NUMBER, lexeme, value, start)
     }
 

@@ -68,4 +68,8 @@ object Constants {
     const val DEFAULT_EDITOR_FONT_SIZE = 16f
     const val MIN_EDITOR_FONT_SIZE = 6f
     const val MAX_EDITOR_FONT_SIZE = 30f
+
+    // Calculation limits
+    const val MAX_POWER_EXPONENT = 1_000_000
+    const val MAX_EXACT_EXPONENT = 10_000
 }

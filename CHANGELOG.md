@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.8.5] - 2026-04-22
+### Fixed
+- Fixed app crash when using the power operator (`^`) on devices running Android versions earlier than 12 (Issue #152).
+- Improved `pow()` function stability by implementing similar safety limits and robust integer parsing as `^` operator (Issue #149).
+- Fixed suggestion popup from obscuring shortcut bar (Issue #143).
+
 ## [3.8.4] - 2026-04-19
 ### Added
 - Added support for scientific E-notation (e.g. `1E5`) and ensured that Euler's number constant is only available through `e` (Issue #150).

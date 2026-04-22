@@ -1,0 +1,3 @@
+- Fixed app crash when using the power operator (^) on Android versions earlier than 12 (Issue #152).
+- Replicated exponent safety limits and robust parsing fixes to the pow() built-in function (Issue #149).
+- Fixed suggestion popup from obscuring shortcut bar (Issue #143).

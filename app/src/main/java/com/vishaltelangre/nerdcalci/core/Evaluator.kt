@@ -697,7 +697,14 @@ class Evaluator(
 
     private fun BigDecimal.toIntOrNullExact(): Int? {
         return try {
-            toBigIntegerExact().intValueExact()
+            val bi = toBigIntegerExact()
+            if (bi >= BigInteger.valueOf(Int.MIN_VALUE.toLong()) &&
+                bi <= BigInteger.valueOf(Int.MAX_VALUE.toLong())
+            ) {
+                bi.toInt()
+            } else {
+                null
+            }
         } catch (_: Exception) {
             null
         }

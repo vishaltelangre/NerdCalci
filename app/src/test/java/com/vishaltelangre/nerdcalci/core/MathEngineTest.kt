@@ -2056,7 +2056,8 @@ class MathEngineTest {
         "pow(-2, 0.5)",
         "pow(1E400, 0.5)",
         "pow(1E-400, -0.5)",
-        "pow(1E400, -0.2)"
+        "pow(1E400, -0.2)",
+        "pow(10^3000, 1000000)"
     ) { result ->
         assertError("Exponent is too large (max 1000000)", result, 0)
         assertError("Exponent is too large (max 1000000)", result, 1)
@@ -2071,6 +2072,7 @@ class MathEngineTest {
         assertEquals("1.0E200", result[10].result)
         assertEquals("1.0E200", result[11].result)
         assertEquals("1.0E-80", result[12].result)
+        assertError("Overflow", result, 13)
     }
 
     @Test

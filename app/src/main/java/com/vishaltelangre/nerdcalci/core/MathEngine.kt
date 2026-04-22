@@ -766,15 +766,7 @@ object MathEngine {
                 BigDecimal(result, mc)
             }
         } else {
-            try {
-                base.pow(exponentInt, mc)
-            } catch (e: Exception) {
-                // Fallback to Double if BigDecimal.pow fails (e.g. overflow not caught by mc)
-                val result = base.toDouble().pow(exponentInt.toDouble())
-                if (result.isInfinite()) throw ArithmeticException("Calculation result is too large")
-                if (result.isNaN()) throw ArithmeticException("Undefined")
-                BigDecimal(result, mc)
-            }
+            base.pow(exponentInt, mc)
         }
     }
 

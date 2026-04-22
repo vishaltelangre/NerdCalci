@@ -106,7 +106,8 @@ fun SuggestionPopup(
     conversionColor: Color,
     replaceStart: Int? = null,
     argumentIndex: Int? = null,
-    needsSpace: Boolean = false
+    needsSpace: Boolean = false,
+    bottomOffset: Dp = 0.dp
 ) {
     // Only show if there are suggestions, field is focused, and it hasn't been manually dismissed.
     if (suggestions.isEmpty() || !isFocused || forceDismissSuggestions) return
@@ -191,7 +192,8 @@ fun SuggestionPopup(
     val imeHeightDp = with(density) { WindowInsets.ime.getBottom(density).toDp() }
 
     // Decide whether to show the popup above or below the line based on available space.
-    val spaceBelow = screenHeight - currentLineBottomDp - imeHeightDp
+    // Subtract bottomOffset (shortcut bar height) to ensure the popup doesn't obscure shortcuts.
+    val spaceBelow = screenHeight - currentLineBottomDp - imeHeightDp - bottomOffset
     val showAbove = spaceBelow < SuggestionPopupConstants.SpaceBelowThreshold &&
                     currentLineTopDp > SuggestionPopupConstants.CurrentLineTopThreshold
 

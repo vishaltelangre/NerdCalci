@@ -2,7 +2,11 @@ package com.vishaltelangre.nerdcalci.core
 
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
 import java.math.BigDecimal
+import java.math.BigInteger
 import java.math.MathContext as JavaMathContext
+import kotlin.math.pow
+import kotlin.math.log10
+import kotlin.math.floor
 import java.util.Locale
 import com.vishaltelangre.nerdcalci.core.Rational
 import com.vishaltelangre.nerdcalci.utils.RegionUtils
@@ -725,7 +729,6 @@ object MathEngine {
         return "${localizedMantissa}E$adjustedExponent"
     }
 
-
     private fun formatNumeralSystem(value: Long, radix: Int): String {
         val prefix = when (radix) {
             16 -> "0x"
@@ -734,5 +737,98 @@ object MathEngine {
             else -> ""
         }
         return "$prefix${java.lang.Long.toString(value, radix).uppercase()}"
+    }
+
+    /**
+     * Enforces MAX_POWER_EXPONENT safety limits and handles double fallbacks.
+     */
+    fun calculatePower(base: BigDecimal, exponent: BigDecimal, mc: JavaMathContext): BigDecimal {
+        val limit = BigDecimal(Constants.MAX_POWER_EXPONENT)
+        if (exponent.abs() > limit) {
+            throw ArithmeticException("Exponent is too large (max ${Constants.MAX_POWER_EXPONENT})")
+        }
+
+        val exponentInt: Int? = toIntOrNullExact(exponent)
+
+        return if (exponentInt == null) {
+            val absBase = base.abs()
+            val doubleMax = BigDecimal.valueOf(Double.MAX_VALUE)
+            val doubleMin = BigDecimal.valueOf(4.9E-324) // Approx Double.MIN_VALUE
+
+            if (absBase.signum() != 0 && (absBase > doubleMax || absBase < doubleMin)) {
+                calculatePowerLargeBase(base, exponent, mc)
+            } else {
+                // Fallback to Double for non-integer exponents that are within magnitude limits
+                val rightDouble = exponent.toDouble()
+                val result = base.toDouble().pow(rightDouble)
+                if (result.isInfinite()) throw ArithmeticException("Calculation result is too large")
+                if (result.isNaN()) throw ArithmeticException("Undefined")
+                BigDecimal(result, mc)
+            }
+        } else {
+            base.pow(exponentInt, mc)
+        }
+    }
+
+    /**
+     * Handles power calculations for extreme bases that would overflow/underflow Double.
+     * Uses normalization: x^p = (s * 10^k)^p = s^p * 10^(kp)
+     */
+    private fun calculatePowerLargeBase(base: BigDecimal, exponent: BigDecimal, mc: JavaMathContext): BigDecimal {
+        val signum = base.signum()
+        if (signum == 0) return if (exponent > BigDecimal.ZERO) BigDecimal.ZERO else throw ArithmeticException("Undefined")
+        if (signum < 0) {
+            // Negative base with fractional exponent is undefined in this engine
+            throw ArithmeticException("Undefined")
+        }
+
+        // x = s * 10^k where 1 <= s < 10
+        val precision = base.precision()
+        val scale = base.scale()
+        val k = precision - scale - 1
+        val normalizedBase = base.movePointLeft(k)
+
+        val p = exponent.toDouble()
+        // result = (normalizedBase^p) * 10^(k*p)
+        // We use logs to compute (normalizedBase^p) safely
+        val log10Mantissa = log10(normalizedBase.toDouble())
+        val totalLog10 = (log10Mantissa + k) * p
+
+        val resExp = floor(totalLog10).toLong()
+        val resMantissaLog10 = totalLog10 - resExp
+        val resMantissa = 10.0.pow(resMantissaLog10)
+
+        if (resMantissa.isInfinite() || resMantissa.isNaN()) {
+            throw ArithmeticException("Calculation result is too large")
+        }
+
+        if (resExp > 1000000000L || resExp < -1000000000L) {
+            throw ArithmeticException("Calculation result is too large")
+        }
+
+        return try {
+            BigDecimal(resMantissa, mc).movePointRight(resExp.toInt())
+        } catch (e: Exception) {
+            throw ArithmeticException("Calculation result is too large")
+        }
+    }
+
+    /**
+     * Converts a BigDecimal to an Int if it's within Int range and has no fractional part.
+     * Safer alternative to intValueExact() which is API 31+.
+     */
+    fun toIntOrNullExact(value: BigDecimal): Int? {
+        return try {
+            val bi = value.toBigIntegerExact()
+            if (bi >= BigInteger.valueOf(Int.MIN_VALUE.toLong()) &&
+                bi <= BigInteger.valueOf(Int.MAX_VALUE.toLong())
+            ) {
+                bi.toInt()
+            } else {
+                null
+            }
+        } catch (_: Exception) {
+            null
+        }
     }
 }

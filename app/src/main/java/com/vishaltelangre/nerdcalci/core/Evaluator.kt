@@ -539,7 +539,7 @@ class Evaluator(
         val resultScale = when (expr.op) {
             TokenKind.STAR, TokenKind.SLASH -> UnitConverter.deriveUnitScale(leftUnit, rightUnit, expr.op)
             TokenKind.CARET -> if (leftUnit != null) {
-                val exponent = rightVal.toIntOrNullExact()
+                val exponent = MathEngine.toIntOrNullExact(rightVal)
                 if (exponent == 3 && leftUnit.category == UnitCategory.LENGTH) {
                     BigDecimal("1000.0")
                 } else {
@@ -590,7 +590,7 @@ class Evaluator(
             if (rightEval.unit != null) {
                 throw EvalException("Exponentiation requires a unitless exponent")
             }
-            val exponent = rightVal.toIntOrNullExact()
+            val exponent = MathEngine.toIntOrNullExact(rightVal)
             if (exponent == null) {
                 throw EvalException("Exponentiation requires an integer exponent")
             }
@@ -632,32 +632,7 @@ class Evaluator(
             if (right.compareTo(BigDecimal.ZERO) == 0) throw DivisionByZeroException()
             left.remainder(right, mc)
         }
-        TokenKind.CARET   -> {
-            val limit = BigDecimal(Constants.MAX_POWER_EXPONENT)
-            if (right.abs() > limit) {
-                throw ArithmeticException("Exponent is too large (max ${Constants.MAX_POWER_EXPONENT})")
-            }
-
-            val exponent: Int? = right.toIntOrNullExact()
-
-            if (exponent == null) {
-                // Fallback to Double for non-integer exponents that are within magnitude limits
-                val rightDouble = right.toDouble()
-                val result = left.toDouble().pow(rightDouble)
-                if (result.isInfinite()) throw ArithmeticException("Calculation result is too large")
-                if (result.isNaN()) throw ArithmeticException("Undefined")
-                BigDecimal(result, mc)
-            } else {
-                try {
-                    left.pow(exponent, mc)
-                } catch (e: Exception) {
-                    val result = left.toDouble().pow(exponent.toDouble())
-                    if (result.isInfinite()) throw ArithmeticException("Calculation result is too large")
-                    if (result.isNaN()) throw ArithmeticException("Undefined")
-                    BigDecimal(result, mc)
-                }
-            }
-        }
+        TokenKind.CARET   -> MathEngine.calculatePower(left, right, mc)
         else -> throw EvalException("Unknown operator: `$op`")
     }
 
@@ -695,13 +670,6 @@ class Evaluator(
         else -> throw EvalException("Unknown operator: `$op`")
     }
 
-    private fun BigDecimal.toIntOrNullExact(): Int? {
-        return try {
-            toBigIntegerExact().intValueExact()
-        } catch (_: Exception) {
-            null
-        }
-    }
 
     /**
      * Resolves a member access expression (e.g., `obj.name`).

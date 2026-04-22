@@ -1200,6 +1200,7 @@ fun CalculatorScreen(
                         onCopyResult = { result ->
                             viewModel.copyToClipboard(context, result)
                         },
+                        bottomOffset = paddingValues.calculateBottomPadding(),
                         onGetErrorMessage = { lineId -> viewModel.getLineErrorMessage(fileId, lineId, effectiveRationalMode) }
                     )
                     if (index < lines.size - 1) {
@@ -1391,6 +1392,7 @@ private fun LineRow(
     onNavigateUp: () -> Unit,
     onNavigateDown: () -> Unit,
     onCopyResult: (String) -> Unit,
+    bottomOffset: Dp = 0.dp,
     onGetErrorMessage: suspend (Long) -> String? = { null }
 ) {
     // Add leading space for backspace detection trick (but not for first line)
@@ -1928,7 +1930,8 @@ private fun LineRow(
                     conversionColor = conversionColor,
                     replaceStart = suggestionContext.replaceStart,
                     argumentIndex = suggestionContext.argumentIndex,
-                    needsSpace = suggestionContext.needsSpace
+                    needsSpace = suggestionContext.needsSpace,
+                    bottomOffset = bottomOffset
                 )
             }
         }

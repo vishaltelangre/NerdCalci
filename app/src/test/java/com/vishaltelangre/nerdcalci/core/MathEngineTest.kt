@@ -2020,7 +2020,11 @@ class MathEngineTest {
         "2^-1000001",
         "2^-2147483648",
         "2^1000000.5",
-        "2^1000000"
+        "2^1000000",
+        "(-2)^0.5",
+        "1E400 ^ 0.5",
+        "1E-400 ^ -0.5",
+        "1E400 ^ -0.2"
     ) { result ->
         assertError("Exponent is too large (max 1000000)", result, 0)
         assertError("Exponent is too large (max 1000000)", result, 1)
@@ -2032,6 +2036,10 @@ class MathEngineTest {
         assertError("Exponent is too large (max 1000000)", result, 7)
         assertError("Exponent is too large (max 1000000)", result, 8)
         assertEquals("9.900656229295898250697923616301903E301029", result[9].result)
+        assertError("Undefined", result, 10)
+        assertEquals("1.0E200", result[11].result)
+        assertEquals("1.0E200", result[12].result)
+        assertEquals("1.0E-80", result[13].result)
     }
 
     @Test
@@ -2045,7 +2053,10 @@ class MathEngineTest {
         "pow(2, -2147483648)",
         "pow(2, 1000000.5)",
         "pow(2, 1000000)",
-        "pow(-2, 0.5)"
+        "pow(-2, 0.5)",
+        "pow(1E400, 0.5)",
+        "pow(1E-400, -0.5)",
+        "pow(1E400, -0.2)"
     ) { result ->
         assertError("Exponent is too large (max 1000000)", result, 0)
         assertError("Exponent is too large (max 1000000)", result, 1)
@@ -2057,6 +2068,9 @@ class MathEngineTest {
         assertError("Exponent is too large (max 1000000)", result, 7)
         assertEquals("9.900656229295898250697923616301903E301029", result[8].result)
         assertError("Undefined", result, 9)
+        assertEquals("1.0E200", result[10].result)
+        assertEquals("1.0E200", result[11].result)
+        assertEquals("1.0E-80", result[12].result)
     }
 
     @Test

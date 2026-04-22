@@ -2035,6 +2035,31 @@ class MathEngineTest {
     }
 
     @Test
+    fun `pow() function enforces magnitude limits`() = testCalculate(
+        "pow(10, pow(10, 10))",
+        "pow(9, pow(9, 9))",
+        "pow(pow(9, 9), 9)",
+        "pow(10, 10^10)",
+        "pow(2, 1000001)",
+        "pow(2, -1000001)",
+        "pow(2, -2147483648)",
+        "pow(2, 1000000.5)",
+        "pow(2, 1000000)",
+        "pow(-2, 0.5)"
+    ) { result ->
+        assertError("Exponent is too large (max 1000000)", result, 0)
+        assertError("Exponent is too large (max 1000000)", result, 1)
+        assertEquals("1.966270504755529136180759085269121E77", result[2].result)
+        assertError("Exponent is too large (max 1000000)", result, 3)
+        assertError("Exponent is too large (max 1000000)", result, 4)
+        assertError("Exponent is too large (max 1000000)", result, 5)
+        assertError("Exponent is too large (max 1000000)", result, 6)
+        assertError("Exponent is too large (max 1000000)", result, 7)
+        assertEquals("9.900656229295898250697923616301903E301029", result[8].result)
+        assertError("Undefined", result, 9)
+    }
+
+    @Test
     fun `power operator handles safety limits in rational mode`() = runBlocking {
         val lines = listOf(
             LineEntity(fileId = 1L, sortOrder = 0, expression = "2^10001"), // Exceeds MAX_EXACT_EXPONENT (10,000)

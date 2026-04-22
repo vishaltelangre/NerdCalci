@@ -2,7 +2,9 @@ package com.vishaltelangre.nerdcalci.core
 
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
 import java.math.BigDecimal
+import java.math.BigInteger
 import java.math.MathContext as JavaMathContext
+import kotlin.math.pow
 import java.util.Locale
 import com.vishaltelangre.nerdcalci.core.Rational
 import com.vishaltelangre.nerdcalci.utils.RegionUtils
@@ -725,7 +727,6 @@ object MathEngine {
         return "${localizedMantissa}E$adjustedExponent"
     }
 
-
     private fun formatNumeralSystem(value: Long, radix: Int): String {
         val prefix = when (radix) {
             16 -> "0x"
@@ -734,5 +735,55 @@ object MathEngine {
             else -> ""
         }
         return "$prefix${java.lang.Long.toString(value, radix).uppercase()}"
+    }
+
+    /**
+     * Enforces MAX_POWER_EXPONENT safety limits and handles double fallbacks.
+     */
+    fun calculatePower(base: BigDecimal, exponent: BigDecimal, mc: JavaMathContext): BigDecimal {
+        val limit = BigDecimal(Constants.MAX_POWER_EXPONENT)
+        if (exponent.abs() > limit) {
+            throw ArithmeticException("Exponent is too large (max ${Constants.MAX_POWER_EXPONENT})")
+        }
+
+        val exponentInt: Int? = toIntOrNullExact(exponent)
+
+        return if (exponentInt == null) {
+            // Fallback to Double for non-integer exponents that are within magnitude limits
+            val rightDouble = exponent.toDouble()
+            val result = base.toDouble().pow(rightDouble)
+            if (result.isInfinite()) throw ArithmeticException("Calculation result is too large")
+            if (result.isNaN()) throw ArithmeticException("Undefined")
+            BigDecimal(result, mc)
+        } else {
+            try {
+                base.pow(exponentInt, mc)
+            } catch (e: Exception) {
+                // Fallback to Double if BigDecimal.pow fails (e.g. overflow not caught by mc)
+                val result = base.toDouble().pow(exponentInt.toDouble())
+                if (result.isInfinite()) throw ArithmeticException("Calculation result is too large")
+                if (result.isNaN()) throw ArithmeticException("Undefined")
+                BigDecimal(result, mc)
+            }
+        }
+    }
+
+    /**
+     * Converts a BigDecimal to an Int if it's within Int range and has no fractional part.
+     * Safer alternative to intValueExact() which is API 31+.
+     */
+    fun toIntOrNullExact(value: BigDecimal): Int? {
+        return try {
+            val bi = value.toBigIntegerExact()
+            if (bi >= BigInteger.valueOf(Int.MIN_VALUE.toLong()) &&
+                bi <= BigInteger.valueOf(Int.MAX_VALUE.toLong())
+            ) {
+                bi.toInt()
+            } else {
+                null
+            }
+        } catch (_: Exception) {
+            null
+        }
     }
 }

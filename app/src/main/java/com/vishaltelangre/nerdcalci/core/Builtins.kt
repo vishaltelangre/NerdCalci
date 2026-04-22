@@ -257,17 +257,7 @@ object Builtins {
         "sqrt"   to powerFn(2) { BigDecimal(sqrt(it[0].toDouble()), mc) },
         "cbrt"   to powerFn(3) { BigDecimal(cbrt(it[0].toDouble()), mc) },
         "pow"    to builtin(2, RequireUnitlessInput, UnitlessNumericResultPolicy) {
-            val base = it[0]
-            val exponent = it[1]
-            try {
-                // Check if exponent is an exact integer
-                val exponentInt = exponent.toBigIntegerExact().toInt()
-                // Use BigDecimal.pow for exact integer exponents
-                base.pow(exponentInt, mc)
-            } catch (_: ArithmeticException) {
-                // Exponent is not an exact integer, fall back to Double-based approach
-                BigDecimal(base.toDouble().pow(exponent.toDouble()), mc)
-            }
+            MathEngine.calculatePower(it[0], it[1], mc)
         },
         "exp"    to unitlessFn(1) { BigDecimal(exp(it[0].toDouble()), mc) },
         "expm1"  to unitlessFn(1) { BigDecimal(expm1(it[0].toDouble()), mc) },

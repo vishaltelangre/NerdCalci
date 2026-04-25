@@ -1305,11 +1305,13 @@ private fun formatAnnotatedResult(
 ): AnnotatedString {
     val formatted = formatResult(text, precision, regionCode, groupingSeparatorEnabled, showPrecisionEllipsis)
     return buildAnnotatedString {
-        if (showPrecisionEllipsis && formatted.endsWith("…")) {
-            append(formatted.dropLast(1))
+        val ellipsisIndex = formatted.indexOf('…')
+        if (showPrecisionEllipsis && ellipsisIndex != -1) {
+            append(formatted.substring(0, ellipsisIndex))
             withStyle(SpanStyle(color = resultColor.copy(alpha = 0.5f), fontWeight = FontWeight.Normal)) {
                 append("…")
             }
+            append(formatted.substring(ellipsisIndex + 1))
         } else {
             append(formatted)
         }

@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.8.6] - 2026-04-25
+### Added
+- Added a toggle to turn off "Result precision" to see full unrounded results (Issue #134).
+
+### Fixed
+- Fixed a bug that could cause the app to hang when toggling Rational Mode on certain scientific notation inputs.
+- Fixed the result precision ellipsis (`…`) styling for results with units (e.g., `(1/3) km`).
+
 ## [3.8.5] - 2026-04-22
 ### Fixed
 - Fixed app crash when using the power operator (`^`) on devices running Android versions earlier than 12 (Issue #152).

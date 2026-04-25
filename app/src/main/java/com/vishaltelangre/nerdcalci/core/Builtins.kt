@@ -141,7 +141,7 @@ object Builtins {
         ): EvaluationResult {
             val input = args.first()
             val value = input.value ?: BigDecimal.ZERO
-            val rational = Rational.fromBigDecimalSmart(value)
+            val rational = Rational.fromBigDecimalSmart(value) ?: return input.copy(value = value, explicitRational = false, rationalValue = null)
             return input.copy(value = value, rationalValue = rational, explicitRational = true)
         }
     }

@@ -55,7 +55,7 @@ class Evaluator(
 
             val baseRational = baseEval.rationalValue ?: Rational.toRational(base)
             val percentRational = Rational.toRational(expr.percent.divide(BigDecimal("100"), mc))
-            EvaluationResult(resultValue, resultUnit, rationalValue = baseRational * percentRational)
+            EvaluationResult(resultValue, resultUnit, rationalValue = applyRationalOp(baseRational, TokenKind.STAR, percentRational))
         }
         is Expr.PercentOff     -> {
             val baseEval = evaluate(expr.base)
@@ -66,14 +66,14 @@ class Evaluator(
             val resultValue = base.multiply(factor)
 
             val baseRational = baseEval.rationalValue ?: Rational.toRational(base)
-            val factorRational = Rational.ONE - Rational.toRational(expr.percent.divide(BigDecimal("100"), mc))
-            EvaluationResult(resultValue, resultUnit, rationalValue = baseRational * factorRational)
+            val factorRational = applyRationalOp(Rational.ONE, TokenKind.MINUS, Rational.toRational(expr.percent.divide(BigDecimal("100"), mc)))
+            EvaluationResult(resultValue, resultUnit, rationalValue = applyRationalOp(baseRational, TokenKind.STAR, factorRational))
         }
         is Expr.UnaryMinus     -> {
             val eval = evaluate(expr.operand)
             val operand = eval.value ?: throw EvalException("Cannot negate a non-numeric value")
             val operandRational = eval.rationalValue ?: Rational.toRational(operand)
-            eval.copy(value = operand.negate(), rationalValue = operandRational.negate())
+            eval.copy(value = operand.negate(), rationalValue = operandRational?.negate())
         }
         is Expr.Variable       -> resolveVariable(expr.name)
         is Expr.FunctionCall   -> evaluateFunction(expr.name, expr.args)
@@ -93,7 +93,7 @@ class Evaluator(
             // We'll keep using BigDecimal for result.value but update rationalValue.
             val resultValue = UnitConverter.toBase(rawValue, unit, variables)
             val baseRational = eval.rationalValue ?: Rational.toRational(rawValue)
-            val resultRationalValue = UnitConverter.toBase(baseRational, unit, variables)
+            val resultRationalValue = baseRational?.let { UnitConverter.toBase(it, unit, variables) }
             EvaluationResult(resultValue, unit.symbols.first(), rationalValue = resultRationalValue)
         }
         is Expr.UnitConversion -> {
@@ -196,7 +196,7 @@ class Evaluator(
 
             val resultValue = UnitConverter.toBase(value, fromUnit, variables)
             val currentRational = eval.rationalValue ?: Rational.toRational(value)
-            val resultRationalValue = UnitConverter.toBase(currentRational, fromUnit, variables)
+            val resultRationalValue = currentRational?.let { UnitConverter.toBase(it, fromUnit, variables) }
             return EvaluationResult(resultValue, toUnit.symbols.first(), rationalValue = resultRationalValue)
         }
 
@@ -375,12 +375,16 @@ class Evaluator(
         result: EvaluationResult,
         unit: NerdUnit?,
         forceDisplayValue: Boolean,
-        rational: Rational
-    ): Rational {
-        if (unit == null) return rational
+        rational: Rational?
+    ): Rational? {
+        if (unit == null || rational == null) return rational
         return when {
             unit.category == UnitCategory.SCALAR -> rational
-            forceDisplayValue || result.explicitUnitless -> UnitConverter.fromBase(rational, unit, variables)
+            forceDisplayValue || result.explicitUnitless -> try {
+                UnitConverter.fromBase(rational, unit, variables)
+            } catch (_: ArithmeticException) {
+                null
+            }
             else -> rational
         }
     }
@@ -399,11 +403,11 @@ class Evaluator(
             val (resultVal, resultRational) = when (expr.op) {
                 TokenKind.PLUS  -> {
                     val factor = BigDecimal.ONE.add(pct.divide(BigDecimal("100"), mc))
-                    leftVal.multiply(factor) to leftRational * (Rational.ONE + pctRational)
+                    leftVal.multiply(factor) to applyRationalOp(leftRational, TokenKind.STAR, applyRationalOp(Rational.ONE, TokenKind.PLUS, pctRational))
                 }
                 TokenKind.MINUS -> {
                     val factor = BigDecimal.ONE.subtract(pct.divide(BigDecimal("100"), mc))
-                    leftVal.multiply(factor) to leftRational * (Rational.ONE - pctRational)
+                    leftVal.multiply(factor) to applyRationalOp(leftRational, TokenKind.STAR, applyRationalOp(Rational.ONE, TokenKind.MINUS, pctRational))
                 }
                 else -> {
                     val rightVal = rightEval.value ?: BigDecimal.ZERO
@@ -445,7 +449,7 @@ class Evaluator(
             val leftRationalScalar = scalarRationalValue(leftEval, leftUnit, leftUsesDisplayValue, leftRational)
             val rightRationalScalar = scalarRationalValue(rightEval, rightUnit, rightUsesDisplayValue, rightRational)
             val resultDisplayRational = applyRationalOp(leftRationalScalar, expr.op, rightRationalScalar)
-            val resultBaseRational = UnitConverter.toBase(resultDisplayRational, tempUnit, variables)
+            val resultBaseRational = resultDisplayRational?.let { UnitConverter.toBase(it, tempUnit, variables) }
 
             return EvaluationResult(
                 resultBase,
@@ -498,10 +502,10 @@ class Evaluator(
                     val rightCanonical = UnitConverter.fromBase(rightVal, canonicalUnit, variables)
                     val resultCanonical = applyOp(leftCanonical, expr.op, rightCanonical)
 
-                    val leftCanonicalRational = UnitConverter.fromBase(leftRational, canonicalUnit, variables)
-                    val rightCanonicalRational = UnitConverter.fromBase(rightRational, canonicalUnit, variables)
+                    val leftCanonicalRational = leftRational?.let { UnitConverter.fromBase(it, canonicalUnit, variables) }
+                    val rightCanonicalRational = rightRational?.let { UnitConverter.fromBase(it, canonicalUnit, variables) }
                     val resultCanonicalRational = applyRationalOp(leftCanonicalRational, expr.op, rightCanonicalRational)
-                    val resultBaseRational = UnitConverter.toBase(resultCanonicalRational, canonicalUnit, variables)
+                    val resultBaseRational = resultCanonicalRational?.let { UnitConverter.toBase(it, canonicalUnit, variables) }
 
                     return EvaluationResult(
                         UnitConverter.toBase(resultCanonical, canonicalUnit, variables),
@@ -610,7 +614,7 @@ class Evaluator(
             }
         }
 
-        return EvaluationResult(resultVal * resultScale, resultUnit, rationalValue = resultRational * Rational.toRational(resultScale))
+        return EvaluationResult(resultVal * resultScale, resultUnit, rationalValue = applyRationalOp(resultRational, TokenKind.STAR, Rational.toRational(resultScale)))
     }
 
     private fun applyOp(left: BigDecimal, op: TokenKind, right: BigDecimal): BigDecimal = when (op) {
@@ -620,10 +624,17 @@ class Evaluator(
         TokenKind.SLASH   -> {
             if (right.compareTo(BigDecimal.ZERO) == 0) throw DivisionByZeroException()
             if (rationalMode) {
-                // In rational mode, we use the rational value for higher precision when possible.
-                // applyRationalOp will be called separately to get the exact value.
-                // Still need a BigDecimal for result.value.
-                (Rational.toRational(left) / Rational.toRational(right)).toBigDecimal(mc)
+                val leftRat = Rational.toRational(left)
+                val rightRat = Rational.toRational(right)
+                if (leftRat != null && rightRat != null) {
+                    try {
+                        (leftRat / rightRat).toBigDecimal(mc)
+                    } catch (_: ArithmeticException) {
+                        left.divide(right, mc)
+                    }
+                } else {
+                    left.divide(right, mc)
+                }
             } else {
                 left.divide(right, mc)
             }
@@ -636,38 +647,46 @@ class Evaluator(
         else -> throw EvalException("Unknown operator: `$op`")
     }
 
-    private fun applyRationalOp(left: Rational, op: TokenKind, right: Rational): Rational = when (op) {
-        TokenKind.PLUS    -> left + right
-        TokenKind.MINUS   -> left - right
-        TokenKind.STAR    -> left * right
-        TokenKind.SLASH   -> if (right.num == BigInteger.ZERO) throw DivisionByZeroException() else left / right
-        TokenKind.PERCENT -> {
-            // Remainder for rationals: a - b * floor(a/b)
-            val div = (left / right).toBigDecimal(mc).setScale(0, RoundingMode.FLOOR)
-            left - (right * Rational.toRational(div))
-        }
-        TokenKind.CARET   -> {
-            val exponentVal = try {
-                right.toBigDecimal(mc).toBigIntegerExact()
-            } catch (e: ArithmeticException) {
-                null
-            }
-
-            if (exponentVal == null || exponentVal.abs() > BigInteger.valueOf(Constants.MAX_EXACT_EXPONENT.toLong())) {
-                // Exponent too large for exact rational power; degrade to approximated BigDecimal
-                val base = left.toBigDecimal(mc)
-                val exponent = right.toBigDecimal(mc)
-                Rational.toRational(applyOp(base, TokenKind.CARET, exponent))
-            } else {
-                val exponent = exponentVal.toInt()
-                if (exponent >= 0) {
-                    Rational(left.num.pow(exponent), left.den.pow(exponent))
-                } else {
-                    Rational(left.den.pow(-exponent), left.num.pow(-exponent))
+    private fun applyRationalOp(left: Rational?, op: TokenKind, right: Rational?): Rational? {
+        if (left == null || right == null) return null
+        return try {
+            when (op) {
+                TokenKind.PLUS    -> left + right
+                TokenKind.MINUS   -> left - right
+                TokenKind.STAR    -> left * right
+                TokenKind.SLASH   -> if (right.num == BigInteger.ZERO) throw DivisionByZeroException() else left / right
+                TokenKind.PERCENT -> {
+                    // Remainder for rationals: a - b * floor(a/b)
+                    val div = (left / right).toBigDecimal(mc).setScale(0, RoundingMode.FLOOR)
+                    val divRat = Rational.toRational(div) ?: return null
+                    left - (right * divRat)
                 }
+                TokenKind.CARET   -> {
+                    val exponentVal = try {
+                        right.toBigDecimal(mc).toBigIntegerExact()
+                    } catch (e: ArithmeticException) {
+                        null
+                    }
+
+                    if (exponentVal == null || exponentVal.abs() > BigInteger.valueOf(Constants.MAX_EXACT_EXPONENT.toLong())) {
+                        // Exponent too large for exact rational power; degrade to approximated BigDecimal
+                        val base = left.toBigDecimal(mc)
+                        val exponent = right.toBigDecimal(mc)
+                        Rational.toRational(applyOp(base, TokenKind.CARET, exponent))
+                    } else {
+                        val exponent = exponentVal.toInt()
+                        if (exponent >= 0) {
+                            Rational(left.num.pow(exponent), left.den.pow(exponent))
+                        } else {
+                            Rational(left.den.pow(-exponent), left.num.pow(-exponent))
+                        }
+                    }
+                }
+                else -> throw EvalException("Unknown operator: `$op`")
             }
+        } catch (_: ArithmeticException) {
+            null
         }
-        else -> throw EvalException("Unknown operator: `$op`")
     }
 
 

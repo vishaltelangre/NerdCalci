@@ -249,10 +249,10 @@ object MathEngine {
                     } else {
                         val formattedValue = if (!result.forceFloat && (isolatedContext.rationalMode || result.explicitRational)) {
                             if (result.rationalValue != null) {
-                                UnitConverter.fromBase(result.rationalValue, u, isolatedContext.variables).toString()
+                                UnitConverter.fromBase(result.rationalValue, u, isolatedContext.variables)?.toString() ?: formatBigDecimal(UnitConverter.fromBase(result.value, u, isolatedContext.variables))
                             } else {
                                 val displayValue = UnitConverter.fromBase(result.value, u, isolatedContext.variables)
-                                Rational.fromBigDecimalSmart(displayValue).toString()
+                                Rational.fromBigDecimalSmart(displayValue)?.toString() ?: formatBigDecimal(displayValue)
                             }
                         } else {
                             val displayValue = UnitConverter.fromBase(result.value, u, isolatedContext.variables).let { value ->
@@ -266,7 +266,7 @@ object MathEngine {
                     if (result.rationalValue != null) {
                         result.rationalValue.toString()
                     } else {
-                        Rational.fromBigDecimalSmart(result.value).toString()
+                        Rational.fromBigDecimalSmart(result.value)?.toString() ?: formatBigDecimal(result.value)
                     }
                 } else if (result.explicitUnitless && result.value.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) == 0) {
                     result.value.toLong().toString()

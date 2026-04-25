@@ -34,7 +34,7 @@ data class Unit(
     val customRationalToBase: ((Rational, Map<String, EvaluationResult>) -> Rational)? = null,
     val customRationalFromBase: ((Rational, Map<String, EvaluationResult>) -> Rational)? = null
 ) {
-    val factorRational: Rational = rationalFactor ?: Rational.toRational(factor)
+    val factorRational: Rational? = rationalFactor ?: Rational.toRational(factor)
 }
 
 object UnitConverter {
@@ -513,12 +513,16 @@ object UnitConverter {
         return unit.customToBase?.invoke(value, variables) ?: value.multiply(unit.factor)
     }
 
-    fun toBase(value: Rational, unit: Unit, variables: Map<String, EvaluationResult>): Rational {
+    fun toBase(value: Rational, unit: Unit, variables: Map<String, EvaluationResult>): Rational? {
         unit.customRationalToBase?.let { return it(value, variables) }
         unit.customToBase?.let {
             return Rational.fromBigDecimalSmart(it(value.toBigDecimal(JavaMathContext.DECIMAL128), variables))
         }
-        return value * unit.factorRational
+        return try {
+            value * (unit.factorRational ?: return null)
+        } catch (_: ArithmeticException) {
+            null
+        }
     }
 
     fun fromBase(value: BigDecimal, unit: Unit, variables: Map<String, EvaluationResult>): BigDecimal {
@@ -529,12 +533,16 @@ object UnitConverter {
         }
     }
 
-    fun fromBase(value: Rational, unit: Unit, variables: Map<String, EvaluationResult>): Rational {
+    fun fromBase(value: Rational, unit: Unit, variables: Map<String, EvaluationResult>): Rational? {
         unit.customRationalFromBase?.let { return it(value, variables) }
         unit.customFromBase?.let {
             return Rational.fromBigDecimalSmart(it(value.toBigDecimal(JavaMathContext.DECIMAL128), variables))
         }
-        return value / unit.factorRational
+        return try {
+            value / (unit.factorRational ?: return null)
+        } catch (_: ArithmeticException) {
+            null
+        }
     }
 
     fun convert(value: BigDecimal, from: Unit, to: Unit, variables: Map<String, EvaluationResult>): BigDecimal {
@@ -551,15 +559,15 @@ object UnitConverter {
         return convert(value, from, to, variables)
     }
 
-    fun convert(value: Rational, from: Unit, to: Unit, variables: Map<String, EvaluationResult>): Rational {
+    fun convert(value: Rational, from: Unit, to: Unit, variables: Map<String, EvaluationResult>): Rational? {
         if (from.category != to.category) {
             throw EvalException("Conversion of `${from.name}` to `${to.name}` is not supported")
         }
-        val baseValue = toBase(value, from, variables)
+        val baseValue = toBase(value, from, variables) ?: return null
         return fromBase(baseValue, to, variables)
     }
 
-    fun convert(value: Rational, fromToken: String, toToken: String, variables: Map<String, EvaluationResult>): Rational {
+    fun convert(value: Rational, fromToken: String, toToken: String, variables: Map<String, EvaluationResult>): Rational? {
         val from = findUnit(fromToken) ?: throw EvalException("Unknown unit `$fromToken`")
         val to = findUnit(toToken) ?: throw EvalException("Unknown unit `$toToken`")
         return convert(value, from, to, variables)

@@ -69,7 +69,8 @@ fun CalculatorSettingsScreen(
     onBack: () -> Unit
 ) {
     var showRegionDialog by remember { mutableStateOf(false) }
-    var sliderValue by remember(precision) { mutableStateOf(if (precision == Constants.PRECISION_OFF) Constants.DEFAULT_PRECISION.toFloat() else precision.toFloat()) }
+    var lastPrecision by remember { mutableStateOf(if (precision == Constants.PRECISION_OFF) Constants.DEFAULT_PRECISION else precision) }
+    var sliderValue by remember(precision) { mutableStateOf(if (precision == Constants.PRECISION_OFF) lastPrecision.toFloat() else precision.toFloat()) }
     var editorFontSizeSlider by remember(editorFontSize) { mutableStateOf(editorFontSize) }
     val availableRegions = remember { RegionUtils.getAvailableRegions() }
 
@@ -104,8 +105,8 @@ fun CalculatorSettingsScreen(
                 checked = precision != Constants.PRECISION_OFF,
                 onCheckedChange = { enabled ->
                     if (enabled) {
-                        sliderValue = Constants.DEFAULT_PRECISION.toFloat()
-                        onPrecisionChange(Constants.DEFAULT_PRECISION)
+                        sliderValue = lastPrecision.toFloat()
+                        onPrecisionChange(lastPrecision)
                     } else {
                         onPrecisionChange(Constants.PRECISION_OFF)
                     }
@@ -117,7 +118,10 @@ fun CalculatorSettingsScreen(
                     icon = Icons.Default.Info,
                     title = "Decimal places",
                     value = sliderValue,
-                    onValueChange = { sliderValue = it },
+                    onValueChange = {
+                        sliderValue = it
+                        lastPrecision = it.roundToInt()
+                    },
                     onValueChangeFinished = { onPrecisionChange(sliderValue.roundToInt()) },
                     valueRange = Constants.MIN_PRECISION.toFloat()..Constants.MAX_PRECISION.toFloat(),
                     steps = Constants.MAX_PRECISION - Constants.MIN_PRECISION - 1,
@@ -171,38 +175,40 @@ fun CalculatorSettingsScreen(
                 modifier = Modifier.padding(horizontal = 80.dp).padding(bottom = 16.dp)
             )
 
-            SettingsToggleItem(
-                icon = Icons.Default.MoreHoriz,
-                title = "Truncate with ellipsis",
-                subtitle = "Show ellipsis (e.g., 0.123…) for results with more decimal places than the current precision setting.",
-                checked = showPrecisionEllipsis,
-                onCheckedChange = onShowPrecisionEllipsisChange
-            )
+            if (precision != Constants.PRECISION_OFF) {
+                SettingsToggleItem(
+                    icon = Icons.Default.MoreHoriz,
+                    title = "Truncate with ellipsis",
+                    subtitle = "Show ellipsis (e.g., 0.123…) for results with more decimal places than the current precision setting.",
+                    checked = showPrecisionEllipsis,
+                    onCheckedChange = onShowPrecisionEllipsisChange
+                )
 
-            val mutedEllipsisColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-            Text(
-                text = remember(showPrecisionEllipsis, precision, mutedEllipsisColor) {
-                    val base = "0.12345678901"
-                    val formatted = MathEngine.formatDisplayResult(
-                        base,
-                        precision,
-                        showEllipsis = showPrecisionEllipsis
-                    )
-                    buildAnnotatedString {
-                        if (showPrecisionEllipsis && formatted.endsWith("…")) {
-                            append(formatted.dropLast(1))
-                            withStyle(SpanStyle(color = mutedEllipsisColor, fontWeight = FontWeight.Normal)) {
-                                append("…")
+                val mutedEllipsisColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                Text(
+                    text = remember(showPrecisionEllipsis, precision, mutedEllipsisColor) {
+                        val base = "0.12345678901"
+                        val formatted = MathEngine.formatDisplayResult(
+                            base,
+                            precision,
+                            showEllipsis = showPrecisionEllipsis
+                        )
+                        buildAnnotatedString {
+                            if (showPrecisionEllipsis && formatted.endsWith("…")) {
+                                append(formatted.dropLast(1))
+                                withStyle(SpanStyle(color = mutedEllipsisColor, fontWeight = FontWeight.Normal)) {
+                                    append("…")
+                                }
+                            } else {
+                                append(formatted)
                             }
-                        } else {
-                            append(formatted)
                         }
-                    }
-                },
-                style = MaterialTheme.typography.labelLarge.copy(fontFamily = FiraCodeFamily),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 56.dp).padding(bottom = 16.dp)
-            )
+                    },
+                    style = MaterialTheme.typography.labelLarge.copy(fontFamily = FiraCodeFamily),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 56.dp).padding(bottom = 16.dp)
+                )
+            }
 
             SettingsSection(title = "Editor")
 

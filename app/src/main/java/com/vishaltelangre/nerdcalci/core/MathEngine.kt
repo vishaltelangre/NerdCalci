@@ -511,23 +511,11 @@ object MathEngine {
 
         val value = numStr.toBigDecimalOrNull() ?: return rawResult
 
-        if (precision == Constants.PRECISION_OFF) {
-            val trimmedUnit = unitStr.trim().lowercase()
-            val isNumeralSystem = UnitConverter.isNumeralSystemSymbol(trimmedUnit)
-            return if (isNumeralSystem) {
-                if (value.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) != 0) "Err"
-                formatNumeralSystem(value.toLong(), when (trimmedUnit) {
-                    "bin" -> 2
-                    "hex" -> 16
-                    "oct" -> 8
-                    else -> 10
-                }) + unitStr
-            } else {
-                formatBigDecimal(value) + unitStr
-            }
+        val safePrecision = if (precision == Constants.PRECISION_OFF) {
+            value.stripTrailingZeros().scale().coerceAtLeast(0)
+        } else {
+            precision.coerceIn(Constants.MIN_PRECISION, Constants.MAX_PRECISION)
         }
-
-        val safePrecision = precision.coerceIn(Constants.MIN_PRECISION, Constants.MAX_PRECISION)
 
         val trimmedUnit = unitStr.trim().lowercase()
         val isNumeralSystem = UnitConverter.isNumeralSystemSymbol(trimmedUnit)
@@ -542,29 +530,35 @@ object MathEngine {
             }
             formatNumeralSystem(value.toLong(), radix) to false
         } else {
-            val roundsToZero = value.signum() != 0 && safePrecision > 0 &&
+            val roundsToZero = value.signum() != 0 && precision != Constants.PRECISION_OFF && safePrecision > 0 &&
                     value.abs() < BigDecimal("0.5").movePointLeft(safePrecision)
             val isScientific = numStr.contains('E', ignoreCase = true) ||
                     value.abs() >= BigDecimal("1000000000000000") || // 10^15
                     (value.abs() < BigDecimal("0.001") && value.signum() != 0) ||
                     roundsToZero
 
-            val truncated = if (isScientific) {
-                isScientificTruncated(value, safePrecision)
-            } else {
-                value.compareTo(value.setScale(safePrecision, java.math.RoundingMode.HALF_UP)) != 0
+            val truncated = if (precision == Constants.PRECISION_OFF) false else {
+                if (isScientific) {
+                    isScientificTruncated(value, safePrecision)
+                } else {
+                    value.compareTo(value.setScale(safePrecision, java.math.RoundingMode.HALF_UP)) != 0
+                }
             }
 
             val roundingMode = if (truncated && showEllipsis) java.math.RoundingMode.DOWN else java.math.RoundingMode.HALF_UP
 
             val formatted = if (isScientific) {
-                formatScientific(value, safePrecision, locale, roundingMode)
+                val scientificSafePrecision = if (precision == Constants.PRECISION_OFF) {
+                    if (value.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) == 0) 1 else safePrecision
+                } else safePrecision
+                formatScientific(value, scientificSafePrecision, locale, roundingMode)
             } else {
                 val useIndianStyle = regionCode == "IN" ||
                         (regionCode == RegionUtils.SYSTEM_DEFAULT && locale.country == "IN")
                 val isWholeNumber = value.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) == 0
-                val forcePrecision = !isWholeNumber // Only force trailing zeros for actual decimals
-                formatLocalized(value, safePrecision, locale, alwaysDecimal = false, forcePrecision = forcePrecision, useIndianStyle = useIndianStyle, groupingSeparatorEnabled = groupingSeparatorEnabled, roundingMode = roundingMode)
+                val forcePrecision = if (precision == Constants.PRECISION_OFF) false else !isWholeNumber
+                val alwaysDecimal = if (precision == Constants.PRECISION_OFF) isWholeNumber else false
+                formatLocalized(value, safePrecision, locale, alwaysDecimal = alwaysDecimal, forcePrecision = forcePrecision, useIndianStyle = useIndianStyle, groupingSeparatorEnabled = groupingSeparatorEnabled, roundingMode = roundingMode)
             }
             formatted to truncated
         }

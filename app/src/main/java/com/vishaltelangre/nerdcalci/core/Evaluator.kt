@@ -656,15 +656,15 @@ class Evaluator(
                 TokenKind.STAR    -> left * right
                 TokenKind.SLASH   -> if (right.num == BigInteger.ZERO) throw DivisionByZeroException() else left / right
                 TokenKind.PERCENT -> {
-                    // Remainder for rationals: a - b * floor(a/b)
-                    val div = (left / right).toBigDecimal(mc).setScale(0, RoundingMode.FLOOR)
+                    // Remainder for rationals: a - b * trunc(a/b)
+                    val div = (left / right).toBigDecimal(mc).setScale(0, RoundingMode.DOWN)
                     val divRat = Rational.toRational(div) ?: return null
                     left - (right * divRat)
                 }
                 TokenKind.CARET   -> {
                     val exponentVal = try {
                         right.toBigDecimal(mc).toBigIntegerExact()
-                    } catch (e: ArithmeticException) {
+                    } catch (_: ArithmeticException) {
                         null
                     }
 

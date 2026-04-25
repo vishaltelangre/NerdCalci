@@ -514,11 +514,11 @@ object UnitConverter {
     }
 
     fun toBase(value: Rational, unit: Unit, variables: Map<String, EvaluationResult>): Rational? {
-        unit.customRationalToBase?.let { return it(value, variables) }
-        unit.customToBase?.let {
-            return Rational.fromBigDecimalSmart(it(value.toBigDecimal(JavaMathContext.DECIMAL128), variables))
-        }
         return try {
+            unit.customRationalToBase?.let { return it(value, variables) }
+            unit.customToBase?.let {
+                return Rational.fromBigDecimalSmart(it(value.toBigDecimal(JavaMathContext.DECIMAL128), variables))
+            }
             value * (unit.factorRational ?: return null)
         } catch (_: ArithmeticException) {
             null
@@ -534,11 +534,11 @@ object UnitConverter {
     }
 
     fun fromBase(value: Rational, unit: Unit, variables: Map<String, EvaluationResult>): Rational? {
-        unit.customRationalFromBase?.let { return it(value, variables) }
-        unit.customFromBase?.let {
-            return Rational.fromBigDecimalSmart(it(value.toBigDecimal(JavaMathContext.DECIMAL128), variables))
-        }
         return try {
+            unit.customRationalFromBase?.let { return it(value, variables) }
+            unit.customFromBase?.let {
+                return Rational.fromBigDecimalSmart(it(value.toBigDecimal(JavaMathContext.DECIMAL128), variables))
+            }
             value / (unit.factorRational ?: return null)
         } catch (_: ArithmeticException) {
             null

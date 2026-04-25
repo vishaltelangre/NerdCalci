@@ -1831,12 +1831,15 @@ class MathEngineTest {
 
     @Test
     fun `formatDisplayResult shows full precision when precision is off`() = runBlocking {
-        assertEquals("7.1234", MathEngine.formatDisplayResult("7.1234", Constants.PRECISION_OFF))
-        assertEquals("1234.5678", MathEngine.formatDisplayResult("1234.5678", Constants.PRECISION_OFF))
-        assertEquals("0.3333333333333333", MathEngine.formatDisplayResult("0.3333333333333333", Constants.PRECISION_OFF))
-        assertEquals("10.0", MathEngine.formatDisplayResult("10", Constants.PRECISION_OFF))
-        assertEquals("1.0E20", MathEngine.formatDisplayResult("1.0E20", Constants.PRECISION_OFF))
-        assertEquals("5.1234 km", MathEngine.formatDisplayResult("5.1234 km", Constants.PRECISION_OFF))
+        assertEquals("7.1234", MathEngine.formatDisplayResult("7.1234", Constants.PRECISION_OFF, java.util.Locale.ROOT))
+        // Verify grouping and locale awareness
+        assertEquals("1,234.5678", MathEngine.formatDisplayResult("1234.5678", Constants.PRECISION_OFF, java.util.Locale.US))
+        assertEquals("1.234,5678", MathEngine.formatDisplayResult("1234.5678", Constants.PRECISION_OFF, java.util.Locale.GERMANY))
+        
+        assertEquals("0.3333333333333333", MathEngine.formatDisplayResult("0.3333333333333333", Constants.PRECISION_OFF, java.util.Locale.ROOT))
+        assertEquals("10.0", MathEngine.formatDisplayResult("10", Constants.PRECISION_OFF, java.util.Locale.ROOT))
+        assertEquals("1.0E20", MathEngine.formatDisplayResult("1.0E20", Constants.PRECISION_OFF, java.util.Locale.ROOT))
+        assertEquals("5.1234 km", MathEngine.formatDisplayResult("5.1234 km", Constants.PRECISION_OFF, java.util.Locale.ROOT))
     }
 
     @Test

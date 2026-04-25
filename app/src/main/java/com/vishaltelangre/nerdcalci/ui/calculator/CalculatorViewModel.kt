@@ -124,8 +124,9 @@ class CalculatorViewModel(
     val isScratchpadReady: StateFlow<Boolean> = _isScratchpadReady
 
     private val _precision = MutableStateFlow(
-        (prefs?.getInt(Constants.SYNC_ENGINE_PRECISION, Constants.DEFAULT_PRECISION) ?: Constants.DEFAULT_PRECISION)
-            .coerceIn(Constants.MIN_PRECISION, Constants.MAX_PRECISION)
+        prefs?.getInt(Constants.SYNC_ENGINE_PRECISION, Constants.DEFAULT_PRECISION)
+            ?.let { if (it == Constants.PRECISION_OFF) Constants.PRECISION_OFF else it.coerceIn(Constants.MIN_PRECISION, Constants.MAX_PRECISION) }
+            ?: Constants.DEFAULT_PRECISION
     )
     val precision: StateFlow<Int> = _precision
 
@@ -527,9 +528,13 @@ class CalculatorViewModel(
     }
  
     fun setPrecision(precision: Int) {
-        val clampedPrecision = precision.coerceIn(Constants.MIN_PRECISION, Constants.MAX_PRECISION)
-        _precision.value = clampedPrecision
-        prefs?.edit()?.putInt(Constants.SYNC_ENGINE_PRECISION, clampedPrecision)?.apply()
+        val resolvedPrecision = if (precision == Constants.PRECISION_OFF) {
+            Constants.PRECISION_OFF
+        } else {
+            precision.coerceIn(Constants.MIN_PRECISION, Constants.MAX_PRECISION)
+        }
+        _precision.value = resolvedPrecision
+        prefs?.edit()?.putInt(Constants.SYNC_ENGINE_PRECISION, resolvedPrecision)?.apply()
     }
 
     fun setShowLineNumbers(enabled: Boolean) {

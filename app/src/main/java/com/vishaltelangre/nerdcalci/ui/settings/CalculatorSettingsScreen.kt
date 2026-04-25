@@ -69,7 +69,7 @@ fun CalculatorSettingsScreen(
     onBack: () -> Unit
 ) {
     var showRegionDialog by remember { mutableStateOf(false) }
-    var sliderValue by remember(precision) { mutableStateOf(precision.toFloat()) }
+    var sliderValue by remember(precision) { mutableStateOf(if (precision == Constants.PRECISION_OFF) Constants.DEFAULT_PRECISION.toFloat() else precision.toFloat()) }
     var editorFontSizeSlider by remember(editorFontSize) { mutableStateOf(editorFontSize) }
     val availableRegions = remember { RegionUtils.getAvailableRegions() }
 
@@ -97,16 +97,34 @@ fun CalculatorSettingsScreen(
         ) {
             SettingsSection(title = "Math logic")
 
-            SettingsSliderItem(
+            SettingsToggleItem(
                 icon = Icons.Default.Info,
                 title = "Result precision",
-                value = sliderValue,
-                onValueChange = { sliderValue = it },
-                onValueChangeFinished = { onPrecisionChange(sliderValue.roundToInt()) },
-                valueRange = Constants.MIN_PRECISION.toFloat()..Constants.MAX_PRECISION.toFloat(),
-                steps = Constants.MAX_PRECISION - Constants.MIN_PRECISION - 1,
-                valueFormatter = { "${it.roundToInt()} decimal places" }
+                subtitle = "Limit decimal places in results. Turn off to show full precision.",
+                checked = precision != Constants.PRECISION_OFF,
+                onCheckedChange = { enabled ->
+                    if (enabled) {
+                        sliderValue = Constants.DEFAULT_PRECISION.toFloat()
+                        onPrecisionChange(Constants.DEFAULT_PRECISION)
+                    } else {
+                        onPrecisionChange(Constants.PRECISION_OFF)
+                    }
+                }
             )
+
+            if (precision != Constants.PRECISION_OFF) {
+                SettingsSliderItem(
+                    icon = Icons.Default.Info,
+                    title = "Decimal places",
+                    value = sliderValue,
+                    onValueChange = { sliderValue = it },
+                    onValueChangeFinished = { onPrecisionChange(sliderValue.roundToInt()) },
+                    valueRange = Constants.MIN_PRECISION.toFloat()..Constants.MAX_PRECISION.toFloat(),
+                    steps = Constants.MAX_PRECISION - Constants.MIN_PRECISION - 1,
+                    valueFormatter = { "${it.roundToInt()} decimal places" },
+                    modifier = Modifier.padding(start = 24.dp)
+                )
+            }
 
             SettingsToggleItem(
                 icon = Icons.Default.BorderHorizontal,
@@ -135,7 +153,8 @@ fun CalculatorSettingsScreen(
                 title = "Show grouping separators",
                 subtitle = null,
                 checked = groupingSeparatorEnabled,
-                onCheckedChange = onGroupingSeparatorEnabledChange
+                onCheckedChange = onGroupingSeparatorEnabledChange,
+                modifier = Modifier.padding(start = 24.dp)
             )
 
             Text(
@@ -149,7 +168,7 @@ fun CalculatorSettingsScreen(
                 },
                 style = MaterialTheme.typography.labelLarge.copy(fontFamily = FiraCodeFamily),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 56.dp).padding(bottom = 16.dp)
+                modifier = Modifier.padding(horizontal = 80.dp).padding(bottom = 16.dp)
             )
 
             SettingsToggleItem(

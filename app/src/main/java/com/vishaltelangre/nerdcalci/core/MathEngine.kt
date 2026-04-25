@@ -510,6 +510,23 @@ object MathEngine {
         }
 
         val value = numStr.toBigDecimalOrNull() ?: return rawResult
+
+        if (precision == Constants.PRECISION_OFF) {
+            val trimmedUnit = unitStr.trim().lowercase()
+            val isNumeralSystem = UnitConverter.isNumeralSystemSymbol(trimmedUnit)
+            return if (isNumeralSystem) {
+                if (value.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) != 0) "Err"
+                formatNumeralSystem(value.toLong(), when (trimmedUnit) {
+                    "bin" -> 2
+                    "hex" -> 16
+                    "oct" -> 8
+                    else -> 10
+                }) + unitStr
+            } else {
+                formatBigDecimal(value) + unitStr
+            }
+        }
+
         val safePrecision = precision.coerceIn(Constants.MIN_PRECISION, Constants.MAX_PRECISION)
 
         val trimmedUnit = unitStr.trim().lowercase()

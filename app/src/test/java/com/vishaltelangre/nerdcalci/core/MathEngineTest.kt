@@ -1824,9 +1824,19 @@ class MathEngineTest {
     @Test
     fun `formatDisplayResult handles out of bounds precision`() = runBlocking {
         // Should clamp value below MIN_PRECISION to MIN_PRECISION
-        assertEquals("0", MathEngine.formatDisplayResult("0.333", Constants.MIN_PRECISION - 1))
+        assertEquals("0", MathEngine.formatDisplayResult("0.333", -2))
         // Should clamp value above MAX_PRECISION to MAX_PRECISION
         assertEquals("0.3330000000", MathEngine.formatDisplayResult("0.333", Constants.MAX_PRECISION + 5))
+    }
+
+    @Test
+    fun `formatDisplayResult shows full precision when precision is off`() = runBlocking {
+        assertEquals("7.1234", MathEngine.formatDisplayResult("7.1234", Constants.PRECISION_OFF))
+        assertEquals("1234.5678", MathEngine.formatDisplayResult("1234.5678", Constants.PRECISION_OFF))
+        assertEquals("0.3333333333333333", MathEngine.formatDisplayResult("0.3333333333333333", Constants.PRECISION_OFF))
+        assertEquals("10.0", MathEngine.formatDisplayResult("10", Constants.PRECISION_OFF))
+        assertEquals("1.0E20", MathEngine.formatDisplayResult("1.0E20", Constants.PRECISION_OFF))
+        assertEquals("5.1234 km", MathEngine.formatDisplayResult("5.1234 km", Constants.PRECISION_OFF))
     }
 
     @Test

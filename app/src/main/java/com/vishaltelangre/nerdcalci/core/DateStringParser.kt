@@ -105,7 +105,7 @@ object DateStringParser {
     }
 
     /**
-     * Parses a Unix epoch seconds integer into a DateTimeResult.Date using the system timezone.
+     * Parses a Unix epoch seconds integer into a DateTimeResult.DateTime using the system timezone.
      */
     fun parseEpoch(epochSeconds: Long): DateTimeResult.DateTime {
         val instant = Instant.ofEpochSecond(epochSeconds)

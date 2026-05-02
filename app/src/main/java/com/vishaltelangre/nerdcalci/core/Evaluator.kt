@@ -86,8 +86,8 @@ class Evaluator(
             )
         }
         is Expr.DateInterval -> {
-            val start = evaluate(expr.start).dateTimeResult ?: throw EvalException("Date interval start must be a date")
-            val end = evaluate(expr.end).dateTimeResult ?: throw EvalException("Date interval end must be a date")
+            val start = coerceToDate(evaluate(expr.start))
+            val end = coerceToDate(evaluate(expr.end))
             EvaluationResult(value = null, dateTimeResult = DateEvaluator.interval(start, end, inclusive = expr.inclusive, projectionUnit = expr.projectionUnit))
         }
         is Expr.YearInterval -> {
@@ -98,7 +98,7 @@ class Evaluator(
             EvaluationResult(value = null, dateTimeResult = DateEvaluator.yearInterval(fromYear, toYear))
         }
         is Expr.DayCountQuery -> {
-            val target = evaluate(expr.target).dateTimeResult ?: throw EvalException("Date expected")
+            val target = coerceToDate(evaluate(expr.target))
             val dayCount = when (expr.kind) {
                 TokenKind.KW_SINCE -> DateEvaluator.daysSince(target)
                 TokenKind.KW_TILL, TokenKind.KW_UNTIL -> DateEvaluator.daysTill(target)
@@ -107,7 +107,7 @@ class Evaluator(
             EvaluationResult(value = null, dateTimeResult = dayCount)
         }
         is Expr.DateModifier -> {
-            val base = evaluate(expr.expr).dateTimeResult ?: throw EvalException("Date modifier requires a date/time value")
+            val base = coerceToDate(evaluate(expr.expr))
             when (expr.value.lowercase()) {
                 "iso8601" -> EvaluationResult(
                     value = null,
@@ -883,6 +883,28 @@ class Evaluator(
         }
 
         return EvaluationResult(resultVal * resultScale, resultUnit, rationalValue = applyRationalOp(resultRational, TokenKind.STAR, Rational.toRational(resultScale)))
+    }
+
+    private fun coerceToDate(eval: EvaluationResult): DateTimeResult {
+        eval.dateTimeResult?.let { return it }
+        val value = eval.value ?: throw EvalException("Date expected")
+        // Support compact numeric dates (YYYYMMDD)
+        if (value.scale() <= 0) {
+            val n = value.toLong()
+            if (n in 10000101L..99991231L) {
+                val y = (n / 10000).toInt()
+                val m = ((n % 10000) / 100).toInt()
+                val d = (n % 100).toInt()
+                if (m in 1..12 && d in 1..31) {
+                    try {
+                        return DateTimeResult.Date(java.time.LocalDate.of(y, m, d))
+                    } catch (_: Exception) {
+                        // Not a valid date (e.g. 20240230), fall through
+                    }
+                }
+            }
+        }
+        throw EvalException("Date expected")
     }
 
     private fun toDateDelta(result: EvaluationResult): DateTimeDelta {

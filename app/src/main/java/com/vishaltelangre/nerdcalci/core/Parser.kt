@@ -284,7 +284,8 @@ class Parser(private val tokens: List<Token>) {
                 if (kind == TokenKind.KW_TO) {
                     val nextKind = peekAt(1)
                     if (nextKind in setOf(TokenKind.KW_TODAY, TokenKind.KW_YESTERDAY, TokenKind.KW_TOMORROW, TokenKind.KW_NOW) ||
-                        (nextKind == TokenKind.IDENTIFIER && peekAt(2) == TokenKind.LPAREN)) {
+                        (nextKind == TokenKind.IDENTIFIER && peekAt(2) == TokenKind.LPAREN) ||
+                        nextKind == TokenKind.NUMBER) {
                         advance() // consume 'to'
                         val right = parseMulDivMod()
                         left = Expr.DateInterval(left, right, projectionUnit = null, inclusive = false)
@@ -594,6 +595,7 @@ class Parser(private val tokens: List<Token>) {
                 kind == TokenKind.KW_BETWEEN
 
     private fun parseQuantityIfPossible(firstValue: Expr): Expr {
+        val initialPos = pos  // save cursor before any quantity parsing
         var quantities = mutableListOf<Expr.Quantity>()
 
         fun inner(value: Expr): Expr.Quantity? {
@@ -660,7 +662,12 @@ class Parser(private val tokens: List<Token>) {
                     val numExpr = q.value
                     numExpr is Expr.NumberLiteral && numExpr.value.stripTrailingZeros().scale() > 0
                 }
-                if (anyFractional) firstValue else Expr.CompositeQuantity(quantities)
+                if (anyFractional) {
+                    pos = initialPos  // restore consumed tokens
+                    firstValue
+                } else {
+                    Expr.CompositeQuantity(quantities)
+                }
             }
             quantities.size == 1 -> quantities[0]
             else -> firstValue

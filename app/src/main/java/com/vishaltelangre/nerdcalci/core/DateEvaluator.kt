@@ -117,8 +117,12 @@ object DateEvaluator {
                     is DateTimeResult.Date     -> to.date.atStartOfDay(systemZone).toInstant()
                     else -> throw EvalException("Expected a date or datetime operand.")
                 }
-                // Apply inclusive adjustment: +1 day on the end instant.
-                val endInstant = if (inclusive) rawEndInstant.plusSeconds(86400L) else rawEndInstant
+                // Apply inclusive (+1 day) only when projecting to day-unit output
+                // OR when the end operand is a plain date (so "through tomorrow"
+                // includes all of tomorrow). For precise DateTime endpoints, we
+                // do NOT pad the end instant.
+                val endInstant = if (inclusive && (projectionUnit.lowercase() in setOf("d", "day", "days") || to is DateTimeResult.Date))
+                    rawEndInstant.plusSeconds(86400L) else rawEndInstant
 
                 val duration = java.time.Duration.between(startInstant, endInstant)
                 val totalSeconds = duration.seconds
@@ -144,6 +148,67 @@ object DateEvaluator {
                 val value = UnitConverter.fromBase(BigDecimal.valueOf(totalSeconds), unit, emptyMap<String, EvaluationResult>()).toLong()
                 return DateTimeResult.TimeCount(value, unit.symbols.first())
             }
+        }
+
+        // Non-projection path: return a DateTimeDelta (Duration or Duration with time components).
+        val hasDateTime = from is DateTimeResult.DateTime || to is DateTimeResult.DateTime
+
+        if (hasDateTime) {
+            // Preserve full instant precision so datetime-to-datetime intervals include time.
+            val fromZdt: ZonedDateTime = when (from) {
+                is DateTimeResult.DateTime -> from.instant
+                is DateTimeResult.Date     -> from.date.atStartOfDay(systemZone)
+                else -> throw EvalException("Expected a date or datetime operand.")
+            }
+            val rawToZdt: ZonedDateTime = when (to) {
+                is DateTimeResult.DateTime -> to.instant
+                is DateTimeResult.Date     -> to.date.atStartOfDay(systemZone)
+                else -> throw EvalException("Expected a date or datetime operand.")
+            }
+            // Apply inclusive (+1 day) only if the end operand was a plain date.
+            val toZdt = if (inclusive && to is DateTimeResult.Date) rawToZdt.plusDays(1) else rawToZdt
+
+            val isBackward = fromZdt.isAfter(toZdt)
+            val (startZdt, endZdt) = if (isBackward) toZdt to fromZdt else fromZdt to toZdt
+
+            // Use java.time.Duration for the sub-day part and Period for the calendar part.
+            val period = Period.between(startZdt.toLocalDate(), endZdt.toLocalDate())
+            val startOfEndDate = endZdt.toLocalDate().atStartOfDay(endZdt.zone)
+            val timeDuration = java.time.Duration.between(startOfEndDate, endZdt)
+            val extraSeconds = timeDuration.seconds  // seconds into the end day
+            val startTimeSeconds = java.time.Duration.between(
+                startZdt.toLocalDate().atStartOfDay(startZdt.zone), startZdt
+            ).seconds
+
+            // Net elapsed seconds = seconds into end day minus seconds into start day.
+            val netSeconds = extraSeconds - startTimeSeconds
+
+            var totalDays = ChronoUnit.DAYS.between(startZdt.toLocalDate(), endZdt.toLocalDate())
+            var remainingSeconds = netSeconds
+            if (remainingSeconds < 0) {
+                totalDays--
+                remainingSeconds += 86400L
+            }
+
+            val hours   = remainingSeconds / 3600L
+            val minutes = (remainingSeconds % 3600L) / 60L
+            val seconds = remainingSeconds % 60L
+
+            val weeks = totalDays / 7L
+            val days  = totalDays % 7L
+
+            val delta = if (period.years > 0 || period.months >= 2) {
+                DateTimeDelta(years = period.years.toLong(), months = period.months.toLong(),
+                    days = period.days.toLong(), hours = hours, minutes = minutes, seconds = seconds)
+            } else if (period.months == 1) {
+                DateTimeDelta(months = 1, days = period.days.toLong(),
+                    hours = hours, minutes = minutes, seconds = seconds)
+            } else {
+                DateTimeDelta(weeks = weeks, days = days,
+                    hours = hours, minutes = minutes, seconds = seconds)
+            }
+
+            return DateTimeResult.Duration(if (isBackward) delta.negate() else delta)
         }
 
         val fromDate = toLocalDate(from)

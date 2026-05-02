@@ -921,21 +921,22 @@ NerdCalci provides a robust, calendar-aware engine for date and time calculation
 
 Dates are constructed using specific functions to avoid ambiguity with numeric expressions.
 
-| Function                       | Description                                    | Example                                  |
-| :----------------------------- | :--------------------------------------------- | :--------------------------------------- |
-| `date(y, m, d)`                | Creates a date from numeric components.        | `date(2024, 12, 25)`                     |
-| `datetime(y, m, d, h, min, s)` | Creates a date with a specific time.           | `datetime(2024, 1, 1, 12, 0, 0)`         |
-| `datetimeZ(..., "TZ")`         | Creates a date/time in a specific timezone.    | `datetimeZ(2024, 1, 1, 12, 0, 0, "UTC")` |
-| `parseDate("string")`          | Parses natural language or ISO-8601 strings.   | `parseDate("April 1, 2019")`             |
-| `parseDate(number)`            | Converts a Unix timestamp (seconds) to a date. | `parseDate(1714636800)`                  |
+| Function                       | Description                                                         | Example                                  |
+| :----------------------------- | :------------------------------------------------------------------ | :--------------------------------------- |
+| `date(y, m, d)`                | Creates a date from numeric components.                             | `date(2024, 12, 25)`                     |
+| `datetime(y, m, d, h, min, s)` | Creates a date with a specific time.                                | `datetime(2024, 1, 1, 12, 0, 0)`         |
+| `datetimeZ(..., "TZ")`         | Creates a date/time in a specific timezone.                         | `datetimeZ(2024, 1, 1, 12, 0, 0, "UTC")` |
+| `parseDate("string")`          | Parses natural language or ISO-8601 strings into a date-time value. | `parseDate("April 1, 2019")`             |
+| `parseDate(number)`            | Converts a Unix timestamp (seconds) to a date-time value.           | `parseDate(1714636800)`                  |
 
 **Supported date formats for `parseDate()`**:
-- `"April 1, 2019"` (US style)
-- `"1 April 2019"` (International style)
-- `"June 10"` (Infers the closest year)
-- `"YYYY-MM-DD"` or `"YYYY/MM/DD"` (ISO 8601)
-- Unix epoch timestamp (e.g. `1714636800`)
-- ISO 8601 formatted string with timezone (e.g. `"2025-05-02T15:11:42.838589+05:30"`)
+- `"April 1, 2019"` (US style) → returns a date
+- `"1 April 2019"` (International style) → returns a date
+- `"June 10"` (Infers the closest year) → returns a date
+- `"YYYY-MM-DD"` (ISO 8601 date) → returns a date
+- `"YYYY/MM/DD"` (slash-delimited date, not strict ISO 8601) → returns a date
+- `"YYYY-MM-DDTHH:MM:SS+HH:MM"` (ISO 8601 with time and offset) → returns a date-time
+- Unix epoch timestamp (e.g. `1714636800`) → returns a **date-time** (system timezone)
 
 ### Relative keywords
 

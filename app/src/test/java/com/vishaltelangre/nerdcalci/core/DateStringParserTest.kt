@@ -91,4 +91,13 @@ class DateStringParserTest {
         assertEquals(LocalDate.of(2019, 6, 10), (DateStringParser.parse("JUNE 10, 2019") as DateTimeResult.Date).date)
         assertEquals(LocalDate.of(2019, 6, 10), (DateStringParser.parse("10 JUNE 2019") as DateTimeResult.Date).date)
     }
+
+    @Test
+    fun `rejects malformed zone offset in ISO string`() {
+        // "+25:00" is not a valid offset; ZoneId.of() throws DateTimeException which must map to EvalException.
+        val e = assertThrows(EvalException::class.java) {
+            DateStringParser.parse("2024-01-01+25:00")
+        }
+        assertTrue(e.message!!.contains("Invalid date/time"))
+    }
 }

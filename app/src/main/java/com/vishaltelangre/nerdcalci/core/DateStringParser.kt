@@ -69,7 +69,7 @@ object DateStringParser {
                         DateTimeResult.DateTime(ldt.atZone(zone))
                     }
                 }
-            } catch (e: DateTimeParseException) {
+            } catch (e: java.time.DateTimeException) {
                 throw EvalException("Invalid date/time \"$s\": ${e.message}")
             }
         }

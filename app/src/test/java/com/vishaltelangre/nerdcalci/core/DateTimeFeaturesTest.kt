@@ -162,6 +162,40 @@ class DateTimeFeaturesTest {
     }
 
     @Test
+    fun `datetime-to-datetime interval preserves time components`() = testCalculate(
+        "datetimeZ(2024, 1, 1, 10, 0, 0, \"UTC\") to datetimeZ(2024, 1, 1, 12, 30, 0, \"UTC\")", // [0] same day, 2h 30min apart
+        "datetimeZ(2024, 1, 1, 23, 0, 0, \"UTC\") to datetimeZ(2024, 1, 2, 1, 0, 0, \"UTC\")",  // [1] crosses midnight, 2h
+        "datetimeZ(2024, 1, 3, 6, 0, 0, \"UTC\") to datetimeZ(2024, 1, 1, 6, 0, 0, \"UTC\")"   // [2] backward, -2 d
+    ) { results ->
+        // Same day: expect 2 h 30 min
+        assertEquals("2 h 30 min", results[0].result)
+        // Crosses midnight: expect 2 h
+        assertEquals("2 h", results[1].result)
+        // Backward by 2 days exactly
+        assertEquals("-2 d", results[2].result)
+    }
+
+    @Test
+    fun `compact numeric date interval`() = testCalculate(
+        "20260413 to 20260420" // [0] compact numeric dates
+    ) { results ->
+        // 7 days apart → 1 wk
+        assertEquals("1 wk", results[0].result)
+    }
+
+    @Test
+    fun `inclusive logic for dates vs datetimes`() = testCalculate(
+        "datetime(2024, 1, 1, 12, 0, 0) through datetime(2024, 1, 2, 12, 0, 0) in hours", // [0] datetimes, no padding -> 24h
+        "date(2024, 1, 1) through date(2024, 1, 1) in hours",                           // [1] date through same date -> 24h (padding applied)
+        "date(2024, 1, 1) through date(2024, 1, 2) in hours"                            // [2] date through tomorrow -> 48h (padding applied)
+    ) { results ->
+        assertEquals("24 h", results[0].result)
+        assertEquals("24 h", results[1].result)
+        assertEquals("48 h", results[2].result)
+    }
+
+
+    @Test
     fun `timezone conversion and formatting`() = testCalculate(
         "dtz = datetimeZ(2024, 1, 1, 12, 0, 0, \"UTC\")",
         "dtz in \"Asia/Tokyo\"",

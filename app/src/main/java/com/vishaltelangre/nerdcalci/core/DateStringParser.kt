@@ -125,6 +125,19 @@ object DateStringParser {
      * prefer future when equidistant".
      */
     private fun buildDate(year: Int?, month: Int, day: Int, original: String): DateTimeResult {
+        // Guard against impossible month/day combinations before year inference.
+        if (month !in 1..12) {
+            throw EvalException("Invalid date \"$original\": month $month is out of range.")
+        }
+        val maxDays = when (month) {
+            2 -> 29 // Allow 29 for potential leap years
+            4, 6, 9, 11 -> 30
+            else -> 31
+        }
+        if (day < 1 || day > maxDays) {
+            throw EvalException("Invalid date \"$original\": day $day is out of range for month $month.")
+        }
+
         val resolvedYear = year ?: inferYear(month, day)
         return try {
             DateTimeResult.Date(LocalDate.of(resolvedYear, month, day))
@@ -151,14 +164,16 @@ object DateStringParser {
     /** Returns the first LocalDate on or after the given year for which (year, month, day) is valid. */
     private fun findFirstValidDate(startYear: Int, month: Int, day: Int): LocalDate {
         var year = startYear
-        while (true) {
+        // Defensive limit: don't search more than 10,000 years to prevent infinite loops
+        // on impossible dates (e.g., June 31).
+        val limit = startYear + 10000
+        while (year < limit) {
             try {
                 return LocalDate.of(year, month, day)
             } catch (_: java.time.DateTimeException) {
                 year++
             }
         }
-        @Suppress("UNREACHABLE_CODE")
-        error("unreachable")
+        throw EvalException("Invalid date: day $day is never valid for month $month.")
     }
 }

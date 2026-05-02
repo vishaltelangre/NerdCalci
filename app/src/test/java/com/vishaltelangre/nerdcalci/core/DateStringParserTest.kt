@@ -100,4 +100,12 @@ class DateStringParserTest {
         }
         assertTrue(e.message!!.contains("Invalid date/time"))
     }
+
+    @Test
+    fun `rejects impossible month-day combinations`() {
+        val e = assertThrows(EvalException::class.java) {
+            DateStringParser.parse("June 31")
+        }
+        assertTrue(e.message!!.contains("out of range"))
+    }
 }

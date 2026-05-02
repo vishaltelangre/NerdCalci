@@ -107,6 +107,26 @@ IzzyOnDroid">](https://apt.izzysoft.de/packages/com.vishaltelangre.nerdcalci)
   tax = 18% of price  # 180
   ```
 
+- #### Calendar-aware date & time calculations
+
+  ```text
+  today + 3 weeks
+  now - 4 hours 30 mins
+  3 days ago
+  2 days from now
+  
+  # Intervals
+  days between today and date(2025, 1, 1)
+  today through tomorrow in hours
+  
+  # Timezones
+  now in "London"
+  datetimeZ(2024, 1, 1, 12, 0, 0, "UTC") in "Tokyo"
+
+  today as iso8601
+  now as timestamp
+  ```
+
 - #### User-defined functions
 
   ```text

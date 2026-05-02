@@ -67,6 +67,13 @@
 - [12. Number display representation overrides](#12-number-display-representation-overrides)
   - [Rational representation](#rational-representation)
   - [Float representation](#float-representation)
+- [13. Date and time](#13-date-and-time)
+  - [Creating dates and times](#creating-dates-and-times)
+  - [Relative keywords](#relative-keywords)
+  - [Date arithmetic](#date-arithmetic)
+  - [Intervals and duration queries](#intervals-and-duration-queries)
+  - [Timezones](#timezones)
+  - [Output formats](#output-formats)
 
 ## 1. Basic math and operators
 
@@ -238,10 +245,10 @@ NerdCalci includes a wide array of built-in math functions.
 
 ### Factorial
 
-| Function          | Example        | Result | Description                                  |
-| ----------------- | -------------- | ------ | -------------------------------------------- |
-| `factorial(x)`    | `factorial(5)` | 120    | Factorial for non-negative whole numbers     |
-| `fact(x)`         | `fact(6)`      | 720    | Short alias for `factorial(x)`               |
+| Function       | Example        | Result | Description                              |
+| -------------- | -------------- | ------ | ---------------------------------------- |
+| `factorial(x)` | `factorial(5)` | 120    | Factorial for non-negative whole numbers |
+| `fact(x)`      | `fact(6)`      | 720    | Short alias for `factorial(x)`           |
 
 ### Trigonometry
 
@@ -640,33 +647,33 @@ cos(60 degree) # 0.5
 
 ### Volume
 
-| Unit                   | Symbols (Aliases)                                                   | Example        |
-| :--------------------- | :------------------------------------------------------------------ | :------------- |
-| Milliliter             | `mL`, `ml`, `milliliter`, `milliliters`                             | `10 mL`        |
-| Liter                  | `L`, `l`, `liter`, `liters`                                         | `10 L`         |
-| Kiloliter              | `kL`, `kl`, `kiloliter`, `kiloliters`                               | `10 kL`        |
-| Megaliter              | `ML`, `megaliter`, `megaliters`                                     | `10 ML`        |
-| Cubic Centimeter       | `cm³`, `cm3`, `cc`, `cubic centimeter`, `cubic centimeters`         | `10 cm³`       |
-| Cubic Meter            | `m³`, `m3`, `cubic meter`, `cubic meters`                           | `10 m³`        |
-| Deciliter              | `dL`, `dl`, `deciliter`, `deciliters`                               | `10 dL`        |
-| Centiliter             | `cL`, `cl`, `centiliter`, `centiliters`                             | `10 cL`        |
-| Microliter             | `µL`, `uL`, `µl`, `ul`, `microliter`, `microliters`                 | `10 µL`        |
-| Cubic Millimeter       | `mm³`, `mm3`, `cubic millimeter`, `cubic millimeters`               | `10 mm³`       |
-| Gallon                 | `gal`, `gallon`, `gallons`, `US gallon`, `US gallons`               | `10 gal`       |
-| Quart                  | `qt`, `quart`, `quarts`, `US quarts`                                | `10 qt`        |
-| Pint                   | `pint`, `pints`, `US pints`                                         | `10 pint`      |
-| Cup                    | `cup`, `cups`, `US cups`                                            | `10 cup`       |
-| Fluid Ounce            | `fl oz`, `floz`, `fluid ounce`, `fluid ounces`, `US fluid ounces`   | `10 fl oz`     |
-| Gallon (Imperial)      | `gal_imp`, `imperial gallon`, `imperial gallons`                    | `10 gal_imp`   |
-| Quart (Imperial)       | `qt_imp`, `imperial quart`, `imperial quarts`                       | `10 qt_imp`    |
-| Pint (Imperial)        | `pint_imp`, `imperial pint`, `imperial pints`                       | `10 pint_imp`  |
-| Fluid Ounce (Imperial) | `fl_oz_imp`, `imperial fluid ounce`, `imperial fluid ounces`        | `10 fl_oz_imp` |
-| Gill (US)              | `gi_us`, `US gill`, `US gills`                                      | `10 gi_us`     |
-| Gill (Imperial)        | `gi_imp`, `imperial gill`, `imperial gills`                         | `10 gi_imp`    |
-| Tablespoon             | `tbsp`, `tablespoon`, `tablespoons`                                 | `10 tbsp`      |
-| Teaspoon               | `tsp`, `teaspoon`, `teaspoons`                                      | `10 tsp`       |
-| Cubic Inch             | `in³`, `in3`, `cubic inch`, `cubic inches`                          | `10 in³`       |
-| Cubic Feet             | `ft³`, `ft3`, `cuft`, `cubic foot`, `cubic feet`                    | `10 ft³`       |
+| Unit                   | Symbols (Aliases)                                                 | Example        |
+| :--------------------- | :---------------------------------------------------------------- | :------------- |
+| Milliliter             | `mL`, `ml`, `milliliter`, `milliliters`                           | `10 mL`        |
+| Liter                  | `L`, `l`, `liter`, `liters`                                       | `10 L`         |
+| Kiloliter              | `kL`, `kl`, `kiloliter`, `kiloliters`                             | `10 kL`        |
+| Megaliter              | `ML`, `megaliter`, `megaliters`                                   | `10 ML`        |
+| Cubic Centimeter       | `cm³`, `cm3`, `cc`, `cubic centimeter`, `cubic centimeters`       | `10 cm³`       |
+| Cubic Meter            | `m³`, `m3`, `cubic meter`, `cubic meters`                         | `10 m³`        |
+| Deciliter              | `dL`, `dl`, `deciliter`, `deciliters`                             | `10 dL`        |
+| Centiliter             | `cL`, `cl`, `centiliter`, `centiliters`                           | `10 cL`        |
+| Microliter             | `µL`, `uL`, `µl`, `ul`, `microliter`, `microliters`               | `10 µL`        |
+| Cubic Millimeter       | `mm³`, `mm3`, `cubic millimeter`, `cubic millimeters`             | `10 mm³`       |
+| Gallon                 | `gal`, `gallon`, `gallons`, `US gallon`, `US gallons`             | `10 gal`       |
+| Quart                  | `qt`, `quart`, `quarts`, `US quarts`                              | `10 qt`        |
+| Pint                   | `pint`, `pints`, `US pints`                                       | `10 pint`      |
+| Cup                    | `cup`, `cups`, `US cups`                                          | `10 cup`       |
+| Fluid Ounce            | `fl oz`, `floz`, `fluid ounce`, `fluid ounces`, `US fluid ounces` | `10 fl oz`     |
+| Gallon (Imperial)      | `gal_imp`, `imperial gallon`, `imperial gallons`                  | `10 gal_imp`   |
+| Quart (Imperial)       | `qt_imp`, `imperial quart`, `imperial quarts`                     | `10 qt_imp`    |
+| Pint (Imperial)        | `pint_imp`, `imperial pint`, `imperial pints`                     | `10 pint_imp`  |
+| Fluid Ounce (Imperial) | `fl_oz_imp`, `imperial fluid ounce`, `imperial fluid ounces`      | `10 fl_oz_imp` |
+| Gill (US)              | `gi_us`, `US gill`, `US gills`                                    | `10 gi_us`     |
+| Gill (Imperial)        | `gi_imp`, `imperial gill`, `imperial gills`                       | `10 gi_imp`    |
+| Tablespoon             | `tbsp`, `tablespoon`, `tablespoons`                               | `10 tbsp`      |
+| Teaspoon               | `tsp`, `teaspoon`, `teaspoons`                                    | `10 tsp`       |
+| Cubic Inch             | `in³`, `in3`, `cubic inch`, `cubic inches`                        | `10 in³`       |
+| Cubic Feet             | `ft³`, `ft3`, `cuft`, `cubic foot`, `cubic feet`                  | `10 ft³`       |
 
 ### Mass
 
@@ -692,14 +699,14 @@ cos(60 degree) # 0.5
 
 ### Speed
 
-| Unit               | Symbols (Aliases)                           | Example             |
-| :----------------- | :------------------------------------------ | :------------------ |
-| Meter per second   | `mps`, `meters per second`                  | `10 mps`   |
-| Kilometer per hour | `kmh`, `kph`, `kilometers per hour`        | `10 kmh`   |
-| Miles per hour     | `mph`, `miles per hour`                    | `10 mph`   |
-| Knot               | `kn`, `knot`, `knots`                       | `10 kn`    |
-| Feet per second    | `fps`, `feet per second`                   | `10 fps`   |
-| Speed of light     | `speed of light`                            | `10 speed of light` |
+| Unit               | Symbols (Aliases)                   | Example             |
+| :----------------- | :---------------------------------- | :------------------ |
+| Meter per second   | `mps`, `meters per second`          | `10 mps`            |
+| Kilometer per hour | `kmh`, `kph`, `kilometers per hour` | `10 kmh`            |
+| Miles per hour     | `mph`, `miles per hour`             | `10 mph`            |
+| Knot               | `kn`, `knot`, `knots`               | `10 kn`             |
+| Feet per second    | `fps`, `feet per second`            | `10 fps`            |
+| Speed of light     | `speed of light`                    | `10 speed of light` |
 
 ### Angle
 
@@ -734,7 +741,7 @@ cos(60 degree) # 0.5
 ### Energy
 
 | Unit                       | Symbols (Aliases)                                                                     | Example     |
-|:---------------------------|:--------------------------------------------------------------------------------------|:------------|
+| :------------------------- | :------------------------------------------------------------------------------------ | :---------- |
 | Joule                      | `J`, `joule`, `joules`                                                                | `10 J`      |
 | Kilojoule                  | `kJ`, `kilojoule`, `kilojoules`                                                       | `10 kJ`     |
 | Megajoule                  | `MJ`, `megajoule`, `megajoules`                                                       | `10 MJ`     |
@@ -905,3 +912,88 @@ Force a result to be displayed as a decimal/float, even if Rational mode is enab
 ```text
 float(33/100)          # 0.33
 ```
+
+## 13. Date and time
+
+NerdCalci provides a robust, calendar-aware engine for date and time calculations. It supports different timezones, relative keywords, and natural language arithmetic.
+
+### Creating dates and times
+
+Dates are constructed using specific functions to avoid ambiguity with numeric expressions.
+
+| Function                       | Description                                    | Example                                  |
+| :----------------------------- | :--------------------------------------------- | :--------------------------------------- |
+| `date(y, m, d)`                | Creates a date from numeric components.        | `date(2024, 12, 25)`                     |
+| `datetime(y, m, d, h, min, s)` | Creates a date with a specific time.           | `datetime(2024, 1, 1, 12, 0, 0)`         |
+| `datetimeZ(..., "TZ")`         | Creates a date/time in a specific timezone.    | `datetimeZ(2024, 1, 1, 12, 0, 0, "UTC")` |
+| `parseDate("string")`          | Parses natural language or ISO-8601 strings.   | `parseDate("April 1, 2019")`             |
+| `parseDate(number)`            | Converts a Unix timestamp (seconds) to a date. | `parseDate(1714636800)`                  |
+
+**Supported date formats for `parseDate()`**:
+- `"April 1, 2019"` (US style)
+- `"1 April 2019"` (International style)
+- `"June 10"` (Infers the closest year)
+- `"YYYY-MM-DD"` or `"YYYY/MM/DD"` (ISO 8601)
+- Unix epoch timestamp (e.g. `1714636800`)
+- ISO 8601 formatted string with timezone (e.g. `"2025-05-02T15:11:42.838589+05:30"`)
+
+### Relative keywords
+
+You can use these keywords anywhere you would use a date. They resolve based on your current local time.
+
+*   `today`: The current date at midnight.
+*   `yesterday`: Exactly 24 hours before today's start.
+*   `tomorrow`: Exactly 24 hours after today's start.
+*   `now`: The current date and precise time.
+
+### Date arithmetic
+
+NerdCalci understands the calendar. Adding "1 month" to January 31 correctly results in February 28 (or 29 in a leap year).
+
+**Natural language arithmetic**:
+*   `today + 3 weeks`
+*   `parseDate("June 10") - 2 months 5 days`
+*   `now + 4 hours 30 mins`
+
+**Relative prepositions**:
+```text
+3 weeks after today
+28 days before parseDate("March 14")
+3 days ago
+4 hours from now
+```
+
+**Compound durations**:
+Durations can be combined freely: `2 years 3 months 1 week 5 days`.
+
+### Intervals and duration queries
+
+Calculate the time between two dates or find out how many days have passed.
+
+| Operation           | Example                           | Result                     |
+| :------------------ | :-------------------------------- | :------------------------- |
+| **Interval**        | `date(2024, 1, 1) to today`       | `4 mo 1 wk` (Duration)     |
+| **Year interval**   | `1978 to 2021`                    | `43 y`                     |
+| **Days since**      | `days since date(2024, 1, 1)`     | `122 d` (Total days)       |
+| **Days till**       | `days till date(2024, 12, 25)`    | `237 d`                    |
+| **Days between**    | `days between today and tomorrow` | `1 d`                      |
+| **Inclusive count** | `today through tomorrow`          | `2 d` (Includes both days) |
+
+### Timezones
+
+Convert any date or time to another timezone. NerdCalci supports IANA identifiers, common aliases, and manual offsets.
+
+**Examples**:
+*   `now in "London"`
+*   `now in "PST"` (Alias for America/Los_Angeles)
+*   `today + 2 hours in "Asia/Tokyo"`
+*   `now in "GMT+530"` (Manual offset)
+
+**Common aliases**: `UTC`, `GMT`, `PST`, `EST`, `IST` (India), `JST` (Japan), `BST` (UK), `CET` (Europe).
+
+### Output formats
+
+Convert dates to standardized strings or numeric timestamps.
+
+*   **ISO 8601**: `now as iso8601` → `"2024-05-02T13:00:00+05:30"`
+*   **Timestamp**: `today as timestamp` → `1714636800` (Unix seconds)

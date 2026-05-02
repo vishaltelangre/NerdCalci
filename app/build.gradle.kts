@@ -11,8 +11,8 @@ android {
     defaultConfig {
         applicationId = "com.vishaltelangre.nerdcalci"
         minSdk = 23
-        versionCode = 386
-        versionName = "3.8.6"
+        versionCode = 400
+        versionName = "4.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -26,8 +26,7 @@ android {
         unitTests.isReturnDefaultValues = true
         unitTests.all {
             it.testLogging {
-                showStandardStreams = true
-                events("passed", "skipped", "failed", "standardOut", "standardError")
+                events("failed")
                 exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
             }
         }

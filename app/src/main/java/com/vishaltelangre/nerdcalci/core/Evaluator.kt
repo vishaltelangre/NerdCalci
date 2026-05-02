@@ -15,7 +15,9 @@ data class EvaluationResult(
     val explicitUnitless: Boolean = false,
     val rationalValue: Rational? = null,
     val explicitRational: Boolean = false,
-    val forceFloat: Boolean = false
+    val forceFloat: Boolean = false,
+    val dateTimeResult: DateTimeResult? = null,
+    val stringResult: String? = null
 )
 
 /**
@@ -41,6 +43,91 @@ class Evaluator(
 
 
     suspend fun evaluate(expr: Expr): EvaluationResult = when (expr) {
+        is Expr.CompositeQuantity -> {
+            var totalSeconds = BigDecimal.ZERO
+            var delta = DateTimeDelta()
+            for (quantity in expr.quantities) {
+                val eval = evaluate(quantity.value)
+                val rawValue = eval.value ?: BigDecimal.ZERO
+                val unit = UnitConverter.findUnit(quantity.unit)
+                    ?: throw EvalException("Unknown unit `${quantity.unit}`")
+                
+                if (unit.category != UnitCategory.TIME) {
+                    throw EvalException("Only time units are allowed in composite quantities, found `${unit.name}`")
+                }
+
+                totalSeconds = totalSeconds.add(UnitConverter.toBase(rawValue, unit, variables))
+
+                val amount = rawValue.toLong()
+                delta = when (quantity.unit.lowercase()) {
+                    "y", "yr", "yrs", "year", "years" -> delta.copy(years = delta.years + amount)
+                    "mo", "month", "months" -> delta.copy(months = delta.months + amount)
+                    "w", "wk", "wks", "week", "weeks" -> delta.copy(weeks = delta.weeks + amount)
+                    "d", "day", "days" -> delta.copy(days = delta.days + amount)
+                    "h", "hr", "hrs", "hour", "hours" -> delta.copy(hours = delta.hours + amount)
+                    "min", "mins", "minute", "minutes" -> delta.copy(minutes = delta.minutes + amount)
+                    "s", "sec", "secs", "second", "seconds" -> delta.copy(seconds = delta.seconds + amount)
+                    "lustrum", "lustrums", "lustra" -> delta.copy(years = delta.years + amount * 5)
+                    "decade", "decades" -> delta.copy(years = delta.years + amount * 10)
+                    "century", "centuries" -> delta.copy(years = delta.years + amount * 100)
+                    "millennium", "millennia", "millenniums" -> delta.copy(years = delta.years + amount * 1000)
+                    else -> {
+                        // For other time units (ms, ns, ds, cs, etc), we just add to seconds in delta.
+                        val seconds = UnitConverter.toBase(rawValue, unit, variables).toLong()
+                        delta.copy(seconds = delta.seconds + seconds)
+                    }
+                }
+            }
+            EvaluationResult(
+                value = totalSeconds,
+                unit = "s",
+                dateTimeResult = DateTimeResult.Duration(delta),
+                rationalValue = Rational.toRational(totalSeconds)
+            )
+        }
+        is Expr.DateInterval -> {
+            val start = evaluate(expr.start).dateTimeResult ?: throw EvalException("Date interval start must be a date")
+            val end = evaluate(expr.end).dateTimeResult ?: throw EvalException("Date interval end must be a date")
+            EvaluationResult(value = null, dateTimeResult = DateEvaluator.interval(start, end, inclusive = expr.inclusive, projectionUnit = expr.projectionUnit))
+        }
+        is Expr.YearInterval -> {
+            val fromYear = MathEngine.toIntOrNullExact(evaluate(expr.fromYear).value ?: BigDecimal.ZERO)
+                ?: throw EvalException("Year interval start must be a whole number")
+            val toYear = MathEngine.toIntOrNullExact(evaluate(expr.toYear).value ?: BigDecimal.ZERO)
+                ?: throw EvalException("Year interval end must be a whole number")
+            EvaluationResult(value = null, dateTimeResult = DateEvaluator.yearInterval(fromYear, toYear))
+        }
+        is Expr.DayCountQuery -> {
+            val target = evaluate(expr.target).dateTimeResult ?: throw EvalException("Date expected")
+            val dayCount = when (expr.kind) {
+                TokenKind.KW_SINCE -> DateEvaluator.daysSince(target)
+                TokenKind.KW_TILL, TokenKind.KW_UNTIL -> DateEvaluator.daysTill(target)
+                else -> throw EvalException("Unsupported day-count query")
+            }
+            EvaluationResult(value = null, dateTimeResult = dayCount)
+        }
+        is Expr.DateModifier -> {
+            val base = evaluate(expr.expr).dateTimeResult ?: throw EvalException("Date modifier requires a date/time value")
+            when (expr.value.lowercase()) {
+                "iso8601" -> EvaluationResult(
+                    value = null,
+                    dateTimeResult = DateEvaluator.convertTimezone(base, java.time.ZoneId.systemDefault()),
+                    stringResult = DateEvaluator.toIso8601(base)
+                )
+                "timestamp" -> {
+                    val ts = DateEvaluator.toTimestamp(base)
+                    EvaluationResult(
+                        value = BigDecimal.valueOf(ts),
+                        rationalValue = Rational.toRational(BigDecimal.valueOf(ts))
+                    )
+                }
+                else -> {
+                    val zone = TimezoneRegistry.resolve(expr.value)
+                        ?: throw EvalException("Unknown timezone `${expr.value}`")
+                    EvaluationResult(value = null, dateTimeResult = DateEvaluator.convertTimezone(base, zone))
+                }
+            }
+        }
         is Expr.NumberLiteral  -> EvaluationResult(expr.value, rationalValue = Rational.toRational(expr.value))
         is Expr.PercentLiteral -> {
             val res = expr.value.divide(BigDecimal("100"), mc)
@@ -78,7 +165,7 @@ class Evaluator(
         is Expr.Variable       -> resolveVariable(expr.name)
         is Expr.FunctionCall   -> evaluateFunction(expr.name, expr.args)
         is Expr.BinaryOp       -> evaluateBinaryOp(expr)
-        is Expr.StringLiteral  -> throw EvalException("Quotes are only allowed when specifying file names in `file(\"...\")`")
+        is Expr.StringLiteral  -> EvaluationResult(value = null, stringResult = expr.value)
         is Expr.MemberAccess   -> resolveMemberAccess(expr)
         is Expr.MemberFunctionCall -> resolveMemberFunctionCall(expr)
         is Expr.Quantity -> {
@@ -97,32 +184,76 @@ class Evaluator(
             EvaluationResult(resultValue, unit.symbols.first(), rationalValue = resultRationalValue)
         }
         is Expr.UnitConversion -> {
-            val toUnit = UnitConverter.findUnit(expr.toUnit)
-                ?: throw EvalException("Unknown unit `${expr.toUnit}`")
-
             val evaluatedExpr = evaluate(expr.expr)
-            val baseValue = evaluatedExpr.value ?: BigDecimal.ZERO
-            val baseRational = evaluatedExpr.rationalValue ?: Rational.toRational(baseValue)
-            val fromUnit = evaluatedExpr.unit?.let { UnitConverter.findUnit(it) }
-
-            if (fromUnit != null) {
-                val isCompatible = fromUnit.category == toUnit.category ||
-                        (fromUnit.category == UnitCategory.SCALAR && toUnit.category == UnitCategory.NUMERAL_SYSTEM) ||
-                        (fromUnit.category == UnitCategory.NUMERAL_SYSTEM && toUnit.category == UnitCategory.SCALAR)
-                if (!isCompatible) {
-                    throw EvalException("Conversion of `${fromUnit.name}` to `${toUnit.name}` is not supported")
+            
+            if (evaluatedExpr.dateTimeResult != null && evaluatedExpr.dateTimeResult !is DateTimeResult.Duration) {
+                val to = expr.toUnit
+                if (to.equals("iso8601", ignoreCase = true) || to.equals("timestamp", ignoreCase = true)) {
+                    val base = evaluatedExpr.dateTimeResult
+                    if (to.equals("iso8601", ignoreCase = true)) {
+                        EvaluationResult(
+                            value = null,
+                            dateTimeResult = DateEvaluator.convertTimezone(base, java.time.ZoneId.systemDefault()),
+                            stringResult = DateEvaluator.toIso8601(base)
+                        )
+                    } else {
+                        val ts = DateEvaluator.toTimestamp(base)
+                        EvaluationResult(value = BigDecimal.valueOf(ts), rationalValue = Rational.toRational(BigDecimal.valueOf(ts)))
+                    }
+                } else {
+                    val targetEval = try { resolveVariable(to) } catch (_: Exception) { null }
+                    if (targetEval?.dateTimeResult != null) {
+                        EvaluationResult(value = null, dateTimeResult = DateEvaluator.interval(evaluatedExpr.dateTimeResult, targetEval.dateTimeResult))
+                    } else {
+                        val resolvedTo = targetEval?.stringResult ?: to
+                        val zone = TimezoneRegistry.resolve(resolvedTo)
+                        if (zone != null) {
+                            EvaluationResult(value = null, dateTimeResult = DateEvaluator.convertTimezone(evaluatedExpr.dateTimeResult, zone))
+                        } else {
+                            throw EvalException("Cannot convert date to `$resolvedTo`")
+                        }
+                    }
                 }
             } else {
-                if (toUnit.category != UnitCategory.SCALAR && toUnit.category != UnitCategory.NUMERAL_SYSTEM) {
-                throw EvalException("Conversion of `unitless number` to `${toUnit.name}` is not supported")
+                val targetEval = try { resolveVariable(expr.toUnit) } catch (_: Exception) { null }
+                val resolvedToUnitName = targetEval?.stringResult ?: expr.toUnit
+                val toUnit = UnitConverter.findUnit(resolvedToUnitName)
+                    ?: throw EvalException("Unknown unit `$resolvedToUnitName`")
+                val baseValue = evaluatedExpr.value ?: BigDecimal.ZERO
+                val baseRational = evaluatedExpr.rationalValue ?: Rational.toRational(baseValue)
+                val fromUnit = evaluatedExpr.unit?.let { UnitConverter.findUnit(it) }
+
+                if (fromUnit != null) {
+                    val isCompatible = fromUnit.category == toUnit.category ||
+                            (fromUnit.category == UnitCategory.SCALAR && toUnit.category == UnitCategory.NUMERAL_SYSTEM) ||
+                            (fromUnit.category == UnitCategory.NUMERAL_SYSTEM && toUnit.category == UnitCategory.SCALAR)
+                    if (!isCompatible) {
+                        throw EvalException("Conversion of `${fromUnit.name}` to `${toUnit.name}` is not supported")
+                    }
+                } else {
+                    if (toUnit.category != UnitCategory.SCALAR && toUnit.category != UnitCategory.NUMERAL_SYSTEM) {
+                        throw EvalException("Conversion of `unitless number` to `${toUnit.name}` is not supported")
+                    }
                 }
-            }
 
-            if (toUnit.category == UnitCategory.NUMERAL_SYSTEM && baseValue.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) != 0) {
-                throw EvalException(ERR_FRACTIONAL_NUMERAL_SYSTEM)
-            }
+                if (toUnit.category == UnitCategory.NUMERAL_SYSTEM && baseValue.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) != 0) {
+                    throw EvalException(ERR_FRACTIONAL_NUMERAL_SYSTEM)
+                }
 
-            EvaluationResult(baseValue, toUnit.symbols.first(), rationalValue = baseRational)
+                // Perform conversion
+                val resultValue = baseValue
+
+                val resultRationalValue = if (rationalMode || evaluatedExpr.explicitRational) {
+                    baseRational
+                } else null
+
+                EvaluationResult(
+                    resultValue,
+                    toUnit.symbols.first(),
+                    rationalValue = resultRationalValue,
+                    explicitUnitless = toUnit.category == UnitCategory.SCALAR
+                )
+            }
         }
     }
 
@@ -131,6 +262,9 @@ class Evaluator(
         // Check user variables first, then injection errors, then built-in constants
         variables[name]?.let { return it }
         injectionErrors[name]?.let { throw it }
+        if (name in DateKeywords.RELATIVE) {
+            return EvaluationResult(value = null, dateTimeResult = DateEvaluator.resolveRelativeKeyword(name))
+        }
         Builtins.constantValue(name)?.let { return EvaluationResult(it, rationalValue = Rational.fromBigDecimalSmart(it)) }
         throw UndefinedVariableException(name)
     }
@@ -164,14 +298,14 @@ class Evaluator(
                 rationalMode = rationalMode
             )
             val localContext = MathContext(variables = localVars)
-            var lastResult = EvaluationResult(BigDecimal.ZERO)
+            var lastResult: EvaluationResult? = null
             for (stmt in localFunc.body) {
                 val res = innerEvaluator.evaluateStatement(stmt, localContext)
-                if (res.value != null) {
+                if (res.value != null || res.dateTimeResult != null || res.stringResult != null) {
                     lastResult = res
                 }
             }
-            return lastResult
+            return lastResult ?: EvaluationResult(null)
         }
 
         if (name == "file") {
@@ -356,6 +490,9 @@ class Evaluator(
         if (name in UnitConverter.RESERVED_UNIT_SYMBOLS) {
             throw EvalException("`$name` is a unit symbol and cannot be used as a variable name")
         }
+        if (name in DateKeywords.RESERVED) {
+            throw EvalException("`$name` is a reserved date keyword and cannot be used as a variable name")
+        }
     }
 
     private fun scalarValue(
@@ -392,6 +529,137 @@ class Evaluator(
     private suspend fun evaluateBinaryOp(expr: Expr.BinaryOp): EvaluationResult {
         val leftEval = evaluate(expr.left)
         val rightEval = evaluate(expr.right)
+        val leftDt = leftEval.dateTimeResult
+        val rightDt = rightEval.dateTimeResult
+
+        val isLeftDuration = leftDt is DateTimeResult.Duration
+        val isRightDuration = rightDt is DateTimeResult.Duration
+        val isLeftDate = leftDt is DateTimeResult.Date || leftDt is DateTimeResult.DateTime
+        val isRightDate = rightDt is DateTimeResult.Date || rightDt is DateTimeResult.DateTime
+        val isDateOp = expr.op == TokenKind.KW_BEFORE || expr.op == TokenKind.KW_AFTER ||
+                expr.op == TokenKind.KW_AGO || expr.op == TokenKind.KW_FROM ||
+                expr.op == TokenKind.KW_SINCE || expr.op == TokenKind.KW_TILL ||
+                expr.op == TokenKind.KW_UNTIL
+
+        if (isLeftDate || isRightDate || isLeftDuration || isRightDuration || isDateOp) {
+            return when (expr.op) {
+                TokenKind.PLUS, TokenKind.MINUS -> {
+                    val isAdd = expr.op == TokenKind.PLUS
+                    when {
+                        // date +/- duration
+                        (isLeftDate && (isRightDuration || rightEval.unit != null)) -> {
+                            val base = leftDt as DateTimeResult
+                            val delta = toDateDelta(rightEval)
+                            EvaluationResult(value = null, dateTimeResult = DateEvaluator.applyDelta(base, delta, isAdd))
+                        }
+                        // duration + date
+                        (isLeftDuration && isRightDate && isAdd) -> {
+                            val base = rightDt as DateTimeResult
+                            val delta = (leftDt as DateTimeResult.Duration).delta
+                            EvaluationResult(value = null, dateTimeResult = DateEvaluator.applyDelta(base, delta, true))
+                        }
+                        // duration +/- duration
+                        (isLeftDuration && (isRightDuration || rightEval.unit != null)) -> {
+                            val leftDelta = (leftDt as DateTimeResult.Duration).delta
+                            val rightDelta = toDateDelta(rightEval)
+                            val resultDelta = if (isAdd) DateEvaluator.addDeltas(leftDelta, rightDelta) 
+                                              else DateEvaluator.addDeltas(leftDelta, rightDelta.negate())
+                            EvaluationResult(value = null, dateTimeResult = DateTimeResult.Duration(resultDelta))
+                        }
+                        else -> throw EvalException("Unsupported date/duration arithmetic")
+                    }
+                }
+                TokenKind.STAR -> {
+                    when {
+                        isLeftDuration && rightEval.value != null -> {
+                            val factor = rightEval.value.toDouble()
+                            val delta = (leftDt as DateTimeResult.Duration).delta
+                            val resultDelta = DateTimeDelta(
+                                years = (delta.years * factor).toLong(),
+                                months = (delta.months * factor).toLong(),
+                                weeks = (delta.weeks * factor).toLong(),
+                                days = (delta.days * factor).toLong(),
+                                hours = (delta.hours * factor).toLong(),
+                                minutes = (delta.minutes * factor).toLong(),
+                                seconds = (delta.seconds * factor).toLong()
+                            )
+                            EvaluationResult(value = null, dateTimeResult = DateTimeResult.Duration(resultDelta))
+                        }
+                        leftEval.value != null && isRightDuration -> {
+                            val factor = leftEval.value.toDouble()
+                            val delta = (rightDt as DateTimeResult.Duration).delta
+                            val resultDelta = DateTimeDelta(
+                                years = (delta.years * factor).toLong(),
+                                months = (delta.months * factor).toLong(),
+                                weeks = (delta.weeks * factor).toLong(),
+                                days = (delta.days * factor).toLong(),
+                                hours = (delta.hours * factor).toLong(),
+                                minutes = (delta.minutes * factor).toLong(),
+                                seconds = (delta.seconds * factor).toLong()
+                            )
+                            EvaluationResult(value = null, dateTimeResult = DateTimeResult.Duration(resultDelta))
+                        }
+                        else -> throw EvalException("Multiplication is not supported for dates")
+                    }
+                }
+                TokenKind.SLASH -> {
+                    when {
+                        // quantity / duration (e.g., 100 km / 2.5 h) -> speed
+                        leftEval.value != null && isRightDuration -> {
+                            val durationInSeconds = (rightDt as DateTimeResult.Duration).delta.toSecondsEstimate()
+                            if (durationInSeconds == 0L) throw DivisionByZeroException()
+                            val leftUnit = leftEval.unit?.let { UnitConverter.findUnit(it) }
+                            val rightUnit = UnitConverter.findUnit("s")
+                            val derivedUnit = UnitConverter.deriveUnit(leftUnit, rightUnit, TokenKind.SLASH)
+                            val resValue = leftEval.value.divide(BigDecimal.valueOf(durationInSeconds), mc)
+                            EvaluationResult(resValue, derivedUnit, rationalValue = Rational.toRational(resValue))
+                        }
+                        // duration / duration -> ratio
+                        isLeftDuration && isRightDuration -> {
+                            val s1 = (leftDt as DateTimeResult.Duration).delta.toSecondsEstimate()
+                            val s2 = (rightDt as DateTimeResult.Duration).delta.toSecondsEstimate()
+                            if (s2 == 0L) throw DivisionByZeroException()
+                            val resValue = BigDecimal.valueOf(s1).divide(BigDecimal.valueOf(s2), mc)
+                            EvaluationResult(resValue, rationalValue = Rational.toRational(resValue))
+                        }
+                        // duration / number -> scaling
+                        isLeftDuration && rightEval.value != null -> {
+                            val factor = rightEval.value.toDouble()
+                            if (factor == 0.0) throw DivisionByZeroException()
+                            val delta = (leftDt as DateTimeResult.Duration).delta
+                            val resultDelta = DateTimeDelta(
+                                years = (delta.years / factor).toLong(),
+                                months = (delta.months / factor).toLong(),
+                                weeks = (delta.weeks / factor).toLong(),
+                                days = (delta.days / factor).toLong(),
+                                hours = (delta.hours / factor).toLong(),
+                                minutes = (delta.minutes / factor).toLong(),
+                                seconds = (delta.seconds / factor).toLong()
+                            )
+                            EvaluationResult(value = null, dateTimeResult = DateTimeResult.Duration(resultDelta))
+                        }
+                        else -> throw EvalException("Division is not supported for dates")
+                    }
+                }
+                TokenKind.KW_BEFORE, TokenKind.KW_AFTER, TokenKind.KW_AGO, TokenKind.KW_FROM,
+                TokenKind.KW_SINCE, TokenKind.KW_TILL, TokenKind.KW_UNTIL -> {
+                    val base = when {
+                        isLeftDate -> leftDt as DateTimeResult
+                        isRightDate -> rightDt as DateTimeResult
+                        else -> null
+                    } ?: throw EvalException("Date expression expected")
+                    val delta = when {
+                        isLeftDuration -> (leftDt as DateTimeResult.Duration).delta
+                        isRightDuration -> (rightDt as DateTimeResult.Duration).delta
+                        else -> null
+                    } ?: if (leftDt != null && !isLeftDuration) toDateDelta(rightEval) else toDateDelta(leftEval)
+                    val isAdd = expr.op == TokenKind.KW_AFTER || expr.op == TokenKind.KW_FROM ||
+                        expr.op == TokenKind.KW_SINCE || expr.op == TokenKind.KW_UNTIL
+                    EvaluationResult(value = null, dateTimeResult = DateEvaluator.applyDelta(base, delta, isAdd))
+                }
+                else -> throw EvalException("Date values only support date arithmetic")
+            }
+        }
 
         // Percentage addition/subtraction
         if (expr.right is Expr.PercentLiteral) {
@@ -615,6 +883,38 @@ class Evaluator(
         }
 
         return EvaluationResult(resultVal * resultScale, resultUnit, rationalValue = applyRationalOp(resultRational, TokenKind.STAR, Rational.toRational(resultScale)))
+    }
+
+    private fun toDateDelta(result: EvaluationResult): DateTimeDelta {
+        result.dateTimeResult?.let {
+            if (it is DateTimeResult.Duration) return it.delta
+        }
+
+        val unit = result.unit?.let { UnitConverter.findUnit(it) }
+            ?: throw EvalException("Expected a date duration")
+        if (unit.category != UnitCategory.TIME) {
+            throw EvalException("Expected a date duration")
+        }
+
+        val amount = (result.value ?: BigDecimal.ZERO).divide(unit.factor, mc)
+        val amountLong = amount.toLong()
+        return when (unit.name.lowercase()) {
+            "year" -> DateTimeDelta(years = amountLong)
+            "month" -> DateTimeDelta(months = amountLong)
+            "week" -> DateTimeDelta(weeks = amountLong)
+            "day" -> DateTimeDelta(days = amountLong)
+            "hour" -> DateTimeDelta(hours = amountLong)
+            "minute" -> DateTimeDelta(minutes = amountLong)
+            "second" -> DateTimeDelta(seconds = amountLong)
+            "lustrum" -> DateTimeDelta(years = amountLong * 5)
+            "decade" -> DateTimeDelta(years = amountLong * 10)
+            "century" -> DateTimeDelta(years = amountLong * 100)
+            "millennium" -> DateTimeDelta(years = amountLong * 1000)
+            else -> {
+                val seconds = UnitConverter.toBase(amount, unit, variables)
+                DateTimeDelta(seconds = seconds.toLong())
+            }
+        }
     }
 
     private fun applyOp(left: BigDecimal, op: TokenKind, right: BigDecimal): BigDecimal = when (op) {

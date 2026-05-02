@@ -69,7 +69,12 @@ object MathEngine {
     )
 
     private val RESERVED_DYNAMIC_VARIABLES = TokenKind.entries
-        .filter { it.isPreviousLineAlias || it.isLineNumberAlias }
+        .filter { it.isPreviousLineAlias || it.isLineNumberAlias || it in setOf(
+            TokenKind.KW_TODAY, TokenKind.KW_YESTERDAY, TokenKind.KW_TOMORROW, TokenKind.KW_NOW,
+            TokenKind.KW_BEFORE, TokenKind.KW_AFTER, TokenKind.KW_AGO, TokenKind.KW_FROM,
+            TokenKind.KW_SINCE, TokenKind.KW_TILL, TokenKind.KW_UNTIL, TokenKind.KW_THROUGH,
+            TokenKind.KW_BETWEEN, TokenKind.KW_AND
+        ) }
         .map { it.display }
         .toSet()
 
@@ -134,7 +139,8 @@ object MathEngine {
             try {
                 injectDynamicVariables(context)
                 val result = evaluateLine(line.expression, context, loader, loadingStack)
-                context.lineResults.add(result.takeIf { it.value != null })
+                val hasResult = result.value != null || result.dateTimeResult != null || result.stringResult != null
+                context.lineResults.add(if (hasResult) result else null)
                 trackDynamicVariableAssignment(line.expression, context.userAssignedDynamicVariables)
             } catch (e: Exception) {
                 if (e is CircularReferenceException && loadingStack.isNotEmpty()) throw e
@@ -224,7 +230,7 @@ object MathEngine {
 
                 // Evaluate the line, updating `isolatedContext` if it's an assignment/function definition
                 val result = evaluateLine(line.expression, isolatedContext, loader, loadingStack)
-                if (result.value == null) {
+                if (result.value == null && result.dateTimeResult == null && result.stringResult == null) {
                     lineResults.add(null)
                     return@map line.copy(result = "")
                 }
@@ -234,44 +240,54 @@ object MathEngine {
                 // Track if user explicitly assigned a dynamic variable name
                 trackDynamicVariableAssignment(line.expression, userAssignedDynamicVariables)
 
-                // Store raw numeric result for persistence
-                val u = if (result.unit != null) UnitConverter.findUnit(result.unit) else null
-                val resultString = if (u != null) {
-                    if (u.category == UnitCategory.NUMERAL_SYSTEM) {
-                        if (result.value.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) != 0) throw IllegalArgumentException(ERR_FRACTIONAL_NUMERAL_SYSTEM)
-                        // Check if value is within Long range
-                        if (result.value.compareTo(BigDecimal(Long.MIN_VALUE)) < 0 || result.value.compareTo(BigDecimal(Long.MAX_VALUE)) > 0) {
-                            // Out of range, fall back to scientific notation
-                            formatBigDecimal(result.value)
-                        } else {
-                            formatNumeralSystem(result.value.toLong(), u.factor.toInt())
-                        }
-                    } else {
-                        val formattedValue = if (!result.forceFloat && (isolatedContext.rationalMode || result.explicitRational)) {
-                            if (result.rationalValue != null) {
-                                UnitConverter.fromBase(result.rationalValue, u, isolatedContext.variables)?.toString() ?: formatBigDecimal(UnitConverter.fromBase(result.value, u, isolatedContext.variables))
-                            } else {
-                                val displayValue = UnitConverter.fromBase(result.value, u, isolatedContext.variables)
-                                Rational.fromBigDecimalSmart(displayValue)?.toString() ?: formatBigDecimal(displayValue)
-                            }
-                        } else {
-                            val displayValue = UnitConverter.fromBase(result.value, u, isolatedContext.variables).let { value ->
-                                if (u.category == UnitCategory.TEMPERATURE) value.setScale(10, java.math.RoundingMode.HALF_UP) else value
-                            }
-                            formatBigDecimal(displayValue)
-                        }
-                        "$formattedValue ${result.unit}"
-                    }
-                } else if (!result.forceFloat && (isolatedContext.rationalMode || result.explicitRational)) {
-                    if (result.rationalValue != null) {
-                        result.rationalValue.toString()
-                    } else {
-                        Rational.fromBigDecimalSmart(result.value)?.toString() ?: formatBigDecimal(result.value)
-                    }
-                } else if (result.explicitUnitless && result.value.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) == 0) {
-                    result.value.toLong().toString()
+                // Store raw result for persistence
+                val resultString = if (result.stringResult != null) {
+                    result.stringResult
+                } else if (result.dateTimeResult != null) {
+                    DateEvaluator.format(result.dateTimeResult)
                 } else {
-                    formatBigDecimal(result.value)
+                    val numericValue = result.value ?: BigDecimal.ZERO
+                    val u = if (result.unit != null) UnitConverter.findUnit(result.unit) else null
+                    if (u != null) {
+                        if (u.category == UnitCategory.NUMERAL_SYSTEM) {
+                            if (numericValue.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) != 0) throw IllegalArgumentException(ERR_FRACTIONAL_NUMERAL_SYSTEM)
+                            if (numericValue.compareTo(BigDecimal(Long.MIN_VALUE)) < 0 || numericValue.compareTo(BigDecimal(Long.MAX_VALUE)) > 0) {
+                                formatBigDecimal(numericValue)
+                            } else {
+                                formatNumeralSystem(numericValue.toLong(), u.factor.toInt())
+                            }
+                        } else {
+                            val formattedValue = if (!result.forceFloat && (isolatedContext.rationalMode || result.explicitRational)) {
+                                if (result.rationalValue != null) {
+                                    UnitConverter.fromBase(result.rationalValue, u, isolatedContext.variables)?.toString() ?: formatBigDecimal(UnitConverter.fromBase(numericValue, u, isolatedContext.variables))
+                                } else {
+                                    val displayValue = UnitConverter.fromBase(numericValue, u, isolatedContext.variables)
+                                    Rational.fromBigDecimalSmart(displayValue)?.toString() ?: formatBigDecimal(displayValue)
+                                }
+                            } else {
+                                val displayValue = if (result.rationalValue != null) {
+                                    UnitConverter.fromBase(result.rationalValue, u, isolatedContext.variables)?.toBigDecimal(JavaMathContext.DECIMAL128)
+                                        ?: UnitConverter.fromBase(numericValue, u, isolatedContext.variables)
+                                } else {
+                                    UnitConverter.fromBase(numericValue, u, isolatedContext.variables)
+                                }.let { value ->
+                                    if (u.category == UnitCategory.TEMPERATURE) value.setScale(10, java.math.RoundingMode.HALF_UP) else value
+                                }
+                                formatBigDecimal(displayValue)
+                            }
+                            "$formattedValue ${result.unit}"
+                        }
+                    } else if (!result.forceFloat && (isolatedContext.rationalMode || result.explicitRational)) {
+                        if (result.rationalValue != null) {
+                            result.rationalValue.toString()
+                        } else {
+                            Rational.fromBigDecimalSmart(numericValue)?.toString() ?: formatBigDecimal(numericValue)
+                        }
+                    } else if (result.explicitUnitless && numericValue.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) == 0) {
+                        numericValue.toLong().toString()
+                    } else {
+                        formatBigDecimal(numericValue)
+                    }
                 }
                 line.copy(result = resultString)
             } catch (e: Exception) {
@@ -469,6 +485,17 @@ object MathEngine {
         loader: FileContextLoader? = null,
         loadingStack: Set<String> = emptySet()
     ): EvaluationResult {
+        // Year-only interval: "YYYY to YYYY" (e.g., "1978 to 2021")
+        val yearIntervalRegex = Regex("""^\s*(\d{4})\s+to\s+(\d{4})\s*$""")
+        yearIntervalRegex.matchEntire(expression.trim())?.let { m ->
+            val fromYear = m.groupValues[1].toInt()
+            val toYear = m.groupValues[2].toInt()
+            if (fromYear in 1000..2999 && toYear in 1000..2999) {
+                val dtResult = DateEvaluator.yearInterval(fromYear, toYear)
+                return EvaluationResult(value = null, dateTimeResult = dtResult)
+            }
+        }
+
         val tokens = Lexer(expression).tokenize()
 
         // If the only tokens are EOF (blank line) or the lexer skipped everything

@@ -6,9 +6,10 @@ import com.vishaltelangre.nerdcalci.core.Lexer
 import com.vishaltelangre.nerdcalci.core.UnitConverter
 import com.vishaltelangre.nerdcalci.core.Unit
 import com.vishaltelangre.nerdcalci.core.UnitCategory
+import com.vishaltelangre.nerdcalci.core.DateKeywords
 
 enum class TokenType {
-    Number, Variable, Keyword, Conversion, Operator, Percent, Comment, Function, StringLiteral, Default
+    Number, Variable, Keyword, DateKeyword, Conversion, Operator, Percent, Comment, Function, StringLiteral, Default
 }
 
 data class SyntaxToken(val start: Int, val end: Int, val type: TokenType)
@@ -56,6 +57,7 @@ object SyntaxUtils {
                     val start = i
                     while (i < text.length && (text[i].isLetterOrDigit() || text[i] == '_')) i++
                     val word = text.substring(start, i)
+                    val wordLower = word.lowercase()
 
                     // Peek ahead for Function call parsing
                     var j = i
@@ -63,7 +65,8 @@ object SyntaxUtils {
                     val isFunction = j < text.length && text[j] == '('
 
                     val type = when {
-                        word.lowercase() in setOf("to", "in", "as") -> TokenType.Conversion
+                        wordLower in setOf("to", "in", "as") -> TokenType.Conversion
+                        wordLower in DateKeywords.RESERVED -> TokenType.DateKeyword
                         word in KEYWORD_NAMES -> TokenType.Keyword
                         isFunction -> TokenType.Function
                         else -> TokenType.Variable
@@ -174,10 +177,44 @@ fun getSuggestionContext(
                 it.kind in listOf(
                     TokenKind.KW_TO,
                     TokenKind.KW_IN,
-                    TokenKind.KW_AS
+                    TokenKind.KW_AS,
+                    TokenKind.KW_THROUGH
                 )
             }
             if (kwIndex >= 0) {
+                val kwToken = cleanTokens[kwIndex]
+                val endPos = kwToken.position + kwToken.lexeme.length
+                var replaceStart = endPos
+                while (replaceStart < beforeCursor.length && beforeCursor[replaceStart].isWhitespace()) {
+                    replaceStart++
+                }
+                val currentWord = if (replaceStart < beforeCursor.length) {
+                    beforeCursor.substring(replaceStart)
+                } else ""
+                val isExplicit = kwIndex == cleanTokens.size - 1
+                val needsSpace = replaceStart == endPos && (replaceStart == beforeCursor.length || !beforeCursor[replaceStart].isWhitespace())
+
+                // If it's "in <string>" or "in <open quote>", treat as timezone context
+                val lastT = cleanTokens.last()
+                val isStringContext = lastT.kind == TokenKind.STRING_LITERAL || beforeCursor.trimEnd().endsWith("\"")
+                if (isStringContext && kwToken.kind == TokenKind.KW_IN) {
+                    val wordInsideQuotes = if (lastT.kind == TokenKind.STRING_LITERAL) lastT.lexeme else ""
+                    val replaceStartInQuotes = if (lastT.kind == TokenKind.STRING_LITERAL) lastT.position + 1 else beforeCursor.length
+                    return SuggestionContextInfo(wordInsideQuotes, SuggestionType.TIMEZONE, true, replaceStart = replaceStartInQuotes)
+                }
+
+                // Heuristic: if left side is a date keyword or function call, suggest timezones for 'in'
+                val prevT = if (kwIndex > 0) cleanTokens[kwIndex - 1] else null
+                val isDateLhs = prevT?.kind in setOf(TokenKind.KW_TODAY, TokenKind.KW_YESTERDAY, TokenKind.KW_TOMORROW, TokenKind.KW_NOW) ||
+                        (prevT?.kind == TokenKind.RPAREN && isDateFunctionCall(cleanTokens, kwIndex - 1)) ||
+                        (prevT?.kind == TokenKind.IDENTIFIER && prevT?.lexeme?.lowercase() in DateKeywords.RELATIVE) ||
+                        (prevT != null && isDatePreposition(prevT.kind))
+                
+                if ((kwToken.kind == TokenKind.KW_IN || kwToken.kind == TokenKind.KW_AS || 
+                    kwToken.kind == TokenKind.KW_TO || kwToken.kind == TokenKind.KW_THROUGH) && isDateLhs) {
+                    return SuggestionContextInfo(currentWord, SuggestionType.DATE_PROJECTION, isExplicit, replaceStart = replaceStart, needsSpace = needsSpace)
+                }
+
                 var unit: Unit? = null
                 var currentUnitStr = ""
                 for (i in (kwIndex - 1) downTo 0) {
@@ -193,17 +230,6 @@ fun getSuggestionContext(
                     }
                 }
 
-                val kwToken = cleanTokens[kwIndex]
-                val endPos = kwToken.position + kwToken.lexeme.length
-                var replaceStart = endPos
-                while (replaceStart < beforeCursor.length && beforeCursor[replaceStart].isWhitespace()) {
-                    replaceStart++
-                }
-                val currentWord = if (replaceStart < beforeCursor.length) {
-                    beforeCursor.substring(replaceStart)
-                } else ""
-                val isExplicit = kwIndex == cleanTokens.size - 1
-                val needsSpace = replaceStart == endPos && (replaceStart == beforeCursor.length || !beforeCursor[replaceStart].isWhitespace())
                 return SuggestionContextInfo(currentWord, SuggestionType.UNIT, isExplicit, unit?.category, replaceStart = replaceStart, needsSpace = needsSpace)
             }
 
@@ -211,6 +237,12 @@ fun getSuggestionContext(
             val convertContext = getConvertSuggestionContext(cleanTokens, beforeCursor.length)
             if (convertContext != null) {
                 return convertContext
+            }
+
+            // Check for datetimeZ() 7th argument context
+            val datetimeZContext = getDatetimeZSuggestionContext(cleanTokens, beforeCursor.length)
+            if (datetimeZContext != null) {
+                return datetimeZContext
             }
 
 
@@ -345,6 +377,55 @@ private fun getConvertSuggestionContext(cleanTokens: List<Token>, cursorPos: Int
         } else if (parenBalance == 0 && commaCount == 1 && (t.kind == TokenKind.STRING_LITERAL || t.kind == TokenKind.IDENTIFIER)) {
             // Traverse backward and save the 2nd argument!
             fromUnitStr = t.lexeme
+        }
+        scanIdx--
+    }
+    return null
+}
+
+/**
+ * Resolves advice suggestions for the `datetimeZ()` function arguments list.
+ * e.g., datetimeZ(y, m, d, h, min, s, "timezone")
+ */
+private fun getDatetimeZSuggestionContext(cleanTokens: List<Token>, cursorPos: Int): SuggestionContextInfo? {
+    var scanIdx = cleanTokens.size - 1
+    var parenBalance = 0
+    var commaCount = 0
+
+    while (scanIdx >= 0) {
+        val t = cleanTokens[scanIdx]
+        if (t.kind == TokenKind.RPAREN) {
+            parenBalance++
+        } else if (t.kind == TokenKind.LPAREN) {
+            if (parenBalance > 0) {
+                parenBalance--
+            } else {
+                if (scanIdx > 0) {
+                    val funcName = cleanTokens[scanIdx - 1]
+                    if (funcName.kind == TokenKind.IDENTIFIER && funcName.lexeme == "datetimeZ") {
+                        if (commaCount == 6) { // 7th arg: Timezone
+                            val lastT = cleanTokens.last()
+                            val currentWord = if (lastT.kind == TokenKind.STRING_LITERAL) {
+                                lastT.lexeme
+                            } else if (lastT.kind == TokenKind.IDENTIFIER) {
+                                lastT.lexeme
+                            } else ""
+
+                            val replaceStart = when (lastT.kind) {
+                                TokenKind.STRING_LITERAL -> lastT.position + 1
+                                TokenKind.IDENTIFIER -> lastT.position
+                                else -> cursorPos
+                            }
+                            return SuggestionContextInfo(currentWord, SuggestionType.TIMEZONE, true, replaceStart = replaceStart, argumentIndex = 7)
+                        }
+                    }
+                }
+                break
+            }
+        } else if (t.kind == TokenKind.COMMA) {
+            if (parenBalance == 0) {
+                commaCount++
+            }
         }
         scanIdx--
     }
@@ -512,3 +593,25 @@ fun String.calculateFuzzyMatch(query: String, type: SuggestionType? = null): Fuz
 
     return FuzzyMatch(score, matchIndices)
 }
+
+private fun isDateFunctionCall(tokens: List<Token>, rParenIndex: Int): Boolean {
+    var depth = 0
+    for (i in rParenIndex downTo 0) {
+        val t = tokens[i]
+        if (t.kind == TokenKind.RPAREN) depth++
+        else if (t.kind == TokenKind.LPAREN) {
+            depth--
+            if (depth == 0) {
+                val prev = if (i > 0) tokens[i - 1] else null
+                return prev?.kind == TokenKind.IDENTIFIER && 
+                       prev.lexeme.lowercase() in setOf("date", "datetime", "datetimez", "parsedate")
+            }
+        }
+    }
+    return false
+}
+
+private fun isDatePreposition(kind: TokenKind): Boolean =
+    kind == TokenKind.KW_BEFORE || kind == TokenKind.KW_AFTER || kind == TokenKind.KW_AGO ||
+            kind == TokenKind.KW_FROM || kind == TokenKind.KW_SINCE || kind == TokenKind.KW_TILL ||
+            kind == TokenKind.KW_UNTIL || kind == TokenKind.KW_THROUGH

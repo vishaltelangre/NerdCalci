@@ -3,7 +3,7 @@ package com.vishaltelangre.nerdcalci.utils
 import com.vishaltelangre.nerdcalci.core.UnitCategory
 
 enum class SuggestionType {
-    VARIABLE, LOCAL_FUNCTION, GLOBAL_FUNCTION, CONSTANT, DYNAMIC_VARIABLE, FILE, UNIT, KEYWORD, CONVERSION
+    VARIABLE, LOCAL_FUNCTION, GLOBAL_FUNCTION, CONSTANT, DYNAMIC_VARIABLE, FILE, UNIT, KEYWORD, CONVERSION, TIMEZONE, DATE_PROJECTION
 }
 
 data class Suggestion(

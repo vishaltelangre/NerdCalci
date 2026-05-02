@@ -5,6 +5,10 @@ import kotlinx.coroutines.runBlocking
 import org.junit.*
 import org.junit.Assert.*
 import java.math.BigDecimal
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 class MathEngineTest {
@@ -2302,9 +2306,10 @@ class MathEngineTest {
     }
 
     @Test
-    fun `standalone string literal throws error`() = testCalculate("\"hello\"") { result ->
-        assertError("Quotes are only allowed when specifying file names in `file(\"...\")`", result, 0)
+    fun `standalone string literal works`() = testCalculate("\"hello\"") { result ->
+        assertEquals("hello", result[0].result)
     }
+
 
     @Test
     fun `writing to member access target is read-only`() = testCalculate(
@@ -3019,4 +3024,5 @@ class MathEngineTest {
             assertEquals("2/3", it[1].result)
         }
     }
+
 }

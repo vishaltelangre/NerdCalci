@@ -34,7 +34,25 @@ class Lexer(private val source: String) {
         "file" to TokenKind.KW_FILE,
         "to" to TokenKind.KW_TO,
         "in" to TokenKind.KW_IN,
-        "as" to TokenKind.KW_AS
+        "as" to TokenKind.KW_AS,
+
+        // Date relative keywords
+        "today" to TokenKind.KW_TODAY,
+        "yesterday" to TokenKind.KW_YESTERDAY,
+        "tomorrow" to TokenKind.KW_TOMORROW,
+        "now" to TokenKind.KW_NOW,
+
+        // Date prepositions
+        "before" to TokenKind.KW_BEFORE,
+        "after" to TokenKind.KW_AFTER,
+        "ago" to TokenKind.KW_AGO,
+        "from" to TokenKind.KW_FROM,
+        "since" to TokenKind.KW_SINCE,
+        "till" to TokenKind.KW_TILL,
+        "until" to TokenKind.KW_UNTIL,
+        "through" to TokenKind.KW_THROUGH,
+        "between" to TokenKind.KW_BETWEEN,
+        "and" to TokenKind.KW_AND
     )
 
     fun tokenize(): List<Token> {

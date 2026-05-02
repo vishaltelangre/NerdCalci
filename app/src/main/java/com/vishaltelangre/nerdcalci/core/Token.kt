@@ -29,6 +29,18 @@ enum class TokenKind(val display: String) {
     KW_LINENO("lineno"), KW_LINENUMBER("linenumber"), KW_CURRENTLINENUMBER("currentLineNumber"),
     KW_TO("to"), KW_IN("in"), KW_AS("as"),
 
+    // Date relative keywords
+    KW_TODAY("today"), KW_YESTERDAY("yesterday"), KW_TOMORROW("tomorrow"), KW_NOW("now"),
+
+    // Date arithmetic prepositions
+    KW_BEFORE("before"), KW_AFTER("after"), KW_AGO("ago"),
+    KW_FROM("from"),
+    KW_SINCE("since"),
+    KW_TILL("till"),
+    KW_UNTIL("until"),
+    KW_THROUGH("through"),
+    KW_BETWEEN("between"), KW_AND("and"),
+
     // End-of-input
     EOF("end of line");
 

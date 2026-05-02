@@ -218,9 +218,9 @@ object UnitConverter {
 
         // --- SPEED --- (Base: m/s)
         Unit("Meter per second", listOf("mps", "meters per second"), UnitCategory.SPEED, BigDecimal.ONE),
-        Unit("Kilometer per hour", listOf("kmh", "kph", "kmph", "kilometers per hour"), UnitCategory.SPEED, BigDecimal.ONE.divide(BigDecimal("3.6"), JavaMathContext.DECIMAL128)),
+        Unit("Kilometer per hour", listOf("kmh", "kph", "kmph", "kilometers per hour"), UnitCategory.SPEED, BigDecimal.ONE.divide(BigDecimal("3.6"), JavaMathContext.DECIMAL128), rationalFactor = Rational(BigInteger.valueOf(5), BigInteger.valueOf(18))),
         Unit("Miles per hour", listOf("mph", "miph", "miles per hour"), UnitCategory.SPEED, BigDecimal("0.44704")),
-        Unit("Knot", listOf("kn", "knot", "knots"), UnitCategory.SPEED, BigDecimal("5093").divide(BigDecimal("9900"), JavaMathContext.DECIMAL128)),
+        Unit("Knot", listOf("kn", "knot", "knots"), UnitCategory.SPEED, BigDecimal("5093").divide(BigDecimal("9900"), JavaMathContext.DECIMAL128), rationalFactor = Rational(BigInteger.valueOf(5093), BigInteger.valueOf(9900))),
         Unit("Feet per second", listOf("fps", "feet per second"), UnitCategory.SPEED, BigDecimal("0.3048")),
         Unit("Speed of light", listOf("speed of light"), UnitCategory.SPEED, BigDecimal("299792458.0")),
 

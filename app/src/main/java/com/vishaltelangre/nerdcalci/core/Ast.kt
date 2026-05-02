@@ -70,5 +70,19 @@ sealed class Expr {
 
     /** Unit conversion: `<expr> [to|in|as] <unit>` */
     data class UnitConversion(val expr: Expr, val toUnit: String) : Expr()
-}
 
+    /** A composite duration (e.g., 3w 2d 15m), only valid for Date/Time arithmetic. */
+    data class CompositeQuantity(val quantities: List<Quantity>) : Expr()
+
+    /** Interval query: `between <start> and <end>` */
+    data class DateInterval(val start: Expr, val end: Expr, val projectionUnit: String? = null, val inclusive: Boolean = false) : Expr()
+
+    /** Numeric year interval: `1978 to 2021` */
+    data class YearInterval(val fromYear: Expr, val toYear: Expr) : Expr()
+
+    /** Day-count query: `days since <date>` / `days till <date>` / `days until <date>` */
+    data class DayCountQuery(val kind: TokenKind, val target: Expr) : Expr()
+
+    /** Timezone conversion or date formatting: `<expr> in "Zone"` / `<expr> as "iso8601"` */
+    data class DateModifier(val expr: Expr, val modifier: String, val value: String) : Expr()
+}

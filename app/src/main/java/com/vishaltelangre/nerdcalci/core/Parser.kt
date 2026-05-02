@@ -235,12 +235,60 @@ class Parser(private val tokens: List<Token>) {
      */
     private fun parseAddSub(): Expr {
         var left = parseMulDivMod()
-        while (peekKind() == TokenKind.PLUS || peekKind() == TokenKind.MINUS || isUnitOperator(peekKind())) {
+        while (peekKind() == TokenKind.PLUS || peekKind() == TokenKind.MINUS ||
+            isUnitOperator(peekKind()) || isDatePreposition(peekKind())
+        ) {
             val kind = peekKind()
-            if (isUnitOperator(kind)) {
+            if (isDatePreposition(kind)) {
+                val op = advance()
+                // Special case for "ago" or "from": if it's at the end or not followed by an expression,
+                // we treat it as "ago from now" or "from now".
+                if ((op.kind == TokenKind.KW_AGO || op.kind == TokenKind.KW_FROM) && !canStartExpression(peekKind())) {
+                    left = Expr.BinaryOp(left, op.kind, Expr.Variable("now"))
+                } else {
+                    // Right-associative for before/after/ago/from, but NOT for through
+                    // because through has an optional 'in days' suffix that parseAddSub would consume.
+                    val right = if (op.kind == TokenKind.KW_THROUGH) parseMulDivMod() else parseAddSub()
+                    if (op.kind == TokenKind.KW_THROUGH) {
+                        var unit: String? = null
+                        if (peekKind() == TokenKind.KW_IN && tokens.getOrNull(pos + 1)?.kind == TokenKind.IDENTIFIER) {
+                            val nextLexeme = tokens[pos + 1].lexeme
+                            if (UnitConverter.findUnit(nextLexeme)?.category == UnitCategory.TIME) {
+                                advance() // consume "in"
+                                advance() // consume unit
+                                unit = nextLexeme
+                            }
+                        }
+                        left = Expr.DateInterval(left, right, projectionUnit = unit, inclusive = true)
+                    } else {
+                        left = Expr.BinaryOp(left, op.kind, right)
+                    }
+                }
+            } else if (isUnitOperator(kind)) {
+                if (kind == TokenKind.KW_TO && left is Expr.NumberLiteral && peekAt(1) == TokenKind.NUMBER) {
+                    advance()
+                    val right = parseMulDivMod()
+                    left = Expr.YearInterval(left, right)
+                    continue
+                }
+                if (kind == TokenKind.KW_TO) {
+                    val nextKind = peekAt(1)
+                    if (nextKind in setOf(TokenKind.KW_TODAY, TokenKind.KW_YESTERDAY, TokenKind.KW_TOMORROW, TokenKind.KW_NOW) ||
+                        (nextKind == TokenKind.IDENTIFIER && peekAt(2) == TokenKind.LPAREN)) {
+                        advance() // consume 'to'
+                        val right = parseMulDivMod()
+                        left = Expr.DateInterval(left, right, projectionUnit = null, inclusive = false)
+                        continue
+                    }
+                }
                 advance() // consume to/in/as
                 val target = peek()
-                if (target.kind == TokenKind.IDENTIFIER || isUnitOperator(target.kind) || target.kind == TokenKind.KW_OF) {
+                if (target.kind == TokenKind.STRING_LITERAL) {
+                    advance()
+                    left = Expr.DateModifier(left, kind.display, target.lexeme)
+                } else if (target.kind == TokenKind.IDENTIFIER || isUnitOperator(target.kind) || target.kind == TokenKind.KW_OF ||
+                    target.kind == TokenKind.KW_TODAY || target.kind == TokenKind.KW_YESTERDAY ||
+                    target.kind == TokenKind.KW_TOMORROW || target.kind == TokenKind.KW_NOW) {
                     val firstLexeme = target.lexeme
                     advance() // consume first
 
@@ -438,7 +486,20 @@ class Parser(private val tokens: List<Token>) {
             TokenKind.IDENTIFIER -> {
                 val nameToken = advance()
                 val name = nameToken.lexeme
-                if (peekKind() == TokenKind.LPAREN) {
+                if (name.equals("days", ignoreCase = true) && peekKind() == TokenKind.KW_BETWEEN) {
+                    advance()
+                    val start = parseExpression()
+                    expect(TokenKind.KW_AND)
+                    val end = parseExpression()
+                    Expr.DateInterval(start, end, projectionUnit = "days", inclusive = false)
+                }
+ else if (name.equals("days", ignoreCase = true) &&
+                    (peekKind() == TokenKind.KW_SINCE || peekKind() == TokenKind.KW_TILL || peekKind() == TokenKind.KW_UNTIL)
+                ) {
+                    val op = advance().kind
+                    val base = parseExpression()
+                    Expr.DayCountQuery(op, base)
+                } else if (peekKind() == TokenKind.LPAREN) {
                     // e.g. sqrt(16), pow(2, 8)
                     advance() // skip past "("
                     val args = parseArgList()
@@ -448,6 +509,19 @@ class Parser(private val tokens: List<Token>) {
                     // e.g. price, total, PI
                     parseQuantityIfPossible(Expr.Variable(name))
                 }
+            }
+
+            TokenKind.KW_TODAY, TokenKind.KW_YESTERDAY, TokenKind.KW_TOMORROW, TokenKind.KW_NOW -> {
+                val token = advance()
+                parseQuantityIfPossible(Expr.Variable(token.lexeme))
+            }
+
+            TokenKind.KW_BETWEEN -> {
+                advance()
+                val start = parseExpression()
+                expect(TokenKind.KW_AND)
+                val end = parseExpression()
+                Expr.DateInterval(start, end, projectionUnit = null, inclusive = false)
             }
 
             else -> {
@@ -503,46 +577,76 @@ class Parser(private val tokens: List<Token>) {
     private fun canStartExpression(kind: TokenKind): Boolean =
         kind == TokenKind.NUMBER || kind == TokenKind.LPAREN ||
                 kind == TokenKind.IDENTIFIER || kind.isPreviousLineAlias || kind.isLineNumberAlias ||
-                kind == TokenKind.STRING_LITERAL || kind == TokenKind.KW_FILE
+                kind == TokenKind.STRING_LITERAL || kind == TokenKind.KW_FILE ||
+                kind == TokenKind.KW_TODAY || kind == TokenKind.KW_YESTERDAY ||
+                kind == TokenKind.KW_TOMORROW || kind == TokenKind.KW_NOW ||
+                kind == TokenKind.KW_BETWEEN
 
-    private fun parseQuantityIfPossible(value: Expr): Expr {
-        val nextKind = peekKind()
-        if (nextKind == TokenKind.IDENTIFIER || isUnitOperator(nextKind) || nextKind == TokenKind.KW_OF) {
-            val firstLexeme = peek().lexeme
-            val savedPos = pos
-            val t = advance() // consume first
-            val combinedUnit = parseCombinedUnit(firstLexeme)
+    private fun parseQuantityIfPossible(firstValue: Expr): Expr {
+        var quantities = mutableListOf<Expr.Quantity>()
 
-            var treatAsOperator = false
-            if (combinedUnit == "in" && t.kind == TokenKind.KW_IN) {
-                val ahead = peekKind()
-                if (ahead == TokenKind.IDENTIFIER) {
-                    treatAsOperator = true
+        fun inner(value: Expr): Expr.Quantity? {
+            val nextKind = peekKind()
+            if (nextKind == TokenKind.IDENTIFIER || isUnitOperator(nextKind) || nextKind == TokenKind.KW_OF) {
+                val firstLexeme = peek().lexeme
+                val savedPos = pos
+                val t = advance() // consume first
+                val combinedUnit = parseCombinedUnit(firstLexeme)
+
+                var treatAsOperator = false
+                if (combinedUnit == "in" && t.kind == TokenKind.KW_IN) {
+                    val ahead = peekKind()
+                    if (ahead == TokenKind.IDENTIFIER) {
+                        treatAsOperator = true
+                    }
+                }
+
+                if (!treatAsOperator && UnitConverter.findUnit(combinedUnit) != null) {
+                    return Expr.Quantity(value, combinedUnit)
+                }
+                pos = savedPos // Backtrack!
+
+                val firstUnit = UnitConverter.findUnit(firstLexeme)
+
+                treatAsOperator = false
+                if (firstLexeme == "in" && tokens[pos].kind == TokenKind.KW_IN) {
+                    val aheadPos = pos + 1
+                    val ahead = if (aheadPos < tokens.size) tokens[aheadPos].kind else TokenKind.EOF
+                    if (ahead == TokenKind.IDENTIFIER) {
+                        treatAsOperator = true
+                    }
+                }
+
+                if (!treatAsOperator && firstUnit != null) {
+                    advance() // consume first
+                    return Expr.Quantity(value, firstLexeme)
                 }
             }
+            return null
+        }
 
-            if (!treatAsOperator && UnitConverter.findUnit(combinedUnit) != null) {
-                return Expr.Quantity(value, combinedUnit)
-            }
-            pos = savedPos // Backtrack!
-
-            val firstUnit = UnitConverter.findUnit(firstLexeme)
-
-            treatAsOperator = false
-            if (firstLexeme == "in" && tokens[pos].kind == TokenKind.KW_IN) {
-                val aheadPos = pos + 1
-                val ahead = if (aheadPos < tokens.size) tokens[aheadPos].kind else TokenKind.EOF
-                if (ahead == TokenKind.IDENTIFIER) {
-                    treatAsOperator = true
+        val q1 = inner(firstValue)
+        if (q1 != null) {
+            quantities.add(q1)
+            // Look for more: e.g. "3w 2d 5h"
+            while (peekKind() == TokenKind.NUMBER) {
+                val start = pos
+                val numToken = advance()
+                val nextQ = inner(Expr.NumberLiteral(numToken.value))
+                if (nextQ != null) {
+                    quantities.add(nextQ)
+                } else {
+                    pos = start // Backtrack the number
+                    break
                 }
-            }
-
-            if (!treatAsOperator && firstUnit != null) {
-                advance() // consume first
-                return Expr.Quantity(value, firstLexeme)
             }
         }
-        return value
+
+        return when {
+            quantities.size > 1 -> Expr.CompositeQuantity(quantities)
+            quantities.size == 1 -> quantities[0]
+            else -> firstValue
+        }
     }
 
     private fun parseCombinedUnit(startLexeme: String): String {
@@ -582,6 +686,11 @@ class Parser(private val tokens: List<Token>) {
 
     private fun isUnitOperator(kind: TokenKind): Boolean =
         kind == TokenKind.KW_TO || kind == TokenKind.KW_IN || kind == TokenKind.KW_AS
+
+    private fun isDatePreposition(kind: TokenKind): Boolean =
+        kind == TokenKind.KW_BEFORE || kind == TokenKind.KW_AFTER || kind == TokenKind.KW_AGO ||
+                kind == TokenKind.KW_FROM || kind == TokenKind.KW_SINCE || kind == TokenKind.KW_TILL ||
+                kind == TokenKind.KW_UNTIL || kind == TokenKind.KW_THROUGH
 
     private fun getNumeralMultiplier(word: String): BigDecimal? {
         return when (word.lowercase()) {

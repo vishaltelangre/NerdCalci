@@ -292,13 +292,15 @@ private fun SuggestionItem(
             SuggestionType.UNIT -> "UNIT"
             SuggestionType.KEYWORD -> "KEY"
             SuggestionType.CONVERSION -> "CONV"
+            SuggestionType.TIMEZONE -> "TZ"
+            SuggestionType.DATE_PROJECTION -> "PROJ"
         }
 
         val (itemColor, isItalic) = when (suggestion.type) {
             SuggestionType.DYNAMIC_VARIABLE -> keywordColor to true
             SuggestionType.LOCAL_FUNCTION, SuggestionType.GLOBAL_FUNCTION -> functionColor to true
             SuggestionType.VARIABLE, SuggestionType.CONSTANT -> variableColor to true
-            SuggestionType.FILE, SuggestionType.UNIT, SuggestionType.KEYWORD -> keywordColor to false
+            SuggestionType.FILE, SuggestionType.UNIT, SuggestionType.KEYWORD, SuggestionType.TIMEZONE, SuggestionType.DATE_PROJECTION -> keywordColor to false
             SuggestionType.CONVERSION -> conversionColor to false
         }
 
@@ -372,14 +374,11 @@ private fun buildSuggestionText(suggestion: Suggestion): AnnotatedString {
             }
         }
 
-        // Functions are shown with empty parentheses in the list to visually distinguish them.
+        // Functions are shown with argument hints in the list to visually distinguish them.
         if (suggestion.type == SuggestionType.LOCAL_FUNCTION ||
             suggestion.type == SuggestionType.GLOBAL_FUNCTION) {
-            when (suggestion.name) {
-                "convert" -> append("(val, \"from\", \"to\")")
-                "file" -> append("(\"...\")")
-                else -> append("()")
-            }
+            val hint = suggestion.description ?: ""
+            append("($hint)")
         }
     }
 }
@@ -392,7 +391,7 @@ private fun isItalicType(type: SuggestionType): Boolean {
         SuggestionType.VARIABLE,
         SuggestionType.CONSTANT -> true
         SuggestionType.FILE, SuggestionType.UNIT, SuggestionType.KEYWORD,
-        SuggestionType.CONVERSION -> false
+        SuggestionType.CONVERSION, SuggestionType.TIMEZONE, SuggestionType.DATE_PROJECTION -> false
     }
 }
 
@@ -432,7 +431,7 @@ private fun handleSuggestionClick(
     } else if (contextReplaceStart != null) {
         wordStart = contextReplaceStart
         wordEnd = logicalCursor
-        if (suggestion.type == SuggestionType.UNIT && wordStart > 0 && logicalText[wordStart - 1] == '"') {
+        if ((suggestion.type == SuggestionType.UNIT || suggestion.type == SuggestionType.TIMEZONE) && wordStart > 0 && logicalText[wordStart - 1] == '"') {
             while (wordEnd < logicalText.length && logicalText[wordEnd] != '"' && logicalText[wordEnd] != ',' && logicalText[wordEnd] != ')') {
                 wordEnd++
             }
@@ -477,7 +476,7 @@ private fun handleSuggestionClick(
         } else {
             if (hasParens) suggestion.name else "${suggestion.name}()"
         }
-    } else if (suggestion.type == SuggestionType.UNIT && (contextArgumentIndex == 2 || contextArgumentIndex == 3)) {
+    } else if ((suggestion.type == SuggestionType.UNIT || suggestion.type == SuggestionType.TIMEZONE) && (contextArgumentIndex == 2 || contextArgumentIndex == 3 || suggestion.type == SuggestionType.TIMEZONE)) {
         val alreadyQuoted = contextReplaceStart != null && wordStart > 0 && logicalText[wordStart - 1] == '"'
         val afterWord = logicalText.substring(wordEnd)
         val insideClosingString = afterWord.startsWith("\"")
@@ -490,7 +489,7 @@ private fun handleSuggestionClick(
 
         if (!alreadyQuoted) {
             sb.append("\"")
-            if (contextArgumentIndex == 3) {
+            if (contextArgumentIndex == 3 || suggestion.type == SuggestionType.TIMEZONE && contextArgumentIndex == 7) {
                 val insideClosingCall = afterWord.trim().startsWith(")")
                 if (!insideClosingCall) {
                     sb.append(")")
@@ -498,7 +497,7 @@ private fun handleSuggestionClick(
             }
         } else if (!insideClosingString) {
             sb.append("\"")
-            if (contextArgumentIndex == 3) {
+            if (contextArgumentIndex == 3 || suggestion.type == SuggestionType.TIMEZONE && contextArgumentIndex == 7) {
                 val insideClosingCall = afterWord.matches(Regex("""^"?\s*\).*"""))
                 if (!insideClosingCall) {
                     sb.append(")")

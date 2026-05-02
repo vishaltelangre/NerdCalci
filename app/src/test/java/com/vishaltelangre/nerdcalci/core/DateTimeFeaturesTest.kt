@@ -1,0 +1,370 @@
+package com.vishaltelangre.nerdcalci.core
+
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.*
+import org.junit.Test
+import java.math.BigDecimal
+import java.time.*
+import java.time.temporal.ChronoUnit
+
+class DateTimeFeaturesTest {
+
+    @Test
+    fun `date and datetime constructors`() = testCalculate(
+        "date(2024, 1, 1)",
+        "datetime(2024, 1, 1, 14, 30, 0)",
+        "datetimeZ(2024, 1, 1, 18, 0, 0, \"UTC\")",
+        "datetimeZ(2024, 4, 1, 18, 0, 0, \"AEST\")",
+        "date(2024, 2, 29)",                   // Leap year
+        "date(2000, 2, 29)",                   // Millennial leap year
+        "date(1900, 2, 29)"                    // Not a leap year (Err)
+    ) { results ->
+        assertEquals("Jan 1, 2024", results[0].result)
+        assertTrue(results[1].result.contains("Jan 1, 2024, 2:30 PM"))
+        assertEquals("Jan 1, 2024, 6:00 PM UTC", results[2].result)
+        assertTrue(results[3].result.contains("Apr 1, 2024"))
+        assertEquals("Feb 29, 2024", results[4].result)
+        assertEquals("Feb 29, 2000", results[5].result)
+        assertEquals("Err", results[6].result)
+    }
+
+    @Test
+    fun `date parsing formats`() = testCalculate(
+        "parseDate(\"2024-01-01\")",
+        "parseDate(\"Jan 1, 2024\")",
+        "parseDate(\"1 Jan 2024\")",
+        "parseDate(\"2024/01/01\")",
+        "parseDate(\"2025/03/17\")",
+        "parseDate(1718400000)",
+        "parseDate(\"june 10\")",               // Inferred year
+        "parseDate(\"10 June\")"                // Inferred year
+    ) { results ->
+        assertEquals("Jan 1, 2024", results[0].result)
+        assertEquals("Jan 1, 2024", results[1].result)
+        assertEquals("Jan 1, 2024", results[2].result)
+        assertEquals("Jan 1, 2024", results[3].result)
+        assertEquals("Mar 17, 2025", results[4].result)
+        assertNotEquals("Err", results[5].result)
+        assertTrue(results[6].result.contains("Jun 10"))
+        assertTrue(results[7].result.contains("Jun 10"))
+    }
+
+    @Test
+    fun `roundtrip parsing via iso8601 and timestamp`() = testCalculate(
+        "d = date(2024, 1, 1)",
+        "parseDate(d as iso8601)",
+        "parseDate(d as timestamp)",
+        "dt = datetime(2024, 1, 1, 12, 0, 0)",
+        "parseDate(dt as iso8601)",
+        "parseDate(dt as timestamp)",
+        "dtz = datetimeZ(2024, 1, 1, 12, 0, 0, \"UTC\")",
+        "parseDate(dtz as iso8601)",
+        "parseDate(dtz as timestamp)",
+        "parseDate(\"2025-05-02T15:11:42.838589+05:30\")"
+    ) { results ->
+        assertEquals("Jan 1, 2024", results[1].result)
+        // Timestamps always include time, so they parse back as DateTime
+        assertTrue(results[2].result.contains("Jan 1, 2024"))
+        
+        assertTrue(results[4].result.contains("Jan 1, 2024"))
+        assertTrue(results[5].result.contains("Jan 1, 2024"))
+        assertTrue(results[7].result.contains("Jan 1, 2024"))
+        assertTrue(results[8].result.contains("Jan 1, 2024"))
+        assertTrue(results[9].result.contains("May 2, 2025, 3:11 PM GMT+05:30"))
+    }
+
+    @Test
+    fun `relative keywords`() = testCalculate(
+        "today",
+        "yesterday",
+        "tomorrow",
+        "now",
+        "today to tomorrow",
+        "now to tomorrow",
+        "now to yesterday"
+    ) { results ->
+        results.forEach { assertNotEquals("Err", it.result) }
+        assertEquals("1 d", results[4].result)
+        assertTrue(results[6].result.contains("-1 d"))
+    }
+
+    @Test
+    fun `date arithmetic with durations`() = testCalculate(
+        "date(2024, 1, 1) + 1 year",
+        "date(2024, 1, 1) + 1 month",
+        "date(2024, 1, 1) + 1 week",
+        "date(2024, 1, 1) + 1 day",
+        "date(2024, 1, 1) - 1 day",
+        "date(2024, 1, 31) + 1 month", // Month pinning: Feb 29 2024 (leap year)
+        "date(2024, 1, 1) + 1 hour",    // Promotes to DateTime
+        "date(2024, 1, 1) - 2 hours",   // Promotes to DateTime
+        "parseDate(\"2019-04-01\") + 3 weeks",
+        "3 weeks before parseDate(\"2019-04-22\")",
+        "3 weeks after parseDate(\"2019-04-01\")"
+    ) { results ->
+        assertEquals("Jan 1, 2025", results[0].result)
+        assertEquals("Feb 1, 2024", results[1].result)
+        assertEquals("Jan 8, 2024", results[2].result)
+        assertEquals("Jan 2, 2024", results[3].result)
+        assertEquals("Dec 31, 2023", results[4].result)
+        assertEquals("Feb 29, 2024", results[5].result)
+        assertTrue(results[6].result.contains("Jan 1, 2024, 1:00 AM"))
+        assertTrue(results[7].result.contains("Dec 31, 2023, 10:00 PM"))
+        assertEquals("Apr 22, 2019", results[8].result)
+        assertEquals("Apr 1, 2019", results[9].result)
+        assertEquals("Apr 22, 2019", results[10].result)
+    }
+
+    @Test
+    fun `relative arithmetic shortcuts`() = testCalculate(
+        "3 days ago",
+        "2 weeks from now",
+        "4 hours before today",
+        "5 minutes after now",
+        "4 days from",
+        "4 days from 2 days ago",
+        "4 days from 2 days before date(2024, 5, 1)"
+    ) { results ->
+        results.forEach { assertNotEquals("Err", it.result) }
+        assertTrue(results[2].result.contains("PM")) // 4 hours before today (midnight) -> 8 PM previous day
+        assertEquals("May 3, 2024", results[6].result)
+    }
+
+    @Test
+    fun `date intervals and day counts`() = testCalculate(
+        "date(2024, 1, 1) to date(2024, 1, 8)", // [0]
+        "date(2024, 1, 1) to date(2025, 1, 1)", // [1]
+        "date(2024, 1, 8) to date(2024, 1, 1)", // [2]
+        "date(2024, 1, 1) through date(2024, 1, 31) in days", // [3]
+        "days between date(2024, 1, 1) and date(2024, 1, 8)", // [4]
+        "days since date(2024, 1, 1)",          // [5]
+        "days till date(2025, 1, 1)",           // [6]
+        "1978 to 2021",                         // [7]
+        "parseDate(\"2019-03-03\") to parseDate(\"2019-05-30\")", // [8]
+        "days since date(2030, 1, 1)",          // [9] Since future (negative)
+        "days till date(2020, 1, 1)",            // [10] Till past (negative)
+        "date(2024, 1, 1) through date(2024, 1, 2) in hours", // [11]
+        "date(2024, 1, 1) through date(2024, 1, 7) in weeks"  // [12]
+    ) { results ->
+        assertEquals("1 wk", results[0].result)
+        assertEquals("1 y", results[1].result)
+        assertEquals("-1 wk", results[2].result)
+        assertEquals("31 d", results[3].result)
+        assertEquals("7 d", results[4].result)
+        assertNotEquals("Err", results[5].result)
+        assertNotEquals("Err", results[6].result)
+        assertEquals("43 y", results[7].result)
+        assertEquals("2 mo 27 d", results[8].result)
+        assertTrue(results[9].result.startsWith("-"))
+        assertTrue(results[10].result.startsWith("-"))
+        assertTrue(results[11].result.contains("48 h"))
+        assertEquals("1 wk", results[12].result)
+    }
+
+    @Test
+    fun `timezone conversion and formatting`() = testCalculate(
+        "dtz = datetimeZ(2024, 1, 1, 12, 0, 0, \"UTC\")",
+        "dtz in \"Asia/Tokyo\"",
+        "dtz to \"Asia/Tokyo\"",
+        "dtz as \"Asia/Tokyo\"",
+        "dtz as iso8601",
+        "dtz in timestamp",
+        "datetimeZ(2024, 4, 1, 18, 0, 0, \"AEST\") in \"America/Chicago\"",
+        "datetimeZ(2024, 1, 1, 12, 0, 0, \"UTC\") in \"PST\"",
+        "datetimeZ(2024, 1, 1, 12, 0, 0, \"UTC\") in \"EST\""
+    ) { results ->
+        val tokyo = "Jan 1, 2024, 9:00 PM JST"
+        assertEquals(tokyo, results[1].result)
+        assertEquals(tokyo, results[2].result)
+        assertEquals(tokyo, results[3].result)
+
+        assertEquals("2024-01-01T12:00:00Z", results[4].result)
+        assertEquals("1704110400.0", results[5].result)
+        
+        assertTrue(results[6].result.contains("Apr 1, 2024"))
+        assertTrue(results[7].result.contains("PST") || results[7].result.contains("PDT"))
+        assertTrue(results[8].result.contains("EST") || results[8].result.contains("EDT"))
+    }
+
+    @Test
+    fun `conversions with in and to operators`() = testCalculate(
+        "d = date(2024, 1, 1)",
+        "d in timestamp",
+        "d to timestamp",
+        "d as timestamp",
+        "d in iso8601",
+        "d to iso8601",
+        "d as iso8601",
+        "dt = datetime(2024, 1, 1, 12, 0, 0)",
+        "dt in timestamp",
+        "dt to iso8601"
+    ) { results ->
+        // date(2024, 1, 1) at system zone midnight
+        val ts = results[1].result
+        assertEquals(ts, results[2].result)
+        assertEquals(ts, results[3].result)
+        assertNotEquals("Err", ts)
+
+        val iso = results[4].result
+        assertEquals("2024-01-01", iso)
+        assertEquals(iso, results[5].result)
+        assertEquals(iso, results[6].result)
+
+        // datetime
+        assertNotEquals("Err", results[8].result)
+        assertTrue(results[9].result.contains("2024-01-01T12:00:00"))
+    }
+
+    @Test
+    fun `composite units in numeric arithmetic`() = testCalculate(
+        "1h 30 min in s",
+        "100 km / 2 hours 30 minutes",
+        "1 day + 12 hours in hours",
+        "2wk 3d + 1 week",
+        "1mo 2wk in days"
+    ) { results ->
+        assertEquals("5400.0 s", results[0].result)
+        assertEquals("40.0 kmh", results[1].result)
+        assertEquals("36.0 h", results[2].result)
+        assertEquals("3 wk 3 d", results[3].result)
+        assertEquals("44.436875 d", results[4].result)
+    }
+
+    @Test
+    fun `reserved keyword protection`() = testCalculate(
+        "today = 10",
+        "now = \"hello\"",
+        "yesterday = date(2024, 1, 1)",
+        "tomorrow = 5",
+        "d = 10",
+        "d = today"
+    ) { results ->
+        // Assignments to keywords should fail
+        assertEquals("Err", results[0].result)
+        assertEquals("Err", results[1].result)
+        assertEquals("Err", results[2].result)
+        assertEquals("Err", results[3].result)
+
+        // Normal variable can hold a keyword value
+        assertNotEquals("Err", results[5].result)
+    }
+
+    @Test
+    fun `quantity divided by duration`() = testCalculate(
+        "100 km / 2h 30min",
+        "distance = 50 miles",
+        "time = 1 hour",
+        "distance / time"
+    ) { results ->
+        // 100 km / 2.5 h = 40 km/h
+        assertEquals("40.0 kmh", results[0].result)
+        assertEquals("50.0 mph", results[3].result)
+    }
+
+    @Test
+    fun `variable resolution with dates`() = testCalculate(
+        "d = date(2024, 1, 1)",
+        "d + 1 week",
+        "tz = \"Asia/Tokyo\"",
+        "datetimeZ(2024, 1, 1, 12, 0, 0, \"UTC\") in tz"
+    ) { results ->
+        assertEquals("Jan 1, 2024", results[0].result)
+        assertEquals("Jan 8, 2024", results[1].result)
+        assertEquals("Jan 1, 2024, 9:00 PM JST", results[3].result)
+    }
+
+    @Test
+    fun `date and time edge cases`() = testCalculate(
+        "parseDate(\"\")",                      // Empty
+        "parseDate(\"2024-02-30\")",            // Invalid calendar date
+        "date(2024, 2, 30)",                   // Invalid constructor params
+        "date(2024, 2, 29) + 1 year",          // Leap year arithmetic
+        "date(2024, 1, 1) to \"not a date\"",  // Invalid interval target
+        "days since \"not a date\"",           // Invalid day-count target
+        "datetimeZ(2024, 1, 1, 12, 0, 0, \"UTC\") in \"Invalid/Zone\"",
+        "1.5 days ago",                         // Fractional duration (truncates)
+        "date(2023, 12, 31) + 1y 1mo 1d",      // Multi-component overflow
+        "parseDate(\"12/02/1988\")"            // Ambiguous format
+    ) { results ->
+        assertEquals("Err", results[0].result)
+        assertEquals("Err", results[1].result)
+        assertEquals("Err", results[2].result)
+        assertEquals("Feb 28, 2025", results[3].result)
+        assertEquals("Err", results[4].result)
+        assertEquals("Err", results[5].result)
+        assertEquals("Err", results[6].result)
+        assertNotEquals("Err", results[7].result) // Truncates to 1 day
+        assertEquals("Feb 1, 2025", results[8].result)
+        assertEquals("Err", results[9].result)
+    }
+
+    @Test
+    fun `above correctly picks up date from preceding line during partial recalculation`() = runBlocking {
+        val expressions = arrayOf(
+            "date(2024, 2, 12)",
+            "above"
+        )
+        val lines = createLines(*expressions)
+        // Simulate partial recalculation starting at the second line
+        val results = MathEngine.calculateFrom(lines, changedIndex = 1)
+        assertEquals(1, results.size)
+        assertEquals("Feb 12, 2024", results[0].result)
+    }
+
+    @Test
+    fun `date values can be assigned and reused across lines`() = testCalculate(
+        "d = parseDate(\"2019-04-01\")",
+        "d + 3 weeks",
+        "next = d + 3 weeks",
+        "next in \"America/Chicago\""
+    ) { results ->
+        assertEquals("Apr 1, 2019", results[0].result)
+        assertEquals("Apr 22, 2019", results[1].result)
+        assertEquals("Apr 22, 2019", results[2].result)
+        assertTrue(results[3].result.contains("Apr 21, 2019") || results[3].result.contains("Apr 22, 2019"))
+    }
+    @Test
+    fun `compound assignment with dates`() = testCalculate(
+        "d = date(2024, 1, 1)",
+        "d += 1 week",
+        "d",
+        "d -= 2 days",
+        "d"
+    ) { results ->
+        assertEquals("Jan 8, 2024", results[1].result)
+        assertEquals("Jan 8, 2024", results[2].result)
+        assertEquals("Jan 6, 2024", results[3].result)
+        assertEquals("Jan 6, 2024", results[4].result)
+    }
+
+    @Test
+    fun `duration scaling and ratios`() = testCalculate(
+        "2h * 3",
+        "1 day / 4",
+        "1h / 15min",
+        "1wk / 1 day"
+    ) { results ->
+        assertEquals("6.0 h", results[0].result)
+        assertEquals("0.25 d", results[1].result)
+        assertEquals("4.0", results[2].result)
+        assertEquals("7.0", results[3].result)
+    }
+
+    @Test
+    fun `invalid date arithmetic should err`() = testCalculate(
+        "d = date(2024, 1, 1)",
+        "d++",
+        "d--",
+        "d * 2",
+        "d / 2",
+        "d + 1",
+        "d - 1"
+    ) { results ->
+        assertError("Unsupported date/duration arithmetic", results, 1)
+        assertError("Unsupported date/duration arithmetic", results, 2)
+        assertError("Multiplication is not supported for dates", results, 3)
+        assertError("Division is not supported for dates", results, 4)
+        assertError("Unsupported date/duration arithmetic", results, 5)
+        assertError("Unsupported date/duration arithmetic", results, 6)
+    }
+}

@@ -301,6 +301,12 @@ object Builtins {
     }
 
     fun execute(name: String, args: List<EvaluationResult>, variables: Map<String, EvaluationResult>): EvaluationResult {
+        when (name) {
+            "parseDate" -> return executeParseDate(args)
+            "date" -> return executeDate(args)
+            "datetime" -> return executeDateTime(args)
+            "datetimeZ" -> return executeDateTimeZ(args)
+        }
         val fn = functions[name] ?: throw UnknownFunctionException(name)
         if (fn.arity != args.size) {
             throw ArityMismatchException(name, fn.arity, args.size)
@@ -313,6 +319,52 @@ object Builtins {
         }
         val normalizedArgs = normalizeInputArgs(name, fn.inputSpec, args, variables)
         return fn.unitPolicy.evaluate(normalizedArgs, fn.body, variables)
+    }
+
+    private fun executeParseDate(args: List<EvaluationResult>): EvaluationResult {
+        if (args.size != 1) throw ArityMismatchException("parseDate", 1, args.size)
+        val arg = args[0]
+        return when {
+            arg.stringResult != null -> EvaluationResult(value = null, dateTimeResult = DateStringParser.parse(arg.stringResult))
+            arg.value != null -> EvaluationResult(value = null, dateTimeResult = DateStringParser.parseEpoch(arg.value.toLong()))
+            else -> throw EvalException("`parseDate()` expects a numeric epoch or a date string")
+        }
+    }
+
+    private fun executeDate(args: List<EvaluationResult>): EvaluationResult {
+        if (args.size != 3) throw ArityMismatchException("date", 3, args.size)
+        val y = args[0].value?.toInt() ?: throw EvalException("`date()` expects numeric year")
+        val m = args[1].value?.toInt() ?: throw EvalException("`date()` expects numeric month")
+        val d = args[2].value?.toInt() ?: throw EvalException("`date()` expects numeric day")
+        return EvaluationResult(value = null, dateTimeResult = DateTimeResult.Date(java.time.LocalDate.of(y, m, d)))
+    }
+
+    private fun executeDateTime(args: List<EvaluationResult>): EvaluationResult {
+        if (args.size != 6) throw ArityMismatchException("datetime", 6, args.size)
+        val y = args[0].value?.toInt() ?: throw EvalException("`datetime()` expects numeric year")
+        val m = args[1].value?.toInt() ?: throw EvalException("`datetime()` expects numeric month")
+        val d = args[2].value?.toInt() ?: throw EvalException("`datetime()` expects numeric day")
+        val h = args[3].value?.toInt() ?: throw EvalException("`datetime()` expects numeric hour")
+        val mi = args[4].value?.toInt() ?: throw EvalException("`datetime()` expects numeric minute")
+        val s = args[5].value?.toInt() ?: throw EvalException("`datetime()` expects numeric second")
+        val zdt = java.time.LocalDateTime.of(y, m, d, h, mi, s).atZone(java.time.ZoneId.systemDefault())
+        return EvaluationResult(value = null, dateTimeResult = DateTimeResult.DateTime(zdt))
+    }
+
+    private fun executeDateTimeZ(args: List<EvaluationResult>): EvaluationResult {
+        if (args.size != 7) throw ArityMismatchException("datetimeZ", 7, args.size)
+        val zoneText = args[6].stringResult ?: args[6].value?.toString() ?: throw EvalException("`datetimeZ()` expects a timezone string")
+        val zone = TimezoneRegistry.resolve(zoneText) ?: throw EvalException("Unknown timezone `$zoneText`")
+        
+        val y = args[0].value?.toInt() ?: throw EvalException("`datetimeZ()` expects numeric year")
+        val m = args[1].value?.toInt() ?: throw EvalException("`datetimeZ()` expects numeric month")
+        val d = args[2].value?.toInt() ?: throw EvalException("`datetimeZ()` expects numeric day")
+        val h = args[3].value?.toInt() ?: throw EvalException("`datetimeZ()` expects numeric hour")
+        val mi = args[4].value?.toInt() ?: throw EvalException("`datetimeZ()` expects numeric minute")
+        val s = args[5].value?.toInt() ?: throw EvalException("`datetimeZ()` expects numeric second")
+
+        val zdt = java.time.LocalDateTime.of(y, m, d, h, mi, s).atZone(zone)
+        return EvaluationResult(value = null, dateTimeResult = DateTimeResult.DateTime(zdt))
     }
 
     /** Returns true if [name] is a registered function (any arity). */

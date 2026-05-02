@@ -7,6 +7,7 @@ import com.vishaltelangre.nerdcalci.data.local.FakeCalculatorDao
 import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
 import com.vishaltelangre.nerdcalci.data.sync.SyncManager
+import com.vishaltelangre.nerdcalci.utils.SuggestionType
 import io.mockk.*
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -155,6 +156,20 @@ class CalculatorViewModelTest {
         assertEquals("Normal", allFiles[0].name)
         assertTrue(allFiles.none { it.isTemporary })
     }
+
+    @Test
+    fun `getSuggestionsForFile includes date keywords`() = runTest {
+        fakeDao.insertFile(FileEntity(id = 1L, name = "Dates"))
+        fakeDao.insertLine(LineEntity(id = 1L, fileId = 1L, expression = "today", sortOrder = 0))
+        fakeDao.insertLine(LineEntity(id = 2L, fileId = 1L, expression = "x = 1", sortOrder = 1))
+
+        val suggestions = viewModel.getSuggestionsForFile("Dates")
+
+        assertTrue(suggestions.contains(com.vishaltelangre.nerdcalci.utils.Suggestion("today", SuggestionType.KEYWORD)))
+        assertTrue(suggestions.contains(com.vishaltelangre.nerdcalci.utils.Suggestion("between", SuggestionType.KEYWORD)))
+        assertTrue(suggestions.contains(com.vishaltelangre.nerdcalci.utils.Suggestion("tomorrow", SuggestionType.KEYWORD)))
+    }
+
     @Test
     fun `lastSyncAt is initialized from SharedPreferences`() = runTest {
         // Given: SharedPreferences has a last sync timestamp

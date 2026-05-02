@@ -14,6 +14,7 @@ import com.vishaltelangre.nerdcalci.core.MathEngine
 import com.vishaltelangre.nerdcalci.core.FileContextLoader
 import com.vishaltelangre.nerdcalci.core.MathContext
 import com.vishaltelangre.nerdcalci.core.EvalException
+import com.vishaltelangre.nerdcalci.core.DateKeywords
 import com.vishaltelangre.nerdcalci.data.backup.AutoBackupScheduler
 import com.vishaltelangre.nerdcalci.data.backup.BackupFileInfo
 import com.vishaltelangre.nerdcalci.data.backup.BackupFrequency
@@ -326,6 +327,7 @@ class CalculatorViewModel(
                 suggestions.add(Suggestion(it, type))
             }
         context.localFunctions.keys.forEach { suggestions.add(Suggestion(it, SuggestionType.LOCAL_FUNCTION)) }
+        DateKeywords.RESERVED.forEach { suggestions.add(Suggestion(it, SuggestionType.KEYWORD)) }
 
         // Add select dynamic variables for dot notation with accurate type
         MathEngine.dynamicVariableNames

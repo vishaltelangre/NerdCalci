@@ -607,6 +607,38 @@ class SyntaxUtilsTest {
     }
 
     @Test
+    fun `getSuggestionContext identifies TIME category after duration`() {
+        val text = "4 days "
+        val context = getSuggestionContext(text, text, text.length, emptyMap())
+        assertEquals(SuggestionType.CONVERSION, context!!.type)
+        assertEquals(com.vishaltelangre.nerdcalci.core.UnitCategory.TIME, context.unitCategory)
+    }
+
+    @Test
+    fun `getSuggestionContext identifies TIME category after partial unit`() {
+        val text = "4 d"
+        val context = getSuggestionContext(text, text, text.length, emptyMap())
+        assertEquals(SuggestionType.CONVERSION, context!!.type)
+        assertEquals(com.vishaltelangre.nerdcalci.core.UnitCategory.TIME, context.unitCategory)
+    }
+
+    @Test
+    fun `getSuggestionContext identifies TIME category after composite duration`() {
+        val text = "4 days 2h "
+        val context = getSuggestionContext(text, text, text.length, emptyMap())
+        assertEquals(SuggestionType.CONVERSION, context!!.type)
+        assertEquals(com.vishaltelangre.nerdcalci.core.UnitCategory.TIME, context.unitCategory)
+    }
+
+    @Test
+    fun `getSuggestionContext identifies TIME category after nested duration`() {
+        val text = "4 days from 2 days "
+        val context = getSuggestionContext(text, text, text.length, emptyMap())
+        assertEquals(SuggestionType.CONVERSION, context!!.type)
+        assertEquals(com.vishaltelangre.nerdcalci.core.UnitCategory.TIME, context.unitCategory)
+    }
+
+    @Test
     fun `getSuggestionContext handles unit completion after number`() {
         val beforeCursor = "15 n"
         val result = getSuggestionContext(beforeCursor, beforeCursor, beforeCursor.length, emptyMap())
@@ -648,5 +680,93 @@ class SyntaxUtilsTest {
         assertEquals(SuggestionType.CONVERSION, result.type)
         assertEquals(2, result.unitStart)
         assertNull(result.unitCategory)
+    }
+
+    @Test
+    fun `getSuggestionContext identifies TIMEZONE context after in keyword with partial string`() {
+        val beforeCursor = "now in \"ED"
+        val result = getSuggestionContext(beforeCursor, beforeCursor, beforeCursor.length, emptyMap())
+        assertEquals(SuggestionType.TIMEZONE, result.type)
+        assertEquals("ED", result.word)
+        assertEquals(beforeCursor.indexOf("\"") + 1, result.replaceStart)
+    }
+
+    @Test
+    fun `getSuggestionContext identifies TIMEZONE context after in keyword with open quote`() {
+        val beforeCursor = "now in \""
+        val result = getSuggestionContext(beforeCursor, beforeCursor, beforeCursor.length, emptyMap())
+        assertEquals(SuggestionType.TIMEZONE, result.type)
+        assertEquals("", result.word)
+        assertEquals(beforeCursor.indexOf("\"") + 1, result.replaceStart)
+    }
+
+    @Test
+    fun `getSuggestionContext identifies DATE_PROJECTION context after in keyword with now`() {
+        val beforeCursor = "now in "
+        val result = getSuggestionContext(beforeCursor, beforeCursor, beforeCursor.length, emptyMap())
+        assertEquals(SuggestionType.DATE_PROJECTION, result.type)
+    }
+
+    @Test
+    fun `getSuggestionContext identifies DATE_PROJECTION context after as keyword with now`() {
+        val beforeCursor = "now as "
+        val result = getSuggestionContext(beforeCursor, beforeCursor, beforeCursor.length, emptyMap())
+        assertEquals(SuggestionType.DATE_PROJECTION, result.type)
+    }
+
+    @Test
+    fun `getSuggestionContext identifies DATE_PROJECTION context after to keyword with now`() {
+        val beforeCursor = "now to "
+        val result = getSuggestionContext(beforeCursor, beforeCursor, beforeCursor.length, emptyMap())
+        assertEquals(SuggestionType.DATE_PROJECTION, result.type)
+    }
+
+    @Test
+    fun `getSuggestionContext identifies DATE_PROJECTION context after through keyword with now`() {
+        val beforeCursor = "now through "
+        val result = getSuggestionContext(beforeCursor, beforeCursor, beforeCursor.length, emptyMap())
+        assertEquals(SuggestionType.DATE_PROJECTION, result.type)
+    }
+
+    @Test
+    fun `getSuggestionContext identifies DATE_PROJECTION context after as keyword with date constructor`() {
+        val beforeCursor = "date(2024, 1, 1) as "
+        val result = getSuggestionContext(beforeCursor, beforeCursor, beforeCursor.length, emptyMap())
+        assertEquals(SuggestionType.DATE_PROJECTION, result.type)
+    }
+
+    @Test
+    fun `getSuggestionContext identifies DATE_PROJECTION context after in keyword with date constructor`() {
+        val beforeCursor = "date(2024, 1, 1) in "
+        val result = getSuggestionContext(beforeCursor, beforeCursor, beforeCursor.length, emptyMap())
+        assertEquals(SuggestionType.DATE_PROJECTION, result.type)
+    }
+
+    @Test
+    fun `getSuggestionContext identifies DATE_PROJECTION context after as keyword with date preposition`() {
+        val beforeCursor = "2 days ago as "
+        val result = getSuggestionContext(beforeCursor, beforeCursor, beforeCursor.length, emptyMap())
+        assertEquals(SuggestionType.DATE_PROJECTION, result.type)
+    }
+
+    @Test
+    fun `getSuggestionContext identifies DATE_PROJECTION context after in keyword with date preposition`() {
+        val beforeCursor = "2 days ago in "
+        val result = getSuggestionContext(beforeCursor, beforeCursor, beforeCursor.length, emptyMap())
+        assertEquals(SuggestionType.DATE_PROJECTION, result.type)
+    }
+
+    @Test
+    fun `getSuggestionContext identifies DATE_PROJECTION context after through keyword with date`() {
+        val beforeCursor = "today through "
+        val result = getSuggestionContext(beforeCursor, beforeCursor, beforeCursor.length, emptyMap())
+        assertEquals(SuggestionType.DATE_PROJECTION, result.type)
+    }
+
+    @Test
+    fun `getSuggestionContext identifies DATE_PROJECTION context after to keyword with date`() {
+        val beforeCursor = "today to "
+        val result = getSuggestionContext(beforeCursor, beforeCursor, beforeCursor.length, emptyMap())
+        assertEquals(SuggestionType.DATE_PROJECTION, result.type)
     }
 }

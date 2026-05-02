@@ -145,6 +145,8 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.ui.graphics.drawscope.Stroke
 import com.vishaltelangre.nerdcalci.core.Constants
+import com.vishaltelangre.nerdcalci.core.TimezoneRegistry
+import com.vishaltelangre.nerdcalci.core.DateKeywords
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
 import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
 import com.vishaltelangre.nerdcalci.ui.components.DeleteFileDialog
@@ -164,6 +166,7 @@ import com.vishaltelangre.nerdcalci.utils.SuggestionType
 import com.vishaltelangre.nerdcalci.utils.getIdentifierRangeAt
 import com.vishaltelangre.nerdcalci.ui.theme.ResultSuccess
 import android.content.res.Configuration
+import java.util.Locale
 
 import com.vishaltelangre.nerdcalci.ui.theme.SyntaxColors
 
@@ -176,6 +179,7 @@ private class SyntaxHighlightingTransformation(
     private val numberColor: Color,
     private val variableColor: Color,
     private val keywordColor: Color,
+    private val dateKeywordColor: Color,
     private val functionColor: Color,
     private val operatorColor: Color,
     private val percentColor: Color,
@@ -206,6 +210,7 @@ private class SyntaxHighlightingTransformation(
                 numberColor,
                 variableColor,
                 keywordColor,
+                dateKeywordColor,
                 functionColor,
                 operatorColor,
                 percentColor,
@@ -220,6 +225,7 @@ private class SyntaxHighlightingTransformation(
                 numberColor,
                 variableColor,
                 keywordColor,
+                dateKeywordColor,
                 functionColor,
                 operatorColor,
                 percentColor,
@@ -266,6 +272,7 @@ private fun applySyntaxHighlighting(
     numberColor: Color,
     variableColor: Color,
     keywordColor: Color,
+    dateKeywordColor: Color,
     functionColor: Color,
     operatorColor: Color,
     percentColor: Color,
@@ -285,6 +292,7 @@ private fun applySyntaxHighlighting(
                 TokenType.Number -> numberColor
                 TokenType.Variable -> variableColor
                 TokenType.Keyword -> keywordColor
+                TokenType.DateKeyword -> dateKeywordColor
                 TokenType.Function -> functionColor
                 TokenType.Operator -> operatorColor
                 TokenType.Percent -> percentColor
@@ -294,7 +302,7 @@ private fun applySyntaxHighlighting(
                 TokenType.Default -> defaultColor
             }
 
-            val isTargetAfterDot = (token.type == TokenType.Variable || token.type == TokenType.Keyword || token.type == TokenType.Function) && dotSeenAfterFileVar
+            val isTargetAfterDot = (token.type == TokenType.Variable || token.type == TokenType.Keyword || token.type == TokenType.DateKeyword || token.type == TokenType.Function) && dotSeenAfterFileVar
 
             if (isTargetAfterDot) {
                 withStyle(SpanStyle(color = color, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic)) {
@@ -360,11 +368,34 @@ private fun extractAllSuggestions(lines: List<LineEntity>): List<Pair<Set<Sugges
     val suggestionMap = mutableMapOf<String, Suggestion>()
 
     // Initialize with defaults (Dynamic variables, constants, global functions)
+    val functionHints = mapOf(
+        "date" to "y, m, d",
+        "datetime" to "y, m, d, h, min, s",
+        "datetimeZ" to "y, m, d, h, min, s, \"tz\"",
+        "parseDate" to "\"string\" or timestamp",
+        "convert" to "val, \"from\", \"to\"",
+        "file" to "\"FileName\"",
+        "pow" to "x, y",
+        "sin" to "x", "cos" to "x", "tan" to "x",
+        "asin" to "x", "acos" to "x", "atan" to "x",
+        "sinh" to "x", "cosh" to "x", "tanh" to "x",
+        "log" to "x", "log10" to "x", "log2" to "x", "log1p" to "x",
+        "exp" to "x", "expm1" to "x", "sqrt" to "x", "cbrt" to "x",
+        "abs" to "x", "floor" to "x", "ceil" to "x", "signum" to "x",
+        "factorial" to "x", "fact" to "x",
+        "rational" to "x", "fraction" to "x", "float" to "x",
+        "value" to "x", "dropUnit" to "x", "raw" to "x"
+    )
+
     MathEngine.dynamicVariableNames.forEach { suggestionMap[it] = Suggestion(it, SuggestionType.DYNAMIC_VARIABLE) }
     Builtins.constantNames.forEach { suggestionMap[it] = Suggestion(it, SuggestionType.CONSTANT) }
-    Builtins.functionNames.forEach { suggestionMap[it] = Suggestion(it, SuggestionType.GLOBAL_FUNCTION) }
-    suggestionMap["file"] = Suggestion("file", SuggestionType.GLOBAL_FUNCTION)
-    suggestionMap["convert"] = Suggestion("convert", SuggestionType.GLOBAL_FUNCTION)
+    Builtins.functionNames.forEach { 
+        suggestionMap[it] = Suggestion(it, SuggestionType.GLOBAL_FUNCTION, description = functionHints[it]) 
+    }
+    listOf("parseDate", "date", "datetime", "datetimeZ", "file", "convert").forEach {
+        suggestionMap[it] = Suggestion(it, SuggestionType.GLOBAL_FUNCTION, description = functionHints[it])
+    }
+    DateKeywords.RESERVED.forEach { suggestionMap[it] = Suggestion(it, SuggestionType.KEYWORD) }
 
     val currentFileVariables = mutableMapOf<String, String>()
     val varFuncNamePattern = Constants.VAR_FUNC_NAME_PATTERN.removePrefix("^").removeSuffix("$")
@@ -615,6 +646,7 @@ fun CalculatorScreen(
     val numberColor = if (isDarkTheme) SyntaxColors.NumberColorDark else SyntaxColors.NumberColorLight
     val variableColor = if (isDarkTheme) SyntaxColors.VariableColorDark else SyntaxColors.VariableColorLight
     val keywordColor = if (isDarkTheme) SyntaxColors.KeywordColorDark else SyntaxColors.KeywordColorLight
+    val dateKeywordColor = if (isDarkTheme) SyntaxColors.DateKeywordColorDark else SyntaxColors.DateKeywordColorLight
     val operatorColor = if (isDarkTheme) SyntaxColors.OperatorColorDark else SyntaxColors.OperatorColorLight
     val percentColor = if (isDarkTheme) SyntaxColors.PercentColorDark else SyntaxColors.PercentColorLight
     val commentColor = if (isDarkTheme) SyntaxColors.CommentColorDark else SyntaxColors.CommentColorLight
@@ -1121,6 +1153,7 @@ fun CalculatorScreen(
                         numberColor = numberColor,
                         variableColor = variableColor,
                         keywordColor = keywordColor,
+                        dateKeywordColor = dateKeywordColor,
                         functionColor = functionColor,
                         operatorColor = operatorColor,
                         percentColor = percentColor,
@@ -1379,6 +1412,7 @@ private fun LineRow(
     numberColor: Color,
     variableColor: Color,
     keywordColor: Color,
+    dateKeywordColor: Color,
     functionColor: Color,
     operatorColor: Color,
     percentColor: Color,
@@ -1430,6 +1464,7 @@ private fun LineRow(
             numberColor = numberColor,
             variableColor = variableColor,
             keywordColor = keywordColor,
+            dateKeywordColor = dateKeywordColor,
             functionColor = functionColor,
             operatorColor = operatorColor,
             percentColor = percentColor,
@@ -1538,7 +1573,7 @@ private fun LineRow(
         val text = textFieldValue.text
         val beforeCursor = if (cursorPos > 0) text.substring(0, cursorPos) else ""
 
-        val newSuggestions = if (currentWord.isNotEmpty() || isExplicitTrigger || contextType == SuggestionType.UNIT || contextType == SuggestionType.CONVERSION) {
+        val newSuggestions = if (currentWord.isNotEmpty() || isExplicitTrigger || contextType == SuggestionType.UNIT || contextType == SuggestionType.CONVERSION || contextType == SuggestionType.TIMEZONE) {
             val tokens = runCatching {
                 Lexer(beforeCursor).tokenize()
             }.getOrElse { emptyList() }
@@ -1579,12 +1614,87 @@ private fun LineRow(
                         it.copy(matchIndices = match.matchIndices, score = if (currentWord.isEmpty()) 100 - units.indexOfFirst { u -> u.symbols.contains(it.name) } else match.score)
                     } else null
                 }.sortedByDescending { it.score }
-            } else if (contextType == SuggestionType.KEYWORD || contextType == SuggestionType.CONVERSION) {
-                val keywords = listOf("to", "in", "as").map { Suggestion(name = it, type = SuggestionType.CONVERSION) }.mapNotNull {
-                    val match = it.name.calculateFuzzyMatch(currentWord, SuggestionType.CONVERSION)
+            } else if (contextType == SuggestionType.TIMEZONE) {
+                TimezoneRegistry.allSuggestions.mapNotNull { tz ->
+                    val match = tz.calculateFuzzyMatch(currentWord, SuggestionType.TIMEZONE)
+                    if (match != null && tz != currentWord) {
+                        Suggestion(
+                            name = tz,
+                            type = SuggestionType.TIMEZONE,
+                            matchIndices = match.matchIndices,
+                            score = match.score,
+                            replaceStart = suggestionContext.replaceStart
+                        )
+                    } else null
+                }.sortedByDescending { it.score }
+            } else if (contextType == SuggestionType.DATE_PROJECTION) {
+                val projections = listOf("iso8601", "timestamp").mapNotNull { name ->
+                    val match = name.calculateFuzzyMatch(currentWord, SuggestionType.DATE_PROJECTION)
+                    if (match != null && name != currentWord) {
+                        Suggestion(
+                            name = name,
+                            type = SuggestionType.DATE_PROJECTION,
+                            matchIndices = match.matchIndices,
+                            score = match.score + 2000, // Highest priority
+                            replaceStart = suggestionContext.replaceStart
+                        )
+                    } else null
+                }
+
+                val timezones = TimezoneRegistry.allSuggestions.mapNotNull { tz ->
+                    val match = tz.calculateFuzzyMatch(currentWord, SuggestionType.TIMEZONE)
+                    if (match != null && tz != currentWord) {
+                        Suggestion(
+                            name = tz,
+                            type = SuggestionType.TIMEZONE,
+                            matchIndices = match.matchIndices,
+                            score = match.score + 500, // High priority
+                            replaceStart = suggestionContext.replaceStart
+                        )
+                    } else null
+                }
+                
+                val timeUnits = UnitConverter.UNITS.filter { it.category == UnitCategory.TIME }
+                    .flatMap { unit ->
+                        unit.symbols.map { symbol ->
+                            val match = symbol.calculateFuzzyMatch(currentWord, SuggestionType.UNIT)
+                            if (match != null && symbol != currentWord) {
+                                Suggestion(
+                                    name = symbol,
+                                    type = SuggestionType.UNIT,
+                                    matchIndices = match.matchIndices,
+                                    score = match.score + 100,
+                                    replaceStart = suggestionContext.replaceStart
+                                )
+                            } else null
+                        }
+                    }.filterNotNull()
+
+                val variables = combinedVariables.mapNotNull {
+                    val match = it.name.calculateFuzzyMatch(currentWord, it.type)
                     if (match != null && it.name != currentWord) {
                         it.copy(matchIndices = match.matchIndices, score = match.score)
                     } else null
+                }
+
+                (projections + timezones + timeUnits + variables).sortedByDescending { it.score }
+            } else if (contextType == SuggestionType.KEYWORD || contextType == SuggestionType.CONVERSION) {
+                val keywords = mutableListOf<Suggestion>()
+                
+                listOf("to", "in", "as").forEach { name ->
+                    val match = name.calculateFuzzyMatch(currentWord, SuggestionType.CONVERSION)
+                    if (match != null && name != currentWord) {
+                        keywords.add(Suggestion(name = name, type = SuggestionType.CONVERSION, matchIndices = match.matchIndices, score = match.score))
+                    }
+                }
+
+                if (suggestionContext.unitCategory == UnitCategory.TIME) {
+                    DateKeywords.RESERVED.forEach { name ->
+                        val match = name.calculateFuzzyMatch(currentWord, SuggestionType.KEYWORD)
+                        if (match != null && name != currentWord) {
+                            keywords.add(Suggestion(name = name, type = SuggestionType.KEYWORD, matchIndices = match.matchIndices, score = match.score))
+                        }
+                    }
                 }
 
                 val unitSuggestions = if (suggestionContext.unitStart != null) {

@@ -1,0 +1,94 @@
+package com.vishaltelangre.nerdcalci.core
+
+import org.junit.Assert.*
+import org.junit.Test
+import java.time.LocalDate
+import java.time.ZoneId
+
+class DateStringParserTest {
+
+    @Test
+    fun `parses ISO 8601 format`() {
+        val result = DateStringParser.parse("2019-04-01")
+        assertEquals(LocalDate.of(2019, 4, 1), (result as DateTimeResult.Date).date)
+    }
+
+    @Test
+    fun `parses YYYY slash MM slash DD format`() {
+        val result = DateStringParser.parse("2019/04/01")
+        assertEquals(LocalDate.of(2019, 4, 1), (result as DateTimeResult.Date).date)
+    }
+
+    @Test
+    fun `parses US style month-first format`() {
+        val result = DateStringParser.parse("April 1, 2019")
+        assertEquals(LocalDate.of(2019, 4, 1), (result as DateTimeResult.Date).date)
+        
+        val resultShort = DateStringParser.parse("Apr 1 2019")
+        assertEquals(LocalDate.of(2019, 4, 1), (resultShort as DateTimeResult.Date).date)
+    }
+
+    @Test
+    fun `parses day-first format`() {
+        val result = DateStringParser.parse("1 April 2019")
+        assertEquals(LocalDate.of(2019, 4, 1), (result as DateTimeResult.Date).date)
+
+        val resultShort = DateStringParser.parse("1 Apr 2019")
+        assertEquals(LocalDate.of(2019, 4, 1), (resultShort as DateTimeResult.Date).date)
+    }
+
+    @Test
+    fun `infers year for month-day formats`() {
+        // We can't easily test fixed inferred year because it depends on current date.
+        // But we can check it doesn't throw.
+        val result = DateStringParser.parse("June 10")
+        assertNotNull((result as DateTimeResult.Date).date)
+        
+        val result2 = DateStringParser.parse("10 June")
+        assertNotNull((result2 as DateTimeResult.Date).date)
+    }
+
+    @Test
+    fun `rejects ambiguous numeric formats`() {
+        val e1 = assertThrows(EvalException::class.java) {
+            DateStringParser.parse("12/02/1988")
+        }
+        assertTrue(e1.message!!.contains("Ambiguous"))
+
+        val e2 = assertThrows(EvalException::class.java) {
+            DateStringParser.parse("01.05.2005")
+        }
+        assertTrue(e2.message!!.contains("Ambiguous"))
+    }
+
+    @Test
+    fun `rejects invalid dates`() {
+        val e = assertThrows(EvalException::class.java) {
+            DateStringParser.parse("February 30, 2019")
+        }
+        assertTrue(e.message!!.contains("Invalid date"))
+    }
+
+    @Test
+    fun `rejects unknown month names`() {
+        val e = assertThrows(EvalException::class.java) {
+            DateStringParser.parse("Blorg 1, 2019")
+        }
+        assertTrue(e.message!!.contains("Unknown month name"))
+    }
+
+    @Test
+    fun `parses epoch seconds`() {
+        // 1718400000 -> 2024-06-14T21:20:00Z
+        val result = DateStringParser.parseEpoch(1718400000L)
+        // Note: result depends on system timezone, so we just check it returns an instant.
+        assertNotNull((result as DateTimeResult.DateTime).instant)
+    }
+
+    @Test
+    fun `is case-insensitive for month names`() {
+        assertEquals(LocalDate.of(2019, 6, 10), (DateStringParser.parse("june 10, 2019") as DateTimeResult.Date).date)
+        assertEquals(LocalDate.of(2019, 6, 10), (DateStringParser.parse("JUNE 10, 2019") as DateTimeResult.Date).date)
+        assertEquals(LocalDate.of(2019, 6, 10), (DateStringParser.parse("10 JUNE 2019") as DateTimeResult.Date).date)
+    }
+}

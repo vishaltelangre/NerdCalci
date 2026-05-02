@@ -99,25 +99,56 @@ object DateEvaluator {
      * @param inDays If true, returns DayCount instead of Duration.
      */
     fun interval(from: DateTimeResult, to: DateTimeResult, inclusive: Boolean = false, projectionUnit: String? = null): DateTimeResult {
-        val fromDate = toLocalDate(from)
-        val rawToDate = toLocalDate(to)
-        val toDate = if (inclusive) rawToDate.plusDays(1) else rawToDate
-
+        // When projecting to a time unit, use full instant precision if either operand has a time component.
         if (projectionUnit != null) {
             val unit = UnitConverter.findUnit(projectionUnit) ?: throw EvalException("Unknown unit `$projectionUnit`")
             if (unit.category != UnitCategory.TIME) throw EvalException("Cannot project date interval to non-time unit `${unit.name}`")
-            
-            val totalDays = ChronoUnit.DAYS.between(fromDate, toDate)
-            if (projectionUnit.lowercase() in setOf("d", "day", "days")) {
-                return DateTimeResult.DayCount(totalDays)
+
+            val hasDateTime = from is DateTimeResult.DateTime || to is DateTimeResult.DateTime
+            if (hasDateTime) {
+                // Derive instants from DateTime operands; fall back to start-of-day for plain Date.
+                val startInstant: java.time.Instant = when (from) {
+                    is DateTimeResult.DateTime -> from.instant.toInstant()
+                    is DateTimeResult.Date     -> from.date.atStartOfDay(systemZone).toInstant()
+                    else -> throw EvalException("Expected a date or datetime operand.")
+                }
+                val rawEndInstant: java.time.Instant = when (to) {
+                    is DateTimeResult.DateTime -> to.instant.toInstant()
+                    is DateTimeResult.Date     -> to.date.atStartOfDay(systemZone).toInstant()
+                    else -> throw EvalException("Expected a date or datetime operand.")
+                }
+                // Apply inclusive adjustment: +1 day on the end instant.
+                val endInstant = if (inclusive) rawEndInstant.plusSeconds(86400L) else rawEndInstant
+
+                val duration = java.time.Duration.between(startInstant, endInstant)
+                val totalSeconds = duration.seconds
+
+                if (projectionUnit.lowercase() in setOf("d", "day", "days")) {
+                    return DateTimeResult.DayCount(totalSeconds / 86400L)
+                }
+
+                val value = UnitConverter.fromBase(BigDecimal.valueOf(totalSeconds), unit, emptyMap<String, EvaluationResult>()).toLong()
+                return DateTimeResult.TimeCount(value, unit.symbols.first())
+            } else {
+                // Both operands are plain dates — use the original LocalDate-based path.
+                val fromDate = toLocalDate(from)
+                val rawToDate = toLocalDate(to)
+                val toDate = if (inclusive) rawToDate.plusDays(1) else rawToDate
+
+                val totalDays = ChronoUnit.DAYS.between(fromDate, toDate)
+                if (projectionUnit.lowercase() in setOf("d", "day", "days")) {
+                    return DateTimeResult.DayCount(totalDays)
+                }
+
+                val totalSeconds = totalDays * 24 * 3600L
+                val value = UnitConverter.fromBase(BigDecimal.valueOf(totalSeconds), unit, emptyMap<String, EvaluationResult>()).toLong()
+                return DateTimeResult.TimeCount(value, unit.symbols.first())
             }
-            
-            // For other units, we convert the day difference to the requested unit
-            val totalSeconds = totalDays * 24 * 3600L
-            val requestedUnit = UnitConverter.findUnit(projectionUnit)!!
-            val value = UnitConverter.fromBase(BigDecimal.valueOf(totalSeconds), requestedUnit, emptyMap<String, EvaluationResult>()).toLong()
-            return DateTimeResult.TimeCount(value, requestedUnit.symbols.first())
         }
+
+        val fromDate = toLocalDate(from)
+        val rawToDate = toLocalDate(to)
+        val toDate = if (inclusive) rawToDate.plusDays(1) else rawToDate
 
         val isBackward = fromDate.isAfter(toDate)
         val (start, end) = if (isBackward) toDate to fromDate else fromDate to toDate

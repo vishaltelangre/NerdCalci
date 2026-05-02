@@ -49,10 +49,16 @@ object DateStringParser {
             val timePart = m.groupValues[2]
             val offsetPart = m.groupValues[3]
             
-            return try {
+        return try {
                 val date = LocalDate.parse(datePart, DateTimeFormatter.ISO_LOCAL_DATE)
                 if (timePart.isEmpty()) {
-                    DateTimeResult.Date(date)
+                    if (offsetPart.isEmpty()) {
+                        DateTimeResult.Date(date)
+                    } else {
+                        // Offset present but no time: treat as midnight in that zone.
+                        val zone = if (offsetPart == "Z") ZoneOffset.UTC else ZoneId.of(offsetPart)
+                        DateTimeResult.DateTime(date.atTime(LocalTime.MIDNIGHT).atZone(zone))
+                    }
                 } else {
                     val time = LocalTime.parse(timePart)
                     val ldt = date.atTime(time)
@@ -130,7 +136,29 @@ object DateStringParser {
     private fun inferYear(month: Int, day: Int): Int {
         val today = LocalDate.now(ZoneId.systemDefault())
         val thisYear = today.year
-        val candidateThisYear = try { LocalDate.of(thisYear, month, day) } catch (_: Exception) { return thisYear + 1 }
-        return if (candidateThisYear.isBefore(today.minusMonths(6))) thisYear + 1 else thisYear
+
+        // Find the first year >= thisYear for which the date is valid (handles Feb 29, etc.).
+        val candidateDate = findFirstValidDate(thisYear, month, day)
+
+        // If the first valid candidate is more than 6 months in the past, try the next valid year.
+        return if (candidateDate.isBefore(today.minusMonths(6))) {
+            findFirstValidDate(candidateDate.year + 1, month, day).year
+        } else {
+            candidateDate.year
+        }
+    }
+
+    /** Returns the first LocalDate on or after the given year for which (year, month, day) is valid. */
+    private fun findFirstValidDate(startYear: Int, month: Int, day: Int): LocalDate {
+        var year = startYear
+        while (true) {
+            try {
+                return LocalDate.of(year, month, day)
+            } catch (_: java.time.DateTimeException) {
+                year++
+            }
+        }
+        @Suppress("UNREACHABLE_CODE")
+        error("unreachable")
     }
 }

@@ -266,10 +266,20 @@ class Parser(private val tokens: List<Token>) {
                 }
             } else if (isUnitOperator(kind)) {
                 if (kind == TokenKind.KW_TO && left is Expr.NumberLiteral && peekAt(1) == TokenKind.NUMBER) {
-                    advance()
-                    val right = parseMulDivMod()
-                    left = Expr.YearInterval(left, right)
-                    continue
+                    // Only treat as year interval if both sides look like 4-digit years (1000..9999).
+                    val leftVal = left.value
+                    val rightVal = tokens.getOrNull(pos + 1)?.value
+                    val leftIsYear = leftVal != null && leftVal.stripTrailingZeros().scale() <= 0 &&
+                        leftVal.toLong() in 1000L..9999L
+                    val rightIsYear = rightVal != null && rightVal.stripTrailingZeros().scale() <= 0 &&
+                        rightVal.toLong() in 1000L..9999L
+                    if (leftIsYear && rightIsYear) {
+                        advance()
+                        val right = parseMulDivMod()
+                        left = Expr.YearInterval(left, right)
+                        continue
+                    }
+                    // Fall through to date-interval / other handling below.
                 }
                 if (kind == TokenKind.KW_TO) {
                     val nextKind = peekAt(1)
@@ -283,7 +293,8 @@ class Parser(private val tokens: List<Token>) {
                 }
                 advance() // consume to/in/as
                 val target = peek()
-                if (target.kind == TokenKind.STRING_LITERAL) {
+                if (target.kind == TokenKind.STRING_LITERAL &&
+                    (kind == TokenKind.KW_IN || kind == TokenKind.KW_AS)) {
                     advance()
                     left = Expr.DateModifier(left, kind.display, target.lexeme)
                 } else if (target.kind == TokenKind.IDENTIFIER || isUnitOperator(target.kind) || target.kind == TokenKind.KW_OF ||
@@ -643,7 +654,14 @@ class Parser(private val tokens: List<Token>) {
         }
 
         return when {
-            quantities.size > 1 -> Expr.CompositeQuantity(quantities)
+            quantities.size > 1 -> {
+                // Reject composites where any part has a fractional value.
+                val anyFractional = quantities.any { q ->
+                    val numExpr = q.value
+                    numExpr is Expr.NumberLiteral && numExpr.value.stripTrailingZeros().scale() > 0
+                }
+                if (anyFractional) firstValue else Expr.CompositeQuantity(quantities)
+            }
             quantities.size == 1 -> quantities[0]
             else -> firstValue
         }

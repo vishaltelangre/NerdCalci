@@ -312,7 +312,7 @@ private fun applySyntaxHighlighting(
                 dotSeenAfterFileVar = false
                 lastFileVariableNode = false
             } else {
-                if (token.type == TokenType.Variable || token.type == TokenType.Keyword || token.type == TokenType.Function) {
+                if (token.type == TokenType.Variable || token.type == TokenType.Keyword || token.type == TokenType.DateKeyword || token.type == TokenType.Function) {
                     withStyle(SpanStyle(color = color, fontWeight = FontWeight.Bold)) {
                         append(elementText)
                     }
@@ -1457,7 +1457,7 @@ private fun LineRow(
     }
 
     val syntaxHighlightingTransformation = remember(
-        numberColor, variableColor, keywordColor, functionColor,
+        numberColor, variableColor, keywordColor, dateKeywordColor, functionColor,
         operatorColor, percentColor, commentColor, conversionColor, defaultTextColor, fileVariables, lineNumber
     ) {
         SyntaxHighlightingTransformation(

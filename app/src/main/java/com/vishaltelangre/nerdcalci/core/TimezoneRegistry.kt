@@ -10,34 +10,46 @@ import java.time.ZoneOffset
 object TimezoneRegistry {
 
     /**
-     * Short alias → canonical IANA zone ID.
-     * Kept minimal and high-quality. Extend as needed.
+     * Per-zone explicit standard/daylight abbreviation pair.
+     * standard = abbreviation when DST is NOT in effect.
+     * daylight = abbreviation when DST IS in effect.
      */
-    private val ALIASES: Map<String, String> = mapOf(
-        "UTC"  to "UTC",
-        "GMT"  to "GMT",
-        "PST"  to "America/Los_Angeles",
-        "PDT"  to "America/Los_Angeles",
-        "MST"  to "America/Denver",
-        "MDT"  to "America/Denver",
-        "CST"  to "America/Chicago",
-        "CDT"  to "America/Chicago",
-        "EST"  to "America/New_York",
-        "EDT"  to "America/New_York",
-        "IST"  to "Asia/Kolkata",
-        "AEST" to "Australia/Sydney",
-        "AEDT" to "Australia/Sydney",
-        "CET"  to "Europe/Paris",
-        "CEST" to "Europe/Paris",
-        "JST"  to "Asia/Tokyo",
-        "HKT"  to "Asia/Hong_Kong",
-        "SGT"  to "Asia/Singapore",
-        "WIB"  to "Asia/Jakarta",
-        "NZST" to "Pacific/Auckland",
-        "NZDT" to "Pacific/Auckland",
-        "BST"  to "Europe/London",
-        "BRT"  to "America/Sao_Paulo"
+    private data class ZoneAbbr(val standard: String, val daylight: String)
+
+    /**
+     * IANA zone ID → explicit abbreviation pair.
+     * Both aliases (PST/PDT, etc.) are derived from here for autocomplete and display.
+     */
+    private val ZONE_ABBR: Map<String, ZoneAbbr> = mapOf(
+        "UTC"                  to ZoneAbbr("UTC",  "UTC"),
+        "GMT"                  to ZoneAbbr("GMT",  "GMT"),
+        "America/Los_Angeles"  to ZoneAbbr("PST",  "PDT"),
+        "America/Denver"       to ZoneAbbr("MST",  "MDT"),
+        "America/Chicago"      to ZoneAbbr("CST",  "CDT"),
+        "America/New_York"     to ZoneAbbr("EST",  "EDT"),
+        "Asia/Kolkata"         to ZoneAbbr("IST",  "IST"),
+        "Australia/Sydney"     to ZoneAbbr("AEST", "AEDT"),
+        "Europe/Paris"         to ZoneAbbr("CET",  "CEST"),
+        "Asia/Tokyo"           to ZoneAbbr("JST",  "JST"),
+        "Asia/Hong_Kong"       to ZoneAbbr("HKT",  "HKT"),
+        "Asia/Singapore"       to ZoneAbbr("SGT",  "SGT"),
+        "Asia/Jakarta"         to ZoneAbbr("WIB",  "WIB"),
+        "Pacific/Auckland"     to ZoneAbbr("NZST", "NZDT"),
+        "Europe/London"        to ZoneAbbr("GMT",  "BST"),
+        "America/Sao_Paulo"    to ZoneAbbr("BRT",  "BRST")
     )
+
+    /**
+     * Short alias → canonical IANA zone ID.
+     * Derived from ZONE_ABBR so there is a single source of truth.
+     * When two zones share an abbreviation, the first entry in ZONE_ABBR wins.
+     */
+    private val ALIASES: Map<String, String> = buildMap {
+        ZONE_ABBR.forEach { (zoneId, abbr) ->
+            putIfAbsent(abbr.standard, zoneId)
+            if (abbr.daylight != abbr.standard) putIfAbsent(abbr.daylight, zoneId)
+        }
+    }
 
     /** All IANA zone IDs available on this JVM. Sorted alphabetically. */
     private val IANA_IDS: List<String> = ZoneId.getAvailableZoneIds().sorted()
@@ -81,21 +93,16 @@ object TimezoneRegistry {
      */
     fun getFriendlyName(zdt: java.time.ZonedDateTime): String {
         val zone = zdt.zone
+        val isDst = zone.rules.isDaylightSavings(zdt.toInstant())
 
-        // 1. Try reverse lookup in our alias registry for a preferred short name.
-        val registryAlias = ALIASES.entries.filter { it.value == zone.id }.map { it.key }.firstOrNull { alias ->
-            // Heuristic: if multiple aliases exist (e.g. PST/PDT), match the DST state.
-            if (zone.rules.isDaylightSavings(zdt.toInstant())) {
-                alias.endsWith("DT") || alias.endsWith("S") // Summer time
-            } else {
-                !alias.endsWith("DT")
-            }
-        } ?: ALIASES.entries.find { it.value == zone.id }?.key
+        // 1. Try explicit DST-aware lookup in ZONE_ABBR.
+        val abbr = ZONE_ABBR[zone.id]
+        if (abbr != null) {
+            return if (isDst) abbr.daylight else abbr.standard
+        }
 
-        if (registryAlias != null) return registryAlias
-
-        // 2. Fallback to system display name.
-        val displayName = zone.getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.ENGLISH)
+        // 2. Fallback to JDK short display name.
+        val displayName = zone.getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.getDefault())
 
         // If the short name is the same as the ID and contains a slash, it's a long IANA ID.
         // Also check if it's a raw offset ID like "+05:30".

@@ -942,8 +942,8 @@ Dates are constructed using specific functions to avoid ambiguity with numeric e
 You can use these keywords anywhere you would use a date. They resolve based on your current local time.
 
 *   `today`: The current date at midnight.
-*   `yesterday`: Exactly 24 hours before today's start.
-*   `tomorrow`: Exactly 24 hours after today's start.
+*   `yesterday`: One calendar day before today's start.
+*   `tomorrow`: One calendar day after today's start.
 *   `now`: The current date and precise time.
 
 ### Date arithmetic

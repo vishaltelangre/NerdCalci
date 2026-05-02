@@ -175,7 +175,7 @@ class DateTimeFeaturesTest {
     ) { results ->
         val tokyo = "Jan 1, 2024, 9:00 PM JST"
         assertEquals(tokyo, results[1].result)
-        assertEquals(tokyo, results[2].result)
+        assertEquals("Err", results[2].result) // `to "string"` is not a timezone modifier; use `in` or `as`
         assertEquals(tokyo, results[3].result)
 
         assertEquals("2024-01-01T12:00:00Z", results[4].result)

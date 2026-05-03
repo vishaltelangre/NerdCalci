@@ -56,15 +56,24 @@ data class DateTimeDelta(
      */
     fun format(): String {
         val n = normalize()
+        if (n.isEmpty()) return "0 d"
+
+        // Determine if the delta is negative overall.
+        // Since we normalized D/H/M/S to have consistent signs, we can check any non-zero field.
+        val isNegative = n.years < 0 || n.months < 0 || n.weeks < 0 || n.days < 0 || n.hours < 0 || n.minutes < 0 || n.seconds < 0
+        val abs = if (isNegative) n.negate() else n
+
         val parts = mutableListOf<String>()
-        if (n.years != 0L)   parts += "${n.years} y"
-        if (n.months != 0L)  parts += "${n.months} mo"
-        if (n.weeks != 0L)   parts += "${n.weeks} wk"
-        if (n.days != 0L)    parts += "${n.days} d"
-        if (n.hours != 0L)   parts += "${n.hours} h"
-        if (n.minutes != 0L) parts += "${n.minutes} min"
-        if (n.seconds != 0L) parts += "${n.seconds} s"
-        return if (parts.isEmpty()) "0 d" else parts.joinToString(" ")
+        if (abs.years != 0L)   parts += "${abs.years} y"
+        if (abs.months != 0L)  parts += "${abs.months} mo"
+        if (abs.weeks != 0L)   parts += "${abs.weeks} wk"
+        if (abs.days != 0L)    parts += "${abs.days} d"
+        if (abs.hours != 0L)   parts += "${abs.hours} h"
+        if (abs.minutes != 0L) parts += "${abs.minutes} min"
+        if (abs.seconds != 0L) parts += "${abs.seconds} s"
+        
+        val joined = parts.joinToString(" ")
+        return if (isNegative) "-$joined" else joined
     }
 
     /**
@@ -73,14 +82,19 @@ data class DateTimeDelta(
      * Years, months and weeks are kept as-is since their relationship to days varies by calendar.
      */
     fun normalize(): DateTimeDelta {
-        var s = seconds
-        var m = minutes + s / 60; s %= 60
-        var h = hours + m / 60; m %= 60
-        var d = days + h / 24; h %= 24
-
-        // If we have negative values, ensure the remainders have the same sign as the carry
-        // or are zero. This is standard for simple normalization.
-        return copy(years = years, months = months, weeks = weeks, days = d, hours = h, minutes = m, seconds = s)
+        // First, normalize the clock part (D/H/M/S) to ensure consistent signs.
+        // We use total seconds for this part as their relationships are fixed.
+        var totalS = days * 86400L + hours * 3600L + minutes * 60L + seconds
+        
+        val d = totalS / 86400L; totalS %= 86400L
+        val h = totalS / 3600L;  totalS %= 3600L
+        val m = totalS / 60L;    totalS %= 60L
+        val s = totalS
+        
+        // Note: years, months and weeks are kept separate as they don't have fixed second counts.
+        // However, if the overall delta is negative, we should ideally ensure these are also 
+        // consistent. For now, we fix the most common issue: mixed signs in the D/H/M/S part.
+        return copy(days = d, hours = h, minutes = m, seconds = s)
     }
 
     /**

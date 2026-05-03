@@ -446,6 +446,15 @@ class DateTimeFeaturesTest {
     }
 
     @Test
+    fun `timezone interval and negative duration normalization`() = testCalculate(
+        "now in \"IST\" through (now in \"JST\")", // [0]
+        "now in \"JST\" through (now in \"IST\")"  // [1]
+    ) { results ->
+        assertEquals("3 h 30 min", results[0].result)
+        assertEquals("-3 h 30 min", results[1].result)
+    }
+
+    @Test
     fun `date engine stabilization regression`() = testCalculate(
         "date(2024, 1, 1) through date(2024, 1, 31) in days", // [0]
         "_ + 1 day",                                   // [1]

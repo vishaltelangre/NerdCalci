@@ -407,6 +407,7 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
             val groupingSeparatorEnabled by viewModel.groupingSeparatorEnabled.collectAsState()
             val showPrecisionEllipsis by viewModel.showPrecisionEllipsis.collectAsState()
             val editorFontSize by viewModel.editorFontSize.collectAsState()
+            val dateFormat by viewModel.dateFormat.collectAsState()
 
             CalculatorSettingsScreen(
                 precision = precision,
@@ -414,13 +415,15 @@ fun CalculatorNavHost(viewModel: CalculatorViewModel, navController: NavHostCont
                 rationalMode = rationalMode,
                 onRationalModeChange = { viewModel.setRationalMode(it) },
                 regionCode = regionCode,
-                onRegionCodeChange = { viewModel.setRegionCode(it) },
+                onRegionCodeChange = { viewModel.setRegionCode(it, viewModel.currentFileId.value) },
                 groupingSeparatorEnabled = groupingSeparatorEnabled,
                 onGroupingSeparatorEnabledChange = { viewModel.setGroupingSeparatorEnabled(it) },
                 showPrecisionEllipsis = showPrecisionEllipsis,
                 onShowPrecisionEllipsisChange = { viewModel.setShowPrecisionEllipsis(it) },
                 editorFontSize = editorFontSize,
                 onEditorFontSizeChange = { viewModel.setEditorFontSize(it) },
+                dateFormat = dateFormat,
+                onDateFormatChange = { viewModel.setDateFormat(it, viewModel.currentFileId.value) },
                 showLineNumbers = showLineNumbers,
                 onShowLineNumbersChange = { viewModel.setShowLineNumbers(it) },
                 showSuggestions = showSuggestions,

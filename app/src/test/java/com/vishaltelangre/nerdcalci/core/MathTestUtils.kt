@@ -30,10 +30,11 @@ fun createLines(vararg expressions: String, fileId: Long = 1L): List<LineEntity>
 suspend fun testCalculate(
     vararg expressions: String,
     loader: FileContextLoader? = null,
-    rationalMode: Boolean = false
+    rationalMode: Boolean = false,
+    dateFormat: String = Constants.DATE_FORMAT_DMY
 ): List<LineEntity> {
     val lines = createLines(*expressions)
-    return MathEngine.calculate(lines, loader, rationalMode)
+    return MathEngine.calculate(lines, loader, rationalMode, dateFormat)
 }
 
 /**
@@ -43,9 +44,10 @@ fun testCalculate(
     vararg expressions: String,
     loader: FileContextLoader? = null,
     rationalMode: Boolean = false,
+    dateFormat: String = Constants.DATE_FORMAT_DMY,
     block: suspend (List<LineEntity>) -> kotlin.Unit
 ) = runBlocking {
-    val results = testCalculate(*expressions, loader = loader, rationalMode = rationalMode)
+    val results = testCalculate(*expressions, loader = loader, rationalMode = rationalMode, dateFormat = dateFormat)
     block(results)
 }
 

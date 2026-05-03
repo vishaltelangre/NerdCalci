@@ -141,10 +141,18 @@ class CalculatorViewModel(
     )
     val syncEnabled: StateFlow<Boolean> = _syncEnabled
 
+    private val _dateFormat = MutableStateFlow(
+        prefs?.getString(Constants.PREF_DATE_FORMAT, Constants.DATE_FORMAT_AUTO) ?: Constants.DATE_FORMAT_AUTO
+    )
+    val dateFormat: StateFlow<String> = _dateFormat.asStateFlow()
+
     private val _syncFolderUri = MutableStateFlow(
         prefs?.getString(SyncManager.PREF_SYNC_FOLDER_URI, null)
     )
     val syncFolderUri: StateFlow<String?> = _syncFolderUri
+
+    private val _currentFileId = MutableStateFlow<Long?>(null)
+    val currentFileId: StateFlow<Long?> = _currentFileId.asStateFlow()
 
     private val _lastSyncAt = MutableStateFlow<Long?>(
         prefs?.getLong(SyncManager.PREF_LAST_SYNC_AT, 0L)?.takeIf { it > 0L }
@@ -275,14 +283,14 @@ class CalculatorViewModel(
         _restoreProgress.value = RestoreProgressState()
     }
 
-    private fun createFileContextLoader(currentFileId: Long, rationalMode: Boolean = false): FileContextLoader {
+    private fun createFileContextLoader(currentFileId: Long, rationalMode: Boolean = false, dateFormat: String = Constants.DATE_FORMAT_DMY): FileContextLoader {
         val cache = mutableMapOf<String, MathContext>()
         return object : FileContextLoader {
             override suspend fun loadContext(fileName: String, loadingStack: Set<String>): MathContext? {
                 cache[fileName]?.let { return it }
                 val file = dao.getFileByName(fileName) ?: return null
                 val lines = dao.getLinesForFileSync(file.id)
-                val context = MathEngine.buildVariableState(lines, this, loadingStack, rationalMode = rationalMode)
+                val context = MathEngine.buildVariableState(lines, this, loadingStack, rationalMode = rationalMode, dateFormat = dateFormat)
                 cache[fileName] = context
                 return context
             }
@@ -575,11 +583,36 @@ class CalculatorViewModel(
         prefs?.edit()?.putFloat(Constants.PREF_EDITOR_FONT_SIZE, clampedSize)?.apply()
     }
 
-    fun setRegionCode(code: String) {
+    fun setRegionCode(code: String, currentFileId: Long? = null) {
         _regionCode.value = code
         prefs?.edit()
             ?.putString(PREF_REGION_CODE, code)
             ?.apply()
+
+        // If date format is Auto, changing region may change the resolved date format
+        if (dateFormat.value == Constants.DATE_FORMAT_AUTO) {
+            currentFileId?.let { recalculateFile(it) }
+        }
+    }
+
+    fun setCurrentFileId(fileId: Long?) {
+        _currentFileId.value = fileId
+    }
+
+    fun setDateFormat(format: String, currentFileId: Long? = null) {
+        _dateFormat.value = format
+        prefs?.edit()?.putString(Constants.PREF_DATE_FORMAT, format)?.apply()
+        
+        // Recalculate current file if setting changed to ensure date inputs are re-evaluated
+        currentFileId?.let { recalculateFile(it) }
+    }
+
+    private fun getResolvedDateFormat(): String {
+        val pref = _dateFormat.value
+        if (pref != Constants.DATE_FORMAT_AUTO) return pref
+
+        val locale = RegionUtils.getLocaleForRegion(_regionCode.value)
+        return RegionUtils.getDefaultDateFormat(locale)
     }
 
     fun setGroupingSeparatorEnabled(enabled: Boolean) {
@@ -858,9 +891,24 @@ class CalculatorViewModel(
             calculationMutex.withLock {
                 val allLines = dao.getLinesForFileSync(fileId)
                 val effectiveRationalMode = rationalMode ?: _rationalMode.value
-                val calculatedLines = MathEngine.calculate(allLines, createFileContextLoader(fileId, effectiveRationalMode), rationalMode = effectiveRationalMode)
+                val effectiveDateFormat = getResolvedDateFormat()
+                val calculatedLines = MathEngine.calculate(
+                    allLines, 
+                    createFileContextLoader(fileId, effectiveRationalMode, effectiveDateFormat), 
+                    rationalMode = effectiveRationalMode,
+                    dateFormat = effectiveDateFormat
+                )
                 val versionedLines = calculatedLines.map { it.copy(version = it.version + 1) }
                 dao.updateLines(fileId, versionedLines, updateTimestamp = false)
+            }
+        }
+    }
+
+    fun recalculateAllFiles() {
+        viewModelScope.launch(ioDispatcher) {
+            val allFiles = dao.getAllFilesSync()
+            allFiles.forEach { file ->
+                recalculateFile(file.id)
             }
         }
     }
@@ -889,7 +937,14 @@ class CalculatorViewModel(
             // Recalculate only affected lines (from changedIndex onward), inheriting variable
             // state from the preceding lines without re-evaluating them.
             val effectiveRationalMode = rationalMode ?: _rationalMode.value
-            val affectedLines = MathEngine.calculateFrom(allLines, changedIndex, createFileContextLoader(updatedLine.fileId, effectiveRationalMode), rationalMode = effectiveRationalMode)
+            val effectiveDateFormat = getResolvedDateFormat()
+            val affectedLines = MathEngine.calculateFrom(
+                allLines, 
+                changedIndex, 
+                createFileContextLoader(updatedLine.fileId, effectiveRationalMode, effectiveDateFormat), 
+                rationalMode = effectiveRationalMode,
+                dateFormat = effectiveDateFormat
+            )
             val versionedLines = affectedLines.map { it.copy(version = it.version + 1) }
 
             // Batch-write all updated results in one DB transaction
@@ -903,7 +958,17 @@ class CalculatorViewModel(
             val allLines = dao.getLinesForFileSync(fileId)
             val targetIndex = allLines.indexOfFirst { it.id == targetLineId }
             val effectiveRationalMode = rationalMode ?: _rationalMode.value
-            if (targetIndex != -1) MathEngine.getErrorDetails(allLines, targetIndex, createFileContextLoader(fileId, effectiveRationalMode), setOf(file.name), rationalMode = effectiveRationalMode) else null
+            val effectiveDateFormat = getResolvedDateFormat()
+            if (targetIndex != -1) {
+                MathEngine.getErrorDetails(
+                    allLines, 
+                    targetIndex, 
+                    createFileContextLoader(fileId, effectiveRationalMode, effectiveDateFormat), 
+                    setOf(file.name), 
+                    rationalMode = effectiveRationalMode,
+                    dateFormat = effectiveDateFormat
+                )
+            } else null
         }
     }
 

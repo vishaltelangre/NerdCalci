@@ -50,6 +50,33 @@ class DateTimeFeaturesTest {
     }
 
     @Test
+    fun `regional numeric date parsing`() {
+        // Test with DMY preference
+        testCalculate(
+            "parseDate(\"25/12/2024\")",
+            dateFormat = Constants.DATE_FORMAT_DMY
+        ) { results ->
+            assertEquals("Dec 25, 2024", results[0].result)
+        }
+
+        // Test with MDY preference
+        testCalculate(
+            "parseDate(\"12/25/2024\")",
+            dateFormat = Constants.DATE_FORMAT_MDY
+        ) { results ->
+            assertEquals("Dec 25, 2024", results[0].result)
+        }
+
+        // Test with YMD preference
+        testCalculate(
+            "parseDate(\"2024/12/25\")",
+            dateFormat = Constants.DATE_FORMAT_YMD
+        ) { results ->
+            assertEquals("Dec 25, 2024", results[0].result)
+        }
+    }
+
+    @Test
     fun `roundtrip parsing via iso8601 and timestamp`() = testCalculate(
         "d = date(2024, 1, 1)",
         "parseDate(d as iso8601)",
@@ -327,7 +354,7 @@ class DateTimeFeaturesTest {
         "datetimeZ(2024, 1, 1, 12, 0, 0, \"UTC\") in \"Invalid/Zone\"",
         "1.5 days ago",                         // Fractional duration (truncates)
         "date(2023, 12, 31) + 1y 1mo 1d",      // Multi-component overflow
-        "parseDate(\"12/02/1988\")"            // Ambiguous format
+        "parseDate(\"12/02/1988\")"            // defaults to DMY
     ) { results ->
         assertEquals("Err", results[0].result)
         assertEquals("Err", results[1].result)
@@ -338,7 +365,7 @@ class DateTimeFeaturesTest {
         assertEquals("Err", results[6].result)
         assertNotEquals("Err", results[7].result) // Truncates to 1 day
         assertEquals("Feb 1, 2025", results[8].result)
-        assertEquals("Err", results[9].result)
+        assertEquals("Feb 12, 1988", results[9].result)
     }
 
     @Test

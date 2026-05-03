@@ -8,6 +8,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.BorderHorizontal
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.FlashOn
@@ -56,8 +57,10 @@ fun CalculatorSettingsScreen(
     onGroupingSeparatorEnabledChange: (Boolean) -> Unit,
     showPrecisionEllipsis: Boolean,
     onShowPrecisionEllipsisChange: (Boolean) -> Unit,
-    editorFontSize: Float,
     onEditorFontSizeChange: (Float) -> Unit,
+    editorFontSize: Float,
+    dateFormat: String,
+    onDateFormatChange: (String) -> Unit,
     showLineNumbers: Boolean,
     onShowLineNumbersChange: (Boolean) -> Unit,
     showSuggestions: Boolean,
@@ -69,10 +72,31 @@ fun CalculatorSettingsScreen(
     onBack: () -> Unit
 ) {
     var showRegionDialog by remember { mutableStateOf(false) }
+    var showDateFormatDialog by remember { mutableStateOf(false) }
     var lastPrecision by remember { mutableStateOf(if (precision == Constants.PRECISION_OFF) Constants.DEFAULT_PRECISION else precision) }
     var sliderValue by remember(precision) { mutableStateOf(if (precision == Constants.PRECISION_OFF) lastPrecision.toFloat() else precision.toFloat()) }
     var editorFontSizeSlider by remember(editorFontSize) { mutableStateOf(editorFontSize) }
     val availableRegions = remember { RegionUtils.getAvailableRegions() }
+    val currentRegionName = remember(regionCode, availableRegions) {
+        if (regionCode == RegionUtils.SYSTEM_DEFAULT) {
+            availableRegions.find { it.first == java.util.Locale.getDefault().country }?.second
+                ?: java.util.Locale.getDefault().displayCountry
+        } else {
+            availableRegions.find { it.first == regionCode }?.second ?: regionCode
+        }
+    }
+
+    val resolvedAutoLabel = remember(regionCode, currentRegionName) {
+        val locale = RegionUtils.getLocaleForRegion(regionCode)
+        val resolved = RegionUtils.getDefaultDateFormat(locale)
+        val formatDisplay = when (resolved) {
+            Constants.DATE_FORMAT_DMY -> "DD/MM/YYYY"
+            Constants.DATE_FORMAT_MDY -> "MM/DD/YYYY"
+            Constants.DATE_FORMAT_YMD -> "YYYY/MM/DD"
+            else -> resolved
+        }
+        "Auto ($formatDisplay based on $currentRegionName)"
+    }
 
     Scaffold(
         topBar = {
@@ -164,15 +188,35 @@ fun CalculatorSettingsScreen(
             Text(
                 text = remember(regionCode, groupingSeparatorEnabled, precision) {
                     MathEngine.formatDisplayResult(
-                        "12345678.90",
-                        precision,
-                        regionCode = regionCode,
-                        groupingSeparatorEnabled = groupingSeparatorEnabled
+                        rawResult = "12345678.90",
+                        precision = precision,
+                        groupingSeparatorEnabled = groupingSeparatorEnabled,
+                        regionCode = regionCode
                     )
                 },
-                style = MaterialTheme.typography.labelLarge.copy(fontFamily = FiraCodeFamily),
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 80.dp).padding(bottom = 16.dp)
+                modifier = Modifier.padding(start = 72.dp, bottom = 16.dp),
+                fontFamily = FiraCodeFamily
+            )
+
+            SettingsDropdownItem(
+                icon = Icons.Default.CalendarToday,
+                title = "Preferred input date format",
+                value = if (dateFormat == Constants.DATE_FORMAT_AUTO) resolvedAutoLabel else when (dateFormat) {
+                    Constants.DATE_FORMAT_DMY -> "DD/MM/YYYY"
+                    Constants.DATE_FORMAT_MDY -> "MM/DD/YYYY"
+                    Constants.DATE_FORMAT_YMD -> "YYYY/MM/DD"
+                    else -> dateFormat
+                },
+                onClick = { showDateFormatDialog = true }
+            )
+
+            Text(
+                text = "Used to resolve numeric dates like 10/05/2024. Separators like / - . are always supported interchangeably.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 72.dp, end = 16.dp, bottom = 16.dp)
             )
 
             if (precision != Constants.PRECISION_OFF) {
@@ -265,5 +309,16 @@ fun CalculatorSettingsScreen(
             showRegionDialog = false
         },
         onDismiss = { showRegionDialog = false }
+    )
+
+    com.vishaltelangre.nerdcalci.ui.components.DateFormatSelectorDialog(
+        visible = showDateFormatDialog,
+        currentFormat = dateFormat,
+        autoLabel = resolvedAutoLabel,
+        onSelect = {
+            onDateFormatChange(it)
+            showDateFormatDialog = false
+        },
+        onDismiss = { showDateFormatDialog = false }
     )
 }

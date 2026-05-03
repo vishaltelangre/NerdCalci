@@ -37,7 +37,8 @@ class Evaluator(
     private val fileVariables: Map<String, String> = emptyMap(),
     private val fileContextLoader: FileContextLoader? = null,
     private val loadingStack: Set<String> = emptySet(),
-    private val rationalMode: Boolean = false
+    private val rationalMode: Boolean = false,
+    private val dateFormat: String = Constants.DATE_FORMAT_AUTO
 ) {
     private val mc = JavaMathContext.DECIMAL128
 
@@ -295,7 +296,8 @@ class Evaluator(
                 fileVariables = fileVariables,
                 fileContextLoader = fileContextLoader,
                 loadingStack = loadingStack,
-                rationalMode = rationalMode
+                rationalMode = rationalMode,
+                dateFormat = dateFormat
             )
             val localContext = MathContext(variables = localVars)
             var lastResult: EvaluationResult? = null
@@ -341,7 +343,7 @@ class Evaluator(
         }
 
         val evaluatedArgs = argExprs.map { evaluate(it) }
-        return Builtins.execute(name, evaluatedArgs, variables)
+        return Builtins.execute(name, evaluatedArgs, variables, dateFormat)
     }
 
     /**

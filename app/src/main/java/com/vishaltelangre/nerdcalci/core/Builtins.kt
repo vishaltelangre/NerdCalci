@@ -300,9 +300,9 @@ object Builtins {
         return fn.body(args)
     }
 
-    fun execute(name: String, args: List<EvaluationResult>, variables: Map<String, EvaluationResult>): EvaluationResult {
+    fun execute(name: String, args: List<EvaluationResult>, variables: Map<String, EvaluationResult>, dateFormat: String = Constants.DATE_FORMAT_DMY): EvaluationResult {
         when (name) {
-            "parseDate" -> return executeParseDate(args)
+            "parseDate" -> return executeParseDate(args, dateFormat)
             "date" -> return executeDate(args)
             "datetime" -> return executeDateTime(args)
             "datetimeZ" -> return executeDateTimeZ(args)
@@ -321,11 +321,11 @@ object Builtins {
         return fn.unitPolicy.evaluate(normalizedArgs, fn.body, variables)
     }
 
-    private fun executeParseDate(args: List<EvaluationResult>): EvaluationResult {
+    private fun executeParseDate(args: List<EvaluationResult>, dateFormat: String): EvaluationResult {
         if (args.size != 1) throw ArityMismatchException("parseDate", 1, args.size)
         val arg = args[0]
         return when {
-            arg.stringResult != null -> EvaluationResult(value = null, dateTimeResult = DateStringParser.parse(arg.stringResult))
+            arg.stringResult != null -> EvaluationResult(value = null, dateTimeResult = DateStringParser.parse(arg.stringResult, dateFormat))
             arg.value != null -> EvaluationResult(value = null, dateTimeResult = DateStringParser.parseEpoch(arg.value.toLong()))
             else -> throw EvalException("`parseDate()` expects a numeric epoch or a date string")
         }

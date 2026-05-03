@@ -57,12 +57,20 @@ object Constants {
     // Temporary scratchpad settings
     const val PREF_AUTO_OPEN_SCRATCHPAD = "auto_open_scratchpad" // @deprecated
     const val PREF_SHOW_SCRATCHPAD = "show_scratchpad"
+
     const val PREF_LAUNCH_MODE = "launch_mode"
     const val PREF_LAUNCH_FILE_ID = "launch_file_id"
     const val PREF_SHOW_PRECISION_ELLIPSIS = "show_precision_ellipsis"
     const val PREF_FILE_SORT_CRITERIA = "file_sort_criteria"
     const val PREF_COLOR_PALETTE = "color_palette"
     const val SCRATCHPAD_DISPLAY_NAME = "Scratchpad"
+
+    // Date format settings
+    const val PREF_DATE_FORMAT = "date_format"
+    const val DATE_FORMAT_AUTO = "auto"
+    const val DATE_FORMAT_DMY = "dd_mm_yyyy"
+    const val DATE_FORMAT_MDY = "mm_dd_yyyy"
+    const val DATE_FORMAT_YMD = "yyyy_mm_dd"
 
     // Editor font size settings
     const val PREF_EDITOR_FONT_SIZE = "editor_font_size"

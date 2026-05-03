@@ -9,13 +9,14 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import java.util.Locale
+import com.vishaltelangre.nerdcalci.utils.RegionUtils
 
 object DateStringParser {
 
     private val systemZone: ZoneId get() = ZoneId.systemDefault()
 
     /**
-     * Parses a string into a DateTimeResult.Date using only unambiguous formats.
+     * Parses a string into a DateTimeResult.Date.
      * Month names are case-insensitive.
      *
      * Accepted formats:
@@ -25,21 +26,17 @@ object DateStringParser {
      *   "1 April 2019"     → full day-month-year
      *   "2019-04-01"       → ISO 8601
      *   "2019/04/01"       → YYYY/MM/DD
-     *
-     * Rejected formats (throw EvalException):
-     *   "12/02/1988"       → ambiguous (DD/MM or MM/DD?)
-     *   "01.05.2005"       → ambiguous
+     *   "10/05/2024"       → Numeric format based on [dateFormat] setting
      *
      * @throws EvalException with actionable message on parse failure.
      */
-    fun parse(input: String): DateTimeResult {
+    fun parse(input: String, dateFormat: String = Constants.DATE_FORMAT_AUTO): DateTimeResult {
         val s = input.trim()
 
-        // Reject ambiguous numeric-only formats explicitly before trying anything else
-        if (s.matches(Regex("""\d{1,2}[/\.]\d{1,2}[/\.]\d{2,4}"""))) {
-            throw EvalException(
-                "Ambiguous date format \"$s\". Use a named month (e.g. \"April 1, 2019\") or ISO 8601 (e.g. \"2019-04-01\") instead."
-            )
+        val resolvedFormat = if (dateFormat == Constants.DATE_FORMAT_AUTO) {
+            RegionUtils.getDefaultDateFormat(Locale.getDefault())
+        } else {
+            dateFormat
         }
 
         // ISO 8601 (or similar): YYYY-MM-DD or YYYY/MM/DD, optionally with T and time and offset
@@ -49,7 +46,7 @@ object DateStringParser {
             val timePart = m.groupValues[2]
             val offsetPart = m.groupValues[3]
             
-        return try {
+            return try {
                 val date = LocalDate.parse(datePart, DateTimeFormatter.ISO_LOCAL_DATE)
                 if (timePart.isEmpty()) {
                     if (offsetPart.isEmpty()) {
@@ -71,6 +68,45 @@ object DateStringParser {
                 }
             } catch (e: java.time.DateTimeException) {
                 throw EvalException("Invalid date/time \"$s\": ${e.message}")
+            }
+        }
+
+        // Numeric-only formats (e.g. 10/05/2024, 2024-10-05, 10.05.2024)
+        // We support /, -, and . as separators. Year must be 4 digits.
+        val numericPattern = Regex("""^(\d{1,4})[/\.-](\d{1,2})[/\.-](\d{1,4})$""")
+        numericPattern.matchEntire(s)?.let { m ->
+            val p1 = m.groupValues[1]
+            val p2 = m.groupValues[2]
+            val p3 = m.groupValues[3]
+
+            val formatHint = when (resolvedFormat) {
+                Constants.DATE_FORMAT_DMY -> "DD/MM/YYYY"
+                Constants.DATE_FORMAT_MDY -> "MM/DD/YYYY"
+                Constants.DATE_FORMAT_YMD -> "YYYY/MM/DD"
+                else -> ""
+            }
+
+            try {
+                return when (resolvedFormat) {
+                    Constants.DATE_FORMAT_DMY -> {
+                        if (p3.length != 4) throw EvalException("Year must be 4 digits in numeric date \"$s\" (expected $formatHint).")
+                        buildDate(p3.toInt(), p2.toInt(), p1.toInt(), s)
+                    }
+                    Constants.DATE_FORMAT_MDY -> {
+                        if (p3.length != 4) throw EvalException("Year must be 4 digits in numeric date \"$s\" (expected $formatHint).")
+                        buildDate(p3.toInt(), p1.toInt(), p2.toInt(), s)
+                    }
+                    Constants.DATE_FORMAT_YMD -> {
+                        if (p1.length != 4) throw EvalException("Year must be 4 digits in numeric date \"$s\" (expected $formatHint).")
+                        buildDate(p1.toInt(), p2.toInt(), p3.toInt(), s)
+                    }
+                    else -> throw EvalException("Unknown date format setting.")
+                }
+            } catch (e: EvalException) {
+                if (formatHint.isNotEmpty() && e.message?.contains("expected") == false) {
+                    throw EvalException("${e.message} (expected $formatHint)")
+                }
+                throw e
             }
         }
 

@@ -6,7 +6,7 @@ package com.vishaltelangre.nerdcalci.core
  *
  * Display format examples:
  *   DateTimeDelta(years=42) → "42 y"
- *   DateTimeDelta(weeks=3, days=5) → "3 w 5 d"
+ *   DateTimeDelta(weeks=3, days=5) → "3 wk 5 d"
  *   DateTimeDelta(months=2, days=5) → "2 mo 5 d"
  *   DateTimeDelta(hours=2, minutes=30) → "2 h 30 min"
  */

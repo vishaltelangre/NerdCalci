@@ -470,18 +470,14 @@ class DateTimeFeaturesTest {
         "2 years 12 weeks 14 hours",                   // [11]
         "raw(_)"                                       // [12]
     ) { results ->
-        try {
-            assertEquals("31 d", results[0].result)
-            assertEquals("32 d", results[1].result) 
-            assertEquals("32", results[2].result)
-            assertEquals("243 d 14 h", results[3].result)
-            assertTrue(results[4].result.startsWith("243.5833"))
-            assertEquals("243 d 14 h 12 min", results[5].result)
-            assertTrue(results[6].result.startsWith("243.5916"))
-            assertEquals("2 y 12 wk 14 h", results[7].result)
-            assertTrue(results[8].result.startsWith("2.2315"))
-        } catch (e: Throwable) {
-            throw e
-        }
+        assertEquals("31 d", results[0].result)
+        assertEquals("32 d", results[1].result) 
+        assertEquals("32", results[2].result)
+        assertEquals("243 d 14 h", results[3].result)
+        assertTrue(results[4].result.startsWith("243.5833"))
+        assertEquals("243 d 14 h 12 min", results[5].result)
+        assertTrue(results[6].result.startsWith("243.5916"))
+        assertEquals("2 y 12 wk 14 h", results[7].result)
+        assertTrue(results[8].result.startsWith("2.2315"))
     }
 }

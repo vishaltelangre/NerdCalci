@@ -131,30 +131,38 @@ class Evaluator(
         }
         is Expr.NumberLiteral  -> EvaluationResult(expr.value, rationalValue = Rational.toRational(expr.value))
         is Expr.PercentLiteral -> {
-            val res = expr.value.divide(BigDecimal("100"), mc)
+            val eval = evaluate(expr.value)
+            val value = eval.value ?: throw EvalException("Cannot apply percentage to a non-numeric value")
+            val res = value.divide(BigDecimal("100"), mc)
             EvaluationResult(res, rationalValue = Rational.toRational(res))
         }
         is Expr.PercentOf      -> {
+            val pctEval = evaluate(expr.percent)
+            val pct = pctEval.value ?: throw EvalException("Cannot apply percentage to a non-numeric value")
+
             val baseEval = evaluate(expr.base)
             val base = baseEval.value ?: throw EvalException("Cannot apply percentage to a non-numeric value")
             val baseUnit = baseEval.unit?.let { UnitConverter.findUnit(it) }
             val resultUnit = if (baseUnit != null && baseUnit.category != UnitCategory.SCALAR) baseEval.unit else null
-            val resultValue = base.multiply(expr.percent).divide(BigDecimal("100"), mc)
+            val resultValue = base.multiply(pct).divide(BigDecimal("100"), mc)
 
             val baseRational = baseEval.rationalValue ?: Rational.toRational(base)
-            val percentRational = Rational.toRational(expr.percent.divide(BigDecimal("100"), mc))
+            val percentRational = Rational.toRational(pct.divide(BigDecimal("100"), mc))
             EvaluationResult(resultValue, resultUnit, rationalValue = applyRationalOp(baseRational, TokenKind.STAR, percentRational))
         }
         is Expr.PercentOff     -> {
+            val pctEval = evaluate(expr.percent)
+            val pct = pctEval.value ?: throw EvalException("Cannot apply percentage to a non-numeric value")
+
             val baseEval = evaluate(expr.base)
             val base = baseEval.value ?: throw EvalException("Cannot apply percentage to a non-numeric value")
             val baseUnit = baseEval.unit?.let { UnitConverter.findUnit(it) }
             val resultUnit = if (baseUnit != null && baseUnit.category != UnitCategory.SCALAR) baseEval.unit else null
-            val factor = BigDecimal.ONE.subtract(expr.percent.divide(BigDecimal("100"), mc))
+            val factor = BigDecimal.ONE.subtract(pct.divide(BigDecimal("100"), mc))
             val resultValue = base.multiply(factor)
 
             val baseRational = baseEval.rationalValue ?: Rational.toRational(base)
-            val factorRational = applyRationalOp(Rational.ONE, TokenKind.MINUS, Rational.toRational(expr.percent.divide(BigDecimal("100"), mc)))
+            val factorRational = applyRationalOp(Rational.ONE, TokenKind.MINUS, Rational.toRational(pct.divide(BigDecimal("100"), mc)))
             EvaluationResult(resultValue, resultUnit, rationalValue = applyRationalOp(baseRational, TokenKind.STAR, factorRational))
         }
         is Expr.UnaryMinus     -> {
@@ -665,7 +673,8 @@ class Evaluator(
 
         // Percentage addition/subtraction
         if (expr.right is Expr.PercentLiteral) {
-            val pct = expr.right.value
+            val pctEval = evaluate((expr.right as Expr.PercentLiteral).value)
+            val pct = pctEval.value ?: throw EvalException("Cannot apply percentage to a non-numeric value")
             val leftVal = leftEval.value ?: BigDecimal.ZERO
             val leftRational = leftEval.rationalValue ?: Rational.toRational(leftVal)
             val pctRational = Rational.toRational(pct.divide(BigDecimal("100"), mc))

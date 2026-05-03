@@ -120,6 +120,13 @@ class MathEngineTest {
     }
 
     @Test
+    fun `variable modulo variable`() = testCalculate("a = 10", "b = 3", "a % b") { result ->
+        assertEquals("10.0", result[0].result)
+        assertEquals("3.0", result[1].result)
+        assertEquals("1.0", result[2].result)
+    }
+
+    @Test
     fun `total throws dimension mismatch error for mixed units`() {
         testCalculate("4kg", "5 hour", "3 kph", "total") { result ->
         assertError("Summation of `Kilogram` and `Hour` is not supported", result, 3)
@@ -532,6 +539,18 @@ class MathEngineTest {
     }
 
     @Test
+    fun `variable percentage of variable`() = testCalculate("a = 10", "b = 200", "a% of b") { result ->
+        assertEquals("10.0", result[0].result)
+        assertEquals("200.0", result[1].result)
+        assertEquals("20.0", result[2].result)
+    }
+
+    @Test
+    fun `expression as percentage`() = testCalculate("(5+5)% of 200") { result ->
+        assertEquals("20.0", result[0].result)
+    }
+
+    @Test
     fun `percentage of quantity preserves unit`() = testCalculate("10000g", "10% of _", "_ + 9kg") { result ->
         assertEquals("10000.0 g", result[0].result)
         assertEquals("1000.0 g", result[1].result)
@@ -585,6 +604,13 @@ class MathEngineTest {
     fun `percentage off variable`() = testCalculate("original = 500", "30% off original") { result ->
         assertEquals("500.0", result[0].result)
         assertEquals("350.0", result[1].result)
+    }
+
+    @Test
+    fun `variable percentage off variable`() = testCalculate("a = 10", "b = 200", "a% off b") { result ->
+        assertEquals("10.0", result[0].result)
+        assertEquals("200.0", result[1].result)
+        assertEquals("180.0", result[2].result)
     }
 
     @Test

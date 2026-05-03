@@ -391,31 +391,58 @@ class Parser(private val tokens: List<Token>) {
      */
     private fun parsePostfix(): Expr {
         var expr = parsePrimary()
-        // Continue consuming as long as next token is a DOT
-        while (peekKind() == TokenKind.DOT) {
-            advance() // consume "."
-            val token = peek()
+        while (true) {
+            val kind = peekKind()
+            if (kind == TokenKind.DOT) {
+                advance() // consume "."
+                val token = peek()
 
-            if (token.kind != TokenKind.IDENTIFIER && !token.kind.name.startsWith("KW_")) {
-                val message = if (token.kind == TokenKind.EOF) {
-                    "Missing variable or function name after `.`"
-                } else {
-                    "Expected variable or function name after `.`, but found `${token.lexeme}`"
+                if (token.kind != TokenKind.IDENTIFIER && !token.kind.name.startsWith("KW_")) {
+                    val message = if (token.kind == TokenKind.EOF) {
+                        "Missing variable or function name after `.`"
+                    } else {
+                        "Expected variable or function name after `.`, but found `${token.lexeme}`"
+                    }
+                    throw ParseException(message, token.position)
                 }
-                throw ParseException(message, token.position)
-            }
-            advance()
-            val name = token.lexeme
+                advance()
+                val name = token.lexeme
 
-            // Check if it's a member function call
-            if (peekKind() == TokenKind.LPAREN) {
-                advance() // consume "("
-                val args = parseArgList()
-                expect(TokenKind.RPAREN)
-                expr = Expr.MemberFunctionCall(expr, name, args)
+                // Check if it's a member function call
+                if (peekKind() == TokenKind.LPAREN) {
+                    advance() // consume "("
+                    val args = parseArgList()
+                    expect(TokenKind.RPAREN)
+                    expr = Expr.MemberFunctionCall(expr, name, args)
+                } else {
+                    // Otherwise treat it as a property/variable accessor
+                    expr = Expr.MemberAccess(expr, name)
+                }
+            } else if (kind == TokenKind.PERCENT) {
+                val nextKind = peekAt(1)
+                // e.g. a% of b
+                if (nextKind == TokenKind.KW_OF) {
+                    advance() // skip past "%"
+                    advance() // skip past "of"
+                    val base = parseExpression()
+                    expr = Expr.PercentOf(expr, base)
+                // e.g. a% off b
+                } else if (nextKind == TokenKind.KW_OFF) {
+                    advance() // skip past "%"
+                    advance() // skip past "off"
+                    val base = parseExpression()
+                    expr = Expr.PercentOff(expr, base)
+                } else if (canStartExpression(nextKind)) {
+                    // % is followed by expression, so it's a MODULO operator.
+                    // Do not consume % here; let parseMulDivMod handle it.
+                    break
+                // e.g. bare a% (used in "price + a%")
+                } else {
+                    advance() // skip past "%"
+                    expr = Expr.PercentLiteral(expr)
+                }
             } else {
-                // Otherwise treat it as a property/variable accessor
-                expr = Expr.MemberAccess(expr, name)
+                break
             }
         }
         return expr
@@ -463,31 +490,6 @@ class Parser(private val tokens: List<Token>) {
                     if (multiplier != null) {
                         advance() // consume numeral word
                         numericValue *= multiplier
-                    }
-                }
-
-                // Check for percentage syntax: 20% of X, 15% off X, or bare 20%
-                if (peekKind() == TokenKind.PERCENT) {
-                    val nextKind = peekAt(1)
-                    // e.g. 20% of price
-                    if (nextKind == TokenKind.KW_OF) {
-                        advance() // skip past "%"
-                        advance() // skip past "of"
-                        val base = parseExpression()
-                        return Expr.PercentOf(numericValue, base)
-                    // e.g. 15% off price
-                    } else if (nextKind == TokenKind.KW_OFF) {
-                        advance() // skip past "%"
-                        advance() // skip past "off"
-                        val base = parseExpression()
-                        return Expr.PercentOff(numericValue, base)
-                    } else if (canStartExpression(nextKind)) {
-                        // % is followed by expression, so it's a MODULO operator.
-                        // Do not consume % here; let parseMulDivMod handle it.
-                    // e.g. bare 20% (used in "price + 20%")
-                    } else {
-                        advance() // skip past "%"
-                        return Expr.PercentLiteral(numericValue)
                     }
                 }
 

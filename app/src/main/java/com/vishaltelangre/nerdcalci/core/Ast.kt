@@ -36,13 +36,13 @@ sealed class Expr {
     data class NumberLiteral(val value: BigDecimal) : Expr()
 
     /** Percentage literal: `20%` — a bare percentage without `of`/`off` context. */
-    data class PercentLiteral(val value: BigDecimal) : Expr()
+    data class PercentLiteral(val value: Expr) : Expr()
 
     /** Percentage-of: `20% of price` → `price * 0.20` */
-    data class PercentOf(val percent: BigDecimal, val base: Expr) : Expr()
+    data class PercentOf(val percent: Expr, val base: Expr) : Expr()
 
     /** Percentage-off: `15% off price` → `price * (1 - 0.15)` */
-    data class PercentOff(val percent: BigDecimal, val base: Expr) : Expr()
+    data class PercentOff(val percent: Expr, val base: Expr) : Expr()
 
     /** Unary negation: `-expr` */
     data class UnaryMinus(val operand: Expr) : Expr()

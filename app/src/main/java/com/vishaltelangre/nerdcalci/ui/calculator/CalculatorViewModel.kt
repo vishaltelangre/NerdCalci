@@ -283,7 +283,7 @@ class CalculatorViewModel(
         _restoreProgress.value = RestoreProgressState()
     }
 
-    private fun createFileContextLoader(currentFileId: Long, rationalMode: Boolean = false, dateFormat: String = Constants.DATE_FORMAT_DMY): FileContextLoader {
+    private fun createFileContextLoader(currentFileId: Long, rationalMode: Boolean = false, dateFormat: String = Constants.DATE_FORMAT_AUTO): FileContextLoader {
         val cache = mutableMapOf<String, MathContext>()
         return object : FileContextLoader {
             override suspend fun loadContext(fileName: String, loadingStack: Set<String>): MathContext? {
@@ -870,7 +870,13 @@ class CalculatorViewModel(
         // Recalculate everything and batch-write results in one transaction
         val allLines = dao.getLinesForFileSync(fileId)
         val effectiveRationalMode = rationalMode ?: _rationalMode.value
-        val calculatedLines = MathEngine.calculate(allLines, createFileContextLoader(fileId, effectiveRationalMode), rationalMode = effectiveRationalMode)
+        val effectiveDateFormat = getResolvedDateFormat()
+        val calculatedLines = MathEngine.calculate(
+            allLines, 
+            createFileContextLoader(fileId, effectiveRationalMode, effectiveDateFormat), 
+            rationalMode = effectiveRationalMode,
+            dateFormat = effectiveDateFormat
+        )
         val versionedLines = calculatedLines.map { it.copy(version = it.version + 1) }
         dao.updateLines(fileId, versionedLines)
     }
@@ -1018,7 +1024,14 @@ class CalculatorViewModel(
 
                 // Recalculate everything from the new line downward
                 val effectiveRationalMode = rationalMode ?: _rationalMode.value
-                val affectedLines = MathEngine.calculateFrom(updatedAllLines, insertIndex, createFileContextLoader(fileId, effectiveRationalMode), rationalMode = effectiveRationalMode)
+                val effectiveDateFormat = getResolvedDateFormat()
+                val affectedLines = MathEngine.calculateFrom(
+                    updatedAllLines, 
+                    insertIndex, 
+                    createFileContextLoader(fileId, effectiveRationalMode, effectiveDateFormat), 
+                    rationalMode = effectiveRationalMode,
+                    dateFormat = effectiveDateFormat
+                )
                 val versionedLines = affectedLines.map { it.copy(version = it.version + 1) }
                 dao.updateLines(fileId, versionedLines, updateTimestamp = false)
 
@@ -1068,7 +1081,14 @@ class CalculatorViewModel(
                 val updatedAllLines = dao.getLinesForFileSync(fileId)
                 val splitIndexInList = updatedAllLines.indexOfFirst { it.id == line.id }.coerceAtLeast(0)
                 val effectiveRationalMode = rationalMode ?: _rationalMode.value
-                val affectedLines = MathEngine.calculateFrom(updatedAllLines, splitIndexInList, createFileContextLoader(fileId, effectiveRationalMode), rationalMode = effectiveRationalMode)
+                val effectiveDateFormat = getResolvedDateFormat()
+                val affectedLines = MathEngine.calculateFrom(
+                    updatedAllLines, 
+                    splitIndexInList, 
+                    createFileContextLoader(fileId, effectiveRationalMode, effectiveDateFormat), 
+                    rationalMode = effectiveRationalMode,
+                    dateFormat = effectiveDateFormat
+                )
                 val versionedLines = affectedLines.map { it.copy(version = it.version + 1) }
                 dao.updateLines(fileId, versionedLines, updateTimestamp = false)
 
@@ -1104,7 +1124,14 @@ class CalculatorViewModel(
                 val updatedLines = dao.getLinesForFileSync(fileId)
                 val mergedIndex = updatedLines.indexOfFirst { it.id == prevLine.id }.coerceAtLeast(0)
                 val effectiveRationalMode = rationalMode ?: _rationalMode.value
-                val affectedLines = MathEngine.calculateFrom(updatedLines, mergedIndex, createFileContextLoader(fileId, effectiveRationalMode), rationalMode = effectiveRationalMode)
+                val effectiveDateFormat = getResolvedDateFormat()
+                val affectedLines = MathEngine.calculateFrom(
+                    updatedLines, 
+                    mergedIndex, 
+                    createFileContextLoader(fileId, effectiveRationalMode, effectiveDateFormat), 
+                    rationalMode = effectiveRationalMode,
+                    dateFormat = effectiveDateFormat
+                )
                 dao.updateLines(fileId, affectedLines, updateTimestamp = false)
             }
         }
@@ -1132,7 +1159,14 @@ class CalculatorViewModel(
                 // the deleted one now sits at the deleted line's old position.
                 if (deletedIndex in updatedLines.indices) {
                     val effectiveRationalMode = rationalMode ?: _rationalMode.value
-                    val affectedLines = MathEngine.calculateFrom(updatedLines, deletedIndex, createFileContextLoader(line.fileId, effectiveRationalMode), rationalMode = effectiveRationalMode)
+                    val effectiveDateFormat = getResolvedDateFormat()
+                    val affectedLines = MathEngine.calculateFrom(
+                        updatedLines, 
+                        deletedIndex, 
+                        createFileContextLoader(line.fileId, effectiveRationalMode, effectiveDateFormat), 
+                        rationalMode = effectiveRationalMode,
+                        dateFormat = effectiveDateFormat
+                    )
                     val versionedLines = affectedLines.map { l -> l.copy(version = l.version + 1) }
                     dao.updateLines(line.fileId, versionedLines)
                 }

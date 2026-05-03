@@ -354,7 +354,8 @@ class DateTimeFeaturesTest {
         "datetimeZ(2024, 1, 1, 12, 0, 0, \"UTC\") in \"Invalid/Zone\"",
         "1.5 days ago",                         // Fractional duration (truncates)
         "date(2023, 12, 31) + 1y 1mo 1d",      // Multi-component overflow
-        "parseDate(\"12/02/1988\")"            // defaults to DMY
+        "parseDate(\"12/02/1988\")",           // defaults to DMY
+        dateFormat = Constants.DATE_FORMAT_DMY
     ) { results ->
         assertEquals("Err", results[0].result)
         assertEquals("Err", results[1].result)

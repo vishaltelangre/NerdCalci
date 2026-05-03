@@ -31,7 +31,7 @@ suspend fun testCalculate(
     vararg expressions: String,
     loader: FileContextLoader? = null,
     rationalMode: Boolean = false,
-    dateFormat: String = Constants.DATE_FORMAT_DMY
+    dateFormat: String = Constants.DATE_FORMAT_AUTO
 ): List<LineEntity> {
     val lines = createLines(*expressions)
     return MathEngine.calculate(lines, loader, rationalMode, dateFormat)
@@ -44,7 +44,7 @@ fun testCalculate(
     vararg expressions: String,
     loader: FileContextLoader? = null,
     rationalMode: Boolean = false,
-    dateFormat: String = Constants.DATE_FORMAT_DMY,
+    dateFormat: String = Constants.DATE_FORMAT_AUTO,
     block: suspend (List<LineEntity>) -> kotlin.Unit
 ) = runBlocking {
     val results = testCalculate(*expressions, loader = loader, rationalMode = rationalMode, dateFormat = dateFormat)

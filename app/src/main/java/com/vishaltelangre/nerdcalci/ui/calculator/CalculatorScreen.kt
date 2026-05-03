@@ -536,7 +536,9 @@ fun CalculatorScreen(
 
     DisposableEffect(fileId) {
         onDispose {
-            viewModel.setCurrentFileId(null)
+            if (viewModel.currentFileId.value == fileId) {
+                viewModel.setCurrentFileId(null)
+            }
         }
     }
 

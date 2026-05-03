@@ -132,13 +132,15 @@ class Evaluator(
         is Expr.NumberLiteral  -> EvaluationResult(expr.value, rationalValue = Rational.toRational(expr.value))
         is Expr.PercentLiteral -> {
             val eval = evaluate(expr.value)
-            val value = eval.value ?: throw EvalException("Cannot apply percentage to a non-numeric value")
+            if (!isUnitlessScalar(eval)) throw EvalException("Cannot apply percentage to a non-numeric value")
+            val value = eval.value!!
             val res = value.divide(BigDecimal("100"), mc)
             EvaluationResult(res, rationalValue = Rational.toRational(res))
         }
         is Expr.PercentOf      -> {
             val pctEval = evaluate(expr.percent)
-            val pct = pctEval.value ?: throw EvalException("Cannot apply percentage to a non-numeric value")
+            if (!isUnitlessScalar(pctEval)) throw EvalException("Cannot apply percentage to a non-numeric value")
+            val pct = pctEval.value!!
 
             val baseEval = evaluate(expr.base)
             val base = baseEval.value ?: throw EvalException("Cannot apply percentage to a non-numeric value")
@@ -152,7 +154,8 @@ class Evaluator(
         }
         is Expr.PercentOff     -> {
             val pctEval = evaluate(expr.percent)
-            val pct = pctEval.value ?: throw EvalException("Cannot apply percentage to a non-numeric value")
+            if (!isUnitlessScalar(pctEval)) throw EvalException("Cannot apply percentage to a non-numeric value")
+            val pct = pctEval.value!!
 
             val baseEval = evaluate(expr.base)
             val base = baseEval.value ?: throw EvalException("Cannot apply percentage to a non-numeric value")
@@ -674,7 +677,8 @@ class Evaluator(
         // Percentage addition/subtraction
         if (expr.right is Expr.PercentLiteral) {
             val pctEval = evaluate((expr.right as Expr.PercentLiteral).value)
-            val pct = pctEval.value ?: throw EvalException("Cannot apply percentage to a non-numeric value")
+            if (!isUnitlessScalar(pctEval)) throw EvalException("Cannot apply percentage to a non-numeric value")
+            val pct = pctEval.value!!
             val leftVal = leftEval.value ?: BigDecimal.ZERO
             val leftRational = leftEval.rationalValue ?: Rational.toRational(leftVal)
             val pctRational = Rational.toRational(pct.divide(BigDecimal("100"), mc))
@@ -1090,7 +1094,8 @@ class Evaluator(
             fileVariables = remoteContext.fileVariables,
             fileContextLoader = fileContextLoader,
             loadingStack = loadingStack + fileName,
-            rationalMode = rationalMode
+            rationalMode = rationalMode,
+            dateFormat = dateFormat
         )
         return remoteEvaluator.evaluateFunction(name, evaluatedArgs)
     }
@@ -1110,6 +1115,13 @@ class Evaluator(
         } else {
             throw EvalException("You can only $operation other files using dot notation")
         }
+    }
+
+    private fun isUnitlessScalar(eval: EvaluationResult): Boolean {
+        if (eval.value == null) return false
+        if (eval.unit == null) return true
+        val unit = UnitConverter.findUnit(eval.unit)
+        return unit?.category == UnitCategory.SCALAR
     }
 
     private fun isPhysicalUnit(unit: NerdUnit?): Boolean {

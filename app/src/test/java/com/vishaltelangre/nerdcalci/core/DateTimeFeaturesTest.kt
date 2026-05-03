@@ -184,6 +184,15 @@ class DateTimeFeaturesTest {
     }
 
     @Test
+    fun `date interval with time cross respects incomplete days`() = testCalculate(
+        "datetime(1981, 2, 14, 18, 32, 0) to datetime(2026, 5, 3, 14, 49, 9)" // [0]
+    ) { results ->
+        // Feb 14 18:32 to May 3 14:49:09
+        // 45y 2m 18d 20h 17min 9s
+        assertEquals("45 y 2 mo 18 d 20 h 17 min 9 s", results[0].result)
+    }
+
+    @Test
     fun `inclusive logic for dates vs datetimes`() = testCalculate(
         "datetime(2024, 1, 1, 12, 0, 0) through datetime(2024, 1, 2, 12, 0, 0) in hours", // [0] datetimes, no padding -> 24h
         "date(2024, 1, 1) through date(2024, 1, 1) in hours",                           // [1] date through same date -> 24h (padding applied)

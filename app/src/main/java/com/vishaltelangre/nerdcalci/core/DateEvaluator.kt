@@ -155,24 +155,14 @@ object DateEvaluator {
 
         if (hasDateTime) {
             // Preserve full instant precision so datetime-to-datetime intervals include time.
-            val fromZdt: ZonedDateTime = when (from) {
-                is DateTimeResult.DateTime -> from.instant
-                is DateTimeResult.Date     -> from.date.atStartOfDay(systemZone)
-                else -> throw EvalException("Expected a date or datetime operand.")
-            }
-            val rawToZdt: ZonedDateTime = when (to) {
-                is DateTimeResult.DateTime -> to.instant
-                is DateTimeResult.Date     -> to.date.atStartOfDay(systemZone)
-                else -> throw EvalException("Expected a date or datetime operand.")
-            }
+            val fromZdt = toZonedDateTime(from)
+            val rawToZdt = toZonedDateTime(to)
             // Apply inclusive (+1 day) only if the end operand was a plain date.
             val toZdt = if (inclusive && to is DateTimeResult.Date) rawToZdt.plusDays(1) else rawToZdt
 
             val isBackward = fromZdt.isAfter(toZdt)
             val (startZdt, endZdt) = if (isBackward) toZdt to fromZdt else fromZdt to toZdt
 
-            // Use java.time.Duration for the sub-day part and Period for the calendar part.
-            val period = Period.between(startZdt.toLocalDate(), endZdt.toLocalDate())
             val startOfEndDate = endZdt.toLocalDate().atStartOfDay(endZdt.zone)
             val timeDuration = java.time.Duration.between(startOfEndDate, endZdt)
             val extraSeconds = timeDuration.seconds  // seconds into the end day
@@ -185,10 +175,18 @@ object DateEvaluator {
 
             var totalDays = ChronoUnit.DAYS.between(startZdt.toLocalDate(), endZdt.toLocalDate())
             var remainingSeconds = netSeconds
-            if (remainingSeconds < 0) {
+
+            // Adjust the calendar boundary if the time part makes the last day incomplete.
+            val adjustedEndDate = if (remainingSeconds < 0) {
                 totalDays--
                 remainingSeconds += 86400L
+                endZdt.toLocalDate().minusDays(1)
+            } else {
+                endZdt.toLocalDate()
             }
+
+            // Recalculate the period based on the adjusted date boundary.
+            val period = Period.between(startZdt.toLocalDate(), adjustedEndDate)
 
             val hours   = remainingSeconds / 3600L
             val minutes = (remainingSeconds % 3600L) / 60L
@@ -380,6 +378,12 @@ object DateEvaluator {
     private fun toLocalDate(dt: DateTimeResult): LocalDate = when (dt) {
         is DateTimeResult.Date     -> dt.date
         is DateTimeResult.DateTime -> dt.instant.toLocalDate()
+        else -> throw EvalException("Expected a date or datetime operand.")
+    }
+
+    private fun toZonedDateTime(dt: DateTimeResult): ZonedDateTime = when (dt) {
+        is DateTimeResult.DateTime -> dt.instant
+        is DateTimeResult.Date     -> dt.date.atStartOfDay(systemZone)
         else -> throw EvalException("Expected a date or datetime operand.")
     }
 }

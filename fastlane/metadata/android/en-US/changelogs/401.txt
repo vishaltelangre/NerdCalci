@@ -1,0 +1,3 @@
+- Added support for regional date format preferences (DD/MM/YYYY, MM/DD/YYYY, YYYY/MM/DD) for numeric inputs (Issue #162).
+- Fixed an off-by-one error in date intervals with time components (Issue #163).
+- Fixed a bug where variable percentages (e.g., `a% of b`) resulted in an error.

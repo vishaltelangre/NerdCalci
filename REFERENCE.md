@@ -933,8 +933,11 @@ Dates are constructed using specific functions to avoid ambiguity with numeric e
 - `"April 1, 2019"` (US style) → returns a date
 - `"1 April 2019"` (International style) → returns a date
 - `"June 10"` (Infers the closest year) → returns a date
-- `"YYYY-MM-DD"` (ISO 8601 date) → returns a date
-- `"YYYY/MM/DD"` (slash-delimited date, not strict ISO 8601) → returns a date
+- **Regional numeric formats** (configurable in Settings):
+  - `"DD/MM/YYYY"` (e.g. `10/05/2024`)
+  - `"MM/DD/YYYY"` (e.g. `05/10/2024`)
+  - `"YYYY/MM/DD"` (e.g. `2024/05/10`)
+  - **Note**: A 4-digit year (`YYYY`) is required for these numeric formats to prevent ambiguity. Separators like `/`, `-`, and `.` are supported interchangeably.
 - `"YYYY-MM-DDTHH:MM:SS+HH:MM"` (ISO 8601 with time and offset) → returns a date-time
 - Unix epoch timestamp (e.g. `1714636800`) → returns a **date-time** (system timezone)
 

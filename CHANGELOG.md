@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.1] - 2026-05-03
+### Added
+- Added support for regional date format preferences (DD/MM/YYYY, MM/DD/YYYY, YYYY/MM/DD) for numeric inputs (Issue #162).
+
+### Fixed
+- Fixed an off-by-one error in date intervals when the time component made the final day incomplete (Issue #163).
+- Fixed a bug where variable percentages (e.g., `a% of b`) resulted in an error.
+
 ## [4.0.0] - 2026-05-02
 ### Added
 - Added a powerful, calendar-aware date engine for complex arithmetic and natural language queries (e.g., `today + 3 weeks`).

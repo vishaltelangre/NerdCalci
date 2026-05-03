@@ -79,9 +79,13 @@ class Evaluator(
                     }
                 }
             }
+            val primaryUnit = expr.quantities.map { it.unit }
+                .maxByOrNull { unitName ->
+                    UnitConverter.findUnit(unitName)?.factor ?: BigDecimal.ZERO
+                } ?: "s"
             EvaluationResult(
                 value = totalSeconds,
-                unit = "s",
+                unit = primaryUnit,
                 dateTimeResult = DateTimeResult.Duration(delta),
                 rationalValue = Rational.toRational(totalSeconds)
             )
@@ -89,7 +93,17 @@ class Evaluator(
         is Expr.DateInterval -> {
             val start = coerceToDate(evaluate(expr.start))
             val end = coerceToDate(evaluate(expr.end))
-            EvaluationResult(value = null, dateTimeResult = DateEvaluator.interval(start, end, inclusive = expr.inclusive, projectionUnit = expr.projectionUnit))
+            val res = DateEvaluator.interval(start, end, inclusive = expr.inclusive, projectionUnit = expr.projectionUnit)
+            when (res) {
+                is DateTimeResult.DayCount -> {
+                    EvaluationResult(value = BigDecimal.valueOf(res.days * 86400L), unit = "d", dateTimeResult = res)
+                }
+                is DateTimeResult.TimeCount -> {
+                    val unit = UnitConverter.findUnit(res.unit)!!
+                    EvaluationResult(value = UnitConverter.toBase(BigDecimal.valueOf(res.value), unit, variables), unit = res.unit, dateTimeResult = res)
+                }
+                else -> EvaluationResult(value = null, dateTimeResult = res)
+            }
         }
         is Expr.YearInterval -> {
             val fromYear = MathEngine.toIntOrNullExact(evaluate(expr.fromYear).value ?: BigDecimal.ZERO)
@@ -100,12 +114,12 @@ class Evaluator(
         }
         is Expr.DayCountQuery -> {
             val target = coerceToDate(evaluate(expr.target))
-            val dayCount = when (expr.kind) {
+            val res = when (expr.kind) {
                 TokenKind.KW_SINCE -> DateEvaluator.daysSince(target)
                 TokenKind.KW_TILL, TokenKind.KW_UNTIL -> DateEvaluator.daysTill(target)
                 else -> throw EvalException("Unsupported day-count query")
             }
-            EvaluationResult(value = null, dateTimeResult = dayCount)
+            EvaluationResult(value = BigDecimal.valueOf(res.days * 86400L), unit = "d", dateTimeResult = res)
         }
         is Expr.DateModifier -> {
             val base = coerceToDate(evaluate(expr.expr))
@@ -545,8 +559,8 @@ class Evaluator(
         val leftDt = leftEval.dateTimeResult
         val rightDt = rightEval.dateTimeResult
 
-        val isLeftDuration = leftDt is DateTimeResult.Duration
-        val isRightDuration = rightDt is DateTimeResult.Duration
+        val isLeftDuration = leftDt is DateTimeResult.Duration || leftDt is DateTimeResult.DayCount || leftDt is DateTimeResult.TimeCount
+        val isRightDuration = rightDt is DateTimeResult.Duration || rightDt is DateTimeResult.DayCount || rightDt is DateTimeResult.TimeCount
         val isLeftDate = leftDt is DateTimeResult.Date || leftDt is DateTimeResult.DateTime
         val isRightDate = rightDt is DateTimeResult.Date || rightDt is DateTimeResult.DateTime
         val isDateOp = expr.op == TokenKind.KW_BEFORE || expr.op == TokenKind.KW_AFTER ||
@@ -568,16 +582,18 @@ class Evaluator(
                         // duration + date
                         (isLeftDuration && isRightDate && isAdd) -> {
                             val base = rightDt as DateTimeResult
-                            val delta = (leftDt as DateTimeResult.Duration).delta
+                            val delta = toDateDelta(leftEval)
                             EvaluationResult(value = null, dateTimeResult = DateEvaluator.applyDelta(base, delta, true))
                         }
                         // duration +/- duration
                         (isLeftDuration && (isRightDuration || rightEval.unit != null)) -> {
-                            val leftDelta = (leftDt as DateTimeResult.Duration).delta
+                            val leftDelta = toDateDelta(leftEval)
                             val rightDelta = toDateDelta(rightEval)
                             val resultDelta = if (isAdd) DateEvaluator.addDeltas(leftDelta, rightDelta) 
                                               else DateEvaluator.addDeltas(leftDelta, rightDelta.negate())
-                            EvaluationResult(value = null, dateTimeResult = DateTimeResult.Duration(resultDelta))
+                            val totalSeconds = resultDelta.toSecondsEstimate()
+                            val resultUnit = if (leftEval.unit != null && leftEval.unit == rightEval.unit) leftEval.unit else "s"
+                            EvaluationResult(value = BigDecimal.valueOf(totalSeconds), unit = resultUnit, dateTimeResult = DateTimeResult.Duration(resultDelta))
                         }
                         else -> throw EvalException("Unsupported date/duration arithmetic")
                     }
@@ -586,7 +602,7 @@ class Evaluator(
                     when {
                         isLeftDuration && rightEval.value != null -> {
                             val factor = rightEval.value.toDouble()
-                            val delta = (leftDt as DateTimeResult.Duration).delta
+                            val delta = toDateDelta(leftEval)
                             val resultDelta = DateTimeDelta(
                                 years = (delta.years * factor).toLong(),
                                 months = (delta.months * factor).toLong(),
@@ -596,11 +612,12 @@ class Evaluator(
                                 minutes = (delta.minutes * factor).toLong(),
                                 seconds = (delta.seconds * factor).toLong()
                             )
-                            EvaluationResult(value = null, dateTimeResult = DateTimeResult.Duration(resultDelta))
+                            val totalSeconds = resultDelta.toSecondsEstimate()
+                            EvaluationResult(value = BigDecimal.valueOf(totalSeconds), unit = leftEval.unit ?: "s", dateTimeResult = DateTimeResult.Duration(resultDelta))
                         }
                         leftEval.value != null && isRightDuration -> {
                             val factor = leftEval.value.toDouble()
-                            val delta = (rightDt as DateTimeResult.Duration).delta
+                            val delta = toDateDelta(rightEval)
                             val resultDelta = DateTimeDelta(
                                 years = (delta.years * factor).toLong(),
                                 months = (delta.months * factor).toLong(),
@@ -610,7 +627,8 @@ class Evaluator(
                                 minutes = (delta.minutes * factor).toLong(),
                                 seconds = (delta.seconds * factor).toLong()
                             )
-                            EvaluationResult(value = null, dateTimeResult = DateTimeResult.Duration(resultDelta))
+                            val totalSeconds = resultDelta.toSecondsEstimate()
+                            EvaluationResult(value = BigDecimal.valueOf(totalSeconds), unit = rightEval.unit ?: "s", dateTimeResult = DateTimeResult.Duration(resultDelta))
                         }
                         else -> throw EvalException("Multiplication is not supported for dates")
                     }
@@ -638,8 +656,7 @@ class Evaluator(
                         // duration / number -> scaling
                         isLeftDuration && rightEval.value != null -> {
                             val factor = rightEval.value.toDouble()
-                            if (factor == 0.0) throw DivisionByZeroException()
-                            val delta = (leftDt as DateTimeResult.Duration).delta
+                            val delta = toDateDelta(leftEval)
                             val resultDelta = DateTimeDelta(
                                 years = (delta.years / factor).toLong(),
                                 months = (delta.months / factor).toLong(),
@@ -649,7 +666,8 @@ class Evaluator(
                                 minutes = (delta.minutes / factor).toLong(),
                                 seconds = (delta.seconds / factor).toLong()
                             )
-                            EvaluationResult(value = null, dateTimeResult = DateTimeResult.Duration(resultDelta))
+                            val totalSeconds = resultDelta.toSecondsEstimate()
+                            EvaluationResult(value = BigDecimal.valueOf(totalSeconds), unit = leftEval.unit ?: "s", dateTimeResult = DateTimeResult.Duration(resultDelta))
                         }
                         else -> throw EvalException("Division is not supported for dates")
                     }
@@ -925,6 +943,24 @@ class Evaluator(
     private fun toDateDelta(result: EvaluationResult): DateTimeDelta {
         result.dateTimeResult?.let {
             if (it is DateTimeResult.Duration) return it.delta
+            if (it is DateTimeResult.DayCount) return DateTimeDelta(days = it.days)
+            if (it is DateTimeResult.TimeCount) {
+                val unit = UnitConverter.findUnit(it.unit)!!
+                val delta = when (unit.name.lowercase()) {
+                    "year" -> DateTimeDelta(years = it.value)
+                    "month" -> DateTimeDelta(months = it.value)
+                    "week" -> DateTimeDelta(weeks = it.value)
+                    "day" -> DateTimeDelta(days = it.value)
+                    "hour" -> DateTimeDelta(hours = it.value)
+                    "minute" -> DateTimeDelta(minutes = it.value)
+                    "second" -> DateTimeDelta(seconds = it.value)
+                    else -> {
+                        val seconds = UnitConverter.toBase(BigDecimal.valueOf(it.value), unit, variables).toLong()
+                        DateTimeDelta(seconds = seconds)
+                    }
+                }
+                return delta
+            }
         }
 
         val unit = result.unit?.let { UnitConverter.findUnit(it) }

@@ -128,6 +128,7 @@ object Builtins {
                 resultValue,
                 unit = null,
                 explicitUnitless = true,
+                dateTimeResult = null,
                 rationalValue = Rational.fromBigDecimalSmart(resultValue)
             )
         }
@@ -327,6 +328,7 @@ object Builtins {
         return when {
             arg.stringResult != null -> EvaluationResult(value = null, dateTimeResult = DateStringParser.parse(arg.stringResult, dateFormat))
             arg.value != null -> EvaluationResult(value = null, dateTimeResult = DateStringParser.parseEpoch(arg.value.toLong()))
+            arg.dateTimeResult != null -> arg // already a date/datetime/duration
             else -> throw EvalException("`parseDate()` expects a numeric epoch or a date string")
         }
     }

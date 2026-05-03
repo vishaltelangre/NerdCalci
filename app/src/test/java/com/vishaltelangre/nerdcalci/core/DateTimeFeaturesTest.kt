@@ -438,4 +438,41 @@ class DateTimeFeaturesTest {
         assertError("Unsupported date/duration arithmetic", results, 5)
         assertError("Unsupported date/duration arithmetic", results, 6)
     }
+    @Test
+    fun `date interval and composite quantity consistency`() = testCalculate(
+        "243 days 12.5 years 14 hours"
+    ) { results ->
+        assertError("Fractional components (like 2.5 years) are not supported in multi-unit durations. Please use whole numbers.", results, 0)
+    }
+
+    @Test
+    fun `date engine stabilization regression`() = testCalculate(
+        "date(2024, 1, 1) through date(2024, 1, 31) in days", // [0]
+        "_ + 1 day",                                   // [1]
+        "raw(_)",                                      // [2]
+        "243 days 14 hours",                           // [3]
+        "raw(_)",                                      // [4]
+        "14 hours 12 minutes 243 days",                // [5]
+        "raw(_)",                                      // [6]
+        "14 hours 2 years 12 weeks",                   // [7]
+        "raw(_)",                                      // [8]
+        "243 days 14 hours 12 minutes",                // [9]
+        "raw(_)",                                      // [10]
+        "2 years 12 weeks 14 hours",                   // [11]
+        "raw(_)"                                       // [12]
+    ) { results ->
+        try {
+            assertEquals("31 d", results[0].result)
+            assertEquals("32 d", results[1].result) 
+            assertEquals("32", results[2].result)
+            assertEquals("243 d 14 h", results[3].result)
+            assertTrue(results[4].result.startsWith("243.5833"))
+            assertEquals("243 d 14 h 12 min", results[5].result)
+            assertTrue(results[6].result.startsWith("243.5916"))
+            assertEquals("2 y 12 wk 14 h", results[7].result)
+            assertTrue(results[8].result.startsWith("2.2315"))
+        } catch (e: Throwable) {
+            throw e
+        }
+    }
 }

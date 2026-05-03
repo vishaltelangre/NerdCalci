@@ -665,11 +665,9 @@ class Parser(private val tokens: List<Token>) {
                     numExpr is Expr.NumberLiteral && numExpr.value.stripTrailingZeros().scale() > 0
                 }
                 if (anyFractional) {
-                    pos = initialPos  // restore consumed tokens
-                    firstValue
-                } else {
-                    Expr.CompositeQuantity(quantities)
+                    error("Fractional components (like 2.5 years) are not supported in multi-unit durations. Please use whole numbers.")
                 }
+                Expr.CompositeQuantity(quantities)
             }
             quantities.size == 1 -> quantities[0]
             else -> firstValue

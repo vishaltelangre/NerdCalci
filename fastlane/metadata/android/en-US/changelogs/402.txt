@@ -1,0 +1,3 @@
+- Fixed duration arithmetic and numeric extraction via raw() and value() (Issue #167).
+- Fixed a bug where negative durations were displayed incorrectly in some cases (Issue #168).
+- Improved error message for multi-unit durations to clearly explain that fractional components are not supported.

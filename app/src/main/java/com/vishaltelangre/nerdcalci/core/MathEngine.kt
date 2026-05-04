@@ -579,10 +579,8 @@ object MathEngine {
 
             val formatted = if (isScientific) {
                 val scientificSafePrecision = if (precision == Constants.PRECISION_OFF) {
-                    if (value.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) == 0) {
-                        val strippedPrecision = value.stripTrailingZeros().precision()
-                        maxOf(1, strippedPrecision)
-                    } else safePrecision
+                    val stz = value.stripTrailingZeros()
+                    maxOf(1, stz.precision() - 1)
                 } else safePrecision
                 formatScientific(value, scientificSafePrecision, locale, roundingMode)
             } else {

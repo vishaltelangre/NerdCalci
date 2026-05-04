@@ -3112,4 +3112,26 @@ class MathEngineTest {
         }
     }
 
+    @Test
+    fun `formatDisplayResult avoids excessive trailing zeros in scientific notation when precision is Off`() {
+        val locale = Locale.US
+        val precisionOff = Constants.PRECISION_OFF
+
+        // Small difference
+        val result1 = MathEngine.formatDisplayResult("0.00000009", precisionOff, locale)
+        assertEquals("9.0E-8", result1)
+
+        // Very small value
+        val result2 = MathEngine.formatDisplayResult("0.00000000000000000000000000000000000000001", precisionOff, locale)
+        assertEquals("1.0E-41", result2)
+
+        // Significant digits are preserved
+        val result3 = MathEngine.formatDisplayResult("0.00000009123", precisionOff, locale)
+        assertEquals("9.123E-8", result3)
+
+        // Large whole numbers
+        val result4 = MathEngine.formatDisplayResult("1000000000000000", precisionOff, locale)
+        assertEquals("1.0E15", result4)
+    }
+
 }

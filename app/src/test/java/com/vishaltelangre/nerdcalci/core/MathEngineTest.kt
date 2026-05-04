@@ -2265,6 +2265,20 @@ class MathEngineTest {
     }
 
     @Test
+    fun `file reference via file call inside function body is not allowed`() = runBlocking {
+        val remoteContext = MathContext(variables = mutableMapOf("x" to EvaluationResult(BigDecimal("10.0"))))
+        val loader = FakeFileContextLoader(mapOf("File B" to remoteContext))
+
+        testCalculate(
+            "a(n) = file(\"File B\").x + n",
+            "a(1)",
+            loader = loader
+        ) { result ->
+            assertError("Cannot access file variables inside a function body", result, 1, loader)
+        }
+    }
+
+    @Test
     fun `user-defined function cannot access local variables in the current file`() = testCalculate(
         "x = 10",
         "a(n) = x + n",
@@ -2326,22 +2340,20 @@ class MathEngineTest {
     }
 
     @Test
-    fun `evaluate remote function call self-reference loop triggers CircularReferenceException`() = runBlocking {
-        val fileBContext = MathContext()
+    fun `evaluate remote file self-reference loop triggers CircularReferenceException`() = runBlocking {
+        val loader = object : FileContextLoader {
+            override suspend fun loadContext(fileName: String, loadingStack: Set<String>): MathContext? {
+                if (fileName == "File B") {
+                    // File B contains: f = file("File B") and x = f.y
+                    // Evaluating f.y will trigger a recursive load of "File B"
+                    val lines = listOf(createLine("f = file(\"File B\")"), createLine("x = f.y"))
+                    return MathEngine.buildVariableState(lines, this, loadingStack)
+                }
+                return null
+            }
+        }
 
-        fileBContext.localFunctions["loopback"] = LocalFunction(
-            name = "loopback",
-            params = emptyList(),
-            body = listOf(
-                Statement.ExprStatement(Expr.MemberAccess(Expr.FunctionCall("file", listOf(Expr.StringLiteral("File B"))), "x"))
-            )
-        )
-
-        val loader = FakeFileContextLoader(mapOf(
-            "File B" to fileBContext
-        ))
-
-        testCalculate("file(\"File B\").loopback()", loader = loader) { result ->
+        testCalculate("file(\"File B\").x", loader = loader) { result ->
             assertError("File `File B` references itself, causing an endless loop", result, 0, loader)
         }
     }

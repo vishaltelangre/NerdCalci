@@ -1162,6 +1162,9 @@ class Evaluator(
                 throw EvalException("`${obj.name}` is not linked to any file. Use `file(\"...\")` to link first")
             }
         } else if (obj is Expr.FunctionCall && obj.name == "file") {
+            if (isFunctionScope) {
+                throw EvalException("Cannot access file variables inside a function body")
+            }
             if (obj.args.size != 1 || obj.args[0] !is Expr.StringLiteral) {
                 throw EvalException("`file()` expects exactly one file name in quotes, e.g., `file(\"FileName\")`")
             }

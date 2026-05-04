@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.1.0] - 2026-05-04
+### Added
+- Added ability to find in page feature in help screen (Issue #166).
+
 ## [4.0.3] - 2026-05-04
 ### Fixed
 - Fixed function isolation to make user-defined functions more predictable and secure (Issue #171).

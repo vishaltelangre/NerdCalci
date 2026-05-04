@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.3] - 2026-05-04
+### Fixed
+- Fixed function isolation to make user-defined functions more predictable and secure (Issue #171).
+- Fixed a bug where scientific notation had excessive trailing zeros when result precision was set to "Off" (Issue #159).
+
 ## [4.0.2] - 2026-05-03
 ### Fixed
 - Fixed duration arithmetic and numeric extraction via raw() and value() (Issue #167).

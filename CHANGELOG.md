@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [4.1.0] - 2026-05-04
 ### Added
-- Added ability to find in page feature in help screen (Issue #166).
+- Added Find-in-page to Help screen (Issue `#166`).
 
 ## [4.0.3] - 2026-05-04
 ### Fixed

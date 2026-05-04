@@ -1,1 +1,1 @@
-- Added ability to find in page feature in help screen (Issue #166).
+- Added 'Find in Page' search on the Help screen (Issue #166).

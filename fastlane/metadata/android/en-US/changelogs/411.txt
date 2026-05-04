@@ -1,0 +1,1 @@
+- Fixed overlapping text in Help screen tables (Issue #175).

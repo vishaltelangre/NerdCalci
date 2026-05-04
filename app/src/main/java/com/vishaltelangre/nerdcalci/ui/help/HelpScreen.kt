@@ -308,6 +308,7 @@ fun HelpScreen(onBack: () -> Unit) {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
             }
             HelpScreenContent(
+                markwon = markwon,
                 renderedText = renderedText,
                 scrollState = scrollState,
                 searchQuery = searchQuery,
@@ -444,6 +445,7 @@ private fun scrollToAnchor(
 
 @Composable
 private fun HelpScreenContent(
+    markwon: Markwon,
     renderedText: android.text.Spanned?,
     scrollState: ScrollState,
     searchQuery: String,
@@ -515,7 +517,7 @@ private fun HelpScreenContent(
                     }
                 }
 
-                textView.text = spannable
+                markwon.setParsedMarkdown(textView, spannable)
             }
         )
     }

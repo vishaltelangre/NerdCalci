@@ -2250,6 +2250,67 @@ class MathEngineTest {
     }
 
     @Test
+    fun `user-defined function cannot access variables from linked files`() = runBlocking {
+        val remoteContext = MathContext(variables = mutableMapOf("x" to EvaluationResult(BigDecimal("10.0"))))
+        val loader = FakeFileContextLoader(mapOf("File B" to remoteContext))
+
+        testCalculate(
+            "f = file(\"File B\")",
+            "a(n) = f.x + n",
+            "a(1)",
+            loader = loader
+        ) { result ->
+            assertError("Cannot access file variables inside a function body", result, 2, loader)
+        }
+    }
+
+    @Test
+    fun `user-defined function cannot access local variables in the current file`() = testCalculate(
+        "x = 10",
+        "a(n) = x + n",
+        "a(1)"
+    ) { result ->
+        assertError("Unknown variable `x`", result, 2)
+    }
+
+    @Test
+    fun `user-defined function can access built-in constants`() = testCalculate(
+        "a(n) = PI + n",
+        "a(0)"
+    ) { result ->
+        assertEquals("3.1415926535897932384626433832795028841971", result[1].result)
+    }
+
+    @Test
+    fun `file reference cannot be passed as function argument`() = runBlocking {
+        val remoteContext = MathContext(variables = mutableMapOf("x" to EvaluationResult(BigDecimal("10.0"))))
+        val loader = FakeFileContextLoader(mapOf("File B" to remoteContext))
+
+        testCalculate(
+            "f = file(\"File B\")",
+            "a(arg) = arg.x + 1",
+            "a(f)",
+            loader = loader
+        ) { result ->
+            assertError("File references (like `f`) cannot be passed to functions. Pass the specific values you need instead (e.g., `a(f.variable)`).", result, 2, loader)
+        }
+    }
+
+    @Test
+    fun `file reference cannot be used in expressions`() = runBlocking {
+        val remoteContext = MathContext(variables = mutableMapOf("x" to EvaluationResult(BigDecimal("10.0"))))
+        val loader = FakeFileContextLoader(mapOf("File B" to remoteContext))
+
+        testCalculate(
+            "f = file(\"File B\")",
+            "f + 1",
+            loader = loader
+        ) { result ->
+            assertError("`f` is a file reference and cannot be used as a value. Use dot notation (e.g., `f.variable`) to access its contents.", result, 1, loader)
+        }
+    }
+
+    @Test
     fun `evaluate clears file linked state after reassignment to number`() = runBlocking {
         val remoteContext = MathContext(variables = mutableMapOf("x" to EvaluationResult(BigDecimal("20.0"))))
         val loader = FakeFileContextLoader(mapOf("File B" to remoteContext))

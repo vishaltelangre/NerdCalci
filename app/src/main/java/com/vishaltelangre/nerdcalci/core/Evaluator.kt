@@ -38,7 +38,8 @@ class Evaluator(
     private val fileContextLoader: FileContextLoader? = null,
     private val loadingStack: Set<String> = emptySet(),
     private val rationalMode: Boolean = false,
-    private val dateFormat: String = Constants.DATE_FORMAT_AUTO
+    private val dateFormat: String = Constants.DATE_FORMAT_AUTO,
+    private val isFunctionScope: Boolean = false
 ) {
     private val mc = JavaMathContext.DECIMAL128
 
@@ -285,9 +286,12 @@ class Evaluator(
 
 
     private fun resolveVariable(name: String): EvaluationResult {
-        // Check user variables first, then injection errors, then built-in constants
         variables[name]?.let { return it }
         injectionErrors[name]?.let { throw it }
+
+        if (fileVariables.containsKey(name)) {
+            throw EvalException("`$name` is a file reference and cannot be used as a value. Use dot notation (e.g., `$name.variable`) to access its contents.")
+        }
         if (name in DateKeywords.RELATIVE) {
             return EvaluationResult(value = null, dateTimeResult = DateEvaluator.resolveRelativeKeyword(name))
         }
@@ -296,6 +300,13 @@ class Evaluator(
     }
 
     private suspend fun evaluateFunction(name: String, argExprs: List<Expr>): EvaluationResult {
+        // Prevent passing file references as arguments to any function
+        argExprs.forEach { argExpr ->
+            if (argExpr is Expr.Variable && fileVariables.containsKey(argExpr.name)) {
+                throw EvalException("File references (like `${argExpr.name}`) cannot be passed to functions. Pass the specific values you need instead (e.g., `${name}(${argExpr.name}.variable)`).")
+            }
+        }
+
         // Check if it's a user-defined local function
         val localFunc = localFunctions[name]
         if (localFunc != null) {
@@ -313,16 +324,19 @@ class Evaluator(
                 localVars[localFunc.params[i]] = args[i]
             }
 
-            // A new Evaluator handles the inner scope execution
+            // A new Evaluator handles the inner scope execution.
+            // We pass an empty map for `fileVariables` to ensure the function body
+            // is strictly isolated and cannot access external file variables.
             val innerEvaluator = Evaluator(
                 variables = localVars,
                 localFunctions = localFunctions,
                 callStack = callStack + name,
-                fileVariables = fileVariables,
+                fileVariables = emptyMap(),
                 fileContextLoader = fileContextLoader,
                 loadingStack = loadingStack,
                 rationalMode = rationalMode,
-                dateFormat = dateFormat
+                dateFormat = dateFormat,
+                isFunctionScope = true
             )
             val localContext = MathContext(variables = localVars)
             var lastResult: EvaluationResult? = null
@@ -1142,7 +1156,11 @@ class Evaluator(
     private fun getFileNameFromObj(obj: Expr, isFunctionCall: Boolean): String {
         val operation = if (isFunctionCall) "call functions from" else "access items from"
         return if (obj is Expr.Variable) {
-            fileVariables[obj.name] ?: throw EvalException("`${obj.name}` is not linked to any file. Use `file(\"...\")` to link first")
+            fileVariables[obj.name] ?: if (isFunctionScope) {
+                throw EvalException("Cannot access file variables inside a function body")
+            } else {
+                throw EvalException("`${obj.name}` is not linked to any file. Use `file(\"...\")` to link first")
+            }
         } else if (obj is Expr.FunctionCall && obj.name == "file") {
             if (obj.args.size != 1 || obj.args[0] !is Expr.StringLiteral) {
                 throw EvalException("`file()` expects exactly one file name in quotes, e.g., `file(\"FileName\")`")

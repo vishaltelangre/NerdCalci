@@ -177,7 +177,9 @@ class DateTimeFeaturesTest {
         "days since date(2030, 1, 1)",          // [9] Since future (negative)
         "days till date(2020, 1, 1)",            // [10] Till past (negative)
         "date(2024, 1, 1) through date(2024, 1, 2) in hours", // [11]
-        "date(2024, 1, 1) through date(2024, 1, 7) in weeks"  // [12]
+        "date(2024, 1, 1) through date(2024, 1, 7) in weeks", // [12]
+        "days between date(2024, 1, 8) and date(2024, 1, 1)", // [13]
+        "between date(2024, 1, 8) and date(2024, 1, 1)"      // [14]
     ) { results ->
         assertEquals("1 wk", results[0].result)
         assertEquals("1 y", results[1].result)
@@ -198,6 +200,8 @@ class DateTimeFeaturesTest {
         assertTrue(results[10].result.startsWith("-"))
         assertTrue(results[11].result.contains("48 h"))
         assertEquals("1 wk", results[12].result)
+        assertEquals("7 d", results[13].result)
+        assertEquals("1 wk", results[14].result)
     }
 
     @Test

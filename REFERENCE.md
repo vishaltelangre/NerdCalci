@@ -975,16 +975,17 @@ Durations can be combined freely: `2 years 3 months 1 week 5 days`.
 
 Calculate the time between two dates or find out how many days have passed. You can also project the result into a specific time unit using `in <unit>`.
 
-| Operation           | Example                                               | Result                     |
-| :------------------ | :---------------------------------------------------- | :------------------------- |
-| **Interval**        | `date(2024, 1, 1) to today`                           | `4 mo 1 wk` (Duration)     |
-| **Year interval**   | `1978 to 2021`                                        | `43 y`                     |
-| **Days since**      | `days since date(2024, 1, 1)`                         | `122 d` (Total days)       |
-| **Days till**       | `days till date(2024, 12, 25)`                        | `237 d`                    |
-| **Days between**    | `days between today and tomorrow`                     | `1 d`                      |
-| **Inclusive count** | `today through tomorrow`                              | `2 d` (Includes both days) |
-| **Projection**      | `days since date(2024, 1, 1) in hours`                | `2928 h`                   |
-| **Distance**        | `days between date(2024,1,2) and date(2024,1,1) in s` | `86400 s`                  |
+| Operation             | Example                                               | Result                     |
+| :-------------------- | :---------------------------------------------------- | :------------------------- |
+| **Interval**          | `date(2024, 1, 1) to today`                           | `4 mo 1 wk` (Duration)     |
+| **Year interval**     | `1978 to 2021`                                        | `43 y`                     |
+| **Days since**        | `days since date(2024, 1, 1)`                         | `122 d` (Total days)       |
+| **Days till**         | `days till date(2024, 12, 25)`                        | `237 d`                    |
+| **Days between**      | `days between today and tomorrow`                     | `1 d`                      |
+| **Absolute interval** | `between today and date(2025, 1, 1)`                  | `1 y 4 mo 4 d`             |
+| **Inclusive count**   | `today through tomorrow`                              | `2 d` (Includes both days) |
+| **Projection**        | `days since date(2024, 1, 1) in hours`                | `2928 h`                   |
+| **Distance**          | `days between date(2024,1,2) and date(2024,1,1) in s` | `86400 s`                  |
 
 > **Note**: While `to`, `through`, `since`, and `till` are signed (e.g., `tomorrow to today` is `-1 d`), the `between` operator is always absolute (e.g., `between tomorrow and today` is `1 d`).
 

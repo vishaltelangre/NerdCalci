@@ -1191,7 +1191,7 @@ class Evaluator(
                 EvaluationResult(value = BigDecimal.valueOf(res.days * 86400L), unit = "d", dateTimeResult = res)
             }
             is DateTimeResult.TimeCount -> {
-                val unit = UnitConverter.findUnit(res.unit)!!
+                val unit = UnitConverter.findUnit(res.unit) ?: throw EvalException("Unknown unit: ${res.unit}")
                 EvaluationResult(value = UnitConverter.toBase(BigDecimal.valueOf(res.value), unit, variables), unit = res.unit, dateTimeResult = res)
             }
             is DateTimeResult.Duration -> {

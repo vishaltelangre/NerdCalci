@@ -611,8 +611,9 @@ class DateTimeFeaturesTest {
         if (left > 0) {
             val expectedMoneyLeft = 1000.0 - (d * 20.0)
             val expectedDaily = expectedMoneyLeft / left
-            // Using contains to avoid minor precision formatting differences in the string result
-            assertTrue(results[6].result.toDouble() > 0)
+            val actualDaily = results[6].result.toDoubleOrNull()
+            assertNotNull("Result should not be Err and should be numeric", actualDaily)
+            assertEquals(expectedDaily, actualDaily!!, 0.001)
         }
     }
 }

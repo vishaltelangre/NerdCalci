@@ -163,7 +163,7 @@ object DateEvaluator {
             // Apply inclusive (+1 day) only if the end operand was a plain date.
             val toZdt = if (inclusive && to is DateTimeResult.Date) rawToZdt.plusDays(1) else rawToZdt
 
-            val isBackward = fromZdt.isAfter(toZdt)
+            val isBackward = if (absolute) false else fromZdt.isAfter(toZdt)
             val (startZdt, endZdt) = if (isBackward) toZdt to fromZdt else fromZdt to toZdt
 
             val startOfEndDate = endZdt.toLocalDate().atStartOfDay(endZdt.zone)
@@ -216,7 +216,7 @@ object DateEvaluator {
         val rawToDate = toLocalDate(to)
         val toDate = if (inclusive) rawToDate.plusDays(1) else rawToDate
 
-        val isBackward = fromDate.isAfter(toDate)
+        val isBackward = if (absolute) false else fromDate.isAfter(toDate)
         val (start, end) = if (isBackward) toDate to fromDate else fromDate to toDate
 
         val period = Period.between(start, end)

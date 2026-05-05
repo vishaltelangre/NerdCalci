@@ -480,4 +480,44 @@ class DateTimeFeaturesTest {
         assertEquals("2 y 12 wk 14 h", results[7].result)
         assertTrue(results[8].result.startsWith("2.2315"))
     }
+    @Test
+    fun `date interval conversion in time units`() = testCalculate(
+        "date(2024,1,1) to date(2024,1,2) in seconds",    // [0] 86400 s
+        "date(2024,1,1) to date(2024,1,2) in minutes",    // [1] 1440 min
+        "date(2024,1,1) to date(2024,1,2) in hours",      // [2] 24 h
+        "date(2024,1,1) to date(2024,1,2) in days",       // [3] 1 d
+        "date(2024,1,1) to date(2024,1,8) in weeks",      // [4] 1 wk
+        "(date(2024,1,1) to date(2024,1,2)) in seconds",  // [5] 86400 s (parenthesized)
+        "date(2024,1,1) through date(2024,1,1) in hours", // [6] 24 h (inclusive)
+        "between date(2024,1,1) and date(2024,1,2) in s", // [7] 86400 s (using in operator)
+        "date(2024,1,1) to date(2024,1,1) in minutes",    // [8] 0 min
+        "date(2024,1,2) to date(2024,1,1) in hours",      // [9] -24 h
+        "today to today in s",                            // [10] 0 s
+        "tomorrow through today in s",                    // [11] 0 s (inclusive)
+        "date(2024,1,1) through date(2024,1,2) + 1d",     // [12] 3 d
+        "date(2024,1,1) to date(2024,1,2) + 1d",          // [13] 2 d
+        "days between date(2024,1,1) and date(2024,1,2) in hours", // [14] 24 h
+        "days since (today - 1 day) in hours",            // [15] 24 h
+        "days till (today + 1 day) in hours",             // [16] 24 h
+        "days between date(2024,1,2) and date(2024,1,1) in hours"  // [17] -24 h?
+    ) { results ->
+        assertEquals("86400 s", results[0].result)
+        assertEquals("1440 min", results[1].result)
+        assertEquals("24 h", results[2].result)
+        assertEquals("1 d", results[3].result)
+        assertEquals("1 wk", results[4].result)
+        assertEquals("86400.0 s", results[5].result)
+        assertEquals("24 h", results[6].result)
+        assertEquals("86400 s", results[7].result)
+        assertEquals("0 min", results[8].result)
+        assertEquals("-24 h", results[9].result)
+        assertEquals("0 s", results[10].result)
+        assertEquals("0 s", results[11].result)
+        assertEquals("3 d", results[12].result)
+        assertEquals("2 d", results[13].result)
+        assertEquals("24 h", results[14].result)
+        assertEquals("24 h", results[15].result)
+        assertEquals("24 h", results[16].result)
+        assertEquals("24 h", results[17].result)
+    }
 }

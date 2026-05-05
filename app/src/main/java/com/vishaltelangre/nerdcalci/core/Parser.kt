@@ -269,7 +269,7 @@ class Parser(private val tokens: List<Token>) {
                     // Only treat as year interval if both sides look like 4-digit years (1000..9999).
                     val leftVal = left.value
                     val rightVal = tokens.getOrNull(pos + 1)?.value
-                    val leftIsYear = leftVal != null && leftVal.stripTrailingZeros().scale() <= 0 &&
+                    val leftIsYear = leftVal.stripTrailingZeros().scale() <= 0 &&
                         leftVal.toLong() in 1000L..9999L
                     val rightIsYear = rightVal != null && rightVal.stripTrailingZeros().scale() <= 0 &&
                         rightVal.toLong() in 1000L..9999L
@@ -288,7 +288,16 @@ class Parser(private val tokens: List<Token>) {
                         nextKind == TokenKind.NUMBER) {
                         advance() // consume 'to'
                         val right = parseMulDivMod()
-                        left = Expr.DateInterval(left, right, projectionUnit = null, inclusive = false)
+                        var unit: String? = null
+                        if (peekKind() == TokenKind.KW_IN && tokens.getOrNull(pos + 1)?.kind == TokenKind.IDENTIFIER) {
+                            val nextLexeme = tokens[pos + 1].lexeme
+                            if (UnitConverter.findUnit(nextLexeme)?.category == UnitCategory.TIME) {
+                                advance() // consume "in"
+                                advance() // consume unit
+                                unit = nextLexeme
+                            }
+                        }
+                        left = Expr.DateInterval(left, right, projectionUnit = unit, inclusive = false)
                         continue
                     }
                 }
@@ -504,15 +513,38 @@ class Parser(private val tokens: List<Token>) {
                     advance()
                     val start = parseExpression()
                     expect(TokenKind.KW_AND)
-                    val end = parseExpression()
-                    Expr.DateInterval(start, end, projectionUnit = "days", inclusive = false)
+                    val end = parseMulDivMod()
+                    var unit: String? = "days"
+                    if (peekKind() == TokenKind.KW_IN && tokens.getOrNull(pos + 1)?.kind == TokenKind.IDENTIFIER) {
+                        val nextLexeme = tokens[pos + 1].lexeme
+                        if (UnitConverter.findUnit(nextLexeme)?.category == UnitCategory.TIME) {
+                            advance() // consume "in"
+                            advance() // consume unit
+                            unit = nextLexeme
+                        }
+                    }
+                    Expr.DateInterval(start, end, projectionUnit = unit, inclusive = false, absolute = true)
                 }
  else if (name.equals("days", ignoreCase = true) &&
                     (peekKind() == TokenKind.KW_SINCE || peekKind() == TokenKind.KW_TILL || peekKind() == TokenKind.KW_UNTIL)
                 ) {
                     val op = advance().kind
-                    val base = parseExpression()
-                    Expr.DayCountQuery(op, base)
+                    val base = parseMulDivMod()
+                    var unit: String? = "days"
+                    if (peekKind() == TokenKind.KW_IN && tokens.getOrNull(pos + 1)?.kind == TokenKind.IDENTIFIER) {
+                        val nextLexeme = tokens[pos + 1].lexeme
+                        if (UnitConverter.findUnit(nextLexeme)?.category == UnitCategory.TIME) {
+                            advance() // consume "in"
+                            advance() // consume unit
+                            unit = nextLexeme
+                        }
+                    }
+                    if (unit != null && !unit.equals("days", ignoreCase = true)) {
+                        // Return as a TimeCount if a specific unit is requested
+                        Expr.DayCountQuery(op, base, projectionUnit = unit)
+                    } else {
+                        Expr.DayCountQuery(op, base)
+                    }
                 } else if (peekKind() == TokenKind.LPAREN) {
                     // e.g. sqrt(16), pow(2, 8)
                     advance() // skip past "("
@@ -534,8 +566,17 @@ class Parser(private val tokens: List<Token>) {
                 advance()
                 val start = parseExpression()
                 expect(TokenKind.KW_AND)
-                val end = parseExpression()
-                Expr.DateInterval(start, end, projectionUnit = null, inclusive = false)
+                val end = parseMulDivMod()
+                var unit: String? = null
+                if (peekKind() == TokenKind.KW_IN && tokens.getOrNull(pos + 1)?.kind == TokenKind.IDENTIFIER) {
+                    val nextLexeme = tokens[pos + 1].lexeme
+                    if (UnitConverter.findUnit(nextLexeme)?.category == UnitCategory.TIME) {
+                        advance() // consume "in"
+                        advance() // consume unit
+                        unit = nextLexeme
+                    }
+                }
+                Expr.DateInterval(start, end, projectionUnit = unit, inclusive = false, absolute = true)
             }
 
             else -> {

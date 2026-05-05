@@ -94,17 +94,8 @@ class Evaluator(
         is Expr.DateInterval -> {
             val start = coerceToDate(evaluate(expr.start))
             val end = coerceToDate(evaluate(expr.end))
-            val res = DateEvaluator.interval(start, end, inclusive = expr.inclusive, projectionUnit = expr.projectionUnit)
-            when (res) {
-                is DateTimeResult.DayCount -> {
-                    EvaluationResult(value = BigDecimal.valueOf(res.days * 86400L), unit = "d", dateTimeResult = res)
-                }
-                is DateTimeResult.TimeCount -> {
-                    val unit = UnitConverter.findUnit(res.unit)!!
-                    EvaluationResult(value = UnitConverter.toBase(BigDecimal.valueOf(res.value), unit, variables), unit = res.unit, dateTimeResult = res)
-                }
-                else -> EvaluationResult(value = null, dateTimeResult = res)
-            }
+            val res = DateEvaluator.interval(start, end, inclusive = expr.inclusive, projectionUnit = expr.projectionUnit, absolute = expr.absolute)
+            mapDateTimeResult(res)
         }
         is Expr.YearInterval -> {
             val fromYear = MathEngine.toIntOrNullExact(evaluate(expr.fromYear).value ?: BigDecimal.ZERO)
@@ -115,12 +106,13 @@ class Evaluator(
         }
         is Expr.DayCountQuery -> {
             val target = coerceToDate(evaluate(expr.target))
+            val today = DateEvaluator.resolveRelativeKeyword("today")
             val res = when (expr.kind) {
-                TokenKind.KW_SINCE -> DateEvaluator.daysSince(target)
-                TokenKind.KW_TILL, TokenKind.KW_UNTIL -> DateEvaluator.daysTill(target)
+                TokenKind.KW_SINCE -> DateEvaluator.interval(target, today, projectionUnit = expr.projectionUnit ?: "days")
+                TokenKind.KW_TILL, TokenKind.KW_UNTIL -> DateEvaluator.interval(today, target, projectionUnit = expr.projectionUnit ?: "days")
                 else -> throw EvalException("Unsupported day-count query")
             }
-            EvaluationResult(value = BigDecimal.valueOf(res.days * 86400L), unit = "d", dateTimeResult = res)
+            mapDateTimeResult(res)
         }
         is Expr.DateModifier -> {
             val base = coerceToDate(evaluate(expr.expr))
@@ -213,7 +205,7 @@ class Evaluator(
         is Expr.UnitConversion -> {
             val evaluatedExpr = evaluate(expr.expr)
             
-            if (evaluatedExpr.dateTimeResult != null && evaluatedExpr.dateTimeResult !is DateTimeResult.Duration) {
+            if (evaluatedExpr.dateTimeResult is DateTimeResult.Date || evaluatedExpr.dateTimeResult is DateTimeResult.DateTime) {
                 val to = expr.toUnit
                 if (to.equals("iso8601", ignoreCase = true) || to.equals("timestamp", ignoreCase = true)) {
                     val base = evaluatedExpr.dateTimeResult
@@ -1191,5 +1183,25 @@ class Evaluator(
 
     private fun getDimensionDescription(unit: NerdUnit?): String {
         return unit?.name?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "unitless number"
+    }
+
+    private fun mapDateTimeResult(res: DateTimeResult): EvaluationResult {
+        return when (res) {
+            is DateTimeResult.DayCount -> {
+                EvaluationResult(value = BigDecimal.valueOf(res.days * 86400L), unit = "d", dateTimeResult = res)
+            }
+            is DateTimeResult.TimeCount -> {
+                val unit = UnitConverter.findUnit(res.unit)!!
+                EvaluationResult(value = UnitConverter.toBase(BigDecimal.valueOf(res.value), unit, variables), unit = res.unit, dateTimeResult = res)
+            }
+            is DateTimeResult.Duration -> {
+                EvaluationResult(
+                    value = BigDecimal.valueOf(res.delta.toSecondsEstimate()),
+                    unit = "s",
+                    dateTimeResult = res
+                )
+            }
+            else -> EvaluationResult(value = null, dateTimeResult = res)
+        }
     }
 }

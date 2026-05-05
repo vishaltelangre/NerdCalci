@@ -1,0 +1,2 @@
+- Added date component extraction functions: `getDay`, `getMonth`, `getYear`, and `daysInMonth` (Issue #179).
+- Fixed support for `in <unit>` for interval expressions (Issue #174).

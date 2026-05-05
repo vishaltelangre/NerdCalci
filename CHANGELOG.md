@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.2.0] - 2026-05-05
+### Added
+- Added date component extraction functions: `getDay`, `getMonth`, `getYear`, and `daysInMonth` (Issue #179).
+
+### Fixed
+- Fixed support for `in <unit>` for interval expressions (Issue #174).
+
 ## [4.1.1] - 2026-05-04
 ### Fixed
 - Fixed overlapping text in Help screen tables (Issue #175).

@@ -374,6 +374,10 @@ private fun extractAllSuggestions(lines: List<LineEntity>): List<Pair<Set<Sugges
         "datetime" to "y, m, d, h, min, s",
         "datetimeZ" to "y, m, d, h, min, s, \"tz\"",
         "parseDate" to "\"string\" or timestamp",
+        "getDay" to "date",
+        "getMonth" to "date",
+        "getYear" to "date",
+        "daysInMonth" to "date",
         "convert" to "val, \"from\", \"to\"",
         "file" to "\"FileName\"",
         "pow" to "x, y",
@@ -393,7 +397,7 @@ private fun extractAllSuggestions(lines: List<LineEntity>): List<Pair<Set<Sugges
     Builtins.functionNames.forEach { 
         suggestionMap[it] = Suggestion(it, SuggestionType.GLOBAL_FUNCTION, description = functionHints[it]) 
     }
-    listOf("parseDate", "date", "datetime", "datetimeZ", "file", "convert").forEach {
+    listOf("parseDate", "date", "datetime", "datetimeZ", "getDay", "getMonth", "getYear", "daysInMonth", "file", "convert").forEach {
         suggestionMap[it] = Suggestion(it, SuggestionType.GLOBAL_FUNCTION, description = functionHints[it])
     }
     DateKeywords.RESERVED.forEach { suggestionMap[it] = Suggestion(it, SuggestionType.KEYWORD) }

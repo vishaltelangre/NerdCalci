@@ -356,6 +356,22 @@ object DateEvaluator {
         return "$displayHour:$minute $amPm"
     }
 
+    // ── Component Extraction ────────────────────────────────────────────────
+    
+    fun getDay(dt: DateTimeResult): Long = toLocalDate(dt).dayOfMonth.toLong()
+
+    fun getMonth(dt: DateTimeResult): Long = toLocalDate(dt).monthValue.toLong()
+
+    fun getYear(dt: DateTimeResult): Long = toLocalDate(dt).year.toLong()
+
+    fun daysInMonth(dt: DateTimeResult): Long = toLocalDate(dt).lengthOfMonth().toLong()
+
+    fun daysInMonth(year: Int, month: Int): Long = try {
+        LocalDate.of(year, month, 1).lengthOfMonth().toLong()
+    } catch (e: Exception) {
+        throw EvalException("Invalid year/month for daysInMonth: $year, $month")
+    }
+
     // ── Internal Helpers ─────────────────────────────────────────────────────
 
     private fun toLocalDate(dt: DateTimeResult): LocalDate = when (dt) {

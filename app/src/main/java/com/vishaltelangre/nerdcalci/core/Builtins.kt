@@ -307,6 +307,10 @@ object Builtins {
             "date" -> return executeDate(args)
             "datetime" -> return executeDateTime(args)
             "datetimeZ" -> return executeDateTimeZ(args)
+            "getDay" -> return executeGetDay(args)
+            "getMonth" -> return executeGetMonth(args)
+            "getYear" -> return executeGetYear(args)
+            "daysInMonth" -> return executeDaysInMonth(args)
         }
         val fn = functions[name] ?: throw UnknownFunctionException(name)
         if (fn.arity != args.size) {
@@ -369,11 +373,50 @@ object Builtins {
         return EvaluationResult(value = null, dateTimeResult = DateTimeResult.DateTime(zdt))
     }
 
+    private fun executeGetDay(args: List<EvaluationResult>): EvaluationResult {
+        if (args.size != 1) throw ArityMismatchException("getDay", 1, args.size)
+        val dt = args[0].dateTimeResult ?: throw EvalException("`getDay()` expects a date or datetime")
+        val result = DateEvaluator.getDay(dt)
+        return EvaluationResult(BigDecimal.valueOf(result), rationalValue = Rational.fromLong(result))
+    }
+
+    private fun executeGetMonth(args: List<EvaluationResult>): EvaluationResult {
+        if (args.size != 1) throw ArityMismatchException("getMonth", 1, args.size)
+        val dt = args[0].dateTimeResult ?: throw EvalException("`getMonth()` expects a date or datetime")
+        val result = DateEvaluator.getMonth(dt)
+        return EvaluationResult(BigDecimal.valueOf(result), rationalValue = Rational.fromLong(result))
+    }
+
+    private fun executeGetYear(args: List<EvaluationResult>): EvaluationResult {
+        if (args.size != 1) throw ArityMismatchException("getYear", 1, args.size)
+        val dt = args[0].dateTimeResult ?: throw EvalException("`getYear()` expects a date or datetime")
+        val result = DateEvaluator.getYear(dt)
+        return EvaluationResult(BigDecimal.valueOf(result), rationalValue = Rational.fromLong(result))
+    }
+
+    private fun executeDaysInMonth(args: List<EvaluationResult>): EvaluationResult {
+        if (args.size != 1) throw ArityMismatchException("daysInMonth", 1, args.size)
+        val dt = args[0].dateTimeResult ?: throw EvalException("`daysInMonth()` expects a date or datetime")
+        val result = DateEvaluator.daysInMonth(dt)
+        return EvaluationResult(BigDecimal.valueOf(result), rationalValue = Rational.fromLong(result))
+    }
+
+    private val DATE_FUNCTIONS = setOf("parseDate", "date", "datetime", "datetimeZ", "getDay", "getMonth", "getYear", "daysInMonth")
+
     /** Returns true if [name] is a registered function (any arity). */
-    fun isFunction(name: String): Boolean = name in functions
+    fun isFunction(name: String): Boolean = name in functions || name in DATE_FUNCTIONS
 
     /** Return the expected arity of a built-in function, or null if it's not a function. */
-    fun getArity(name: String): Int? = functions[name]?.arity
+    fun getArity(name: String): Int? {
+        if (name in functions) return functions[name]?.arity
+        return when (name) {
+            "parseDate", "getDay", "getMonth", "getYear", "daysInMonth" -> 1
+            "date" -> 3
+            "datetime" -> 6
+            "datetimeZ" -> 7
+            else -> null
+        }
+    }
 
     fun requiresUnitlessInputs(name: String): Boolean = functions[name]?.inputSpec is RequireUnitlessInput
 

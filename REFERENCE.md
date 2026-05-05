@@ -73,6 +73,7 @@
   - [Date arithmetic](#date-arithmetic)
   - [Intervals and duration queries](#intervals-and-duration-queries)
   - [Timezones](#timezones)
+  - [Date component extraction](#date-component-extraction)
   - [Output formats](#output-formats)
 
 ## 1. Basic math and operators
@@ -998,6 +999,17 @@ Convert any date or time to another timezone. NerdCalci supports IANA identifier
 *   `now in "GMT+530"` (Manual offset)
 
 **Common aliases**: `UTC`, `GMT`, `PST`, `EST`, `IST` (India), `JST` (Japan), `BST` (UK), `CET` (Europe).
+
+### Date component extraction
+
+Extract specific numeric components (day, month, or year) from a date or time value, or query the number of days in a given month. These functions return unitless numbers, making them easy to use in further numeric calculations.
+
+| Function            | Description                                   | Example                         | Result |
+| :------------------ | :-------------------------------------------- | :------------------------------ | :----- |
+| `getDay(date)`      | Extracts the day of the month (1-31).         | `getDay(date(2024, 12, 25))`    | `25`   |
+| `getMonth(date)`    | Extracts the month (1-12).                    | `getMonth(parseDate("2 June"))` | `6`    |
+| `getYear(date)`     | Extracts the 4-digit year.                    | `getYear(now)`                  | `2026` |
+| `daysInMonth(date)` | Returns total days in the given date's month. | `daysInMonth(1 month ago)`      | `30`   |
 
 ### Output formats
 

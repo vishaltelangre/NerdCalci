@@ -294,13 +294,16 @@ private fun SuggestionItem(
             SuggestionType.CONVERSION -> "CONV"
             SuggestionType.TIMEZONE -> "TZ"
             SuggestionType.DATE_PROJECTION -> "PROJ"
+            SuggestionType.PERCENT_SUFFIX -> "PCT"
         }
 
         val (itemColor, isItalic) = when (suggestion.type) {
             SuggestionType.DYNAMIC_VARIABLE -> keywordColor to true
             SuggestionType.LOCAL_FUNCTION, SuggestionType.GLOBAL_FUNCTION -> functionColor to true
             SuggestionType.VARIABLE, SuggestionType.CONSTANT -> variableColor to true
-            SuggestionType.FILE, SuggestionType.UNIT, SuggestionType.KEYWORD, SuggestionType.TIMEZONE, SuggestionType.DATE_PROJECTION -> keywordColor to false
+            SuggestionType.PERCENT_SUFFIX -> variableColor to false
+            SuggestionType.FILE, SuggestionType.UNIT, SuggestionType.KEYWORD, SuggestionType.TIMEZONE,
+            SuggestionType.DATE_PROJECTION -> keywordColor to false
             SuggestionType.CONVERSION -> conversionColor to false
         }
 
@@ -391,7 +394,8 @@ private fun isItalicType(type: SuggestionType): Boolean {
         SuggestionType.VARIABLE,
         SuggestionType.CONSTANT -> true
         SuggestionType.FILE, SuggestionType.UNIT, SuggestionType.KEYWORD,
-        SuggestionType.CONVERSION, SuggestionType.TIMEZONE, SuggestionType.DATE_PROJECTION -> false
+        SuggestionType.CONVERSION, SuggestionType.TIMEZONE, SuggestionType.DATE_PROJECTION,
+        SuggestionType.PERCENT_SUFFIX -> false
     }
 }
 

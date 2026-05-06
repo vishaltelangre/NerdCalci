@@ -44,6 +44,9 @@ sealed class Expr {
     /** Percentage-off: `15% off price` → `price * (1 - 0.15)` */
     data class PercentOff(val percent: Expr, val base: Expr) : Expr()
 
+    /** Reverse percentage: `20% of what is 100` → `100 / 0.20 = 500` */
+    data class ReversePercentOf(val percent: Expr, val value: Expr) : Expr()
+
     /** Unary negation: `-expr` */
     data class UnaryMinus(val operand: Expr) : Expr()
 

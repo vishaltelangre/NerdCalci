@@ -173,6 +173,57 @@ fun getSuggestionContext(
         }
         val cleanTokens = tokens.filter { it.kind != TokenKind.EOF }
         if (cleanTokens.isNotEmpty()) {
+
+            // --- Percent suffix suggestion contexts ---
+            // These fire before the unit-conversion kwIndex check to avoid misclassification.
+            // They now handle partial words (e.g. "20% o") to allow filtering.
+            val lastTok = cleanTokens.last()
+            val secondLast = cleanTokens.getOrNull(cleanTokens.size - 2)
+            val thirdLast = cleanTokens.getOrNull(cleanTokens.size - 3)
+            val fourthLast = cleanTokens.getOrNull(cleanTokens.size - 4)
+
+            val isInsideIdent = lastTok.kind == TokenKind.IDENTIFIER && cursorPos in lastTok.position..(lastTok.position + lastTok.lexeme.length)
+            val isAtEndOfKeyword = (lastTok.kind == TokenKind.KW_OF || lastTok.kind == TokenKind.KW_WHAT) && cursorPos == lastTok.position + lastTok.lexeme.length
+            
+            val isInsideWord = isInsideIdent || isAtEndOfKeyword
+            val currentWord = if (isInsideWord) beforeCursor.substring(lastTok.position, cursorPos) else ""
+            
+            val baseTok = if (isInsideWord) secondLast else lastTok
+            val prevTok = if (isInsideWord) thirdLast else secondLast
+            val prevPrevTok = if (isInsideWord) fourthLast else thirdLast
+
+            if (baseTok != null) {
+                // Case 1: "N% " or "N% o"
+                if (baseTok.kind == TokenKind.PERCENT) {
+                    val trigger = if (isInsideWord) true else beforeCursor.endsWith(" ")
+                    if (trigger) {
+                        val replaceStart = if (isInsideWord) lastTok.position else cursorPos
+                        return SuggestionContextInfo(currentWord, SuggestionType.PERCENT_SUFFIX, isExplicitTrigger = true, replaceStart = replaceStart)
+                    }
+                }
+                // Case 2: "N% of " or "N% of w"
+                if (baseTok.kind == TokenKind.KW_OF && prevTok?.kind == TokenKind.PERCENT) {
+                    val trigger = if (isInsideWord) true else beforeCursor.endsWith(" ")
+                    if (trigger) {
+                        // Anchor to the start of "of"
+                        val replaceStart = baseTok.position
+                        val fullWord = beforeCursor.substring(replaceStart, cursorPos)
+                        return SuggestionContextInfo(fullWord, SuggestionType.PERCENT_SUFFIX, isExplicitTrigger = true, replaceStart = replaceStart)
+                    }
+                }
+                // Case 3: "N% of what " or "N% of what i"
+                if (baseTok.kind == TokenKind.KW_WHAT && prevTok?.kind == TokenKind.KW_OF && prevPrevTok?.kind == TokenKind.PERCENT) {
+                    val trigger = if (isInsideWord) true else beforeCursor.endsWith(" ")
+                    if (trigger) {
+                        // Anchor to the start of "of"
+                        val replaceStart = prevTok.position
+                        val fullWord = beforeCursor.substring(replaceStart, cursorPos)
+                        return SuggestionContextInfo(fullWord, SuggestionType.PERCENT_SUFFIX, isExplicitTrigger = true, replaceStart = replaceStart)
+                    }
+                }
+            }
+            // --- End percent suffix contexts ---
+
             val kwIndex = cleanTokens.indexOfLast {
                 it.kind in listOf(
                     TokenKind.KW_TO,

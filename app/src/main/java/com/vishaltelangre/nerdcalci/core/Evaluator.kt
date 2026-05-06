@@ -175,6 +175,22 @@ class Evaluator(
             val factorRational = applyRationalOp(Rational.ONE, TokenKind.MINUS, Rational.toRational(pct.divide(BigDecimal("100"), mc)))
             EvaluationResult(resultValue, resultUnit, rationalValue = applyRationalOp(baseRational, TokenKind.STAR, factorRational))
         }
+        is Expr.ReversePercentOf -> {
+            val pctEval = evaluate(expr.percent)
+            if (!isUnitlessScalar(pctEval)) throw EvalException("Cannot apply percentage to a non-numeric value")
+            val pct = pctEval.value!!
+            if (pct.compareTo(BigDecimal.ZERO) == 0) throw EvalException("Percentage cannot be zero")
+
+            val valueEval = evaluate(expr.value)
+            val value = valueEval.value ?: throw EvalException("Cannot apply percentage to a non-numeric value")
+            val valueUnit = valueEval.unit?.let { UnitConverter.findUnit(it) }
+            val resultUnit = if (valueUnit != null && valueUnit.category != UnitCategory.SCALAR) valueEval.unit else null
+            val resultValue = value.divide(pct.divide(BigDecimal("100"), mc), mc)
+
+            val valueRational = valueEval.rationalValue ?: Rational.toRational(value)
+            val pctRational = Rational.toRational(pct.divide(BigDecimal("100"), mc))
+            EvaluationResult(resultValue, resultUnit, rationalValue = applyRationalOp(valueRational, TokenKind.SLASH, pctRational))
+        }
         is Expr.UnaryMinus     -> {
             val eval = evaluate(expr.operand)
             val operand = eval.value ?: throw EvalException("Cannot negate a non-numeric value")

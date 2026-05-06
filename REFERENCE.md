@@ -14,6 +14,7 @@
 - [3. Percentages](#3-percentages)
   - [Percentage of](#percentage-of)
   - [Percentage off (discounting)](#percentage-off-discounting)
+  - [Reverse percentage](#reverse-percentage)
   - [Addition / subtraction](#addition--subtraction)
 - [4. Built-in mathematical functions](#4-built-in-mathematical-functions)
   - [Power \& Roots](#power--roots)
@@ -199,6 +200,17 @@ Subtract a percentage from a base number using `% off`.
 
 ```text
 15% off 1000 # evaluates to 850
+```
+
+### Reverse percentage
+
+Find the whole when you know the part and its percentage using `N% of what is P`, where `whole = P / (N/100)`.
+
+```text
+20% of what is 30 cm       # evaluates to 150 cm
+tax = 8
+total_tax = 24
+tax% of what is total_tax  # evaluates to 300
 ```
 
 ### Addition / subtraction

@@ -614,6 +614,42 @@ class MathEngineTest {
     }
 
     @Test
+    fun `reverse percentage queries`() {
+        // Basic
+        testCalculate("20% of what is 100") { assertEquals("500.0", it[0].result) }
+        testCalculate("50% of what is 50") { assertEquals("100.0", it[0].result) }
+        testCalculate("12.5% of what is 25") { assertEquals("200.0", it[0].result) }
+
+        // Units
+        testCalculate("20% of what is 30 cm") { assertEquals("150.0 cm", it[0].result) }
+        testCalculate("part = 30 cm", "20% of what is part") {
+            assertEquals("30.0 cm", it[0].result)
+            assertEquals("150.0 cm", it[1].result)
+        }
+
+        // Variables and Expressions
+        testCalculate("rate = 25", "rate% of what is 50") {
+            assertEquals("25.0", it[0].result)
+            assertEquals("200.0", it[1].result)
+        }
+        testCalculate("(10 + 10)% of what is 100") { assertEquals("500.0", it[0].result) }
+        testCalculate("rate = 20", "part = 100", "rate% of what is part") {
+            assertEquals("20.0", it[0].result)
+            assertEquals("100.0", it[1].result)
+            assertEquals("500.0", it[2].result)
+        }
+
+        // Nested and Parenthesized (as requested)
+        testCalculate("(20% of what is (10% of 150km))", "_ + 2km") {
+            assertEquals("75.0 km", it[0].result)
+            assertEquals("77.0 km", it[1].result)
+        }
+
+        // Edge cases
+        testCalculate("0% of what is 100") { assertError("Percentage cannot be zero", it, 0) }
+    }
+
+    @Test
     fun `add percentage to number`() = testCalculate("100 + 20%") { result ->
         assertEquals("120.0", result[0].result)
     }

@@ -1692,6 +1692,34 @@ private fun LineRow(
                 }
 
                 (projections + timezones + timeUnits + variables).sortedByDescending { it.score }
+            } else if (contextType == SuggestionType.PERCENT_SUFFIX) {
+                // Determine which step in the reverse-percent chain we are at.
+                // We look at the trailing tokens to serve a focused fixed list.
+                // Account for the fact that the last token might be the partial word (IDENTIFIER)
+                // or a recently completed keyword (of, what) without a trailing space.
+                val lastTok = cleanTokens.lastOrNull()
+                val isAtWordEnd = lastTok?.kind == TokenKind.IDENTIFIER ||
+                    ((lastTok?.kind == TokenKind.KW_OF || lastTok?.kind == TokenKind.KW_WHAT) &&
+                     cursorPos == lastTok.position + lastTok.lexeme.length)
+                
+                val baseIdx = if (isAtWordEnd) cleanTokens.size - 2 else cleanTokens.size - 1
+                
+                // Always suggest the full phrases. Since SyntaxUtils anchors the replaceStart
+                // to the beginning of the sequence, these will correctly replace partial typing.
+                val suffixSuggestions = listOf("of what is", "of", "off")
+                
+                suffixSuggestions.mapNotNull { name ->
+                    val match = name.calculateFuzzyMatch(currentWord, SuggestionType.PERCENT_SUFFIX)
+                    if (match != null || currentWord.isEmpty()) {
+                        Suggestion(
+                            name = name,
+                            type = SuggestionType.PERCENT_SUFFIX,
+                            matchIndices = match?.matchIndices ?: emptyList(),
+                            score = match?.score ?: 0,
+                            replaceStart = suggestionContext.replaceStart
+                        )
+                    } else null
+                }.sortedByDescending { it.score }
             } else if (contextType == SuggestionType.KEYWORD || contextType == SuggestionType.CONVERSION) {
                 val keywords = mutableListOf<Suggestion>()
                 

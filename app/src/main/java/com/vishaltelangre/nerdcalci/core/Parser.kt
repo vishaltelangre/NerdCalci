@@ -429,12 +429,19 @@ class Parser(private val tokens: List<Token>) {
                 }
             } else if (kind == TokenKind.PERCENT) {
                 val nextKind = peekAt(1)
-                // e.g. a% of b
+                // e.g. a% of b  OR  a% of what is b
                 if (nextKind == TokenKind.KW_OF) {
                     advance() // skip past "%"
                     advance() // skip past "of"
-                    val base = parseExpression()
-                    expr = Expr.PercentOf(expr, base)
+                    if (peekKind() == TokenKind.KW_WHAT) {
+                        advance() // skip past "what"
+                        expect(TokenKind.KW_IS)
+                        val value = parseExpression()
+                        expr = Expr.ReversePercentOf(expr, value)
+                    } else {
+                        val base = parseExpression()
+                        expr = Expr.PercentOf(expr, base)
+                    }
                 // e.g. a% off b
                 } else if (nextKind == TokenKind.KW_OFF) {
                     advance() // skip past "%"

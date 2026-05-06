@@ -1,0 +1,1 @@
+- Added `N% of what is P` support to find the whole when the part and its percentage are known (Issue #91).

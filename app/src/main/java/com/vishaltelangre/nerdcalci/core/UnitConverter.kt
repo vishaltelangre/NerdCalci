@@ -10,7 +10,9 @@ import kotlin.math.PI
  */
 enum class UnitCategory {
     TIME, LENGTH, AREA, VOLUME, MASS, SPEED, ANGLE, TEMPERATURE, FREQUENCY, ENERGY, POWER, DATA, DATA_RATE,
-    FORCE, FUEL_CONSUMPTION, PRESSURE, NUMERAL_SYSTEM, SCALAR
+    FORCE, FUEL_CONSUMPTION, PRESSURE, NUMERAL_SYSTEM, SCALAR,
+    ELECTRIC_POTENTIAL, ELECTRIC_CURRENT, ELECTRIC_RESISTANCE, ELECTRIC_CHARGE, ELECTRIC_CAPACITANCE,
+    ELECTRIC_INDUCTANCE, MAGNETIC_FLUX, MAGNETIC_FLUX_DENSITY
 }
 
 /**
@@ -63,7 +65,11 @@ object UnitConverter {
         }),
         UnitRule(UnitCategory.TIME, UnitCategory.SPEED, result = { left, right ->
             matchSpeedToLength(right.symbols[0])
-        })
+        }),
+        UnitRule(UnitCategory.ELECTRIC_POTENTIAL, UnitCategory.ELECTRIC_CURRENT, result = { _, _ -> "W" }),
+        UnitRule(UnitCategory.ELECTRIC_CURRENT, UnitCategory.ELECTRIC_POTENTIAL, result = { _, _ -> "W" }),
+        UnitRule(UnitCategory.ELECTRIC_CURRENT, UnitCategory.TIME, result = { left, right -> matchCurrentTimeToCharge(left, right) }),
+        UnitRule(UnitCategory.TIME, UnitCategory.ELECTRIC_CURRENT, result = { left, right -> matchCurrentTimeToCharge(right, left) })
     )
 
     // Division rules are explicit, reversible, and keep same-category cancellation separate.
@@ -92,6 +98,34 @@ object UnitConverter {
         UnitRule(UnitCategory.FORCE, UnitCategory.FORCE, result = { _, _ -> "unitless" }),
         UnitRule(UnitCategory.PRESSURE, UnitCategory.PRESSURE, result = { _, _ -> "unitless" }),
         UnitRule(UnitCategory.NUMERAL_SYSTEM, UnitCategory.NUMERAL_SYSTEM, result = { _, _ -> "unitless" }),
+        UnitRule(UnitCategory.ELECTRIC_POTENTIAL, UnitCategory.ELECTRIC_POTENTIAL, result = { _, _ -> "unitless" }),
+        UnitRule(UnitCategory.ELECTRIC_CURRENT, UnitCategory.ELECTRIC_CURRENT, result = { _, _ -> "unitless" }),
+        UnitRule(UnitCategory.ELECTRIC_RESISTANCE, UnitCategory.ELECTRIC_RESISTANCE, result = { _, _ -> "unitless" }),
+        UnitRule(UnitCategory.ELECTRIC_CHARGE, UnitCategory.ELECTRIC_CHARGE, result = { _, _ -> "unitless" }),
+        UnitRule(UnitCategory.ELECTRIC_CAPACITANCE, UnitCategory.ELECTRIC_CAPACITANCE, result = { _, _ -> "unitless" }),
+        UnitRule(UnitCategory.ELECTRIC_INDUCTANCE, UnitCategory.ELECTRIC_INDUCTANCE, result = { _, _ -> "unitless" }),
+        UnitRule(UnitCategory.MAGNETIC_FLUX, UnitCategory.MAGNETIC_FLUX, result = { _, _ -> "unitless" }),
+        UnitRule(UnitCategory.MAGNETIC_FLUX_DENSITY, UnitCategory.MAGNETIC_FLUX_DENSITY, result = { _, _ -> "unitless" }),
+        UnitRule(UnitCategory.ELECTRIC_POTENTIAL, UnitCategory.ELECTRIC_CURRENT, result = { _, _ -> "ohm" }),
+        UnitRule(UnitCategory.ELECTRIC_POTENTIAL, UnitCategory.ELECTRIC_RESISTANCE, result = { _, _ -> "A" }),
+        UnitRule(UnitCategory.POWER, UnitCategory.ELECTRIC_POTENTIAL, result = { _, _ -> "A" }),
+        UnitRule(UnitCategory.POWER, UnitCategory.ELECTRIC_CURRENT, result = { _, _ -> "V" }),
+        UnitRule(UnitCategory.ELECTRIC_CHARGE, UnitCategory.TIME, result = { left, _ -> 
+            val sym = left.symbols.first()
+            when {
+                sym.startsWith("m") -> "mA"
+                sym.startsWith("µ") || sym.startsWith("u") -> "µA"
+                sym.startsWith("k") -> "kA"
+                else -> "A"
+            }
+        }),
+        UnitRule(UnitCategory.ELECTRIC_CHARGE, UnitCategory.ELECTRIC_CURRENT, result = { left, _ ->
+            when {
+                left.symbols.first().endsWith("h") -> "h"
+                left.symbols.first().endsWith("min") -> "min"
+                else -> "s"
+            }
+        }),
         UnitRule(UnitCategory.LENGTH, UnitCategory.TIME, result = { left, right ->
             matchLengthToSpeed(left.symbols[0])
         }),
@@ -113,6 +147,14 @@ object UnitConverter {
     // POWER: watt (W)
     // DATA: byte (B)
     // DATA_RATE: bytes per second (Bps)
+    // ELECTRIC_POTENTIAL: Volt (V)
+    // ELECTRIC_CURRENT: Ampere (A)
+    // ELECTRIC_RESISTANCE: Ohm (Ω)
+    // ELECTRIC_CHARGE: Coulomb (C)
+    // ELECTRIC_CAPACITANCE: Farad (F)
+    // ELECTRIC_INDUCTANCE: Henry (H)
+    // MAGNETIC_FLUX: Weber (Wb)
+    // MAGNETIC_FLUX_DENSITY: Tesla (T)
 
     val UNITS = listOf(
         // --- TIME --- (Base: second)
@@ -298,6 +340,63 @@ object UnitConverter {
         Unit("Megawatt", listOf("MW", "megawatt", "megawatts"), UnitCategory.POWER, BigDecimal("1e6")),
         Unit("Horsepower", listOf("hp", "horsepower", "horsepowers"), UnitCategory.POWER, BigDecimal("745.7")),
         Unit("Gigawatt", listOf("GW", "gigawatt", "gigawatts"), UnitCategory.POWER, BigDecimal("1e9")),
+        Unit("Terawatt", listOf("TW", "terawatt", "terawatts"), UnitCategory.POWER, BigDecimal("1e12")),
+
+        // --- ELECTRIC POTENTIAL --- (Base: Volt)
+        Unit("Volt", listOf("V", "volt", "volts"), UnitCategory.ELECTRIC_POTENTIAL, BigDecimal.ONE),
+        Unit("Millivolt", listOf("mV", "millivolt", "millivolts"), UnitCategory.ELECTRIC_POTENTIAL, BigDecimal("0.001")),
+        Unit("Kilovolt", listOf("kV", "kilovolt", "kilovolts"), UnitCategory.ELECTRIC_POTENTIAL, BigDecimal("1000.0")),
+        Unit("Megavolt", listOf("MV", "megavolt", "megavolts"), UnitCategory.ELECTRIC_POTENTIAL, BigDecimal("1e6")),
+        Unit("Microvolt", listOf("µV", "uV", "microvolt", "microvolts"), UnitCategory.ELECTRIC_POTENTIAL, BigDecimal("1e-6")),
+
+        // --- ELECTRIC CURRENT --- (Base: Ampere)
+        Unit("Ampere", listOf("A", "ampere", "amperes", "amp", "amps"), UnitCategory.ELECTRIC_CURRENT, BigDecimal.ONE),
+        Unit("Milliampere", listOf("mA", "milliampere", "milliamperes", "milliamp", "milliamps"), UnitCategory.ELECTRIC_CURRENT, BigDecimal("0.001")),
+        Unit("Microampere", listOf("µA", "uA", "microampere", "microamperes", "microamp", "microamps"), UnitCategory.ELECTRIC_CURRENT, BigDecimal("1e-6")),
+        Unit("Kiloampere", listOf("kA", "kiloampere", "kiloamperes", "kiloamp", "kiloamps"), UnitCategory.ELECTRIC_CURRENT, BigDecimal("1000.0")),
+
+        // --- ELECTRIC RESISTANCE --- (Base: Ohm)
+        Unit("Ohm", listOf("Ω", "ohm", "ohms"), UnitCategory.ELECTRIC_RESISTANCE, BigDecimal.ONE),
+        Unit("Milliohm", listOf("mΩ", "mohm", "milliohm", "milliohms"), UnitCategory.ELECTRIC_RESISTANCE, BigDecimal("0.001")),
+        Unit("Kilohm", listOf("kΩ", "kohm", "kilohm", "kilohms"), UnitCategory.ELECTRIC_RESISTANCE, BigDecimal("1000.0")),
+        Unit("Megohm", listOf("MΩ", "Mohm", "megohm", "megohms"), UnitCategory.ELECTRIC_RESISTANCE, BigDecimal("1e6")),
+
+        // --- ELECTRIC CHARGE --- (Base: Coulomb)
+        Unit("Coulomb", listOf("C", "coulomb", "coulombs"), UnitCategory.ELECTRIC_CHARGE, BigDecimal.ONE),
+        Unit("Ampere hour", listOf("Ah", "ampere hour", "ampere hours", "amp hour", "amp hours"), UnitCategory.ELECTRIC_CHARGE, BigDecimal("3600.0")),
+        Unit("Ampere minute", listOf("Amin", "ampere minute", "ampere minutes", "amp minute", "amp minutes"), UnitCategory.ELECTRIC_CHARGE, BigDecimal("60.0")),
+        Unit("Milliampere hour", listOf("mAh", "milliampere hour", "milliampere hours", "milliamp hour", "milliamp hours"), UnitCategory.ELECTRIC_CHARGE, BigDecimal("3.6")),
+        Unit("Microampere hour", listOf("µAh", "uAh", "microampere hour", "microampere hours", "microamp hour", "microamp hours"), UnitCategory.ELECTRIC_CHARGE, BigDecimal("0.0036")),
+        Unit("Microampere minute", listOf("µAmin", "uAmin", "microampere minute", "microampere minutes", "microamp minute", "microamp minutes"), UnitCategory.ELECTRIC_CHARGE, BigDecimal("0.00006")),
+        Unit("Microampere second", listOf("µAs", "uAs", "microampere second", "microampere seconds", "microamp second", "microamp seconds"), UnitCategory.ELECTRIC_CHARGE, BigDecimal("0.000001")),
+        Unit("Kiloampere hour", listOf("kAh", "kiloampere hour", "kiloampere hours", "kiloamp hour", "kiloamp hours"), UnitCategory.ELECTRIC_CHARGE, BigDecimal("3.6e6")),
+        Unit("Kiloampere minute", listOf("kAmin", "kiloampere minute", "kiloampere minutes", "kiloamp minute", "kiloamp minutes"), UnitCategory.ELECTRIC_CHARGE, BigDecimal("60000.0")),
+        Unit("Kiloampere second", listOf("kAs", "kiloampere second", "kiloampere seconds", "kiloamp second", "kiloamp seconds"), UnitCategory.ELECTRIC_CHARGE, BigDecimal("1000.0")),
+        Unit("Ampere second", listOf("As", "ampere second", "ampere seconds", "amp second", "amp seconds"), UnitCategory.ELECTRIC_CHARGE, BigDecimal.ONE),
+        Unit("Milliampere second", listOf("mAs", "milliampere second", "milliampere seconds", "milliamp second", "milliamp seconds"), UnitCategory.ELECTRIC_CHARGE, BigDecimal("0.001")),
+        Unit("Milliampere minute", listOf("mAmin", "milliampere minute", "milliampere minutes", "milliamp minute", "milliamp minutes"), UnitCategory.ELECTRIC_CHARGE, BigDecimal("0.06")),
+
+        // --- ELECTRIC CAPACITANCE --- (Base: Farad)
+        Unit("Farad", listOf("F", "farad", "farads"), UnitCategory.ELECTRIC_CAPACITANCE, BigDecimal.ONE),
+        Unit("Millifarad", listOf("mF", "millifarad", "millifarads"), UnitCategory.ELECTRIC_CAPACITANCE, BigDecimal("0.001")),
+        Unit("Microfarad", listOf("µF", "uF", "microfarad", "microfarads"), UnitCategory.ELECTRIC_CAPACITANCE, BigDecimal("1e-6")),
+        Unit("Nanofarad", listOf("nF", "nanofarad", "nanofarads"), UnitCategory.ELECTRIC_CAPACITANCE, BigDecimal("1e-9")),
+        Unit("Picofarad", listOf("pF", "picofarad", "picofarads"), UnitCategory.ELECTRIC_CAPACITANCE, BigDecimal("1e-12")),
+
+        // --- ELECTRIC INDUCTANCE --- (Base: Henry)
+        Unit("Henry", listOf("H", "henry", "henrys"), UnitCategory.ELECTRIC_INDUCTANCE, BigDecimal.ONE),
+        Unit("Millihenry", listOf("mH", "millihenry", "millihenrys"), UnitCategory.ELECTRIC_INDUCTANCE, BigDecimal("0.001")),
+        Unit("Microhenry", listOf("µH", "uH", "microhenry", "microhenrys"), UnitCategory.ELECTRIC_INDUCTANCE, BigDecimal("1e-6")),
+
+        // --- MAGNETIC FLUX --- (Base: Weber)
+        Unit("Weber", listOf("Wb", "weber", "webers"), UnitCategory.MAGNETIC_FLUX, BigDecimal.ONE),
+        Unit("Milliweber", listOf("mWb", "milliweber", "milliwebers"), UnitCategory.MAGNETIC_FLUX, BigDecimal("0.001")),
+
+        // --- MAGNETIC FLUX DENSITY --- (Base: Tesla)
+        Unit("Tesla", listOf("T", "tesla", "teslas"), UnitCategory.MAGNETIC_FLUX_DENSITY, BigDecimal.ONE),
+        Unit("Millitesla", listOf("mT", "millitesla", "milliteslas"), UnitCategory.MAGNETIC_FLUX_DENSITY, BigDecimal("0.001")),
+        Unit("Microtesla", listOf("µT", "uT", "microtesla", "microteslas"), UnitCategory.MAGNETIC_FLUX_DENSITY, BigDecimal("1e-6")),
+        Unit("Gauss", listOf("G", "gauss"), UnitCategory.MAGNETIC_FLUX_DENSITY, BigDecimal("1e-4")),
 
         // --- DATA --- (Base: Byte)
         Unit("Bit", listOf("bit", "bits", "b"), UnitCategory.DATA, BigDecimal("0.125")),
@@ -739,6 +838,38 @@ object UnitConverter {
         "fps" -> "s"
         "speed of light" -> "s"
         else -> null
+    }
+
+    private fun matchCurrentTimeToCharge(current: Unit, time: Unit): String? {
+        val currentSym = current.symbols.first()
+        val timeSym = time.symbols.first()
+        return when (currentSym) {
+            "A" -> when (timeSym) {
+                "s" -> "As"
+                "min" -> "Amin"
+                "h" -> "Ah"
+                else -> null
+            }
+            "mA" -> when (timeSym) {
+                "s" -> "mAs"
+                "min" -> "mAmin"
+                "h" -> "mAh"
+                else -> null
+            }
+            "µA" -> when (timeSym) {
+                "s" -> "µAs"
+                "min" -> "µAmin"
+                "h" -> "µAh"
+                else -> null
+            }
+            "kA" -> when (timeSym) {
+                "s" -> "kAs"
+                "min" -> "kAmin"
+                "h" -> "kAh"
+                else -> null
+            }
+            else -> null
+        }
     }
 
     fun isNumeralSystemSymbol(symbol: String): Boolean {

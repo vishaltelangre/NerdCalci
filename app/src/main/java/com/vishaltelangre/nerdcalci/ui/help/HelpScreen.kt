@@ -140,12 +140,15 @@ fun HelpScreen(onBack: () -> Unit) {
                 }
 
                 override fun configureConfiguration(builder: io.noties.markwon.MarkwonConfiguration.Builder) {
+                    val linkResolver = io.noties.markwon.LinkResolverDef()
                     builder.linkResolver { view, link ->
                         if (link.startsWith("#")) {
                             val anchor = link.substring(1)
-                            scrollToAnchor(anchor, view as TextView, scrollState, androidViewTop, coroutineScope)
+                            (view as? TextView)?.let {
+                                scrollToAnchor(anchor, it, scrollState, androidViewTop, coroutineScope)
+                            }
                         } else {
-                            io.noties.markwon.LinkResolverDef().resolve(view, link)
+                            linkResolver.resolve(view, link)
                         }
                     }
                 }

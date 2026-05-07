@@ -487,8 +487,8 @@ Default expressions can also reference parameters that were defined before them 
 # Calculate total price with optional tax
 with_tax(price, tax = price * 0.05) = price + tax
 
-with_tax(100)      # evaluates to 105 (tax defaults to 100 * 0.05 = 5)
-with_tax(100, 10)  # evaluates to 110 (tax explicitly provided as 10)
+with_tax(100)      # evaluates to 105 (tax is 100 * 0.05)
+with_tax(100, 10)  # evaluates to 110 (tax is 10)
 ```
 
 Multiple optional parameters are supported:

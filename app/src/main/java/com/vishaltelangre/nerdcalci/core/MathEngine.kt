@@ -13,7 +13,7 @@ import com.vishaltelangre.nerdcalci.utils.RegionUtils
 import android.os.Build
 
 /** A user-defined function local to a specific file. */
-data class LocalFunction(val name: String, val params: List<String>, val body: List<Statement>)
+data class LocalFunction(val name: String, val params: List<Statement.FunctionParam>, val body: List<Statement>)
 
 /** Container for evaluated state. */
 data class MathContext(

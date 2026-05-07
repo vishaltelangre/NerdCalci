@@ -32,7 +32,9 @@
 - [8. User-defined functions](#8-user-defined-functions)
   - [Basic definition](#basic-definition)
   - [Multiple statements](#multiple-statements)
+  - [Optional parameters](#optional-parameters)
   - [Scope isolation](#scope-isolation)
+  - [Currying (partial application)](#currying-partial-application)
   - [Recursion](#recursion)
 - [9. Cross-file references](#9-cross-file-references)
   - [Referencing a file](#referencing-a-file)
@@ -453,9 +455,75 @@ salary(hours) = base = hours * 50; bonus = base * 0.1; tax = base * 0.2; base + 
 salary(160)         # evaluates to 7200
 ```
 
+### Optional parameters
+
+Parameters can have a default value by appending `=<expr>` to the parameter name. When a caller omits those arguments, the defaults are used automatically.
+
+**Syntax**: `name(required, optional=defaultExpr) = body`
+
+```text
+f(x, y=0) = x * (y + 4) / 2
+f(2, 4)           # evaluates to 8.0  (y=4 explicitly)
+f(2)              # evaluates to 4.0  (y defaults to 0)
+```
+
+Defaults can be any expression — numeric literals, constants, variables defined above the function definition, or even function calls:
+
+```text
+scale = 2
+f(x, y=scale) = x * y
+f(3)              # evaluates to 6  (y defaults to scale = 2)
+
+g(x, y=PI) = x * y
+g(2)              # evaluates to 6.28... (y defaults to PI)
+
+h(x, y=sqrt(4)) = x + y
+h(3)              # evaluates to 5  (y defaults to sqrt(4) = 2)
+```
+
+Multiple optional parameters are supported:
+
+```text
+tax(price, rate=10, bonus=0) = price * rate / 100 + bonus
+tax(1000)         # evaluates to 100   (rate=10, bonus=0)
+tax(1000, 18)     # evaluates to 180   (bonus=0)
+tax(1000, 18, 50) # evaluates to 230
+```
+
+**Rules:**
+- All required parameters must come before optional ones. `f(x=1, y) = ...` is a parse error.
+- Passing too many arguments is an error. Calling `f(1, 2, 3)` on `f(x, y=0) = ...` reports `"expects 1 to 2 arguments, but got 3"`.
+- Defaults are evaluated **at call time**. So if a variable used as a default changes between the function definition and the call, the latest value is used.
+
 ### Scope isolation
 
 Variables defined inside a function (like `base`, `bonus`, `tax` above) are **local** to that function. They do not exist outside and will not overwrite global variables with the same name.
+
+### Currying (partial application)
+
+NerdCalci functions natively support **currying**, i.e., you can define a general function and create specialized versions of it by wrapping it in another function with some arguments pre-filled. This is an alternative to [optional parameters](#optional-parameters) when you need named variants:
+
+```text
+price(qty, rate) = qty * rate
+
+# Specialized versions with a fixed rate
+bulkPrice(qty)  = price(qty, 0.80)   # 20% discount
+retailPrice(qty) = price(qty, 1.00)  # full price
+
+bulkPrice(100)   # evaluates to 80
+retailPrice(100) # evaluates to 100
+```
+
+Currying is especially practical with multiple arguments:
+
+```text
+discountedPrice(price, factor, shipping) = price * factor + shipping
+memberPrice(price) = discountedPrice(price, 0.8, 0)
+guestPrice(price)  = discountedPrice(price, 1.0, 5)
+
+memberPrice(100)  # evaluates to 80
+guestPrice(100)   # evaluates to 105
+```
 
 ### Recursion
 

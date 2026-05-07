@@ -21,8 +21,11 @@ sealed class Statement {
     /** Decrement: `count--` */
     data class Decrement(val target: Expr) : Statement()
 
+    /** Represents one parameter with an optional default value expression. */
+    data class FunctionParam(val name: String, val default: Expr? = null)
+
     /** Local custom function definition: `f(x) = x * 2;` */
-    data class FunctionDefinition(val name: String, val params: List<String>, val body: List<Statement>) : Statement()
+    data class FunctionDefinition(val name: String, val params: List<FunctionParam>, val body: List<Statement>) : Statement()
 
     /** Blank line or pure comment — produces no result. */
     data object Empty : Statement()

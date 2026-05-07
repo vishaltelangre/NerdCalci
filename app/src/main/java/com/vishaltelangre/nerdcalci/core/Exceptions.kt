@@ -22,5 +22,16 @@ class CircularReferenceException(val fileName: String, val loadingStack: Set<Str
     : EvalException(generateCircularMessage(loadingStack.toList() + fileName))
 class DivisionByZeroException : EvalException("Cannot divide by zero")
 class UnknownFunctionException(val functionName: String) : EvalException("Unknown function `$functionName()`")
-class ArityMismatchException(val functionName: String, val expected: Int, val actual: Int)
-    : EvalException("Function `$functionName()` expects $expected ${if (expected == 1) "argument" else "arguments"}, but got $actual")
+class ArityMismatchException(
+    val functionName: String,
+    val minExpected: Int,
+    val maxExpected: Int,
+    val actual: Int
+) : EvalException(
+    if (minExpected == maxExpected)
+        "Function `$functionName()` expects $minExpected ${if (minExpected == 1) "argument" else "arguments"}, but got $actual"
+    else
+        "Function `$functionName()` expects $minExpected to $maxExpected arguments, but got $actual"
+) {
+    constructor(name: String, expected: Int, actual: Int) : this(name, expected, expected, actual)
+}

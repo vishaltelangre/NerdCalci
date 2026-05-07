@@ -170,13 +170,14 @@ class Parser(private val tokens: List<Token>) {
      */
     private fun isFunctionDefinition(): Boolean {
         var offset = 2
-        while (peekAt(offset) != TokenKind.EOF && peekAt(offset) != TokenKind.RPAREN) {
+        var depth = 1
+        while (peekAt(offset) != TokenKind.EOF && depth > 0) {
+            val kind = peekAt(offset)
+            if (kind == TokenKind.LPAREN) depth++
+            else if (kind == TokenKind.RPAREN) depth--
             offset++
         }
-        if (peekAt(offset) == TokenKind.RPAREN) {
-            return peekAt(offset + 1) == TokenKind.EQUALS
-        }
-        return false
+        return peekAt(offset) == TokenKind.EQUALS
     }
 
     /**
@@ -187,12 +188,32 @@ class Parser(private val tokens: List<Token>) {
      */
     private fun parseFunctionDefinition(name: String): Statement.FunctionDefinition {
         expect(TokenKind.LPAREN)
-        val params = mutableListOf<String>()
+        val params = mutableListOf<Statement.FunctionParam>()
         if (peekKind() == TokenKind.IDENTIFIER) {
-            params.add(advance().lexeme)
+            var paramName = advance().lexeme
+            if (peekKind() == TokenKind.EQUALS) {
+                advance() // consume "="
+                val default = parseExpression()
+                params.add(Statement.FunctionParam(paramName, default))
+            } else {
+                params.add(Statement.FunctionParam(paramName))
+            }
+
             while (peekKind() == TokenKind.COMMA) {
                 advance() // skip past ","
-                params.add(expect(TokenKind.IDENTIFIER).lexeme)
+                paramName = expect(TokenKind.IDENTIFIER).lexeme
+                if (peekKind() == TokenKind.EQUALS) {
+                    advance() // consume "="
+                    val default = parseExpression()
+                    params.add(Statement.FunctionParam(paramName, default))
+                } else {
+                    if (params.any { it.default != null }) {
+                        throw ParseException(
+                            "Required parameter `$paramName` cannot follow an optional parameter", peek().position
+                        )
+                    }
+                    params.add(Statement.FunctionParam(paramName))
+                }
             }
         }
         expect(TokenKind.RPAREN)

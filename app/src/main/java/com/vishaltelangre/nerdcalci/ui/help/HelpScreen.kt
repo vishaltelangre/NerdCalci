@@ -138,6 +138,17 @@ fun HelpScreen(onBack: () -> Unit) {
                         builder.codeBlockTypeface(it)
                     }
                 }
+
+                override fun configureConfiguration(builder: io.noties.markwon.MarkwonConfiguration.Builder) {
+                    builder.linkResolver { view, link ->
+                        if (link.startsWith("#")) {
+                            val anchor = link.substring(1)
+                            scrollToAnchor(anchor, view as TextView, scrollState, androidViewTop, coroutineScope)
+                        } else {
+                            io.noties.markwon.LinkResolverDef().resolve(view, link)
+                        }
+                    }
+                }
             })
             .usePlugin(io.noties.markwon.ext.tables.TablePlugin.create(context))
             .build()

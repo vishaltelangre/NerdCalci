@@ -3201,6 +3201,17 @@ class MathEngineTest {
             assertEquals("6.0", result[6].result)   // g(1, 2, 3)
         }
 
+        // Self-referential default parameters
+        testCalculate(
+            "h1(a, b = a + 1) = a + b",
+            "h1(5)",
+            "h2(a, b = a + 1, c = b * 2) = a + b + c",
+            "h2(5)"
+        ) { result ->
+            assertEquals("11.0", result[1].result) // h1(5) -> a=5, b=6
+            assertEquals("23.0", result[3].result) // h2(5) -> a=5, b=6, c=12
+        }
+
         // Arity validation and ordering rules
         testCalculate(
             "h(x, y=0) = x + y",

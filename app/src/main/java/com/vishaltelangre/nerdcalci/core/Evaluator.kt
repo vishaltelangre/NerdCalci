@@ -336,8 +336,19 @@ class Evaluator(
                 val value = if (i < args.size) {
                     args[i]
                 } else {
-                    // evaluate the default in an outer-scope context (the current one)
-                    evaluate(param.default!!)
+                    // evaluate the default in a context that includes previous parameters + outer scope
+                    val tempEvaluator = Evaluator(
+                        variables = variables + localVars,
+                        injectionErrors = injectionErrors,
+                        localFunctions = localFunctions,
+                        callStack = callStack,
+                        fileVariables = fileVariables,
+                        fileContextLoader = fileContextLoader,
+                        loadingStack = loadingStack,
+                        rationalMode = rationalMode,
+                        dateFormat = dateFormat
+                    )
+                    tempEvaluator.evaluate(param.default!!)
                 }
                 localVars[param.name] = value
             }

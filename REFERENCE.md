@@ -478,7 +478,17 @@ g(x, y=PI) = x * y
 g(2)              # evaluates to 6.28... (y defaults to PI)
 
 h(x, y=sqrt(4)) = x + y
-h(3)              # evaluates to 5  (y defaults to sqrt(4) = 2)
+h(10)             # evaluates to 12.0  (y defaults to sqrt(4) = 2)
+```
+
+Default expressions can also reference parameters that were defined before them in the same function signature:
+
+```text
+# Calculate total price with optional tax
+with_tax(price, tax = price * 0.05) = price + tax
+
+with_tax(100)      # evaluates to 105 (tax defaults to 100 * 0.05 = 5)
+with_tax(100, 10)  # evaluates to 110 (tax explicitly provided as 10)
 ```
 
 Multiple optional parameters are supported:

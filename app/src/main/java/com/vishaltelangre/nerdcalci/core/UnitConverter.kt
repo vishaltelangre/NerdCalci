@@ -110,20 +110,42 @@ object UnitConverter {
         UnitRule(UnitCategory.ELECTRIC_POTENTIAL, UnitCategory.ELECTRIC_RESISTANCE, result = { _, _ -> "A" }),
         UnitRule(UnitCategory.POWER, UnitCategory.ELECTRIC_POTENTIAL, result = { _, _ -> "A" }),
         UnitRule(UnitCategory.POWER, UnitCategory.ELECTRIC_CURRENT, result = { _, _ -> "V" }),
-        UnitRule(UnitCategory.ELECTRIC_CHARGE, UnitCategory.TIME, result = { left, _ -> 
+        UnitRule(UnitCategory.ELECTRIC_CHARGE, UnitCategory.TIME, result = { left, right -> 
             val sym = left.symbols.first()
-            when {
-                sym.startsWith("m") -> "mA"
-                sym.startsWith("µ") || sym.startsWith("u") -> "µA"
-                sym.startsWith("k") -> "kA"
-                else -> "A"
+            val timeSym = right.symbols.first()
+            
+            if (sym == "coulomb") {
+                return@UnitRule if (timeSym == "s") "A" else null
+            }
+            
+            val suffix = when (timeSym) {
+                "s" -> "As"
+                "min" -> "Amin"
+                "h" -> "Ah"
+                else -> return@UnitRule null
+            }
+            if (sym.endsWith(suffix)) {
+                val prefixRaw = sym.removeSuffix(suffix)
+                val prefix = CHARGE_PREFIX_MAP[prefixRaw] ?: return@UnitRule null
+                prefix + "A"
+            } else {
+                null
             }
         }),
-        UnitRule(UnitCategory.ELECTRIC_CHARGE, UnitCategory.ELECTRIC_CURRENT, result = { left, _ ->
+        UnitRule(UnitCategory.ELECTRIC_CHARGE, UnitCategory.ELECTRIC_CURRENT, result = { left, right ->
+            val sym = left.symbols.first()
+            val currentSym = right.symbols.first()
+            if (!currentSym.endsWith("A")) return@UnitRule null
+            val currentPrefixRaw = currentSym.removeSuffix("A")
+            val currentPrefix = CHARGE_PREFIX_MAP[currentPrefixRaw] ?: return@UnitRule null
+            
+            if (sym == "coulomb" && currentPrefix == "") return@UnitRule "s"
+            
             when {
-                left.symbols.first().endsWith("h") -> "h"
-                left.symbols.first().endsWith("min") -> "min"
-                else -> "s"
+                sym == currentPrefix + "Ah" -> "h"
+                sym == currentPrefix + "Amin" -> "min"
+                sym == currentPrefix + "As" -> "s"
+                else -> null
             }
         }),
         UnitRule(UnitCategory.LENGTH, UnitCategory.TIME, result = { left, right ->
@@ -362,7 +384,7 @@ object UnitConverter {
         Unit("Megohm", listOf("MΩ", "Mohm", "megohm", "megohms"), UnitCategory.ELECTRIC_RESISTANCE, BigDecimal("1e6")),
 
         // --- ELECTRIC CHARGE --- (Base: Coulomb)
-        Unit("Coulomb", listOf("C", "coulomb", "coulombs"), UnitCategory.ELECTRIC_CHARGE, BigDecimal.ONE),
+        Unit("Coulomb", listOf("coulomb", "coulombs"), UnitCategory.ELECTRIC_CHARGE, BigDecimal.ONE),
         Unit("Ampere hour", listOf("Ah", "ampere hour", "ampere hours", "amp hour", "amp hours"), UnitCategory.ELECTRIC_CHARGE, BigDecimal("3600.0")),
         Unit("Ampere minute", listOf("Amin", "ampere minute", "ampere minutes", "amp minute", "amp minutes"), UnitCategory.ELECTRIC_CHARGE, BigDecimal("60.0")),
         Unit("Milliampere hour", listOf("mAh", "milliampere hour", "milliampere hours", "milliamp hour", "milliamp hours"), UnitCategory.ELECTRIC_CHARGE, BigDecimal("3.6")),
@@ -372,12 +394,12 @@ object UnitConverter {
         Unit("Kiloampere hour", listOf("kAh", "kiloampere hour", "kiloampere hours", "kiloamp hour", "kiloamp hours"), UnitCategory.ELECTRIC_CHARGE, BigDecimal("3.6e6")),
         Unit("Kiloampere minute", listOf("kAmin", "kiloampere minute", "kiloampere minutes", "kiloamp minute", "kiloamp minutes"), UnitCategory.ELECTRIC_CHARGE, BigDecimal("60000.0")),
         Unit("Kiloampere second", listOf("kAs", "kiloampere second", "kiloampere seconds", "kiloamp second", "kiloamp seconds"), UnitCategory.ELECTRIC_CHARGE, BigDecimal("1000.0")),
-        Unit("Ampere second", listOf("As", "ampere second", "ampere seconds", "amp second", "amp seconds"), UnitCategory.ELECTRIC_CHARGE, BigDecimal.ONE),
+        Unit("Ampere second", listOf("ampere second", "ampere seconds", "amp second", "amp seconds"), UnitCategory.ELECTRIC_CHARGE, BigDecimal.ONE),
         Unit("Milliampere second", listOf("mAs", "milliampere second", "milliampere seconds", "milliamp second", "milliamp seconds"), UnitCategory.ELECTRIC_CHARGE, BigDecimal("0.001")),
         Unit("Milliampere minute", listOf("mAmin", "milliampere minute", "milliampere minutes", "milliamp minute", "milliamp minutes"), UnitCategory.ELECTRIC_CHARGE, BigDecimal("0.06")),
 
         // --- ELECTRIC CAPACITANCE --- (Base: Farad)
-        Unit("Farad", listOf("F", "farad", "farads"), UnitCategory.ELECTRIC_CAPACITANCE, BigDecimal.ONE),
+        Unit("Farad", listOf("farad", "farads"), UnitCategory.ELECTRIC_CAPACITANCE, BigDecimal.ONE),
         Unit("Millifarad", listOf("mF", "millifarad", "millifarads"), UnitCategory.ELECTRIC_CAPACITANCE, BigDecimal("0.001")),
         Unit("Microfarad", listOf("µF", "uF", "microfarad", "microfarads"), UnitCategory.ELECTRIC_CAPACITANCE, BigDecimal("1e-6")),
         Unit("Nanofarad", listOf("nF", "nanofarad", "nanofarads"), UnitCategory.ELECTRIC_CAPACITANCE, BigDecimal("1e-9")),
@@ -840,34 +862,30 @@ object UnitConverter {
         else -> null
     }
 
+    private val CHARGE_PREFIX_MAP = mapOf(
+        "" to "", 
+        "m" to "m", 
+        "µ" to "µ", 
+        "u" to "µ", 
+        "k" to "k", 
+        "n" to "n", 
+        "p" to "p", 
+        "M" to "M", 
+        "G" to "G"
+    )
+
     private fun matchCurrentTimeToCharge(current: Unit, time: Unit): String? {
         val currentSym = current.symbols.first()
         val timeSym = time.symbols.first()
-        return when (currentSym) {
-            "A" -> when (timeSym) {
-                "s" -> "As"
-                "min" -> "Amin"
-                "h" -> "Ah"
-                else -> null
-            }
-            "mA" -> when (timeSym) {
-                "s" -> "mAs"
-                "min" -> "mAmin"
-                "h" -> "mAh"
-                else -> null
-            }
-            "µA" -> when (timeSym) {
-                "s" -> "µAs"
-                "min" -> "µAmin"
-                "h" -> "µAh"
-                else -> null
-            }
-            "kA" -> when (timeSym) {
-                "s" -> "kAs"
-                "min" -> "kAmin"
-                "h" -> "kAh"
-                else -> null
-            }
+        
+        if (!currentSym.endsWith("A")) return null
+        val prefixRaw = currentSym.removeSuffix("A")
+        val prefix = CHARGE_PREFIX_MAP[prefixRaw] ?: return null
+        
+        return when (timeSym) {
+            "s" -> prefix + "As"
+            "min" -> prefix + "Amin"
+            "h" -> prefix + "Ah"
             else -> null
         }
     }

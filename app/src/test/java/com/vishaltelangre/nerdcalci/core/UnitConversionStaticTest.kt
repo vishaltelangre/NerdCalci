@@ -4527,4 +4527,86 @@ class UnitConversionStaticTest {
     }
 
 
+    @Test
+    fun `unit conversion static electricity`() = testCalculate(
+        "10 V in V",
+        "10 mV in V",
+        "10 kV in V",
+        "10 MV in V",
+        "10 µV in V",
+        "10 A in A",
+        "10 mA in A",
+        "10 µA in A",
+        "10 kA in A",
+        "10 Ω in Ω",
+        "10 mΩ in Ω",
+        "10 kΩ in Ω",
+        "10 MΩ in Ω",
+        "10 coulomb in coulomb",
+        "10 Ah in coulomb",
+        "10 Amin in coulomb",
+        "10 mAh in coulomb",
+        "10 µAh in coulomb",
+        "10 kAh in coulomb",
+        "10 ampere second in coulomb",
+        "10 farad in farad",
+        "10 mF in farad",
+        "10 µF in farad",
+        "10 nF in farad",
+        "10 pF in farad",
+        "10 H in H",
+        "10 mH in H",
+        "10 µH in H"
+    ) { result ->
+        assertEquals("V", 10.0, result[0].result.substringBefore(' ').toDouble(), 0.05)
+        assertEquals("mV", 0.01, result[1].result.substringBefore(' ').toDouble(), 0.05)
+        assertEquals("kV", 10000.0, result[2].result.substringBefore(' ').toDouble(), 0.05)
+        assertEquals("MV", 1.0E7, result[3].result.substringBefore(' ').toDouble(), 0.05)
+        assertEquals("µV", 1.0E-5, result[4].result.substringBefore(' ').toDouble(), 0.05)
+        
+        assertEquals("A", 10.0, result[5].result.substringBefore(' ').toDouble(), 0.05)
+        assertEquals("mA", 0.01, result[6].result.substringBefore(' ').toDouble(), 0.05)
+        assertEquals("µA", 1.0E-5, result[7].result.substringBefore(' ').toDouble(), 0.05)
+        assertEquals("kA", 10000.0, result[8].result.substringBefore(' ').toDouble(), 0.05)
+        
+        assertEquals("Ω", 10.0, result[9].result.substringBefore(' ').toDouble(), 0.05)
+        assertEquals("mΩ", 0.01, result[10].result.substringBefore(' ').toDouble(), 0.05)
+        assertEquals("kΩ", 10000.0, result[11].result.substringBefore(' ').toDouble(), 0.05)
+        assertEquals("MΩ", 1.0E7, result[12].result.substringBefore(' ').toDouble(), 0.05)
+        
+        assertEquals("coulomb", 10.0, result[13].result.substringBefore(' ').toDouble(), 0.05)
+        assertEquals("Ah", 36000.0, result[14].result.substringBefore(' ').toDouble(), 0.05)
+        assertEquals("Amin", 600.0, result[15].result.substringBefore(' ').toDouble(), 0.05)
+        assertEquals("mAh", 36.0, result[16].result.substringBefore(' ').toDouble(), 0.05)
+        assertEquals("µAh", 0.036, result[17].result.substringBefore(' ').toDouble(), 0.05)
+        assertEquals("kAh", 3.6E7, result[18].result.substringBefore(' ').toDouble(), 0.05)
+        assertEquals("ampere second", 10.0, result[19].result.substringBefore(' ').toDouble(), 0.05)
+        
+        assertEquals("farad", 10.0, result[20].result.substringBefore(' ').toDouble(), 0.05)
+        assertEquals("mF", 0.01, result[21].result.substringBefore(' ').toDouble(), 0.05)
+        assertEquals("µF", 1.0E-5, result[22].result.substringBefore(' ').toDouble(), 0.05)
+        assertEquals("nF", 1.0E-8, result[23].result.substringBefore(' ').toDouble(), 0.05)
+        assertEquals("pF", 1.0E-11, result[24].result.substringBefore(' ').toDouble(), 0.05)
+        
+        assertEquals("H", 10.0, result[25].result.substringBefore(' ').toDouble(), 0.05)
+        assertEquals("mH", 0.01, result[26].result.substringBefore(' ').toDouble(), 0.05)
+        assertEquals("µH", 1.0E-5, result[27].result.substringBefore(' ').toDouble(), 0.05)
+    }
+
+    @Test
+    fun `unit conversion static magnetism`() = testCalculate(
+        "10 Wb in Wb",
+        "10 mWb in Wb",
+        "10 T in T",
+        "10 mT in T",
+        "10 µT in T",
+        "10 G in T"
+    ) { result ->
+        assertEquals("Wb", 10.0, result[0].result.substringBefore(' ').toDouble(), 0.05)
+        assertEquals("mWb", 0.01, result[1].result.substringBefore(' ').toDouble(), 0.05)
+        assertEquals("T", 10.0, result[2].result.substringBefore(' ').toDouble(), 0.05)
+        assertEquals("mT", 0.01, result[3].result.substringBefore(' ').toDouble(), 0.05)
+        assertEquals("µT", 1.0E-5, result[4].result.substringBefore(' ').toDouble(), 0.05)
+        assertEquals("G", 0.001, result[5].result.substringBefore(' ').toDouble(), 0.05)
+    }
 }

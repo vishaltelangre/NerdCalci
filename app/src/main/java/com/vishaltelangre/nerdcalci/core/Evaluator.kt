@@ -318,9 +318,12 @@ class Evaluator(
         // Check if it's a user-defined local function
         val localFunc = localFunctions[name]
         if (localFunc != null) {
-            if (argExprs.size != localFunc.params.size) {
-                throw ArityMismatchException(name, localFunc.params.size, argExprs.size)
+            val minArity = localFunc.params.count { it.default == null }
+            val maxArity = localFunc.params.size
+            if (argExprs.size < minArity || argExprs.size > maxArity) {
+                throw ArityMismatchException(name, minArity, maxArity, argExprs.size)
             }
+
             val args = argExprs.map { evaluate(it) }
             if (callStack.contains(name)) {
                 throw EvalException("Function `$name()` calls itself too many times which is not allowed")
@@ -328,8 +331,26 @@ class Evaluator(
 
             // Create a strictly isolated scope
             val localVars = mutableMapOf<String, EvaluationResult>()
-            for (i in args.indices) {
-                localVars[localFunc.params[i]] = args[i]
+            for (i in localFunc.params.indices) {
+                val param = localFunc.params[i]
+                val value = if (i < args.size) {
+                    args[i]
+                } else {
+                    // evaluate the default in a context that includes previous parameters + outer scope
+                    val tempEvaluator = Evaluator(
+                        variables = variables + localVars,
+                        injectionErrors = injectionErrors,
+                        localFunctions = localFunctions,
+                        callStack = callStack,
+                        fileVariables = fileVariables,
+                        fileContextLoader = fileContextLoader,
+                        loadingStack = loadingStack,
+                        rationalMode = rationalMode,
+                        dateFormat = dateFormat
+                    )
+                    tempEvaluator.evaluate(param.default!!)
+                }
+                localVars[param.name] = value
             }
 
             // A new Evaluator handles the inner scope execution.

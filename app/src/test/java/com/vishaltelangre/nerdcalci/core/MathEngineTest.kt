@@ -2399,7 +2399,7 @@ class MathEngineTest {
         val remoteContext = MathContext()
         remoteContext.localFunctions["double"] = LocalFunction(
             name = "double",
-            params = listOf("x"),
+            params = listOf(Statement.FunctionParam("x")),
             body = listOf(
                 Statement.ExprStatement(
                     Expr.BinaryOp(
@@ -2422,7 +2422,7 @@ class MathEngineTest {
         val remoteContext = MathContext()
         remoteContext.localFunctions["addOne"] = LocalFunction(
             name = "addOne",
-            params = listOf("x"),
+            params = listOf(Statement.FunctionParam("x")),
             body = listOf(
                 Statement.ExprStatement(
                     Expr.BinaryOp(
@@ -3182,4 +3182,98 @@ class MathEngineTest {
         assertEquals("1.0E15", result4)
     }
 
+    @Test
+    fun `optional parameters support default expressions and range-based arity`() {
+        // Basic and multiple optional parameters
+        testCalculate(
+            "f(x, y=0) = x * (y + 4) / 2",
+            "f(2, 4)",
+            "f(2)",
+            "g(a, b=10, c=100) = a + b + c",
+            "g(1)",
+            "g(1, 2)",
+            "g(1, 2, 3)"
+        ) { result ->
+            assertEquals("8.0", result[1].result) // f(2, 4)
+            assertEquals("4.0", result[2].result) // f(2) uses y=0
+            assertEquals("111.0", result[4].result) // g(1) uses b=10, c=100
+            assertEquals("103.0", result[5].result) // g(1, 2) uses c=100
+            assertEquals("6.0", result[6].result)   // g(1, 2, 3)
+        }
+
+        // Self-referential default parameters
+        testCalculate(
+            "h1(a, b = a + 1) = a + b",
+            "h1(5)",
+            "h2(a, b = a + 1, c = b * 2) = a + b + c",
+            "h2(5)"
+        ) { result ->
+            assertEquals("11.0", result[1].result) // h1(5) -> a=5, b=6
+            assertEquals("23.0", result[3].result) // h2(5) -> a=5, b=6, c=12
+        }
+
+        // Arity validation and ordering rules
+        testCalculate(
+            "h(x, y=0) = x + y",
+            "h(1, 2, 3)",
+            "fail(x=1, y) = x + y"
+        ) { result ->
+            assertError("Function `h()` expects 1 to 2 arguments, but got 3", result, 1)
+            assertError("Required parameter `y` cannot follow an optional parameter", result, 2)
+        }
+
+        // Defaults using variables, constants, and function calls
+        testCalculate(
+            "scale = 2",
+            "s(x, y=scale) = x * y",
+            "s(3)",
+            "c(x, y=PI) = x * y",
+            "c(2)",
+            "fn(x, y=sqrt(4)) = x + y",
+            "fn(3)"
+        ) { result ->
+            assertEquals("6.0", result[2].result) // s(3) uses scale=2
+            assertEquals("6.283185307179586476925286766559006", result[4].result) // c(2) uses y=PI
+            assertEquals("5.0", result[6].result) // fn(3) uses y=sqrt(4)=2
+        }
+
+        // Call-time evaluation semantics (dynamic variables and lazy evaluation)
+        testCalculate(
+            "3",
+            "dv(x, y=prev) = x + y",
+            "5",
+            "dv(3)",
+            "a = 7",
+            "lazy(x, y=a) = x + y",
+            "a = 100",
+            "lazy(5)"
+        ) { result ->
+            assertEquals("8.0", result[3].result)   // dv(3) uses prev=5
+            assertEquals("105.0", result[7].result) // lazy(5) uses a=100 (lazy evaluation)
+        }
+    }
+
+    @Test
+    fun `currying and partial application pattern works via wrapper functions`() {
+        // Basic currying regression
+        testCalculate(
+            "f(x, y) = x * (y + 4) / 2",
+            "f0(x) = f(x, 0)",
+            "f4(x) = f(x, 4)",
+            "f0(2)",
+            "f4(2)"
+        ) { result ->
+            assertEquals("4.0", result[3].result)
+            assertEquals("8.0", result[4].result)
+        }
+
+        // Multi-argument partial application
+        testCalculate(
+            "h(a, b, c) = a + b + c",
+            "h2(a, b) = h(a, b, 0)",
+            "h2(1, 2)"
+        ) { result ->
+            assertEquals("3.0", result[2].result)
+        }
+    }
 }

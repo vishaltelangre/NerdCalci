@@ -1,0 +1,1 @@
+- Added support for optional function arguments (Issue #82).

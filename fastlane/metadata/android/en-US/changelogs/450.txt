@@ -1,0 +1,1 @@
+- Added support for electricity and magnetism unit conversions (PR: #183).

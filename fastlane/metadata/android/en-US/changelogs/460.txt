@@ -1,0 +1,1 @@
+- Added `grand_total` and `grand_sum` dynamic variables to calculate the total of all results before the current line (Issue #89).

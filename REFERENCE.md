@@ -355,7 +355,7 @@ rent = 1000
 utilities = 150
 total               # evaluates to 1150  (block sum)
 
-grand_total         # evaluates to 1155  (sum of every result above)
+grand_total         # 2310, sum of all results above
 ```
 
 Unlike `sum`/`total`, blank and comment lines do **not** reset `grand_total` — it always accumulates everything above.

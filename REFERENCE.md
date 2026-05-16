@@ -26,6 +26,7 @@
 - [6. Comments](#6-comments)
 - [7. Dynamic variables](#7-dynamic-variables)
   - [Sum / Total](#sum--total)
+  - [Grand total](#grand-total)
   - [Average](#average)
   - [Reference to previous line result](#reference-to-previous-line-result)
   - [Reference to current line number](#reference-to-current-line-number)
@@ -337,18 +338,35 @@ item2 = 75
 tax = sum * 0.10    # evaluates to 10
 ```
 
-Assigning to `total` or `sum` overrides the aggregate meaning from that point onward:
+`total` and `sum` are reserved keywords and cannot be reassigned.
+
+### Grand total
+
+Use `grand_total` or `grand_sum` to get the sum of **all** line results in the file above the current line, crossing blank/comment/error block boundaries.
 
 ```text
-a = 1
-b = 2
-total               # evaluates to 3
+# Section A
+apples = 3
+bananas = 2
+total               # evaluates to 5  (block sum)
 
-total = 4
-total / 2           # evaluates to 2
-total               # evaluates to 4
-# i.e. after assigning, total no longer aggregates
+# Section B
+rent = 1000
+utilities = 150
+total               # evaluates to 1150  (block sum)
+
+grand_total         # evaluates to 1155  (sum of every result above)
 ```
+
+Unlike `sum`/`total`, blank and comment lines do **not** reset `grand_total` — it always accumulates everything above.
+
+Use `grand_total` inside expressions:
+
+```text
+tax = grand_total * 0.10
+```
+
+`grand_total` and `grand_sum` are reserved keywords and cannot be reassigned.
 
 ### Average
 
@@ -380,18 +398,7 @@ item2 = 75
 half_avg = avg / 2  # evaluates to 25
 ```
 
-Assigning to `avg` or `average` overrides the aggregate meaning from that point onward:
-
-```text
-a = 10
-b = 20
-avg                 # evaluates to 15
-
-avg = 100
-avg / 2             # evaluates to 50
-avg                 # evaluates to 100
-# i.e. after assigning, avg no longer aggregates
-```
+`avg` and `average` are reserved keywords and cannot be reassigned.
 
 ### Reference to previous line result
 
@@ -1096,6 +1103,8 @@ You can use these keywords anywhere you would use a date. They resolve based on 
 *   `yesterday`: One calendar day before today's start.
 *   `tomorrow`: One calendar day after today's start.
 *   `now`: The current date and precise time.
+
+These keywords, along with date arithmetic prepositions (`before`, `after`, `ago`, `from`, `since`, `till`, `until`, `through`, `between`, `and`), are **strictly reserved** and cannot be used as variable names.
 
 ### Date arithmetic
 

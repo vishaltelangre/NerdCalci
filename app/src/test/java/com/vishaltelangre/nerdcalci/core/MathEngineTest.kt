@@ -1,15 +1,11 @@
 package com.vishaltelangre.nerdcalci.core
 
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
+import java.math.BigDecimal
+import java.util.Locale
 import kotlinx.coroutines.runBlocking
 import org.junit.*
 import org.junit.Assert.*
-import java.math.BigDecimal
-import java.time.Instant
-import java.time.LocalDate
-import java.time.ZoneId
-import java.time.temporal.ChronoUnit
-import java.util.Locale
 
 class MathEngineTest {
 
@@ -30,28 +26,52 @@ class MathEngineTest {
         assertEquals("10,000", MathEngine.formatDisplayResult("10000", 2, locale, indianSettings))
 
         // 1 lakh
-        assertEquals("1,00,000", MathEngine.formatDisplayResult("100000", 2, locale, indianSettings))
+        assertEquals(
+                "1,00,000",
+                MathEngine.formatDisplayResult("100000", 2, locale, indianSettings)
+        )
 
         // 10 lakh
-        assertEquals("10,00,000", MathEngine.formatDisplayResult("1000000", 2, locale, indianSettings))
+        assertEquals(
+                "10,00,000",
+                MathEngine.formatDisplayResult("1000000", 2, locale, indianSettings)
+        )
 
         // 1 crore
-        assertEquals("1,00,00,000", MathEngine.formatDisplayResult("10000000", 2, locale, indianSettings))
+        assertEquals(
+                "1,00,00,000",
+                MathEngine.formatDisplayResult("10000000", 2, locale, indianSettings)
+        )
 
         // 10 crore
-        assertEquals("10,00,00,000", MathEngine.formatDisplayResult("100000000", 2, locale, indianSettings))
+        assertEquals(
+                "10,00,00,000",
+                MathEngine.formatDisplayResult("100000000", 2, locale, indianSettings)
+        )
 
         // 100 crore
-        assertEquals("1,00,00,00,000", MathEngine.formatDisplayResult("1000000000", 2, locale, indianSettings))
+        assertEquals(
+                "1,00,00,00,000",
+                MathEngine.formatDisplayResult("1000000000", 2, locale, indianSettings)
+        )
 
         // 1,000 crore
-        assertEquals("10,00,00,00,000", MathEngine.formatDisplayResult("10000000000", 2, locale, indianSettings))
+        assertEquals(
+                "10,00,00,00,000",
+                MathEngine.formatDisplayResult("10000000000", 2, locale, indianSettings)
+        )
 
         // 1 lakh crore
-        assertEquals("10,00,00,00,00,000", MathEngine.formatDisplayResult("1000000000000", 2, locale, indianSettings))
+        assertEquals(
+                "10,00,00,00,00,000",
+                MathEngine.formatDisplayResult("1000000000000", 2, locale, indianSettings)
+        )
 
         // Mixed digits
-        assertEquals("12,34,567.89", MathEngine.formatDisplayResult("1234567.89", 2, locale, indianSettings))
+        assertEquals(
+                "12,34,567.89",
+                MathEngine.formatDisplayResult("1234567.89", 2, locale, indianSettings)
+        )
     }
 
     @Test
@@ -64,42 +84,42 @@ class MathEngineTest {
 
     @Test
     fun `basic addition returns correct result`() {
-        testCalculate("2 + 2") { result ->
-            assertEquals("4.0", result[0].result)
-        }
+        testCalculate("2 + 2") { result -> assertEquals("4.0", result[0].result) }
     }
 
     @Test
     fun `basic subtraction returns correct result`() {
-        testCalculate("10 - 3") { result ->
-            assertEquals("7.0", result[0].result)
-        }
+        testCalculate("10 - 3") { result -> assertEquals("7.0", result[0].result) }
     }
 
     @Test
     fun `basic multiplication returns correct result`() {
-        testCalculate("5 * 6") { result ->
-            assertEquals("30.0", result[0].result)
-        }
+        testCalculate("5 * 6") { result -> assertEquals("30.0", result[0].result) }
     }
 
     @Test
     fun `basic division returns correct result`() {
-        testCalculate("20 / 4") { result ->
-            assertEquals("5.0", result[0].result)
-        }
+        testCalculate("20 / 4") { result -> assertEquals("5.0", result[0].result) }
     }
 
     @Test
     fun `basic modulo returns correct result`() {
-        testCalculate("10 % 3") { result ->
-            assertEquals("1.0", result[0].result)
-        }
+        testCalculate("10 % 3") { result -> assertEquals("1.0", result[0].result) }
     }
 
     @Test
     fun `modulo rejects physical units`() {
-        testCalculate("10ft % 2", "10 % 2ft", "10kg % 3kg", "10kg % 3", "10 % 3kg", "10 °C % 2", "10 % 2 °C", "10cm² % 3", "10 % 3mm³") { result ->
+        testCalculate(
+                "10ft % 2",
+                "10 % 2ft",
+                "10kg % 3kg",
+                "10kg % 3",
+                "10 % 3kg",
+                "10 °C % 2",
+                "10 % 2 °C",
+                "10cm² % 3",
+                "10 % 3mm³"
+        ) { result ->
             assertError("Modulo of `Foot` and `unitless number` is not supported", result, 0)
             assertError("Modulo of `unitless number` and `Foot` is not supported", result, 1)
             assertError("Modulo of `Kilogram` and `Kilogram` is not supported", result, 2)
@@ -107,51 +127,52 @@ class MathEngineTest {
             assertError("Modulo of `unitless number` and `Kilogram` is not supported", result, 4)
             assertError("Modulo of `Celsius` and `unitless number` is not supported", result, 5)
             assertError("Modulo of `unitless number` and `Celsius` is not supported", result, 6)
-            assertError("Modulo of `Square centimeter` and `unitless number` is not supported", result, 7)
-            assertError("Modulo of `unitless number` and `Cubic millimeter` is not supported", result, 8)
+            assertError(
+                    "Modulo of `Square centimeter` and `unitless number` is not supported",
+                    result,
+                    7
+            )
+            assertError(
+                    "Modulo of `unitless number` and `Cubic millimeter` is not supported",
+                    result,
+                    8
+            )
         }
     }
 
     @Test
     fun `modulo without spaces returns correct result`() {
-        testCalculate("10%3") { result ->
-            assertEquals("1.0", result[0].result)
-        }
+        testCalculate("10%3") { result -> assertEquals("1.0", result[0].result) }
     }
 
     @Test
-    fun `variable modulo variable`() = testCalculate("a = 10", "b = 3", "a % b") { result ->
-        assertEquals("10.0", result[0].result)
-        assertEquals("3.0", result[1].result)
-        assertEquals("1.0", result[2].result)
-    }
+    fun `variable modulo variable`() =
+            testCalculate("a = 10", "b = 3", "a % b") { result ->
+                assertEquals("10.0", result[0].result)
+                assertEquals("3.0", result[1].result)
+                assertEquals("1.0", result[2].result)
+            }
 
     @Test
     fun `total throws dimension mismatch error for mixed units`() {
         testCalculate("4kg", "5 hour", "3 kph", "total") { result ->
-        assertError("Summation of `Kilogram` and `Hour` is not supported", result, 3)
+            assertError("Summation of `Kilogram` and `Hour` is not supported", result, 3)
         }
     }
 
     @Test
     fun `chained percentage expression works correctly`() {
-        testCalculate("100 + 20% - 5") { result ->
-            assertEquals("115.0", result[0].result)
-        }
+        testCalculate("100 + 20% - 5") { result -> assertEquals("115.0", result[0].result) }
     }
 
     @Test
     fun `complex expression with multiple operators`() {
-        testCalculate("2 + 3 * 4 - 1") { result ->
-            assertEquals("13.0", result[0].result)
-        }
+        testCalculate("2 + 3 * 4 - 1") { result -> assertEquals("13.0", result[0].result) }
     }
 
     @Test
     fun `expression with parentheses respects order of operations`() {
-        testCalculate("(2 + 3) * 4") { result ->
-            assertEquals("20.0", result[0].result)
-        }
+        testCalculate("(2 + 3) * 4") { result -> assertEquals("20.0", result[0].result) }
     }
 
     @Test
@@ -173,9 +194,7 @@ class MathEngineTest {
 
     @Test
     fun `exponentiation by zero returns unitless result`() {
-        testCalculate("(10 ft)^0") { result ->
-            assertEquals("1.0", result[0].result)
-        }
+        testCalculate("(10 ft)^0") { result -> assertEquals("1.0", result[0].result) }
     }
 
     @Test
@@ -188,55 +207,72 @@ class MathEngineTest {
     }
 
     @Test
-    fun `builtin contracts hold through math engine evaluation`() = testCalculate(
-        "value(5 km)",
-        "dropUnit(5 km)",
-        "raw(5 km)",
-        "rational(5 km / 2)",
-        "float(5 km / 2)",
-        "floor(2.5 ft)",
-        "ceil(2.5 ft)",
-        "abs(-4 kg)",
-        "signum(-4 kg)",
-        "sin(90°)",
-        "sin(1 kg)",
-        "log(10)",
-        "log(10 m)",
-        "factorial(5)",
-        "factorial(5 kg)",
-        "pow(2, 8)",
-        "pow(2 kg, 8)",
-        "sqrt(16)",
-        "sqrt(16 ft²)",
-        "sqrt(16 kg)",
-        "cbrt(27)",
-        "cbrt(27 m³)",
-        "cbrt(27 kg)"
-    ) { result ->
-        assertEquals("5", result[0].result)
-        assertEquals("5", result[1].result)
-        assertEquals("5", result[2].result)
-        assertEquals("5/2 km", result[3].result)
-        assertEquals("2.5 km", result[4].result)
-        assertEquals("2.0 ft", result[5].result)
-        assertEquals("3.0 ft", result[6].result)
-        assertEquals("4.0 kg", result[7].result)
-        assertEquals("-1.0 kg", result[8].result)
-        assertEquals("1.0", result[9].result)
-        assertError("`sin()` does not accept `Kilogram` type, pass a unitless value or an angle value.", result, 10)
-        assertTrue(result[11].result.startsWith("2.30258509299404"))
-        assertError("`log()` does not accept `Meter` type, pass a unitless value.", result, 12)
-        assertEquals("120.0", result[13].result)
-        assertError("`factorial()` does not accept `Kilogram` type, pass a unitless value.", result, 14)
-        assertEquals("256.0", result[15].result)
-        assertError("`pow()` does not accept `Kilogram` type, pass a unitless value.", result, 16)
-        assertEquals("4.0", result[17].result)
-        assertEquals("4.0 ft", result[18].result)
-        assertError("`sqrt()` requires a unitless value or a squared unit.", result, 19)
-        assertEquals("3.0", result[20].result)
-        assertEquals("3.0 m", result[21].result)
-        assertError("`cbrt()` requires a unitless value or a cubed unit.", result, 22)
-    }
+    fun `builtin contracts hold through math engine evaluation`() =
+            testCalculate(
+                    "value(5 km)",
+                    "dropUnit(5 km)",
+                    "raw(5 km)",
+                    "rational(5 km / 2)",
+                    "float(5 km / 2)",
+                    "floor(2.5 ft)",
+                    "ceil(2.5 ft)",
+                    "abs(-4 kg)",
+                    "signum(-4 kg)",
+                    "sin(90°)",
+                    "sin(1 kg)",
+                    "log(10)",
+                    "log(10 m)",
+                    "factorial(5)",
+                    "factorial(5 kg)",
+                    "pow(2, 8)",
+                    "pow(2 kg, 8)",
+                    "sqrt(16)",
+                    "sqrt(16 ft²)",
+                    "sqrt(16 kg)",
+                    "cbrt(27)",
+                    "cbrt(27 m³)",
+                    "cbrt(27 kg)"
+            ) { result ->
+                assertEquals("5", result[0].result)
+                assertEquals("5", result[1].result)
+                assertEquals("5", result[2].result)
+                assertEquals("5/2 km", result[3].result)
+                assertEquals("2.5 km", result[4].result)
+                assertEquals("2.0 ft", result[5].result)
+                assertEquals("3.0 ft", result[6].result)
+                assertEquals("4.0 kg", result[7].result)
+                assertEquals("-1.0 kg", result[8].result)
+                assertEquals("1.0", result[9].result)
+                assertError(
+                        "`sin()` does not accept `Kilogram` type, pass a unitless value or an angle value.",
+                        result,
+                        10
+                )
+                assertTrue(result[11].result.startsWith("2.30258509299404"))
+                assertError(
+                        "`log()` does not accept `Meter` type, pass a unitless value.",
+                        result,
+                        12
+                )
+                assertEquals("120.0", result[13].result)
+                assertError(
+                        "`factorial()` does not accept `Kilogram` type, pass a unitless value.",
+                        result,
+                        14
+                )
+                assertEquals("256.0", result[15].result)
+                assertError(
+                        "`pow()` does not accept `Kilogram` type, pass a unitless value.",
+                        result,
+                        16
+                )
+                assertEquals("4.0", result[17].result)
+                assertEquals("4.0 ft", result[18].result)
+                assertError("`sqrt()` requires a unitless value or a squared unit.", result, 19)
+                assertEquals("3.0", result[20].result)
+                assertEquals("3.0 m", result[21].result)
+                assertError("`cbrt()` requires a unitless value or a cubed unit.", result, 22)
+            }
 
     @Test
     fun `unitless only builtins reject dimensional input`() {
@@ -247,16 +283,12 @@ class MathEngineTest {
 
     @Test
     fun `multiplication sign × is normalized to asterisk`() {
-        testCalculate("5 × 6") { result ->
-            assertEquals("30.0", result[0].result)
-        }
+        testCalculate("5 × 6") { result -> assertEquals("30.0", result[0].result) }
     }
 
     @Test
     fun `division sign ÷ is normalized to slash`() {
-        testCalculate("20 ÷ 4") { result ->
-            assertEquals("5.0", result[0].result)
-        }
+        testCalculate("20 ÷ 4") { result -> assertEquals("5.0", result[0].result) }
     }
 
     @Test
@@ -283,11 +315,8 @@ class MathEngineTest {
 
     @Test
     fun `temperature addition is order independent`() {
-        testCalculate(
-            "30 °F + 30 °C + 30 °C",
-            "30 °C + 30 °F + 30 °C",
-            "30 °C + 30 °C + 30 °F"
-        ) { result ->
+        testCalculate("30 °F + 30 °C + 30 °C", "30 °C + 30 °F + 30 °C", "30 °C + 30 °C + 30 °F") {
+                result ->
             // Both expressions should normalize to the same canonical temperature result.
             val resultString1 = result[0].result
             val spaceIndex1 = resultString1.indexOf(' ')
@@ -339,279 +368,330 @@ class MathEngineTest {
     }
 
     @Test
-    fun `trigonometric functions support degree inputs`() = testCalculate(
-        "sin(90°)",
-        "sin(30 deg)",
-        "cos(60 degree)",
-        "sin(90)" // defaults to radians
-    ) { result ->
-        assertEquals(1.0, result[0].result.toDouble(), 1e-9)
-        assertEquals(0.5, result[1].result.toDouble(), 1e-9)
-        assertEquals(0.5, result[2].result.toDouble(), 1e-9)
-        assertEquals(0.8939966636005579, result[3].result.toDouble(), 1e-9)
-    }
+    fun `trigonometric functions support degree inputs`() =
+            testCalculate(
+                    "sin(90°)",
+                    "sin(30 deg)",
+                    "cos(60 degree)",
+                    "sin(90)" // defaults to radians
+            ) { result ->
+                assertEquals(1.0, result[0].result.toDouble(), 1e-9)
+                assertEquals(0.5, result[1].result.toDouble(), 1e-9)
+                assertEquals(0.5, result[2].result.toDouble(), 1e-9)
+                assertEquals(0.8939966636005579, result[3].result.toDouble(), 1e-9)
+            }
 
     @Test
-    fun `mixed unicode and ASCII operators work together`() = testCalculate("10 × 2 ÷ 4 + 1") { result ->
-        assertEquals("6.0", result[0].result)
-    }
+    fun `mixed unicode and ASCII operators work together`() =
+            testCalculate("10 × 2 ÷ 4 + 1") { result -> assertEquals("6.0", result[0].result) }
 
     @Test
-    fun `numeral system multipliers evaluate correctly`() = testCalculate(
-        "5 thousand",
-        "2.5 million",
-        "1.5 crore",
-        "2 lakh + 5 thousand",
-        "50% of 1 lakh",
-        "1.5 hundred",
-        "1 billion",
-        "1 trillion",
-        "4500 million in crores",
-        "2 lakh to thousand",
-        "5 thousand meters to km",
-        "10 thousand in hex",
-        "10 hex + 10 hex",
-        "20 hex - 10 hex"
-    ) { result ->
-        assertEquals("5000.0", result[0].result)
-        assertEquals("2500000.0", result[1].result)
-        assertEquals("15000000.0", result[2].result)
-        assertEquals("205000.0", result[3].result)
-        assertEquals("50000.0", result[4].result)
-        assertEquals("150.0", result[5].result)
-        assertEquals("1000000000.0", result[6].result)
-        assertEquals("1000000000000.0", result[7].result)
-        assertEquals("450.0 crore", result[8].result)
-        assertEquals("200.0 thousand", result[9].result)
-        assertEquals("5.0 km", result[10].result)
-        assertEquals("0x2710", result[11].result)
-        assertEquals("0x140", result[12].result)
-        assertEquals("0xA0", result[13].result)
-    }
+    fun `numeral system multipliers evaluate correctly`() =
+            testCalculate(
+                    "5 thousand",
+                    "2.5 million",
+                    "1.5 crore",
+                    "2 lakh + 5 thousand",
+                    "50% of 1 lakh",
+                    "1.5 hundred",
+                    "1 billion",
+                    "1 trillion",
+                    "4500 million in crores",
+                    "2 lakh to thousand",
+                    "5 thousand meters to km",
+                    "10 thousand in hex",
+                    "10 hex + 10 hex",
+                    "20 hex - 10 hex"
+            ) { result ->
+                assertEquals("5000.0", result[0].result)
+                assertEquals("2500000.0", result[1].result)
+                assertEquals("15000000.0", result[2].result)
+                assertEquals("205000.0", result[3].result)
+                assertEquals("50000.0", result[4].result)
+                assertEquals("150.0", result[5].result)
+                assertEquals("1000000000.0", result[6].result)
+                assertEquals("1000000000000.0", result[7].result)
+                assertEquals("450.0 crore", result[8].result)
+                assertEquals("200.0 thousand", result[9].result)
+                assertEquals("5.0 km", result[10].result)
+                assertEquals("0x2710", result[11].result)
+                assertEquals("0x140", result[12].result)
+                assertEquals("0xA0", result[13].result)
+            }
 
     @Test
-    fun `all numeral multiplier aliases evaluate correctly`() = testCalculate(
-        "5 dozen", "raw(5 dozen)", "5 dozens", "raw(5 dozens)",
-        "5 hundred", "raw(5 hundred)", "5 hundreds", "raw(5 hundreds)",
-        "5 thousand", "raw(5 thousand)", "5 thousands", "raw(5 thousands)",
-        "5 lakh", "raw(5 lakh)", "5 lakhs", "raw(5 lakhs)",
-        "5 million", "raw(5 million)", "5 millions", "raw(5 millions)",
-        "5 crore", "raw(5 crore)", "5 crores", "raw(5 crores)",
-        "5 billion", "raw(5 billion)", "5 billions", "raw(5 billions)",
-        "5 trillion", "raw(5 trillion)", "5 trillions", "raw(5 trillions)",
-        "1 quadrillion", "raw(1 quadrillion)", "1 quadrillions", "raw(1 quadrillions)",
-        "1 quintillion", "raw(1 quintillion)", "1 quintillions", "raw(1 quintillions)"
-    ) { result ->
-        assertEquals("60.0", result[0].result)
-        assertEquals("60", result[1].result)
-        assertEquals("60.0", result[2].result)
-        assertEquals("60", result[3].result)
+    fun `all numeral multiplier aliases evaluate correctly`() =
+            testCalculate(
+                    "5 dozen",
+                    "raw(5 dozen)",
+                    "5 dozens",
+                    "raw(5 dozens)",
+                    "5 hundred",
+                    "raw(5 hundred)",
+                    "5 hundreds",
+                    "raw(5 hundreds)",
+                    "5 thousand",
+                    "raw(5 thousand)",
+                    "5 thousands",
+                    "raw(5 thousands)",
+                    "5 lakh",
+                    "raw(5 lakh)",
+                    "5 lakhs",
+                    "raw(5 lakhs)",
+                    "5 million",
+                    "raw(5 million)",
+                    "5 millions",
+                    "raw(5 millions)",
+                    "5 crore",
+                    "raw(5 crore)",
+                    "5 crores",
+                    "raw(5 crores)",
+                    "5 billion",
+                    "raw(5 billion)",
+                    "5 billions",
+                    "raw(5 billions)",
+                    "5 trillion",
+                    "raw(5 trillion)",
+                    "5 trillions",
+                    "raw(5 trillions)",
+                    "1 quadrillion",
+                    "raw(1 quadrillion)",
+                    "1 quadrillions",
+                    "raw(1 quadrillions)",
+                    "1 quintillion",
+                    "raw(1 quintillion)",
+                    "1 quintillions",
+                    "raw(1 quintillions)"
+            ) { result ->
+                assertEquals("60.0", result[0].result)
+                assertEquals("60", result[1].result)
+                assertEquals("60.0", result[2].result)
+                assertEquals("60", result[3].result)
 
-        assertEquals("500.0", result[4].result)
-        assertEquals("500", result[5].result)
-        assertEquals("500.0", result[6].result)
-        assertEquals("500", result[7].result)
+                assertEquals("500.0", result[4].result)
+                assertEquals("500", result[5].result)
+                assertEquals("500.0", result[6].result)
+                assertEquals("500", result[7].result)
 
-        assertEquals("5000.0", result[8].result)
-        assertEquals("5000", result[9].result)
-        assertEquals("5000.0", result[10].result)
-        assertEquals("5000", result[11].result)
+                assertEquals("5000.0", result[8].result)
+                assertEquals("5000", result[9].result)
+                assertEquals("5000.0", result[10].result)
+                assertEquals("5000", result[11].result)
 
-        assertEquals("500000.0", result[12].result)
-        assertEquals("500000", result[13].result)
-        assertEquals("500000.0", result[14].result)
-        assertEquals("500000", result[15].result)
+                assertEquals("500000.0", result[12].result)
+                assertEquals("500000", result[13].result)
+                assertEquals("500000.0", result[14].result)
+                assertEquals("500000", result[15].result)
 
-        assertEquals("5000000.0", result[16].result)
-        assertEquals("5000000", result[17].result)
-        assertEquals("5000000.0", result[18].result)
-        assertEquals("5000000", result[19].result)
+                assertEquals("5000000.0", result[16].result)
+                assertEquals("5000000", result[17].result)
+                assertEquals("5000000.0", result[18].result)
+                assertEquals("5000000", result[19].result)
 
-        assertEquals("50000000.0", result[20].result)
-        assertEquals("50000000", result[21].result)
-        assertEquals("50000000.0", result[22].result)
-        assertEquals("50000000", result[23].result)
+                assertEquals("50000000.0", result[20].result)
+                assertEquals("50000000", result[21].result)
+                assertEquals("50000000.0", result[22].result)
+                assertEquals("50000000", result[23].result)
 
-        assertEquals("5000000000.0", result[24].result)
-        assertEquals("5000000000", result[25].result)
-        assertEquals("5000000000.0", result[26].result)
-        assertEquals("5000000000", result[27].result)
+                assertEquals("5000000000.0", result[24].result)
+                assertEquals("5000000000", result[25].result)
+                assertEquals("5000000000.0", result[26].result)
+                assertEquals("5000000000", result[27].result)
 
-        assertEquals("5000000000000.0", result[28].result)
-        assertEquals("5000000000000", result[29].result)
-        assertEquals("5000000000000.0", result[30].result)
-        assertEquals("5000000000000", result[31].result)
+                assertEquals("5000000000000.0", result[28].result)
+                assertEquals("5000000000000", result[29].result)
+                assertEquals("5000000000000.0", result[30].result)
+                assertEquals("5000000000000", result[31].result)
 
-        assertEquals("1.0E15", result[32].result)
-        assertEquals("1000000000000000", result[33].result)
-        assertEquals("1.0E15", result[34].result)
-        assertEquals("1000000000000000", result[35].result)
+                assertEquals("1.0E15", result[32].result)
+                assertEquals("1000000000000000", result[33].result)
+                assertEquals("1.0E15", result[34].result)
+                assertEquals("1000000000000000", result[35].result)
 
-        assertEquals("1.0E18", result[36].result)
-        assertEquals("1000000000000000000", result[37].result)
-        assertEquals("1.0E18", result[38].result)
-        assertEquals("1000000000000000000", result[39].result)
-    }
-
-    @Test
-    fun `decimal addition returns formatted result`() = testCalculate("1.5 + 2.3") { result ->
-        assertEquals("3.8", result[0].result)
-    }
-
-    @Test
-    fun `decimal division returns raw double precision`() = testCalculate("10 / 3") { result ->
-        assertEquals("3.333333333333333333333333333333333", result[0].result)
-    }
-
-    @Test
-    fun `result with no decimal part shows as double with trailing zero`() = testCalculate("5.0 + 5.0") { result ->
-        assertEquals("10.0", result[0].result)
-    }
-
-    @Test
-    fun `simple variable assignment stores value`() = testCalculate("price = 100", "price") { result ->
-        assertEquals("100.0", result[0].result)
-        assertEquals("100.0", result[1].result)
-    }
-
-    @Test
-    fun `variable can be used in calculations`() = testCalculate("price = 100", "price * 2") { result ->
-        assertEquals("100.0", result[0].result)
-        assertEquals("200.0", result[1].result)
-    }
-
-    @Test
-    fun `multiple variables work together`() = testCalculate("a = 10", "b = 20", "a + b") { result ->
-        assertEquals("10.0", result[0].result)
-        assertEquals("20.0", result[1].result)
-        assertEquals("30.0", result[2].result)
-    }
+                assertEquals("1.0E18", result[36].result)
+                assertEquals("1000000000000000000", result[37].result)
+                assertEquals("1.0E18", result[38].result)
+                assertEquals("1000000000000000000", result[39].result)
+            }
 
     @Test
-    fun `variable reassignment updates value`() = testCalculate("x = 5", "x * 2", "x = 10", "x * 2") { result ->
-        assertEquals("5.0", result[0].result)
-        assertEquals("10.0", result[1].result)
-        assertEquals("10.0", result[2].result)
-        assertEquals("20.0", result[3].result)
-    }
+    fun `decimal addition returns formatted result`() =
+            testCalculate("1.5 + 2.3") { result -> assertEquals("3.8", result[0].result) }
 
     @Test
-    fun `variable with underscores in name`() = testCalculate("monthly_salary = 5000", "monthly_salary * 12", "monthly_salary") { result ->
-        assertEquals("5000.0", result[0].result)
-        assertEquals("60000.0", result[1].result)
-        assertEquals("5000.0", result[2].result)
-    }
+    fun `decimal division returns raw double precision`() =
+            testCalculate("10 / 3") { result ->
+                assertEquals("3.333333333333333333333333333333333", result[0].result)
+            }
 
     @Test
-    fun `variable with underscores in percentage expressions`() = testCalculate("rate = 10", "rate_with_disc = 10% off rate", "rate_with_disc") { result ->
-        assertEquals("10.0", result[0].result)
-        assertEquals("9.0", result[1].result)
-        assertEquals("9.0", result[2].result)
-    }
+    fun `result with no decimal part shows as double with trailing zero`() =
+            testCalculate("5.0 + 5.0") { result -> assertEquals("10.0", result[0].result) }
 
     @Test
-    fun `undefined variable returns error not implicit multiplication`() = testCalculate("rate = 10", "rate2") { result ->
-        // rate2 (without underscore) is not defined, should error out instead of being parsed as rate * 2
-        assertEquals("10.0", result[0].result)
-        assertError("Unknown variable `rate2`", result, 1)
-    }
+    fun `simple variable assignment stores value`() =
+            testCalculate("price = 100", "price") { result ->
+                assertEquals("100.0", result[0].result)
+                assertEquals("100.0", result[1].result)
+            }
 
     @Test
-    fun `variable assignment with expression`() = testCalculate("total = 10 + 20 + 30", "total / 3") { result ->
-        assertEquals("60.0", result[0].result)
-        assertEquals("20.0", result[1].result)
-    }
+    fun `variable can be used in calculations`() =
+            testCalculate("price = 100", "price * 2") { result ->
+                assertEquals("100.0", result[0].result)
+                assertEquals("200.0", result[1].result)
+            }
 
     @Test
-    fun `percentage of number works correctly`() = testCalculate("20% of 100") { result ->
-        assertEquals("20.0", result[0].result)
-    }
+    fun `multiple variables work together`() =
+            testCalculate("a = 10", "b = 20", "a + b") { result ->
+                assertEquals("10.0", result[0].result)
+                assertEquals("20.0", result[1].result)
+                assertEquals("30.0", result[2].result)
+            }
 
     @Test
-    fun `percentage of decimal number`() = testCalculate("15.5% of 200") { result ->
-        assertEquals("31.0", result[0].result) // Result is whole number
-    }
+    fun `variable reassignment updates value`() =
+            testCalculate("x = 5", "x * 2", "x = 10", "x * 2") { result ->
+                assertEquals("5.0", result[0].result)
+                assertEquals("10.0", result[1].result)
+                assertEquals("10.0", result[2].result)
+                assertEquals("20.0", result[3].result)
+            }
 
     @Test
-    fun `percentage of variable`() = testCalculate("price = 1000", "10% of price") { result ->
-        assertEquals("1000.0", result[0].result)
-        assertEquals("100.0", result[1].result)
-    }
+    fun `variable with underscores in name`() =
+            testCalculate("monthly_salary = 5000", "monthly_salary * 12", "monthly_salary") { result
+                ->
+                assertEquals("5000.0", result[0].result)
+                assertEquals("60000.0", result[1].result)
+                assertEquals("5000.0", result[2].result)
+            }
 
     @Test
-    fun `variable percentage of variable`() = testCalculate("a = 10", "b = 200", "a% of b") { result ->
-        assertEquals("10.0", result[0].result)
-        assertEquals("200.0", result[1].result)
-        assertEquals("20.0", result[2].result)
-    }
+    fun `variable with underscores in percentage expressions`() =
+            testCalculate("rate = 10", "rate_with_disc = 10% off rate", "rate_with_disc") { result
+                ->
+                assertEquals("10.0", result[0].result)
+                assertEquals("9.0", result[1].result)
+                assertEquals("9.0", result[2].result)
+            }
 
     @Test
-    fun `expression as percentage`() = testCalculate("(5+5)% of 200") { result ->
-        assertEquals("20.0", result[0].result)
-    }
+    fun `undefined variable returns error not implicit multiplication`() =
+            testCalculate("rate = 10", "rate2") { result ->
+                // rate2 (without underscore) is not defined, should error out instead of being
+                // parsed as rate * 2
+                assertEquals("10.0", result[0].result)
+                assertError("Unknown variable `rate2`", result, 1)
+            }
 
     @Test
-    fun `percentage of quantity preserves unit`() = testCalculate("10000g", "10% of _", "_ + 9kg") { result ->
-        assertEquals("10000.0 g", result[0].result)
-        assertEquals("1000.0 g", result[1].result)
-        assertEquals("10000.0 g", result[2].result)
-    }
+    fun `variable assignment with expression`() =
+            testCalculate("count = 10 + 20 + 30", "count / 3") { result ->
+                assertEquals("60.0", result[0].result)
+                assertEquals("20.0", result[1].result)
+            }
 
     @Test
-    fun `percentage of squared and cubed quantities preserves unit`() = testCalculate("100cm²", "10% of _", "1000mm³", "10% of _") { result ->
-        assertEquals("100.0 cm²", result[0].result)
-        assertEquals("10.0 cm²", result[1].result)
-        assertEquals("1000.0 mm³", result[2].result)
-        assertEquals("100.0 mm³", result[3].result)
-    }
+    fun `percentage of number works correctly`() =
+            testCalculate("20% of 100") { result -> assertEquals("20.0", result[0].result) }
 
     @Test
-    fun `unit cancellation in division returns unitless result`() = testCalculate(
-        "10km / 100m",
-        "(10km * 10km) / 50sqkm",
-        "x = 10km / 100m",
-        "x * 2",
-        "100kg / 10g",
-        "10kg / 2kg",
-        "1h / 60min"
-    ) { result ->
-        assertEquals("100.0", result[0].result)
-        assertEquals("2.0", result[1].result)
-        assertEquals("100.0", result[2].result)
-        assertEquals("200.0", result[3].result)
-        assertEquals("10000.0", result[4].result)
-        assertEquals("5.0", result[5].result)
-        assertEquals("1.0", result[6].result)
-    }
+    fun `percentage of decimal number`() =
+            testCalculate("15.5% of 200") { result ->
+                assertEquals("31.0", result[0].result) // Result is whole number
+            }
 
     @Test
-    fun `non linear same category division returns error`() = testCalculate("20 C / 10 C", "6 l100km / 2 l100km") { result ->
-        assertError("Division of `Celsius` and `Celsius` is not supported", result, 0)
-        assertError("Division of `Liters per 100 km` and `Liters per 100 km` is not supported", result, 1)
-    }
+    fun `percentage of variable`() =
+            testCalculate("price = 1000", "10% of price") { result ->
+                assertEquals("1000.0", result[0].result)
+                assertEquals("100.0", result[1].result)
+            }
 
     @Test
-    fun `percentage off reduces value`() = testCalculate("20% off 100") { result ->
-        assertEquals("80.0", result[0].result)
-    }
+    fun `variable percentage of variable`() =
+            testCalculate("a = 10", "b = 200", "a% of b") { result ->
+                assertEquals("10.0", result[0].result)
+                assertEquals("200.0", result[1].result)
+                assertEquals("20.0", result[2].result)
+            }
 
     @Test
-    fun `percentage off with decimal`() = testCalculate("25% off 80") { result ->
-        assertEquals("60.0", result[0].result)
-    }
+    fun `expression as percentage`() =
+            testCalculate("(5+5)% of 200") { result -> assertEquals("20.0", result[0].result) }
 
     @Test
-    fun `percentage off variable`() = testCalculate("original = 500", "30% off original") { result ->
-        assertEquals("500.0", result[0].result)
-        assertEquals("350.0", result[1].result)
-    }
+    fun `percentage of quantity preserves unit`() =
+            testCalculate("10000g", "10% of _", "_ + 9kg") { result ->
+                assertEquals("10000.0 g", result[0].result)
+                assertEquals("1000.0 g", result[1].result)
+                assertEquals("10000.0 g", result[2].result)
+            }
 
     @Test
-    fun `variable percentage off variable`() = testCalculate("a = 10", "b = 200", "a% off b") { result ->
-        assertEquals("10.0", result[0].result)
-        assertEquals("200.0", result[1].result)
-        assertEquals("180.0", result[2].result)
-    }
+    fun `percentage of squared and cubed quantities preserves unit`() =
+            testCalculate("100cm²", "10% of _", "1000mm³", "10% of _") { result ->
+                assertEquals("100.0 cm²", result[0].result)
+                assertEquals("10.0 cm²", result[1].result)
+                assertEquals("1000.0 mm³", result[2].result)
+                assertEquals("100.0 mm³", result[3].result)
+            }
+
+    @Test
+    fun `unit cancellation in division returns unitless result`() =
+            testCalculate(
+                    "10km / 100m",
+                    "(10km * 10km) / 50sqkm",
+                    "x = 10km / 100m",
+                    "x * 2",
+                    "100kg / 10g",
+                    "10kg / 2kg",
+                    "1h / 60min"
+            ) { result ->
+                assertEquals("100.0", result[0].result)
+                assertEquals("2.0", result[1].result)
+                assertEquals("100.0", result[2].result)
+                assertEquals("200.0", result[3].result)
+                assertEquals("10000.0", result[4].result)
+                assertEquals("5.0", result[5].result)
+                assertEquals("1.0", result[6].result)
+            }
+
+    @Test
+    fun `non linear same category division returns error`() =
+            testCalculate("20 C / 10 C", "6 l100km / 2 l100km") { result ->
+                assertError("Division of `Celsius` and `Celsius` is not supported", result, 0)
+                assertError(
+                        "Division of `Liters per 100 km` and `Liters per 100 km` is not supported",
+                        result,
+                        1
+                )
+            }
+
+    @Test
+    fun `percentage off reduces value`() =
+            testCalculate("20% off 100") { result -> assertEquals("80.0", result[0].result) }
+
+    @Test
+    fun `percentage off with decimal`() =
+            testCalculate("25% off 80") { result -> assertEquals("60.0", result[0].result) }
+
+    @Test
+    fun `percentage off variable`() =
+            testCalculate("original = 500", "30% off original") { result ->
+                assertEquals("500.0", result[0].result)
+                assertEquals("350.0", result[1].result)
+            }
+
+    @Test
+    fun `variable percentage off variable`() =
+            testCalculate("a = 10", "b = 200", "a% off b") { result ->
+                assertEquals("10.0", result[0].result)
+                assertEquals("200.0", result[1].result)
+                assertEquals("180.0", result[2].result)
+            }
 
     @Test
     fun `reverse percentage queries`() {
@@ -650,681 +730,697 @@ class MathEngineTest {
     }
 
     @Test
-    fun `add percentage to number`() = testCalculate("100 + 20%") { result ->
-        assertEquals("120.0", result[0].result)
-    }
+    fun `add percentage to number`() =
+            testCalculate("100 + 20%") { result -> assertEquals("120.0", result[0].result) }
 
     @Test
-    fun `add percentage to quantity preserves unit`() = testCalculate("10kg + 20%") { result ->
-        assertEquals("12.0 kg", result[0].result)
-    }
+    fun `add percentage to quantity preserves unit`() =
+            testCalculate("10kg + 20%") { result -> assertEquals("12.0 kg", result[0].result) }
 
     @Test
-    fun `add percentage to variable`() = testCalculate("salary = 50000", "salary + 10%") { result ->
-        assertEquals("50000.0", result[0].result)
-        assertEquals("55000.0", result[1].result)
-    }
+    fun `add percentage to variable`() =
+            testCalculate("salary = 50000", "salary + 10%") { result ->
+                assertEquals("50000.0", result[0].result)
+                assertEquals("55000.0", result[1].result)
+            }
 
     @Test
-    fun `subtract percentage from number`() = testCalculate("100 - 15%") { result ->
-        assertEquals("85.0", result[0].result)
-    }
+    fun `subtract percentage from number`() =
+            testCalculate("100 - 15%") { result -> assertEquals("85.0", result[0].result) }
 
     @Test
-    fun `subtract percentage from quantity preserves unit`() = testCalculate("10kg - 20%") { result ->
-        assertEquals("8.0 kg", result[0].result)
-    }
+    fun `subtract percentage from quantity preserves unit`() =
+            testCalculate("10kg - 20%") { result -> assertEquals("8.0 kg", result[0].result) }
 
     @Test
-    fun `subtract percentage from variable`() = testCalculate("budget = 1000", "budget - 25%") { result ->
-        assertEquals("1000.0", result[0].result)
-        assertEquals("750.0", result[1].result)
-    }
+    fun `subtract percentage from variable`() =
+            testCalculate("budget = 1000", "budget - 25%") { result ->
+                assertEquals("1000.0", result[0].result)
+                assertEquals("750.0", result[1].result)
+            }
 
     @Test
-    fun `expression with inline comment returns result`() = testCalculate("10 + 5 # adding numbers") { result ->
-        assertEquals("15.0", result[0].result)
-    }
+    fun `expression with inline comment returns result`() =
+            testCalculate("10 + 5 # adding numbers") { result ->
+                assertEquals("15.0", result[0].result)
+            }
 
     @Test
-    fun `full line comment returns empty result`() = testCalculate("# This is just a comment") { result ->
-        assertEquals("", result[0].result)
-    }
+    fun `full line comment returns empty result`() =
+            testCalculate("# This is just a comment") { result ->
+                assertEquals("", result[0].result)
+            }
 
     @Test
-    fun `comment with special characters is ignored`() = testCalculate("20 * 2 # result should be 40!") { result ->
-        assertEquals("40.0", result[0].result)
-    }
+    fun `comment with special characters is ignored`() =
+            testCalculate("20 * 2 # result should be 40!") { result ->
+                assertEquals("40.0", result[0].result)
+            }
 
     @Test
-    fun `hash symbol in middle of expression is treated as comment`() = testCalculate("5 + 5 # + 10") { result ->
-        assertEquals("10.0", result[0].result)
-    }
+    fun `hash symbol in middle of expression is treated as comment`() =
+            testCalculate("5 + 5 # + 10") { result -> assertEquals("10.0", result[0].result) }
 
     @Test
-    fun `empty expression returns empty result`() = testCalculate("") { result ->
-        assertEquals("", result[0].result)
-    }
+    fun `empty expression returns empty result`() =
+            testCalculate("") { result -> assertEquals("", result[0].result) }
 
     @Test
-    fun `blank expression with spaces returns empty result`() = testCalculate("   ") { result ->
-        assertEquals("", result[0].result)
-    }
+    fun `blank expression with spaces returns empty result`() =
+            testCalculate("   ") { result -> assertEquals("", result[0].result) }
 
     @Test
-    fun `expression with only comment and spaces returns empty result`() = testCalculate("   # just a comment") { result ->
-        assertEquals("", result[0].result)
-    }
+    fun `expression with only comment and spaces returns empty result`() =
+            testCalculate("   # just a comment") { result -> assertEquals("", result[0].result) }
 
     @Test
-    fun `invalid expression returns Err`() = testCalculate("2 + * 2") { result ->
-        assertError("Expected a value or `(`, but found `*`", result, 0)
-    }
+    fun `invalid expression returns Err`() =
+            testCalculate("2 + * 2") { result ->
+                assertError("Expected a value or `(`, but found `*`", result, 0)
+            }
 
     @Test
-    fun `division by zero returns Err`() = testCalculate("10 / 0") { result ->
-        assertError("Cannot divide by zero", result, 0)
-    }
+    fun `division by zero returns Err`() =
+            testCalculate("10 / 0") { result -> assertError("Cannot divide by zero", result, 0) }
 
     @Test
-    fun `undefined variable returns Err`() = testCalculate("unknownVar * 2") { result ->
-        assertError("Unknown variable `unknownVar`", result, 0)
-    }
+    fun `undefined variable returns Err`() =
+            testCalculate("unknownVar * 2") { result ->
+                assertError("Unknown variable `unknownVar`", result, 0)
+            }
 
     @Test
-    fun `malformed parentheses returns Err`() = testCalculate("(2 + 3") { result ->
-        assertError("Expected `)`, but found `end of line`", result, 0)
-    }
+    fun `malformed parentheses returns Err`() =
+            testCalculate("(2 + 3") { result ->
+                assertError("Expected `)`, but found `end of line`", result, 0)
+            }
 
     @Test
-    fun `complex calculation with variables and percentages`() = testCalculate(
-        "basePrice = 1000",
-        "discount = 15% of basePrice",
-        "discountedPrice = basePrice - discount",
-        "tax = 10% of discountedPrice",
-        "final = discountedPrice + tax"
-    ) { result ->
-        assertEquals("1000.0", result[0].result)
-        assertEquals("150.0", result[1].result)
-        assertEquals("850.0", result[2].result)
-        assertEquals("85.0", result[3].result)
-        assertEquals("935.0", result[4].result)
-    }
+    fun `complex calculation with variables and percentages`() =
+            testCalculate(
+                    "basePrice = 1000",
+                    "discount = 15% of basePrice",
+                    "discountedPrice = basePrice - discount",
+                    "tax = 10% of discountedPrice",
+                    "final = discountedPrice + tax"
+            ) { result ->
+                assertEquals("1000.0", result[0].result)
+                assertEquals("150.0", result[1].result)
+                assertEquals("850.0", result[2].result)
+                assertEquals("85.0", result[3].result)
+                assertEquals("935.0", result[4].result)
+            }
 
     @Test
-    fun `multi-line with comments and calculations`() = testCalculate(
-        "# Monthly budget calculation",
-        "income = 5000",
-        "rent = 1200 # apartment",
-        "utilities = 300",
-        "remaining = income - rent - utilities"
-    ) { result ->
-        assertEquals("", result[0].result)
-        assertEquals("5000.0", result[1].result)
-        assertEquals("1200.0", result[2].result)
-        assertEquals("300.0", result[3].result)
-        assertEquals("3500.0", result[4].result)
-    }
+    fun `multi-line with comments and calculations`() =
+            testCalculate(
+                    "# Monthly budget calculation",
+                    "income = 5000",
+                    "rent = 1200 # apartment",
+                    "utilities = 300",
+                    "remaining = income - rent - utilities"
+            ) { result ->
+                assertEquals("", result[0].result)
+                assertEquals("5000.0", result[1].result)
+                assertEquals("1200.0", result[2].result)
+                assertEquals("300.0", result[3].result)
+                assertEquals("3500.0", result[4].result)
+            }
 
     @Test
-    fun `variable dependency chain calculates correctly`() = testCalculate(
-        "a = 10",
-        "b = a * 2",
-        "c = b + a",
-        "d = c / a"
-    ) { result ->
-        assertEquals("10.0", result[0].result)
-        assertEquals("20.0", result[1].result)
-        assertEquals("30.0", result[2].result)
-        assertEquals("3.0", result[3].result)
-    }
+    fun `variable dependency chain calculates correctly`() =
+            testCalculate("a = 10", "b = a * 2", "c = b + a", "d = c / a") { result ->
+                assertEquals("10.0", result[0].result)
+                assertEquals("20.0", result[1].result)
+                assertEquals("30.0", result[2].result)
+                assertEquals("3.0", result[3].result)
+            }
 
     @Test
-    fun `mixed valid and invalid lines process independently`() = testCalculate(
-        "5 + 5",
-        "invalid ++",
-        "10 * 2"
-    ) { result ->
-        assertEquals("10.0", result[0].result)
-        assertError("Unknown variable `invalid`", result[1], result, 1)
-        assertEquals("20.0", result[2].result)
-    }
+    fun `mixed valid and invalid lines process independently`() =
+            testCalculate("5 + 5", "invalid ++", "10 * 2") { result ->
+                assertEquals("10.0", result[0].result)
+                assertError("Unknown variable `invalid`", result[1], result, 1)
+                assertEquals("20.0", result[2].result)
+            }
 
     @Test
-    fun `large integer within Long range is returned correctly`() = testCalculate("1000000000 * 2") { result ->
-        assertEquals("2000000000.0", result[0].result)
-    }
+    fun `large integer within Long range is returned correctly`() =
+            testCalculate("1000000000 * 2") { result ->
+                assertEquals("2000000000.0", result[0].result)
+            }
 
     @Test
-    fun `very large number uses scientific notation`() = testCalculate("999999999999999 * 999999999999999") { result ->
-        // Should be in scientific notation format
-        assertTrue(result[0].result.contains("e") || result[0].result.length > 15)
-    }
+    fun `very large number uses scientific notation`() =
+            testCalculate("999999999999999 * 999999999999999") { result ->
+                // Should be in scientific notation format
+                assertTrue(result[0].result.contains("e") || result[0].result.length > 15)
+            }
 
     @Test
-    fun `single number evaluates to itself`() = testCalculate("42") { result ->
-        assertEquals("42.0", result[0].result)
-    }
+    fun `single number evaluates to itself`() =
+            testCalculate("42") { result -> assertEquals("42.0", result[0].result) }
 
     @Test
-    fun `negative numbers work correctly`() = testCalculate("-10 + 5") { result ->
-        assertEquals("-5.0", result[0].result)
-    }
+    fun `negative numbers work correctly`() =
+            testCalculate("-10 + 5") { result -> assertEquals("-5.0", result[0].result) }
 
     @Test
-    fun `nested parentheses calculate correctly`() = testCalculate("((2 + 3) * (4 + 5))") { result ->
-        assertEquals("45.0", result[0].result)
-    }
+    fun `nested parentheses calculate correctly`() =
+            testCalculate("((2 + 3) * (4 + 5))") { result ->
+                assertEquals("45.0", result[0].result)
+            }
 
     @Test
-    fun `expression with only whitespace after comment`() = testCalculate("10 + 5 #    ") { result ->
-        assertEquals("15.0", result[0].result)
-    }
+    fun `expression with only whitespace after comment`() =
+            testCalculate("10 + 5 #    ") { result -> assertEquals("15.0", result[0].result) }
 
     @Test
-    fun `zero as result displays as 0`() = testCalculate("5 - 5") { result ->
-        assertEquals("0.0", result[0].result)
-    }
+    fun `zero as result displays as 0`() =
+            testCalculate("5 - 5") { result -> assertEquals("0.0", result[0].result) }
 
     @Test
-    fun `maintains decimal precision correctly`() = testCalculate("1 / 3 * 3") { result ->
-        assertEquals("0.9999999999999999999999999999999999", result[0].result) // Result is whole number
-    }
+    fun `maintains decimal precision correctly`() =
+            testCalculate("1 / 3 * 3") { result ->
+                assertEquals(
+                        "0.9999999999999999999999999999999999",
+                        result[0].result
+                ) // Result is whole number
+            }
 
     @Test
-    fun `high precision arithmetic works for very large numbers`() = testCalculate("(10^100) + 1 - (10^100)") { result ->
-        assertEquals("1.0", result[0].result)
-    }
+    fun `high precision arithmetic works for very large numbers`() =
+            testCalculate("(10^100) + 1 - (10^100)") { result ->
+                assertEquals("1.0", result[0].result)
+            }
 
     @Test
-    fun `variable with underscore in name works`() = testCalculate(
-        "my_var = 100",
-        "my_var * 2"
-    ) { result ->
-        assertEquals("100.0", result[0].result)
-        assertEquals("200.0", result[1].result)
-    }
-
-    @Test
-    fun `percentage calculation order matters`() = testCalculate("20% of 100") { result ->
-        // 20% of 100 should be 20, not 100% of 20
-        assertEquals("20.0", result[0].result)
-    }
-
-    @Test
-    fun `multiple spaces in expression are handled`() = testCalculate("10    +    20") { result ->
-        assertEquals("30.0", result[0].result)
-    }
-
-    @Test
-    fun `invalid variable name with spaces returns error`() = testCalculate("rate with disc = 10") { result ->
-        assertError("Unexpected `identifier`", result, 0)
-    }
-
-    @Test
-    fun `invalid variable name starting with digit returns error`() = testCalculate("2rate = 10") { result ->
-        assertError("Unexpected `identifier`", result, 0)
-    }
-
-    @Test
-    fun `invalid variable name with special characters returns error`() = testCalculate("rate-disc = 10") {
-        assertError("Unexpected `=`", it, 0)
-    }
-
-    @Test
-    fun `valid variable names with underscores work`() = testCalculate(
-        "rate_with_disc = 10",
-        "rate_2 = 11",
-        "_private2 = 5",
-        "__internal__ = 3",
-        "1 + 1", // Dummy line for later subtraction testing if needed
-        "_private2 + __internal__"
-    ) { result ->
-        assertEquals("10.0", result[0].result)
-        assertEquals("11.0", result[1].result)
-        assertEquals("5.0", result[2].result)
-        assertEquals("3.0", result[3].result)
-        assertEquals("8.0", result[5].result)
-    }
-
-    @Test
-    fun `trigonometric functions work`() = testCalculate(
-        "sin(0)",
-        "cos(0)",
-        "tan(0)"
-    ) { result ->
-        assertEquals("0.0", result[0].result)
-        assertEquals("1.0", result[1].result)
-        assertEquals("0.0", result[2].result)
-    }
-
-    @Test
-    fun `trigonometric functions reject non angular units`() = testCalculate(
-        "sin(1 kg)",
-        "cos(1 s)",
-        "tan(1 m)"
-    ) { result ->
-        assertError("`sin()` does not accept `Kilogram` type, pass a unitless value or an angle value.", result, 0)
-        assertError("`cos()` does not accept `Second` type, pass a unitless value or an angle value.", result, 1)
-        assertError("`tan()` does not accept `Meter` type, pass a unitless value or an angle value.", result, 2)
-    }
-
-    @Test
-    fun `inverse trigonometric functions work`() = testCalculate(
-        "asin(0)",
-        "acos(1)",
-        "atan(0)"
-    ) { result ->
-        assertEquals("0.0", result[0].result)
-        assertEquals("0.0", result[1].result)
-        assertEquals("0.0", result[2].result)
-    }
-
-    @Test
-    fun `inverse trigonometric functions reject non angular units`() = testCalculate(
-        "asin(1 kg)",
-        "acos(1 m)",
-        "atan(1 s)"
-    ) { result ->
-        assertError("`asin()` does not accept `Kilogram` type, pass a unitless value or an angle value.", result, 0)
-        assertError("`acos()` does not accept `Meter` type, pass a unitless value or an angle value.", result, 1)
-        assertError("`atan()` does not accept `Second` type, pass a unitless value or an angle value.", result, 2)
-    }
-
-    @Test
-    fun `logarithm functions work`() = testCalculate(
-        "log10(1000)",
-        "log2(8)",
-        "log(e)" // Natural log of e should be 1
-    ) { result ->
-        assertEquals("3.0", result[0].result)
-        assertEquals("3.0", result[1].result)
-        assertEquals("1.0", result[2].result)
-    }
-
-    @Test
-    fun `logarithm functions reject dimensional input`() = testCalculate(
-        "log10(10 kg)",
-        "log2(10 s)",
-        "log(10 m)"
-    ) { result ->
-        assertError("`log10()` does not accept `Kilogram` type, pass a unitless value.", result, 0)
-        assertError("`log2()` does not accept `Second` type, pass a unitless value.", result, 1)
-        assertError("`log()` does not accept `Meter` type, pass a unitless value.", result, 2)
-    }
-
-    @Test
-    fun `power and root functions work`() = testCalculate(
-        "sqrt(16)",
-        "sqrt(16 ft²)",
-        "cbrt(27)",
-        "cbrt(27 m³)",
-        "sqrt(16 kg)",
-        "sqrt((4 kg)^2)",
-        "16 kg * 16 kg",
-        "(15 °C)^2",
-        "pow(2, 8)",
-        "exp(0)"
-    ) { result ->
-        assertEquals("4.0", result[0].result)
-        assertEquals("4.0 ft", result[1].result)
-        assertEquals("3.0", result[2].result)
-        assertEquals("3.0 m", result[3].result)
-        assertError("`sqrt()` requires a unitless value or a squared unit.", result, 4)
-        assertError("Exponentiation of `Kilogram` by `2` is not supported", result, 5)
-        assertError("Multiplication of `Kilogram` and `Kilogram` is not supported", result, 6)
-        assertError("Exponentiation of `Celsius` by `2` is not supported", result, 7)
-        assertEquals("256.0", result[8].result)
-        assertEquals("1.0", result[9].result)
-    }
-
-    @Test
-    fun `factorial functions work`() = testCalculate(
-        "factorial(0)",
-        "factorial(5)",
-        "fact(6)"
-    ) { result ->
-        assertEquals("1.0", result[0].result)
-        assertEquals("120.0", result[1].result)
-        assertEquals("720.0", result[2].result)
-    }
-
-    @Test
-    fun `factorial functions reject dimensional input`() = testCalculate(
-        "factorial(5 kg)",
-        "fact(6 m)"
-    ) { result ->
-        assertError("`factorial()` does not accept `Kilogram` type, pass a unitless value.", result, 0)
-        assertError("`fact()` does not accept `Meter` type, pass a unitless value.", result, 1)
-    }
-
-    @Test
-    fun `rounding functions work`() = testCalculate(
-        "abs(-42)",
-        "floor(3.7)",
-        "ceil(3.2)",
-        "signum(-5)",
-        "signum(0)",
-        "signum(5)"
-    ) { result ->
-        assertEquals("42.0", result[0].result)
-        assertEquals("3.0", result[1].result)
-        assertEquals("4.0", result[2].result)
-        assertEquals("-1.0", result[3].result)
-        assertEquals("0.0", result[4].result)
-        assertEquals("1.0", result[5].result)
-    }
-
-    @Test
-    fun `rounding functions preserve units and reject nonsense inputs through inner calls`() = testCalculate(
-        "abs(-4 kg)",
-        "floor(2.5 ft)",
-        "ceil(2.5 ft)",
-        "signum(-4 kg)",
-        "floor(sin(1 kg))"
-    ) { result ->
-        assertEquals("4.0 kg", result[0].result)
-        assertEquals("2.0 ft", result[1].result)
-        assertEquals("3.0 ft", result[2].result)
-        assertEquals("-1.0 kg", result[3].result)
-        assertError("`sin()` does not accept `Kilogram` type, pass a unitless value or an angle value.", result, 4)
-    }
-
-    @Test
-    fun `constants work`() = testCalculate(
-        "PI",
-        "PI * 2",
-        "pi",
-        "π",
-        "e",
-        "e+1"
-    ) { result ->
-        val piValue = result[0].result.toDoubleOrNull()
-        assertNotNull("PI should return a number, got: ${result[0].result}", piValue)
-        assertTrue("PI should be ~3.14, got: $piValue", piValue!! >= 3.14 && piValue <= 3.15)
-
-        val piTimesTwo = result[1].result.toDoubleOrNull()
-        assertNotNull("PI * 2 should return a number, got: ${result[1].result}", piTimesTwo)
-        assertTrue("PI * 2 should be ~6.28, got: $piTimesTwo", piTimesTwo!! >= 6.28 && piTimesTwo <= 6.29)
-
-        assertEquals(result[0].result, result[2].result) // pi
-        assertEquals(result[0].result, result[3].result) // π
-
-        val eValueLower = result[4].result.toDoubleOrNull()
-        assertNotNull("e should return a number, got: ${result[4].result}", eValueLower)
-        assertTrue("e should be ~2.72, got: $eValueLower", eValueLower!! >= 2.71 && eValueLower <= 2.73)
-
-        val ePlusOne = result[5].result.toDoubleOrNull()
-        assertNotNull("e+1 should return a number, got: ${result[5].result}", ePlusOne)
-        assertTrue("e+1 should be ~3.72, got: $ePlusOne", ePlusOne!! >= 3.71 && ePlusOne <= 3.73)
-    }
-
-    @Test
-    fun `scientific notation works correctly`() = testCalculate(
-        "1E2",
-        "1.23E4",
-        "1E-2",
-        "1.5E+3",
-        "1E2 - e",
-        "1E-2 - e",
-        "1.23E-5",
-        "1E5",
-        "1E1000000",
-        "1E100000000000000000000000",
-        "50E100000",
-        "1E5 + 2E5",
-        "2E10 * 3E10",
-        "1E1000 / 1E500"
-    ) { result ->
-        assertEquals("100.0", result[0].result)
-        assertEquals("12300.0", result[1].result)
-        assertEquals("0.01", result[2].result)
-        assertEquals("1500.0", result[3].result)
-        assertEquals("97.2817181715409547646397125286473375022428", result[4].result) // 100 - e
-        assertEquals("-2.7082818284590452353602874713526624977572", result[5].result) // 0.01 - e
-        assertEquals("0.0000123", result[6].result)
-        assertEquals("100000.0", result[7].result)
-        assertEquals("1.0E1000000", result[8].result)
-        assertError("Exponent is too large (max 1000000)", result, 9)
-        // 50E100000 = 5 * 10^100001. formatDisplayResult converts 5E100001 to 5.00E100001 with default precision 2.
-        assertEquals("5.00E100001", MathEngine.formatDisplayResult(result[10].result, 2))
-        assertEquals("300000.0", result[11].result)
-        assertEquals("6.0E20", result[12].result) // >= 10^15 switches to scientific
-        assertEquals("1.0E500", result[13].result)
-    }
-
-    @Test
-    fun `functions can be used with variables`() = testCalculate(
-        "radius = 5",
-        "area = PI * pow(radius, 2)"
-    ) { result ->
-        assertEquals("5.0", result[0].result)
-        // Area should be approximately 78.54
-        assertTrue(result[1].result.toDouble() > 78 && result[1].result.toDouble() < 79)
-    }
-
-    @Test
-    fun `nested functions work`() = testCalculate(
-        "sqrt(pow(3, 2) + pow(4, 2))",
-        "abs(sin(0) - 1)"
-    ) { result ->
-        assertEquals("5.0", result[0].result) // Pythagorean theorem: sqrt(9 + 16) = 5
-        assertEquals("1.0", result[1].result) // abs(0 - 1) = 1
-    }
-
-    @Test
-    fun `functions are case sensitive`() = testCalculate(
-        "SQRT(16)",
-        "SIN(0)"
-    ) { result ->
-        assertError("Unknown function `SQRT()`", result, 0)
-        assertError("Unknown function `SIN()`", result, 1)
-    }
-
-    @Test
-    fun `functions require parentheses`() = testCalculate(
-        "floor(3.7)",
-        "floor 3.7",
-        "sqrt(16)",
-        "sqrt 16"
-    ) { result ->
-        assertEquals("3.0", result[0].result)
-        assertError("Unexpected `number`", result, 1) // floor 3.7
-        assertEquals("4.0", result[2].result)
-        assertError("Unexpected `number`", result, 3) // sqrt 16
-    }
-
-    @Test
-    fun `increment operator increases variable by 1`() = testCalculate(
-        "count = 5",
-        "count++"
-    ) { result ->
-        assertEquals("5.0", result[0].result)
-        assertEquals("6.0", result[1].result)
-    }
-
-    @Test
-    fun `decrement operator decreases variable by 1`() = testCalculate(
-        "count = 5",
-        "count--"
-    ) { result ->
-        assertEquals("5.0", result[0].result)
-        assertEquals("4.0", result[1].result)
-    }
-
-    @Test
-    fun `temperature increment increases displayed value by one degree`() = testCalculate(
-        "temp = 30 °C",
-        "temp++",
-        "temp = 30 °F",
-        "temp++",
-        "temp = 30 K",
-        "temp++"
-    ) { result ->
-        assertEquals("30.0 °C", result[0].result)
-        assertEquals("31.0 °C", result[1].result)
-        assertEquals("30.0 °F", result[2].result)
-        assertEquals("31.0 °F", result[3].result)
-        assertEquals("30.0 K", result[4].result)
-        assertEquals("31.0 K", result[5].result)
-    }
-
-    @Test
-    fun `temperature decrement decreases displayed value by one degree`() = testCalculate(
-        "temp = 30 °C",
-        "temp--",
-        "temp = 30 °F",
-        "temp--",
-        "temp = 30 K",
-        "temp--"
-    ) { result ->
-        assertEquals("30.0 °C", result[0].result)
-        assertEquals("29.0 °C", result[1].result)
-        assertEquals("30.0 °F", result[2].result)
-        assertEquals("29.0 °F", result[3].result)
-        assertEquals("30.0 K", result[4].result)
-        assertEquals("29.0 K", result[5].result)
-    }
-
-    @Test
-    fun `compound addition assignment`() = testCalculate(
-        "total = 10",
-        "total += 5 + 2"
-    ) { result ->
-        assertEquals("10.0", result[0].result)
-        assertEquals("17.0", result[1].result) // 10 + (5 + 2)
-    }
-
-    @Test
-    fun `compound subtraction assignment`() = testCalculate(
-        "total = 20",
-        "total -= 5 * 2"
-    ) { result ->
-        assertEquals("20.0", result[0].result)
-        assertEquals("10.0", result[1].result) // 20 - (5 * 2)
-    }
-
-    @Test
-    fun `compound multiplication assignment`() = testCalculate(
-        "factor = 3",
-        "factor *= 2 + 1"
-    ) { result ->
-        assertEquals("3.0", result[0].result)
-        assertEquals("9.0", result[1].result) // 3 * (2 + 1)
-    }
-
-    @Test
-    fun `compound division assignment`() = testCalculate(
-        "amount = 100",
-        "amount /= 5"
-    ) { result ->
-        assertEquals("100.0", result[0].result)
-        assertEquals("20.0", result[1].result)
-    }
-
-    @Test
-    fun `compound modulo (remainder) assignment`() = testCalculate(
-        "amount = 10",
-        "amount %= 3"
-    ) { result ->
-        assertEquals("10.0", result[0].result)
-        assertEquals("1.0", result[1].result)
-    }
-
-    @Test
-    fun `calculateFrom returns only the affected lines starting at changedIndex`() = testCalculateFrom(
-        "1 + 1",
-        "2 + 2",
-        "3 + 3",
-        changedIndex = 1
-    ) { result ->
-        // Should return lines[1..2] only (2 lines)
-        assertEquals(2, result.size)
-        assertEquals("4.0", result[0].result)
-        assertEquals("6.0", result[1].result)
-    }
-
-    @Test
-    fun `calculateFrom respects variables defined in preceding lines`() = testCalculateFrom(
-        "price = 100",
-        "tax = 10",
-        "price + tax",
-        changedIndex = 2
-    ) { result ->
-        assertEquals(1, result.size)
-        assertEquals("110.0", result[0].result)
-    }
-
-    @Test
-    fun `local function basic definition and call`() = testCalculate(
-        "f(x) = x * 2",
-        "f(5)"
-    ) { result ->
-        assertEquals("", result[0].result) // Function definition produces no output
-        assertEquals("10.0", result[1].result)
-    }
-
-    @Test
-    fun `local function multiple parameters`() = testCalculate(
-        "calc(a, b) = a + b;",
-        "calc(10, 20)"
-    ) { result ->
-        assertEquals("", result[0].result)
-        assertEquals("30.0", result[1].result)
-    }
-
-    @Test
-    fun `local function multiple statements returns last expression`() = testCalculate(
-        "salary(workHours) = base = workHours * 1000; bonus = base * 0.20; tax = base * 0.10; base + bonus - tax",
-        "salary(120)"
-    ) { result ->
-        assertEquals("", result[0].result)
-        assertEquals("132000.0", result[1].result)
-    }
-
-    @Test
-    fun `local function strictly isolates scope`() = testCalculate(
-        "v = 10",
-        "f(x) = v = x;",
-        "f(5)",
-        "v" // Should still be 10, not overridden by 'v' inside f
-    ) { result ->
-        assertEquals("10.0", result[0].result)
-        assertEquals("", result[1].result)
-        assertEquals("5.0", result[2].result)
-        assertEquals("10.0", result[3].result) // Outer scope unchanged
-    }
-
-    @Test
-    fun `local function prevents infinite recursion`() = testCalculate(
-        "calc(a) = calc(a);",
-        "calc(2)"
-    ) { result ->
-        assertEquals("", result[0].result)
-        assertError("Function `calc()` calls itself too many times which is not allowed", result, 1) // Throws recursive exception
-    }
-
-    @Test
-    fun `local function with trailing comment does not return 0`() = testCalculate(
-        "f(x) = x * 2; # comment",
-        "f(5)"
-    ) { result ->
-        assertEquals("10.0", result[1].result) // Should NOT be "0"
-    }
-
-    @Test
-    fun `nested function definition in a local function body is not allowed`() = testCalculate(
-        "f(x) = g(y) = y; x",
-        "f(5)"
-    ) { result ->
-        assertError("Functions cannot be created inside other functions", result, 0)
-        assertError("Unknown function `f()`", result, 1)
-    }
-
-    @Test
-    fun `semicolons outside function bodies fail parsing`() = testCalculate("x = 10; y = 20") { result ->
-        assertError("Unexpected `;`", result, 0) // ParseException
-    }
+    fun `variable with underscore in name works`() =
+            testCalculate("my_var = 100", "my_var * 2") { result ->
+                assertEquals("100.0", result[0].result)
+                assertEquals("200.0", result[1].result)
+            }
+
+    @Test
+    fun `percentage calculation order matters`() =
+            testCalculate("20% of 100") { result ->
+                // 20% of 100 should be 20, not 100% of 20
+                assertEquals("20.0", result[0].result)
+            }
+
+    @Test
+    fun `multiple spaces in expression are handled`() =
+            testCalculate("10    +    20") { result -> assertEquals("30.0", result[0].result) }
+
+    @Test
+    fun `invalid variable name with spaces returns error`() =
+            testCalculate("rate with disc = 10") { result ->
+                assertError("Unexpected `identifier`", result, 0)
+            }
+
+    @Test
+    fun `invalid variable name starting with digit returns error`() =
+            testCalculate("2rate = 10") { result ->
+                assertError("Unexpected `identifier`", result, 0)
+            }
+
+    @Test
+    fun `invalid variable name with special characters returns error`() =
+            testCalculate("rate-disc = 10") { assertError("Unexpected `=`", it, 0) }
+
+    @Test
+    fun `valid variable names with underscores work`() =
+            testCalculate(
+                    "rate_with_disc = 10",
+                    "rate_2 = 11",
+                    "_private2 = 5",
+                    "__internal__ = 3",
+                    "1 + 1", // Dummy line for later subtraction testing if needed
+                    "_private2 + __internal__"
+            ) { result ->
+                assertEquals("10.0", result[0].result)
+                assertEquals("11.0", result[1].result)
+                assertEquals("5.0", result[2].result)
+                assertEquals("3.0", result[3].result)
+                assertEquals("8.0", result[5].result)
+            }
+
+    @Test
+    fun `trigonometric functions work`() =
+            testCalculate("sin(0)", "cos(0)", "tan(0)") { result ->
+                assertEquals("0.0", result[0].result)
+                assertEquals("1.0", result[1].result)
+                assertEquals("0.0", result[2].result)
+            }
+
+    @Test
+    fun `trigonometric functions reject non angular units`() =
+            testCalculate("sin(1 kg)", "cos(1 s)", "tan(1 m)") { result ->
+                assertError(
+                        "`sin()` does not accept `Kilogram` type, pass a unitless value or an angle value.",
+                        result,
+                        0
+                )
+                assertError(
+                        "`cos()` does not accept `Second` type, pass a unitless value or an angle value.",
+                        result,
+                        1
+                )
+                assertError(
+                        "`tan()` does not accept `Meter` type, pass a unitless value or an angle value.",
+                        result,
+                        2
+                )
+            }
+
+    @Test
+    fun `inverse trigonometric functions work`() =
+            testCalculate("asin(0)", "acos(1)", "atan(0)") { result ->
+                assertEquals("0.0", result[0].result)
+                assertEquals("0.0", result[1].result)
+                assertEquals("0.0", result[2].result)
+            }
+
+    @Test
+    fun `inverse trigonometric functions reject non angular units`() =
+            testCalculate("asin(1 kg)", "acos(1 m)", "atan(1 s)") { result ->
+                assertError(
+                        "`asin()` does not accept `Kilogram` type, pass a unitless value or an angle value.",
+                        result,
+                        0
+                )
+                assertError(
+                        "`acos()` does not accept `Meter` type, pass a unitless value or an angle value.",
+                        result,
+                        1
+                )
+                assertError(
+                        "`atan()` does not accept `Second` type, pass a unitless value or an angle value.",
+                        result,
+                        2
+                )
+            }
+
+    @Test
+    fun `logarithm functions work`() =
+            testCalculate(
+                    "log10(1000)",
+                    "log2(8)",
+                    "log(e)" // Natural log of e should be 1
+            ) { result ->
+                assertEquals("3.0", result[0].result)
+                assertEquals("3.0", result[1].result)
+                assertEquals("1.0", result[2].result)
+            }
+
+    @Test
+    fun `logarithm functions reject dimensional input`() =
+            testCalculate("log10(10 kg)", "log2(10 s)", "log(10 m)") { result ->
+                assertError(
+                        "`log10()` does not accept `Kilogram` type, pass a unitless value.",
+                        result,
+                        0
+                )
+                assertError(
+                        "`log2()` does not accept `Second` type, pass a unitless value.",
+                        result,
+                        1
+                )
+                assertError(
+                        "`log()` does not accept `Meter` type, pass a unitless value.",
+                        result,
+                        2
+                )
+            }
+
+    @Test
+    fun `power and root functions work`() =
+            testCalculate(
+                    "sqrt(16)",
+                    "sqrt(16 ft²)",
+                    "cbrt(27)",
+                    "cbrt(27 m³)",
+                    "sqrt(16 kg)",
+                    "sqrt((4 kg)^2)",
+                    "16 kg * 16 kg",
+                    "(15 °C)^2",
+                    "pow(2, 8)",
+                    "exp(0)"
+            ) { result ->
+                assertEquals("4.0", result[0].result)
+                assertEquals("4.0 ft", result[1].result)
+                assertEquals("3.0", result[2].result)
+                assertEquals("3.0 m", result[3].result)
+                assertError("`sqrt()` requires a unitless value or a squared unit.", result, 4)
+                assertError("Exponentiation of `Kilogram` by `2` is not supported", result, 5)
+                assertError(
+                        "Multiplication of `Kilogram` and `Kilogram` is not supported",
+                        result,
+                        6
+                )
+                assertError("Exponentiation of `Celsius` by `2` is not supported", result, 7)
+                assertEquals("256.0", result[8].result)
+                assertEquals("1.0", result[9].result)
+            }
+
+    @Test
+    fun `factorial functions work`() =
+            testCalculate("factorial(0)", "factorial(5)", "fact(6)") { result ->
+                assertEquals("1.0", result[0].result)
+                assertEquals("120.0", result[1].result)
+                assertEquals("720.0", result[2].result)
+            }
+
+    @Test
+    fun `factorial functions reject dimensional input`() =
+            testCalculate("factorial(5 kg)", "fact(6 m)") { result ->
+                assertError(
+                        "`factorial()` does not accept `Kilogram` type, pass a unitless value.",
+                        result,
+                        0
+                )
+                assertError(
+                        "`fact()` does not accept `Meter` type, pass a unitless value.",
+                        result,
+                        1
+                )
+            }
+
+    @Test
+    fun `rounding functions work`() =
+            testCalculate(
+                    "abs(-42)",
+                    "floor(3.7)",
+                    "ceil(3.2)",
+                    "signum(-5)",
+                    "signum(0)",
+                    "signum(5)"
+            ) { result ->
+                assertEquals("42.0", result[0].result)
+                assertEquals("3.0", result[1].result)
+                assertEquals("4.0", result[2].result)
+                assertEquals("-1.0", result[3].result)
+                assertEquals("0.0", result[4].result)
+                assertEquals("1.0", result[5].result)
+            }
+
+    @Test
+    fun `rounding functions preserve units and reject nonsense inputs through inner calls`() =
+            testCalculate(
+                    "abs(-4 kg)",
+                    "floor(2.5 ft)",
+                    "ceil(2.5 ft)",
+                    "signum(-4 kg)",
+                    "floor(sin(1 kg))"
+            ) { result ->
+                assertEquals("4.0 kg", result[0].result)
+                assertEquals("2.0 ft", result[1].result)
+                assertEquals("3.0 ft", result[2].result)
+                assertEquals("-1.0 kg", result[3].result)
+                assertError(
+                        "`sin()` does not accept `Kilogram` type, pass a unitless value or an angle value.",
+                        result,
+                        4
+                )
+            }
+
+    @Test
+    fun `constants work`() =
+            testCalculate("PI", "PI * 2", "pi", "π", "e", "e+1") { result ->
+                val piValue = result[0].result.toDoubleOrNull()
+                assertNotNull("PI should return a number, got: ${result[0].result}", piValue)
+                assertTrue(
+                        "PI should be ~3.14, got: $piValue",
+                        piValue!! >= 3.14 && piValue <= 3.15
+                )
+
+                val piTimesTwo = result[1].result.toDoubleOrNull()
+                assertNotNull("PI * 2 should return a number, got: ${result[1].result}", piTimesTwo)
+                assertTrue(
+                        "PI * 2 should be ~6.28, got: $piTimesTwo",
+                        piTimesTwo!! >= 6.28 && piTimesTwo <= 6.29
+                )
+
+                assertEquals(result[0].result, result[2].result) // pi
+                assertEquals(result[0].result, result[3].result) // π
+
+                val eValueLower = result[4].result.toDoubleOrNull()
+                assertNotNull("e should return a number, got: ${result[4].result}", eValueLower)
+                assertTrue(
+                        "e should be ~2.72, got: $eValueLower",
+                        eValueLower!! >= 2.71 && eValueLower <= 2.73
+                )
+
+                val ePlusOne = result[5].result.toDoubleOrNull()
+                assertNotNull("e+1 should return a number, got: ${result[5].result}", ePlusOne)
+                assertTrue(
+                        "e+1 should be ~3.72, got: $ePlusOne",
+                        ePlusOne!! >= 3.71 && ePlusOne <= 3.73
+                )
+            }
+
+    @Test
+    fun `scientific notation works correctly`() =
+            testCalculate(
+                    "1E2",
+                    "1.23E4",
+                    "1E-2",
+                    "1.5E+3",
+                    "1E2 - e",
+                    "1E-2 - e",
+                    "1.23E-5",
+                    "1E5",
+                    "1E1000000",
+                    "1E100000000000000000000000",
+                    "50E100000",
+                    "1E5 + 2E5",
+                    "2E10 * 3E10",
+                    "1E1000 / 1E500"
+            ) { result ->
+                assertEquals("100.0", result[0].result)
+                assertEquals("12300.0", result[1].result)
+                assertEquals("0.01", result[2].result)
+                assertEquals("1500.0", result[3].result)
+                assertEquals(
+                        "97.2817181715409547646397125286473375022428",
+                        result[4].result
+                ) // 100 - e
+                assertEquals(
+                        "-2.7082818284590452353602874713526624977572",
+                        result[5].result
+                ) // 0.01 - e
+                assertEquals("0.0000123", result[6].result)
+                assertEquals("100000.0", result[7].result)
+                assertEquals("1.0E1000000", result[8].result)
+                assertError("Exponent is too large (max 1000000)", result, 9)
+                // 50E100000 = 5 * 10^100001. formatDisplayResult converts 5E100001 to 5.00E100001
+                // with default precision 2.
+                assertEquals("5.00E100001", MathEngine.formatDisplayResult(result[10].result, 2))
+                assertEquals("300000.0", result[11].result)
+                assertEquals("6.0E20", result[12].result) // >= 10^15 switches to scientific
+                assertEquals("1.0E500", result[13].result)
+            }
+
+    @Test
+    fun `functions can be used with variables`() =
+            testCalculate("radius = 5", "area = PI * pow(radius, 2)") { result ->
+                assertEquals("5.0", result[0].result)
+                // Area should be approximately 78.54
+                assertTrue(result[1].result.toDouble() > 78 && result[1].result.toDouble() < 79)
+            }
+
+    @Test
+    fun `nested functions work`() =
+            testCalculate("sqrt(pow(3, 2) + pow(4, 2))", "abs(sin(0) - 1)") { result ->
+                assertEquals("5.0", result[0].result) // Pythagorean theorem: sqrt(9 + 16) = 5
+                assertEquals("1.0", result[1].result) // abs(0 - 1) = 1
+            }
+
+    @Test
+    fun `functions are case sensitive`() =
+            testCalculate("SQRT(16)", "SIN(0)") { result ->
+                assertError("Unknown function `SQRT()`", result, 0)
+                assertError("Unknown function `SIN()`", result, 1)
+            }
+
+    @Test
+    fun `functions require parentheses`() =
+            testCalculate("floor(3.7)", "floor 3.7", "sqrt(16)", "sqrt 16") { result ->
+                assertEquals("3.0", result[0].result)
+                assertError("Unexpected `number`", result, 1) // floor 3.7
+                assertEquals("4.0", result[2].result)
+                assertError("Unexpected `number`", result, 3) // sqrt 16
+            }
+
+    @Test
+    fun `increment operator increases variable by 1`() =
+            testCalculate("count = 5", "count++") { result ->
+                assertEquals("5.0", result[0].result)
+                assertEquals("6.0", result[1].result)
+            }
+
+    @Test
+    fun `decrement operator decreases variable by 1`() =
+            testCalculate("count = 5", "count--") { result ->
+                assertEquals("5.0", result[0].result)
+                assertEquals("4.0", result[1].result)
+            }
+
+    @Test
+    fun `temperature increment increases displayed value by one degree`() =
+            testCalculate(
+                    "temp = 30 °C",
+                    "temp++",
+                    "temp = 30 °F",
+                    "temp++",
+                    "temp = 30 K",
+                    "temp++"
+            ) { result ->
+                assertEquals("30.0 °C", result[0].result)
+                assertEquals("31.0 °C", result[1].result)
+                assertEquals("30.0 °F", result[2].result)
+                assertEquals("31.0 °F", result[3].result)
+                assertEquals("30.0 K", result[4].result)
+                assertEquals("31.0 K", result[5].result)
+            }
+
+    @Test
+    fun `temperature decrement decreases displayed value by one degree`() =
+            testCalculate(
+                    "temp = 30 °C",
+                    "temp--",
+                    "temp = 30 °F",
+                    "temp--",
+                    "temp = 30 K",
+                    "temp--"
+            ) { result ->
+                assertEquals("30.0 °C", result[0].result)
+                assertEquals("29.0 °C", result[1].result)
+                assertEquals("30.0 °F", result[2].result)
+                assertEquals("29.0 °F", result[3].result)
+                assertEquals("30.0 K", result[4].result)
+                assertEquals("29.0 K", result[5].result)
+            }
+
+    @Test
+    fun `compound addition assignment`() =
+            testCalculate("amount = 10", "amount += 5 + 2") { result ->
+                assertEquals("10.0", result[0].result)
+                assertEquals("17.0", result[1].result) // 10 + (5 + 2)
+            }
+
+    @Test
+    fun `compound subtraction assignment`() =
+            testCalculate("amount = 20", "amount -= 5 * 2") { result ->
+                assertEquals("20.0", result[0].result)
+                assertEquals("10.0", result[1].result) // 20 - (5 * 2)
+            }
+
+    @Test
+    fun `compound multiplication assignment`() =
+            testCalculate("factor = 3", "factor *= 2 + 1") { result ->
+                assertEquals("3.0", result[0].result)
+                assertEquals("9.0", result[1].result) // 3 * (2 + 1)
+            }
+
+    @Test
+    fun `compound division assignment`() =
+            testCalculate("amount = 100", "amount /= 5") { result ->
+                assertEquals("100.0", result[0].result)
+                assertEquals("20.0", result[1].result)
+            }
+
+    @Test
+    fun `compound modulo (remainder) assignment`() =
+            testCalculate("amount = 10", "amount %= 3") { result ->
+                assertEquals("10.0", result[0].result)
+                assertEquals("1.0", result[1].result)
+            }
+
+    @Test
+    fun `calculateFrom returns only the affected lines starting at changedIndex`() =
+            testCalculateFrom("1 + 1", "2 + 2", "3 + 3", changedIndex = 1) { result ->
+                // Should return lines[1..2] only (2 lines)
+                assertEquals(2, result.size)
+                assertEquals("4.0", result[0].result)
+                assertEquals("6.0", result[1].result)
+            }
+
+    @Test
+    fun `calculateFrom respects variables defined in preceding lines`() =
+            testCalculateFrom("price = 100", "tax = 10", "price + tax", changedIndex = 2) { result
+                ->
+                assertEquals(1, result.size)
+                assertEquals("110.0", result[0].result)
+            }
+
+    @Test
+    fun `local function basic definition and call`() =
+            testCalculate("f(x) = x * 2", "f(5)") { result ->
+                assertEquals("", result[0].result) // Function definition produces no output
+                assertEquals("10.0", result[1].result)
+            }
+
+    @Test
+    fun `local function multiple parameters`() =
+            testCalculate("calc(a, b) = a + b;", "calc(10, 20)") { result ->
+                assertEquals("", result[0].result)
+                assertEquals("30.0", result[1].result)
+            }
+
+    @Test
+    fun `local function multiple statements returns last expression`() =
+            testCalculate(
+                    "salary(workHours) = base = workHours * 1000; bonus = base * 0.20; tax = base * 0.10; base + bonus - tax",
+                    "salary(120)"
+            ) { result ->
+                assertEquals("", result[0].result)
+                assertEquals("132000.0", result[1].result)
+            }
+
+    @Test
+    fun `local function strictly isolates scope`() =
+            testCalculate(
+                    "v = 10",
+                    "f(x) = v = x;",
+                    "f(5)",
+                    "v" // Should still be 10, not overridden by 'v' inside f
+            ) { result ->
+                assertEquals("10.0", result[0].result)
+                assertEquals("", result[1].result)
+                assertEquals("5.0", result[2].result)
+                assertEquals("10.0", result[3].result) // Outer scope unchanged
+            }
+
+    @Test
+    fun `local function prevents infinite recursion`() =
+            testCalculate("calc(a) = calc(a);", "calc(2)") { result ->
+                assertEquals("", result[0].result)
+                assertError(
+                        "Function `calc()` calls itself too many times which is not allowed",
+                        result,
+                        1
+                ) // Throws recursive exception
+            }
+
+    @Test
+    fun `local function with trailing comment does not return 0`() =
+            testCalculate("f(x) = x * 2; # comment", "f(5)") { result ->
+                assertEquals("10.0", result[1].result) // Should NOT be "0"
+            }
+
+    @Test
+    fun `nested function definition in a local function body is not allowed`() =
+            testCalculate("f(x) = g(y) = y; x", "f(5)") { result ->
+                assertError("Functions cannot be created inside other functions", result, 0)
+                assertError("Unknown function `f()`", result, 1)
+            }
+
+    @Test
+    fun `semicolons outside function bodies fail parsing`() =
+            testCalculate("x = 10; y = 20") { result ->
+                assertError("Unexpected `;`", result, 0) // ParseException
+            }
 
     @Test
     fun `calculateFrom with changedIndex 0 is equivalent to full calculate`() = runBlocking {
@@ -1336,241 +1432,157 @@ class MathEngineTest {
     }
 
     @Test
-    fun `calculateFrom propagates variable reassignment from preceding lines to affected lines`() = testCalculateFrom(
-        "x = 5",
-        "x = 10",
-        "x * 2",
-        changedIndex = 1
-    ) { result ->
-        assertEquals(2, result.size)
-        assertEquals("10.0", result[0].result) // x = 10
-        assertEquals("20.0", result[1].result) // x * 2 = 20
-    }
+    fun `calculateFrom propagates variable reassignment from preceding lines to affected lines`() =
+            testCalculateFrom("x = 5", "x = 10", "x * 2", changedIndex = 1) { result ->
+                assertEquals(2, result.size)
+                assertEquals("10.0", result[0].result) // x = 10
+                assertEquals("20.0", result[1].result) // x * 2 = 20
+            }
 
     @Test
-    fun `calculateFrom clamps out-of-bounds changedIndex gracefully`() = testCalculateFrom(
-        "5 + 5",
-        "2 * 3",
-        changedIndex = 100
-    ) { result ->
-        assertEquals(0, result.size)
-    }
+    fun `calculateFrom clamps out-of-bounds changedIndex gracefully`() =
+            testCalculateFrom("5 + 5", "2 * 3", changedIndex = 100) { result ->
+                assertEquals(0, result.size)
+            }
 
     @Test
-    fun `calculateFrom clamps negative changedIndex to full recalculation`() = testCalculateFrom(
-        "a = 5",
-        "a * 2",
-        changedIndex = -99
-    ) { result ->
-        assertEquals(2, result.size)
-        assertEquals("5.0", result[0].result)
-        assertEquals("10.0", result[1].result)
-    }
+    fun `calculateFrom clamps negative changedIndex to full recalculation`() =
+            testCalculateFrom("a = 5", "a * 2", changedIndex = -99) { result ->
+                assertEquals(2, result.size)
+                assertEquals("5.0", result[0].result)
+                assertEquals("10.0", result[1].result)
+            }
 
     @Test
-    fun `total sums all results above in same block`() = testCalculate(
-        "4 / 2",
-        "b = 2",
-        "a = 4",
-        "total"
-    ) { result ->
-        assertEquals("2.0", result[0].result)
-        assertEquals("2.0", result[1].result)
-        assertEquals("4.0", result[2].result)
-        assertEquals("8.0", result[3].result)
-    }
+    fun `total sums all results above in same block`() =
+            testCalculate("4 / 2", "b = 2", "a = 4", "total") { result ->
+                assertEquals("2.0", result[0].result)
+                assertEquals("2.0", result[1].result)
+                assertEquals("4.0", result[2].result)
+                assertEquals("8.0", result[3].result)
+            }
 
     @Test
-    fun `sum is an alias for total`() = testCalculate(
-        "10",
-        "20",
-        "sum"
-    ) { result ->
-        assertEquals("30.0", result[2].result)
-    }
+    fun `sum is an alias for total`() =
+            testCalculate("10", "20", "sum") { result -> assertEquals("30.0", result[2].result) }
 
     @Test
-    fun `blank line resets the block for total`() = testCalculate(
-        "a = 10",
-        "b = 20",
-        "total",
-        "",
-        "c = 5",
-        "total"
-    ) { result ->
-        assertEquals("30.0", result[2].result)  // 10 + 20
-        assertEquals("", result[3].result)
-        assertEquals("5.0", result[4].result)
-        assertEquals("5.0", result[5].result)   // only c = 5 in this block
-    }
+    fun `blank line resets the block for total`() =
+            testCalculate("a = 10", "b = 20", "total", "", "c = 5", "total") { result ->
+                assertEquals("30.0", result[2].result) // 10 + 20
+                assertEquals("", result[3].result)
+                assertEquals("5.0", result[4].result)
+                assertEquals("5.0", result[5].result) // only c = 5 in this block
+            }
 
     @Test
-    fun `comment-only lines do not contribute to total`() = testCalculate(
-        "10",
-        "# just a comment",
-        "20",
-        "total"
-    ) { result ->
-        // comment-only line produces null → breaks the block
-        // so total only sees 20
-        assertEquals("20.0", result[3].result)
-    }
+    fun `comment-only lines do not contribute to total`() =
+            testCalculate("10", "# just a comment", "20", "total") { result ->
+                // comment-only line produces null → breaks the block
+                // so total only sees 20
+                assertEquals("20.0", result[3].result)
+            }
 
     @Test
-    fun `total used in an expression`() = testCalculate(
-        "item1 = 25",
-        "item2 = 75",
-        "tax = total * 0.10"
-    ) { result ->
-        assertEquals("25.0", result[0].result)
-        assertEquals("75.0", result[1].result)
-        assertEquals("10.0", result[2].result)
-    }
+    fun `total used in an expression`() =
+            testCalculate("item1 = 25", "item2 = 75", "tax = total * 0.10") { result ->
+                assertEquals("25.0", result[0].result)
+                assertEquals("75.0", result[1].result)
+                assertEquals("10.0", result[2].result)
+            }
 
     @Test
-    fun `total assignment overrides aggregate meaning`() = testCalculate(
-        "10",
-        "20",
-        "total = 4",
-        "total / 2"
-    ) { result ->
-        assertEquals("10.0", result[0].result)
-        assertEquals("20.0", result[1].result)
-        assertEquals("4.0", result[2].result)
-        assertEquals("2.0", result[3].result)  // uses assigned value, not aggregate
-    }
+    fun `total assignment is blocked`() =
+            testCalculate("total = 4") { result ->
+                assertError("`total` is a reserved name and cannot be changed", result, 0)
+            }
 
     @Test
-    fun `total increment overrides aggregate meaning`() = testCalculate(
-        "10",
-        "total++",
-        "total"
-    ) { result ->
-        assertEquals("10.0", result[0].result)
-        assertEquals("11.0", result[1].result)  // total was 10, incremented and assigned to 11
-        assertEquals("11.0", result[2].result)  // uses assigned value, not aggregate
-    }
+    fun `total increment is blocked`() =
+            testCalculate("total++") { result ->
+                assertError("`total` is a reserved name and cannot be changed", result, 0)
+            }
 
     @Test
-    fun `total decrement overrides aggregate meaning`() = testCalculate(
-        "10",
-        "total--",
-        "total"
-    ) { result ->
-        assertEquals("10.0", result[0].result)
-        assertEquals("9.0", result[1].result)   // total was 10, decremented to 9
-        assertEquals("9.0", result[2].result)   // uses assigned value, not aggregate
-    }
+    fun `total decrement is blocked`() =
+            testCalculate("total--") { result ->
+                assertError("`total` is a reserved name and cannot be changed", result, 0)
+            }
 
     @Test
-    fun `total += overrides aggregate meaning`() = testCalculate(
-        "10",
-        "total += 5",
-        "total"
-    ) { result ->
-        assertEquals("10.0", result[0].result)
-        assertEquals("15.0", result[1].result)
-        assertEquals("15.0", result[2].result)  // uses assigned value, not aggregate
-    }
+    fun `total compound addition is blocked`() =
+            testCalculate("total += 5") { result ->
+                assertError("`total` is a reserved name and cannot be changed", result, 0)
+            }
 
     @Test
-    fun `total -= overrides aggregate meaning`() = testCalculate(
-        "10",
-        "total -= 3",
-        "total"
-    ) { result ->
-        assertEquals("10.0", result[0].result)
-        assertEquals("7.0", result[1].result)
-        assertEquals("7.0", result[2].result)
-    }
+    fun `total compound subtraction is blocked`() =
+            testCalculate("total -= 3") { result ->
+                assertError("`total` is a reserved name and cannot be changed", result, 0)
+            }
 
     @Test
-    fun `total multiply-assign overrides aggregate meaning`() = testCalculate(
-        "10",
-        "total *= 2",
-        "total"
-    ) { result ->
-        assertEquals("10.0", result[0].result)
-        assertEquals("20.0", result[1].result)
-        assertEquals("20.0", result[2].result)
-    }
+    fun `total compound multiplication is blocked`() =
+            testCalculate("total *= 2") { result ->
+                assertError("`total` is a reserved name and cannot be changed", result, 0)
+            }
 
     @Test
-    fun `total divide-assign overrides aggregate meaning`() = testCalculate(
-        "10",
-        "total /= 2",
-        "total"
-    ) { result ->
-        assertEquals("10.0", result[0].result)
-        assertEquals("5.0", result[1].result)
-        assertEquals("5.0", result[2].result)
-    }
+    fun `total compound division is blocked`() =
+            testCalculate("total /= 2") { result ->
+                assertError("`total` is a reserved name and cannot be changed", result, 0)
+            }
 
     @Test
-    fun `total modulo-assign overrides aggregate meaning`() = testCalculate(
-        "10",
-        "20",
-        "total %= 7",
-        "total"
-    ) { result ->
-        assertEquals("10.0", result[0].result)
-        assertEquals("20.0", result[1].result)
-        assertEquals("2.0", result[2].result)   // 30 % 7 = 2
-        assertEquals("2.0", result[3].result)
-    }
+    fun `total compound modulo is blocked`() =
+            testCalculate("total %= 7") { result ->
+                assertError("`total` is a reserved name and cannot be changed", result, 0)
+            }
 
     @Test
-    fun `total with no preceding results is 0`() = testCalculate("total") { result ->
-        assertEquals("0.0", result[0].result)
-    }
+    fun `total with no preceding results is 0`() =
+            testCalculate("total") { result -> assertEquals("0.0", result[0].result) }
 
     @Test
-    fun `total preserves units and does not convert to base unit`() = testCalculate(
-        "1 acre to sqft",
-        "_/2",
-        "total"
-    ) { result ->
-        assertEquals("43560.0 ft²", result[0].result)
-        assertEquals("21780.0 ft²", result[1].result)
-        assertEquals("65340.0 ft²", result[2].result)
-    }
+    fun `total preserves units and does not convert to base unit`() =
+            testCalculate("1 acre to sqft", "_/2", "total") { result ->
+                assertEquals("43560.0 ft²", result[0].result)
+                assertEquals("21780.0 ft²", result[1].result)
+                assertEquals("65340.0 ft²", result[2].result)
+            }
 
     @Test
-    fun `total with physical and unitless values returns error`() = testCalculate(
-        "4 kg",
-        "5",
-        "total"
-    ) { result ->
-        assertEquals("4.0 kg", result[0].result)
-        assertEquals("5.0", result[1].result)
-        assertError("Summation of `Kilogram` and `unitless number` is not supported", result, 2)
-    }
+    fun `total with physical and unitless values returns error`() =
+            testCalculate("4 kg", "5", "total") { result ->
+                assertEquals("4.0 kg", result[0].result)
+                assertEquals("5.0", result[1].result)
+                assertError(
+                        "Summation of `Kilogram` and `unitless number` is not supported",
+                        result,
+                        2
+                )
+            }
 
     @Test
-    fun `total with mixed categories returns error`() = testCalculate(
-        "10 m",
-        "20 s",
-        "total"
-    ) { result ->
-        assertError("Summation of `Meter` and `Second` is not supported", result, 2)
-    }
+    fun `total with mixed categories returns error`() =
+            testCalculate("10 m", "20 s", "total") { result ->
+                assertError("Summation of `Meter` and `Second` is not supported", result, 2)
+            }
 
     @Test
-    fun `total with same categories returns sum`() = testCalculate(
-        "10 m",
-        "200 cm",
-        "total"
-    ) { result ->
-        assertEquals("1200.0 cm", result[2].result)
-    }
+    fun `total with same categories returns sum`() =
+            testCalculate("10 m", "200 cm", "total") { result ->
+                assertEquals("1200.0 cm", result[2].result)
+            }
 
     @Test
     fun `calculateFrom correctly handles total in affected lines`() = runBlocking {
-        val lines = listOf(
-            createLine("a = 10", sortOrder = 0),
-            createLine("b = 20", sortOrder = 1),
-            createLine("total", sortOrder = 2)
-        )
+        val lines =
+                listOf(
+                        createLine("a = 10", sortOrder = 0),
+                        createLine("b = 20", sortOrder = 1),
+                        createLine("total", sortOrder = 2)
+                )
         val result = MathEngine.calculateFrom(lines, changedIndex = 2)
         assertEquals(1, result.size)
         assertEquals("30.0", result[0].result)
@@ -1585,166 +1597,97 @@ class MathEngineTest {
     }
 
     @Test
-    fun `avg averages all results above in same block`() = testCalculate(
-        "10",
-        "20",
-        "60",
-        "avg",
-        "10m",
-        "20",
-        "avg"
-    ) { result ->
-        assertEquals("10.0", result[0].result)
-        assertEquals("20.0", result[1].result)
-        assertEquals("60.0", result[2].result)
-        assertEquals("30.0", result[3].result)
-        assertEquals("10.0 m", result[4].result)
-        assertEquals("20.0", result[5].result)
-        assertError("Average of `Meter` and `unitless number` is not supported", result, 6)
-    }
+    fun `avg averages all results above in same block`() =
+            testCalculate("10", "20", "60", "avg", "10m", "20", "avg") { result ->
+                assertEquals("10.0", result[0].result)
+                assertEquals("20.0", result[1].result)
+                assertEquals("60.0", result[2].result)
+                assertEquals("30.0", result[3].result)
+                assertEquals("10.0 m", result[4].result)
+                assertEquals("20.0", result[5].result)
+                assertError("Average of `Meter` and `unitless number` is not supported", result, 6)
+            }
 
     @Test
-    fun `average is an alias for avg`() = testCalculate(
-        "10",
-        "30",
-        "average"
-    ) { result ->
-        assertEquals("10.0", result[0].result)
-        assertEquals("30.0", result[1].result)
-        assertEquals("20.0", result[2].result)
-    }
+    fun `average is an alias for avg`() =
+            testCalculate("10", "30", "average") { result ->
+                assertEquals("10.0", result[0].result)
+                assertEquals("30.0", result[1].result)
+                assertEquals("20.0", result[2].result)
+            }
 
     @Test
-    fun `avg with no preceding results is 0`() = testCalculate("avg") { result ->
-        assertEquals("0.0", result[0].result)
-    }
+    fun `avg with no preceding results is 0`() =
+            testCalculate("avg") { result -> assertEquals("0.0", result[0].result) }
 
     @Test
-    fun `blank line resets the block for avg`() = testCalculate(
-        "10",
-        "20",
-        "avg",
-        "",
-        "5",
-        "avg"
-    ) { result ->
-        assertEquals("15.0", result[2].result)
-        assertEquals("", result[3].result)
-        assertEquals("5.0", result[5].result)
-    }
+    fun `blank line resets the block for avg`() =
+            testCalculate("10", "20", "avg", "", "5", "avg") { result ->
+                assertEquals("15.0", result[2].result)
+                assertEquals("", result[3].result)
+                assertEquals("5.0", result[5].result)
+            }
 
     @Test
-    fun `comment-only lines do not contribute to avg`() = testCalculate(
-        "10",
-        "# ignore this",
-        "20",
-        "avg"
-    ) { result ->
-        // Null breaks the block, so avg only sees 20
-        assertEquals("20.0", result[3].result)
-    }
+    fun `comment-only lines do not contribute to avg`() =
+            testCalculate("10", "# ignore this", "20", "avg") { result ->
+                // Null breaks the block, so avg only sees 20
+                assertEquals("20.0", result[3].result)
+            }
 
     @Test
-    fun `avg used in an expression`() = testCalculate(
-        "25",
-        "75",
-        "half_avg = avg / 2"
-    ) { result ->
-        assertEquals("25.0", result[2].result) // avg is 50, halved to 25
-    }
+    fun `avg used in an expression`() =
+            testCalculate("25", "75", "half_avg = avg / 2") { result ->
+                assertEquals("25.0", result[2].result) // avg is 50, halved to 25
+            }
 
     @Test
-    fun `avg assignment overrides aggregate meaning`() = testCalculate(
-        "10",
-        "20",
-        "avg = 100",
-        "avg / 2"
-    ) { result ->
-        assertEquals("100.0", result[2].result)
-        assertEquals("50.0", result[3].result)
-    }
+    fun `avg assignment is blocked`() =
+            testCalculate("avg = 100") { result ->
+                assertError("`avg` is a reserved name and cannot be changed", result, 0)
+            }
 
     @Test
-    fun `avg increment overrides aggregate meaning`() = testCalculate(
-        "10",
-        "20",
-        "avg++",
-        "avg"
-    ) { result ->
-        assertEquals("16.0", result[2].result) // avg is 15, gets incremented and assigned to 16
-        assertEquals("16.0", result[3].result)
-    }
+    fun `avg increment is blocked`() =
+            testCalculate("avg++") { result ->
+                assertError("`avg` is a reserved name and cannot be changed", result, 0)
+            }
 
     @Test
-    fun `avg decrement overrides aggregate meaning`() = testCalculate(
-        "10",
-        "20",
-        "avg--",
-        "avg"
-    ) { result ->
-        assertEquals("14.0", result[2].result) // avg is 15, gets decremented and assigned to 14
-        assertEquals("14.0", result[3].result)
-    }
+    fun `avg decrement is blocked`() =
+            testCalculate("avg--") { result ->
+                assertError("`avg` is a reserved name and cannot be changed", result, 0)
+            }
 
     @Test
-    fun `avg += overrides aggregate meaning`() = testCalculate(
-        "10",
-        "20",
-        "avg += 5",
-        "avg"
-    ) { result ->
-        assertEquals("10.0", result[0].result)
-        assertEquals("20.0", result[2].result) // 15 + 5 = 20
-        assertEquals("20.0", result[3].result)
-    }
+    fun `avg compound addition is blocked`() =
+            testCalculate("avg += 5") { result ->
+                assertError("`avg` is a reserved name and cannot be changed", result, 0)
+            }
 
     @Test
-    fun `avg -= overrides aggregate meaning`() = testCalculate(
-        "10",
-        "20",
-        "avg -= 3",
-        "avg"
-    ) { result ->
-        assertEquals("10.0", result[0].result)
-        assertEquals("12.0", result[2].result) // 15 - 3 = 12
-        assertEquals("12.0", result[3].result)
-    }
+    fun `avg compound subtraction is blocked`() =
+            testCalculate("avg -= 3") { result ->
+                assertError("`avg` is a reserved name and cannot be changed", result, 0)
+            }
 
     @Test
-    fun `avg multiply-assign overrides aggregate meaning`() = testCalculate(
-        "10",
-        "20",
-        "avg *= 2",
-        "avg"
-    ) { result ->
-        assertEquals("10.0", result[0].result)
-        assertEquals("30.0", result[2].result) // 15 * 2 = 30
-        assertEquals("30.0", result[3].result)
-    }
+    fun `avg compound multiplication is blocked`() =
+            testCalculate("avg *= 2") { result ->
+                assertError("`avg` is a reserved name and cannot be changed", result, 0)
+            }
 
     @Test
-    fun `avg divide-assign overrides aggregate meaning`() = testCalculate(
-        "10",
-        "20",
-        "avg /= 3",
-        "avg"
-    ) { result ->
-        assertEquals("10.0", result[0].result)
-        assertEquals("5.0", result[2].result) // 15 / 3 = 5
-        assertEquals("5.0", result[3].result)
-    }
+    fun `avg compound division is blocked`() =
+            testCalculate("avg /= 3") { result ->
+                assertError("`avg` is a reserved name and cannot be changed", result, 0)
+            }
 
     @Test
-    fun `avg modulo-assign overrides aggregate meaning`() = testCalculate(
-        "10",
-        "20",
-        "avg %= 4",
-        "avg"
-    ) { result ->
-        assertEquals("10.0", result[0].result)
-        assertEquals("3.0", result[2].result) // 15 % 4 = 3
-        assertEquals("3.0", result[3].result)
-    }
+    fun `avg compound modulo is blocked`() =
+            testCalculate("avg %= 4") { result ->
+                assertError("`avg` is a reserved name and cannot be changed", result, 0)
+            }
 
     @Test
     fun `calculateFrom correctly handles avg in affected lines`() = runBlocking {
@@ -1763,128 +1706,343 @@ class MathEngineTest {
     }
 
     @Test
-    fun `last keyword refers to the previous line result`() = testCalculate(
-        "10 * 5",
-        "last + 10"
-    ) { result ->
-        assertEquals("50.0", result[0].result)
-        assertEquals("60.0", result[1].result)
+    fun `grand_total sums all results above across block boundaries`() =
+            testCalculate("a = 10", "b = 20", "total", "", "c = 5", "total", "grand_total") { result
+                ->
+                assertEquals("30.0", result[2].result) // 10 + 20
+                assertEquals("", result[3].result)
+                assertEquals("5.0", result[4].result)
+                assertEquals("5.0", result[5].result) // only c = 5 in this block
+                // grand_total sees: 10, 20, 30, 5, 5 -> 70
+                assertEquals("70.0", result[6].result)
+            }
+
+    @Test
+    fun `grand_sum is an alias for grand_total`() =
+            testCalculate("10", "", "20", "grand_sum") { result ->
+                assertEquals("30.0", result[3].result)
+            }
+
+    @Test
+    fun `blank lines do NOT reset grand_total`() =
+            testCalculate("10", "", "20", "grand_total") { result ->
+                assertEquals("30.0", result[3].result)
+            }
+
+    @Test
+    fun `comment-only lines do NOT reset grand_total`() =
+            testCalculate("10", "# comment", "20", "grand_total") { result ->
+                assertEquals("30.0", result[3].result)
+            }
+
+    @Test
+    fun `error lines do NOT contribute to grand_total but do not reset it`() =
+            testCalculate("10", "{", "20", "grand_total") { result ->
+                assertError("Unexpected character `{`", result, 1)
+                assertEquals("30.0", result[3].result)
+            }
+
+    @Test
+    fun `grand_total with no preceding results is 0`() =
+            testCalculate("grand_total") { result -> assertEquals("0.0", result[0].result) }
+
+    @Test
+    fun `grand_total used in an expression`() =
+            testCalculate("10", "", "20", "grand_total * 2") { result ->
+                assertEquals("60.0", result[3].result)
+            }
+
+    @Test
+    fun `grand_total assignment is blocked`() =
+            testCalculate("grand_total = 100") { result ->
+                assertError("`grand_total` is a reserved name and cannot be changed", result, 0)
+            }
+
+    @Test
+    fun `grand_total increment is blocked`() =
+            testCalculate("grand_total++") { result ->
+                assertError("`grand_total` is a reserved name and cannot be changed", result, 0)
+            }
+
+    @Test
+    fun `grand_total decrement is blocked`() =
+            testCalculate("grand_total--") { result ->
+                assertError("`grand_total` is a reserved name and cannot be changed", result, 0)
+            }
+
+    @Test
+    fun `grand_total compound addition is blocked`() =
+            testCalculate("grand_total += 5") { result ->
+                assertError("`grand_total` is a reserved name and cannot be changed", result, 0)
+            }
+
+    @Test
+    fun `grand_total compound subtraction is blocked`() =
+            testCalculate("grand_total -= 5") { result ->
+                assertError("`grand_total` is a reserved name and cannot be changed", result, 0)
+            }
+
+    @Test
+    fun `grand_total compound multiplication is blocked`() =
+            testCalculate("grand_total *= 2") { result ->
+                assertError("`grand_total` is a reserved name and cannot be changed", result, 0)
+            }
+
+    @Test
+    fun `grand_total compound division is blocked`() =
+            testCalculate("grand_total /= 2") { result ->
+                assertError("`grand_total` is a reserved name and cannot be changed", result, 0)
+            }
+
+    @Test
+    fun `grand_total compound modulo is blocked`() =
+            testCalculate("grand_total %= 7") { result ->
+                assertError("`grand_total` is a reserved name and cannot be changed", result, 0)
+            }
+
+    @Test
+    fun `grand_total preserves units and does not convert to base unit`() =
+            testCalculate("10 km", "", "500 m", "grand_total") { result ->
+                assertEquals("10500.0 m", result[3].result)
+            }
+
+    @Test
+    fun `grand_total with physical and unitless values returns error`() =
+            testCalculate("10 km", "", "5", "grand_total") { result ->
+                assertError(
+                        "Summation of `Kilometer` and `unitless number` is not supported",
+                        result,
+                        3
+                )
+            }
+
+    @Test
+    fun `grand_total with mixed unit categories returns error`() =
+            testCalculate("10 km", "", "5 kg", "grand_total") { result ->
+                assertError("Summation of `Kilometer` and `Kilogram` is not supported", result, 3)
+            }
+
+    @Test
+    fun `grand_total with same unit categories across blocks returns sum`() =
+            testCalculate("10 m", "", "200 cm", "grand_total") { result ->
+                assertEquals("1200.0 cm", result[3].result)
+            }
+
+    @Test
+    fun `calculateFrom correctly handles grand_total in affected lines`() = runBlocking {
+        val lines =
+                listOf(
+                        createLine("10", sortOrder = 0),
+                        createLine("", sortOrder = 1),
+                        createLine("20", sortOrder = 2),
+                        createLine("grand_total", sortOrder = 3)
+                )
+        val result = MathEngine.calculateFrom(lines, changedIndex = 3)
+        assertEquals(1, result.size)
+        assertEquals("30.0", result[0].result)
     }
 
     @Test
-    fun `prev keyword refers to the previous line result`() = testCalculate(
-        "100 / 4",
-        "prev * 2m"
-    ) { result ->
-        assertEquals("25.0", result[0].result)
-        assertEquals("50.0 m", result[1].result)
+    fun `grand_total includes all preceding results across calculateFrom boundary`() = runBlocking {
+        val lines = createLines("10", "", "20", "grand_total * 2")
+        val result = MathEngine.calculateFrom(lines, changedIndex = 3)
+        assertEquals(1, result.size)
+        assertEquals("60.0", result[0].result)
     }
 
     @Test
-    fun `previous keyword refers to the previous line result`() = testCalculate(
-        "20 + 30",
-        "previous - 10"
-    ) { result ->
-        assertEquals("50.0", result[0].result)
-        assertEquals("40.0", result[1].result)
+    fun `grand_total works with cross-file references`() = runBlocking {
+        val remoteLines = createLines("a = 10", "", "b = 20")
+        val remoteContext = MathEngine.buildVariableState(remoteLines)
+        val loader = FakeFileContextLoader(mapOf("Summary" to remoteContext))
+
+        testCalculate("file(\"Summary\").grand_total * 2", loader = loader) { result ->
+            // In Summary: a=10, b=20. So grand_total in Summary is 30.
+            // 30 * 2 = 60
+            assertEquals("60.0", result[0].result)
+        }
     }
 
     @Test
-    fun `above keyword refers to the previous line result`() = testCalculate(
-        "5 ^ 2",
-        "above / 5"
-    ) { result ->
-        assertEquals("25.0", result[0].result)
-        assertEquals("5.0", result[1].result)
-    }
+    fun `last keyword refers to the previous line result`() =
+            testCalculate("10 * 5", "last + 10") { result ->
+                assertEquals("50.0", result[0].result)
+                assertEquals("60.0", result[1].result)
+            }
 
     @Test
-    fun `underscore keyword refers to the previous line result`() = testCalculate(
-        "42",
-        "_ + 8"
-    ) { result ->
-        assertEquals("42.0", result[0].result)
-        assertEquals("50.0", result[1].result)
-    }
+    fun `prev keyword refers to the previous line result`() =
+            testCalculate("100 / 4", "prev * 2m") { result ->
+                assertEquals("25.0", result[0].result)
+                assertEquals("50.0 m", result[1].result)
+            }
 
     @Test
-    fun `last keyword returns 0 if the preceding line is blank`() = testCalculate(
-        "10",
-        "   ",
-        "last + 5"
-    ) { result ->
-        assertEquals("5.0", result[2].result)
-    }
+    fun `previous keyword refers to the previous line result`() =
+            testCalculate("20 + 30", "previous - 10") { result ->
+                assertEquals("50.0", result[0].result)
+                assertEquals("40.0", result[1].result)
+            }
 
     @Test
-    fun `last keyword returns 0 if the preceding line is a comment`() = testCalculate(
-        "10",
-        "# comment",
-        "last + 5"
-    ) { result ->
-        assertEquals("5.0", result[2].result)
-    }
+    fun `above keyword refers to the previous line result`() =
+            testCalculate("5 ^ 2", "above / 5") { result ->
+                assertEquals("25.0", result[0].result)
+                assertEquals("5.0", result[1].result)
+            }
 
     @Test
-    fun `last keyword returns 0 if the preceding line resulted in an error`() = testCalculate(
-        "10",
-        "{",
-        "last + 5"
-    ) { result ->
-        assertError("Unexpected character `{`", result, 1)
-        assertEquals("5.0", result[2].result)
-    }
+    fun `underscore keyword refers to the previous line result`() =
+            testCalculate("42", "_ + 8") { result ->
+                assertEquals("42.0", result[0].result)
+                assertEquals("50.0", result[1].result)
+            }
 
     @Test
-    fun `last keyword returns 0 on the first line`() = testCalculate("last + 10") { result ->
-        assertEquals("10.0", result[0].result)
-    }
+    fun `last keyword returns 0 if the preceding line is blank`() =
+            testCalculate("10", "   ", "last + 5") { result ->
+                assertEquals("5.0", result[2].result)
+            }
 
     @Test
-    fun `last keyword reassignment is blocked`() = testCalculate("last = 10") { result ->
-        assertError("`last` is a reserved name and cannot be changed", result, 0)
-    }
+    fun `last keyword returns 0 if the preceding line is a comment`() =
+            testCalculate("10", "# comment", "last + 5") { result ->
+                assertEquals("5.0", result[2].result)
+            }
 
     @Test
-    fun `compound assignment to underscore is blocked`() = testCalculate("_ += 5") { result ->
-        assertError("`_` is a reserved name and cannot be changed", result, 0)
-    }
+    fun `last keyword returns 0 if the preceding line resulted in an error`() =
+            testCalculate("10", "{", "last + 5") { result ->
+                assertError("Unexpected character `{`", result, 1)
+                assertEquals("5.0", result[2].result)
+            }
 
     @Test
-    fun `assignment to constant PI is not allowed`() = testCalculate("PI = 4") { result ->
-        assertError("`PI` is a reserved name and cannot be changed", result, 0)
-    }
+    fun `last keyword returns 0 on the first line`() =
+            testCalculate("last + 10") { result -> assertEquals("10.0", result[0].result) }
 
     @Test
-    fun `assignment to constant pi is not allowed`() = testCalculate("pi = 4") { result ->
-        assertError("`pi` is a reserved name and cannot be changed", result, 0)
-    }
+    fun `last keyword reassignment is blocked`() =
+            testCalculate("last = 10") { result ->
+                assertError("`last` is a reserved name and cannot be changed", result, 0)
+            }
 
     @Test
-    fun `assignment to constant π is not allowed`() = testCalculate("π = 4") { result ->
-        assertError("`π` is a reserved name and cannot be changed", result, 0)
-    }
+    fun `compound assignment to underscore is blocked`() =
+            testCalculate("_ += 5") { result ->
+                assertError("`_` is a reserved name and cannot be changed", result, 0)
+            }
 
     @Test
-    fun `assignment to E is now allowed`() = testCalculate("E = 4", "E * 2") { result ->
-        assertEquals("4.0", result[0].result)
-        assertEquals("8.0", result[1].result)
-    }
+    fun `sum alias assignment is blocked`() =
+            testCalculate("sum = 5") { result ->
+                assertError("`sum` is a reserved name and cannot be changed", result, 0)
+            }
 
     @Test
-    fun `assignment to constant e is not allowed`() = testCalculate("e = 4") { result ->
-        assertError("`e` is a reserved name and cannot be changed", result, 0)
-    }
+    fun `grand_sum alias assignment is blocked`() =
+            testCalculate("grand_sum = 5") { result ->
+                assertError("`grand_sum` is a reserved name and cannot be changed", result, 0)
+            }
+
+    @Test
+    fun `average alias assignment is blocked`() =
+            testCalculate("average = 5") { result ->
+                assertError("`average` is a reserved name and cannot be changed", result, 0)
+            }
+
+    @Test
+    fun `prev alias assignment is blocked`() =
+            testCalculate("prev = 5") { result ->
+                assertError("`prev` is a reserved name and cannot be changed", result, 0)
+            }
+
+    @Test
+    fun `previous alias assignment is blocked`() =
+            testCalculate("previous = 5") { result ->
+                assertError("`previous` is a reserved name and cannot be changed", result, 0)
+            }
+
+    @Test
+    fun `above alias assignment is blocked`() =
+            testCalculate("above = 5") { result ->
+                assertError("`above` is a reserved name and cannot be changed", result, 0)
+            }
+
+    @Test
+    fun `linenumber alias assignment is blocked`() =
+            testCalculate("linenumber = 5") { result ->
+                assertError("`linenumber` is a reserved name and cannot be changed", result, 0)
+            }
+
+    @Test
+    fun `currentLineNumber alias assignment is blocked`() =
+            testCalculate("currentLineNumber = 5") { result ->
+                assertError(
+                        "`currentLineNumber` is a reserved name and cannot be changed",
+                        result,
+                        0
+                )
+            }
+
+    @Test
+    fun `today keyword assignment is blocked`() =
+            testCalculate("today = 5") { result ->
+                assertError("`today` is a reserved name and cannot be changed", result, 0)
+            }
+
+    @Test
+    fun `assignment to constant PI is not allowed`() =
+            testCalculate("PI = 4") { result ->
+                assertError("`PI` is a reserved name and cannot be changed", result, 0)
+            }
+
+    @Test
+    fun `assignment to constant pi is not allowed`() =
+            testCalculate("pi = 4") { result ->
+                assertError("`pi` is a reserved name and cannot be changed", result, 0)
+            }
+
+    @Test
+    fun `assignment to constant π is not allowed`() =
+            testCalculate("π = 4") { result ->
+                assertError("`π` is a reserved name and cannot be changed", result, 0)
+            }
+
+    @Test
+    fun `assignment to E is now allowed`() =
+            testCalculate("E = 4", "E * 2") { result ->
+                assertEquals("4.0", result[0].result)
+                assertEquals("8.0", result[1].result)
+            }
+
+    @Test
+    fun `assignment to constant e is not allowed`() =
+            testCalculate("e = 4") { result ->
+                assertError("`e` is a reserved name and cannot be changed", result, 0)
+            }
 
     @Test
     fun `formatDisplayResult formats raw strings correctly`() = runBlocking {
         assertEquals("0.33", MathEngine.formatDisplayResult("0.3333333333333333", 2))
         assertEquals("0.3333", MathEngine.formatDisplayResult("0.3333333333333333", 4))
-        assertEquals("10", MathEngine.formatDisplayResult("10.0", 2)) // whole numbers are displayed without decimal points
-        assertEquals("4", MathEngine.formatDisplayResult("4", 6)) // whole numbers are displayed without decimal points
+        assertEquals(
+                "10",
+                MathEngine.formatDisplayResult("10.0", 2)
+        ) // whole numbers are displayed without decimal points
+        assertEquals(
+                "4",
+                MathEngine.formatDisplayResult("4", 6)
+        ) // whole numbers are displayed without decimal points
         assertEquals("Err", MathEngine.formatDisplayResult("Err", 2))
-        assertEquals("1,234.57", MathEngine.formatDisplayResult("1234.5678", 2, java.util.Locale.ROOT))
-        assertEquals("1,234.5678000000", MathEngine.formatDisplayResult("1234.5678", 10, java.util.Locale.ROOT))
+        assertEquals(
+                "1,234.57",
+                MathEngine.formatDisplayResult("1234.5678", 2, java.util.Locale.ROOT)
+        )
+        assertEquals(
+                "1,234.5678000000",
+                MathEngine.formatDisplayResult("1234.5678", 10, java.util.Locale.ROOT)
+        )
     }
 
     @Test
@@ -1892,56 +2050,111 @@ class MathEngineTest {
         // Should clamp value below MIN_PRECISION to MIN_PRECISION
         assertEquals("0", MathEngine.formatDisplayResult("0.333", -2))
         // Should clamp value above MAX_PRECISION to MAX_PRECISION
-        assertEquals("0.3330000000", MathEngine.formatDisplayResult("0.333", Constants.MAX_PRECISION + 5))
+        assertEquals(
+                "0.3330000000",
+                MathEngine.formatDisplayResult("0.333", Constants.MAX_PRECISION + 5)
+        )
     }
 
     @Test
     fun `formatDisplayResult shows full precision when precision is off`() = runBlocking {
-        assertEquals("7.1234", MathEngine.formatDisplayResult("7.1234", Constants.PRECISION_OFF, java.util.Locale.ROOT))
+        assertEquals(
+                "7.1234",
+                MathEngine.formatDisplayResult(
+                        "7.1234",
+                        Constants.PRECISION_OFF,
+                        java.util.Locale.ROOT
+                )
+        )
         // Verify grouping and locale awareness
-        assertEquals("1,234.5678", MathEngine.formatDisplayResult("1234.5678", Constants.PRECISION_OFF, java.util.Locale.US))
-        assertEquals("1.234,5678", MathEngine.formatDisplayResult("1234.5678", Constants.PRECISION_OFF, java.util.Locale.GERMANY))
-        
-        assertEquals("0.3333333333333333", MathEngine.formatDisplayResult("0.3333333333333333", Constants.PRECISION_OFF, java.util.Locale.ROOT))
-        assertEquals("10.0", MathEngine.formatDisplayResult("10", Constants.PRECISION_OFF, java.util.Locale.ROOT))
-        assertEquals("1.0E20", MathEngine.formatDisplayResult("1.0E20", Constants.PRECISION_OFF, java.util.Locale.ROOT))
-        assertEquals("5.1234 km", MathEngine.formatDisplayResult("5.1234 km", Constants.PRECISION_OFF, java.util.Locale.ROOT))
+        assertEquals(
+                "1,234.5678",
+                MathEngine.formatDisplayResult(
+                        "1234.5678",
+                        Constants.PRECISION_OFF,
+                        java.util.Locale.US
+                )
+        )
+        assertEquals(
+                "1.234,5678",
+                MathEngine.formatDisplayResult(
+                        "1234.5678",
+                        Constants.PRECISION_OFF,
+                        java.util.Locale.GERMANY
+                )
+        )
+
+        assertEquals(
+                "0.3333333333333333",
+                MathEngine.formatDisplayResult(
+                        "0.3333333333333333",
+                        Constants.PRECISION_OFF,
+                        java.util.Locale.ROOT
+                )
+        )
+        assertEquals(
+                "10.0",
+                MathEngine.formatDisplayResult("10", Constants.PRECISION_OFF, java.util.Locale.ROOT)
+        )
+        assertEquals(
+                "1.0E20",
+                MathEngine.formatDisplayResult(
+                        "1.0E20",
+                        Constants.PRECISION_OFF,
+                        java.util.Locale.ROOT
+                )
+        )
+        assertEquals(
+                "5.1234 km",
+                MathEngine.formatDisplayResult(
+                        "5.1234 km",
+                        Constants.PRECISION_OFF,
+                        java.util.Locale.ROOT
+                )
+        )
     }
 
     @Test
     fun `formatDisplayResult handles scientific notation`() = runBlocking {
         assertEquals("1.00E20", MathEngine.formatDisplayResult("1.0E20", 2, java.util.Locale.ROOT))
         assertEquals("1E20", MathEngine.formatDisplayResult("1.0E20", 0, java.util.Locale.ROOT))
-        assertEquals("1.00E1000", MathEngine.formatDisplayResult("1.0E1000", 2, java.util.Locale.ROOT))
+        assertEquals(
+                "1.00E1000",
+                MathEngine.formatDisplayResult("1.0E1000", 2, java.util.Locale.ROOT)
+        )
     }
 
     @Test
-    fun `formatDisplayResult switches to scientific notation for small non-zero values rounding to zero`() = runBlocking {
-        val precision = 2
-        val locale = java.util.Locale.US
+    fun `formatDisplayResult switches to scientific notation for small non-zero values rounding to zero`() =
+            runBlocking {
+                val precision = 2
+                val locale = java.util.Locale.US
 
-        // 324/93543 ~= 0.003463...
-        // At precision 2, it rounds to 0.00 -> Should use scientific notation
-        assertEquals("3.46E-3", MathEngine.formatDisplayResult("0.003463", precision, locale))
+                // 324/93543 ~= 0.003463...
+                // At precision 2, it rounds to 0.00 -> Should use scientific notation
+                assertEquals(
+                        "3.46E-3",
+                        MathEngine.formatDisplayResult("0.003463", precision, locale)
+                )
 
-        // 0.0051 rounds to 0.01 at precision 2 -> Should NOT be scientific
-        assertEquals("0.01", MathEngine.formatDisplayResult("0.0051", precision, locale))
+                // 0.0051 rounds to 0.01 at precision 2 -> Should NOT be scientific
+                assertEquals("0.01", MathEngine.formatDisplayResult("0.0051", precision, locale))
 
-        // 0.0049 rounds to 0.00 at precision 2 -> Should be scientific
-        assertEquals("4.90E-3", MathEngine.formatDisplayResult("0.0049", precision, locale))
+                // 0.0049 rounds to 0.00 at precision 2 -> Should be scientific
+                assertEquals("4.90E-3", MathEngine.formatDisplayResult("0.0049", precision, locale))
 
-        // Extremely small non-zero values (like 1e-17) should be scientific
-        assertEquals("1.00E-17", MathEngine.formatDisplayResult("1e-17", precision, locale))
+                // Extremely small non-zero values (like 1e-17) should be scientific
+                assertEquals("1.00E-17", MathEngine.formatDisplayResult("1e-17", precision, locale))
 
-        // Absolute zero should remain "0"
-        assertEquals("0", MathEngine.formatDisplayResult("0", precision, locale))
+                // Absolute zero should remain "0"
+                assertEquals("0", MathEngine.formatDisplayResult("0", precision, locale))
 
-        // Precision 0 should still round to 0 for non-extremely-small values
-        assertEquals("0", MathEngine.formatDisplayResult("0.333", 0, locale))
+                // Precision 0 should still round to 0 for non-extremely-small values
+                assertEquals("0", MathEngine.formatDisplayResult("0.333", 0, locale))
 
-        // But extremely small values (< 0.001) should still be scientific
-        assertEquals("1E-4", MathEngine.formatDisplayResult("0.0001", 0, locale))
-    }
+                // But extremely small values (< 0.001) should still be scientific
+                assertEquals("1E-4", MathEngine.formatDisplayResult("0.0001", 0, locale))
+            }
 
     @Test
     fun `formatDisplayResult respects explicit locales`() = runBlocking {
@@ -1949,66 +2162,98 @@ class MathEngineTest {
         assertEquals("1,234.57", MathEngine.formatDisplayResult(raw, 2, java.util.Locale.ROOT))
         assertEquals("1.234,57", MathEngine.formatDisplayResult(raw, 2, java.util.Locale.GERMANY))
         val largeRaw = "1.23E30"
-        assertEquals("1,23E30", MathEngine.formatDisplayResult(largeRaw, 2, java.util.Locale.GERMANY))
+        assertEquals(
+                "1,23E30",
+                MathEngine.formatDisplayResult(largeRaw, 2, java.util.Locale.GERMANY)
+        )
     }
 
     @Test
     fun `formatDisplayResult respects region override for separators`() = runBlocking {
-        assertEquals("1,234,567", MathEngine.formatDisplayResult("1234567", 2, java.util.Locale.FRANCE, "US"))
+        assertEquals(
+                "1,234,567",
+                MathEngine.formatDisplayResult("1234567", 2, java.util.Locale.FRANCE, "US")
+        )
     }
 
     @Test
     fun `formatDisplayResult respects region for french style`() = runBlocking {
         // Note: France uses non-breaking space (narrow non-breaking space \u202F) as separator
-        assertEquals("1\u202F234,57", MathEngine.formatDisplayResult("1234.567", 2, java.util.Locale.US, "FR"))
+        assertEquals(
+                "1\u202F234,57",
+                MathEngine.formatDisplayResult("1234.567", 2, java.util.Locale.US, "FR")
+        )
     }
 
     @Test
     fun `formatDisplayResult respects explicit US and DE region overrides`() = runBlocking {
-        assertEquals("1,234.57", MathEngine.formatDisplayResult("1234.567", 2, java.util.Locale.GERMANY, "US"))
+        assertEquals(
+                "1,234.57",
+                MathEngine.formatDisplayResult("1234.567", 2, java.util.Locale.GERMANY, "US")
+        )
 
-        assertEquals("1.234,57", MathEngine.formatDisplayResult("1234.567", 2, java.util.Locale.US, "DE"))
+        assertEquals(
+                "1.234,57",
+                MathEngine.formatDisplayResult("1234.567", 2, java.util.Locale.US, "DE")
+        )
     }
 
     @Test
-    fun `formatDisplayResult implements smart regional formatting with non-standard separator fallbacks`() = runBlocking {
-        val value = "1234567.89"
+    fun `formatDisplayResult implements smart regional formatting with non-standard separator fallbacks`() =
+            runBlocking {
+                val value = "1234567.89"
 
-        // Bahrain (BH) - Should fallback to Western symbols (en_BH) to avoid mixing Arabic symbols
-        val bhLocale = Locale("ar", "BH")
-        assertEquals("1,234,567.89", MathEngine.formatDisplayResult(value, 2, bhLocale, "BH"))
+                // Bahrain (BH) - Should fallback to Western symbols (en_BH) to avoid mixing Arabic
+                // symbols
+                val bhLocale = Locale("ar", "BH")
+                assertEquals(
+                        "1,234,567.89",
+                        MathEngine.formatDisplayResult(value, 2, bhLocale, "BH")
+                )
 
-        // Germany (DE) - Should keep native de_DE symbols (dot grouping, comma decimal)
-        val deLocale = Locale("de", "DE")
-        assertEquals("1.234.567,89", MathEngine.formatDisplayResult(value, 2, deLocale, "DE"))
+                // Germany (DE) - Should keep native de_DE symbols (dot grouping, comma decimal)
+                val deLocale = Locale("de", "DE")
+                assertEquals(
+                        "1.234.567,89",
+                        MathEngine.formatDisplayResult(value, 2, deLocale, "DE")
+                )
 
-        // France (FR) - Should keep native fr_FR symbols (space grouping, comma decimal)
-        val frLocale = Locale("fr", "FR")
-        val frResult = MathEngine.formatDisplayResult(value, 2, frLocale, "FR")
-        assertTrue(frResult.contains('\u00A0') || frResult.contains('\u202F') || frResult.contains(' '))
-        assertTrue(frResult.endsWith(",89"))
+                // France (FR) - Should keep native fr_FR symbols (space grouping, comma decimal)
+                val frLocale = Locale("fr", "FR")
+                val frResult = MathEngine.formatDisplayResult(value, 2, frLocale, "FR")
+                assertTrue(
+                        frResult.contains('\u00A0') ||
+                                frResult.contains('\u202F') ||
+                                frResult.contains(' ')
+                )
+                assertTrue(frResult.endsWith(",89"))
 
-        // India (IN) - Should keep custom Indian style with Western comma
-        val inLocale = Locale("hi", "IN")
-        assertEquals("12,34,567.89", MathEngine.formatDisplayResult(value, 2, inLocale, "IN"))
+                // India (IN) - Should keep custom Indian style with Western comma
+                val inLocale = Locale("hi", "IN")
+                assertEquals(
+                        "12,34,567.89",
+                        MathEngine.formatDisplayResult(value, 2, inLocale, "IN")
+                )
 
-        // Switzerland (CH) - Should keep native apostrophe separator
-        val chLocale = Locale("de", "CH")
-        val chResult = MathEngine.formatDisplayResult(value, 2, chLocale, "CH")
-        assertTrue(chResult.any { it in setOf('\'', '\u2019', '.', ',') })
-        // de_CH uses the smart quote ’ (U+2019) as grouping separator
-        assertEquals("1\u2019234\u2019567.89", chResult)
-    }
+                // Switzerland (CH) - Should keep native apostrophe separator
+                val chLocale = Locale("de", "CH")
+                val chResult = MathEngine.formatDisplayResult(value, 2, chLocale, "CH")
+                assertTrue(chResult.any { it in setOf('\'', '\u2019', '.', ',') })
+                // de_CH uses the smart quote ’ (U+2019) as grouping separator
+                assertEquals("1\u2019234\u2019567.89", chResult)
+            }
 
     @Test
-    fun `getErrorDetails handles undefined variable`() = testCalculate("x + 5") { result ->
-        assertError("Unknown variable `x`", result[0], result, 0)
-    }
+    fun `getErrorDetails handles undefined variable`() =
+            testCalculate("x + 5") { result ->
+                assertError("Unknown variable `x`", result[0], result, 0)
+            }
 
     @Test
-    fun `getErrorDetails handles syntax error`() = testCalculate("1 + (2 * 3") { result ->
-        assertError("Expected `)`, but found `end of line`", result[0], result, 0)
-    }
+    fun `getErrorDetails handles syntax error`() =
+            testCalculate("1 + (2 * 3") { result ->
+                assertError("Expected `)`, but found `end of line`", result[0], result, 0)
+            }
 
     @Test
     fun `getErrorDetails returns null for blank line`() = runBlocking {
@@ -2018,148 +2263,158 @@ class MathEngineTest {
     }
 
     @Test
-    fun `getErrorDetails handles division by zero`() = testCalculate("10 / 0") { result ->
-        assertError("Cannot divide by zero", result, 0)
-    }
+    fun `getErrorDetails handles division by zero`() =
+            testCalculate("10 / 0") { result -> assertError("Cannot divide by zero", result, 0) }
 
     @Test
-    fun `getErrorDetails handles unknown function`() = testCalculate("unknown(5)") { result ->
-        assertError("Unknown function `unknown()`", result, 0)
-    }
+    fun `getErrorDetails handles unknown function`() =
+            testCalculate("unknown(5)") { result ->
+                assertError("Unknown function `unknown()`", result, 0)
+            }
 
     @Test
-    fun `getErrorDetails handles lexer error`() = testCalculate("1 @ 2") { result ->
-        assertError("Unexpected character `@`", result, 0)
-    }
+    fun `getErrorDetails handles lexer error`() =
+            testCalculate("1 @ 2") { result -> assertError("Unexpected character `@`", result, 0) }
 
     @Test
-    fun `getErrorDetails handles multiple operators`() = testCalculate("1 + * 2") { result ->
-        assertError("Expected a value or `(`, but found `*`", result, 0)
-    }
+    fun `getErrorDetails handles multiple operators`() =
+            testCalculate("1 + * 2") { result ->
+                assertError("Expected a value or `(`, but found `*`", result, 0)
+            }
 
     @Test
-    fun `getErrorDetails handles missing operand`() = testCalculate("5 + ") { result ->
-        assertError("Expected a value or `(`, but found `end of line`", result, 0)
-    }
+    fun `getErrorDetails handles missing operand`() =
+            testCalculate("5 + ") { result ->
+                assertError("Expected a value or `(`, but found `end of line`", result, 0)
+            }
 
     @Test
-    fun `getErrorDetails handles empty parentheses`() = testCalculate("()") { result ->
-        assertError("Expected a value or `(`, but found `)`", result, 0)
-    }
+    fun `getErrorDetails handles empty parentheses`() =
+            testCalculate("()") { result ->
+                assertError("Expected a value or `(`, but found `)`", result, 0)
+            }
 
     @Test
-    fun `getErrorDetails handles arity mismatch for user-defined function`() = testCalculate(
-        "f(x) = x * 2",
-        "f(1, 2)"
-    ) { result ->
-        assertError("Function `f()` expects 1 argument, but got 2", result, 1)
-    }
+    fun `getErrorDetails handles arity mismatch for user-defined function`() =
+            testCalculate("f(x) = x * 2", "f(1, 2)") { result ->
+                assertError("Function `f()` expects 1 argument, but got 2", result, 1)
+            }
 
     @Test
-    fun `arity mismatch reported before undefined argument for built in function`() = testCalculate("sinh(2, 5)") { result ->
-        assertError("Function `sinh()` expects 1 argument, but got 2", result, 0)
-    }
+    fun `arity mismatch reported before undefined argument for built in function`() =
+            testCalculate("sinh(2, 5)") { result ->
+                assertError("Function `sinh()` expects 1 argument, but got 2", result, 0)
+            }
 
     @Test
-    fun `arity mismatch reported before undefined argument for local function`() = testCalculate(
-        "f(x) = x * 2",
-        "f(1, unknown_var)"
-    ) { result ->
-        assertError("Function `f()` expects 1 argument, but got 2", result, 1)
-    }
+    fun `arity mismatch reported before undefined argument for local function`() =
+            testCalculate("f(x) = x * 2", "f(1, unknown_var)") { result ->
+                assertError("Function `f()` expects 1 argument, but got 2", result, 1)
+            }
 
     @Test
-    fun `arity mismatch reported before undefined argument for built-in function with invalid arg`() = testCalculate("sinh(1, unknown_var)") { result ->
-        assertError("Function `sinh()` expects 1 argument, but got 2", result, 0)
-    }
+    fun `arity mismatch reported before undefined argument for built-in function with invalid arg`() =
+            testCalculate("sinh(1, unknown_var)") { result ->
+                assertError("Function `sinh()` expects 1 argument, but got 2", result, 0)
+            }
 
     @Test
-    fun `factorial rejects fractional input`() = testCalculate("factorial(4.5)") { result ->
-        assertError("Factorial is only defined for whole numbers", result, 0)
-    }
+    fun `factorial rejects fractional input`() =
+            testCalculate("factorial(4.5)") { result ->
+                assertError("Factorial is only defined for whole numbers", result, 0)
+            }
 
     @Test
-    fun `factorial rejects negative input`() = testCalculate("fact(-3)") { result ->
-        assertError("Factorial is only defined for non-negative whole numbers", result, 0)
-    }
+    fun `factorial rejects negative input`() =
+            testCalculate("fact(-3)") { result ->
+                assertError("Factorial is only defined for non-negative whole numbers", result, 0)
+            }
 
     @Test
-    fun `factorial rejects inputs beyond supported limit`() = testCalculate("factorial(1001)") { result ->
-        assertError("Factorial is only supported up to 1000", result, 0)
-    }
+    fun `factorial rejects inputs beyond supported limit`() =
+            testCalculate("factorial(1001)") { result ->
+                assertError("Factorial is only supported up to 1000", result, 0)
+            }
 
     @Test
-    fun `power operator handles large exponents and nested powers`() = testCalculate(
-        "10^10^10",
-        "9^9^9",
-        "(9^9)^9",
-        "(9)^(9^9)",
-        "(9)^(9)^(9)",
-        "2^1000001",
-        "2^-1000001",
-        "2^-2147483648",
-        "2^1000000.5",
-        "2^1000000",
-        "(-2)^0.5",
-        "1E400 ^ 0.5",
-        "1E-400 ^ -0.5",
-        "1E400 ^ -0.2"
-    ) { result ->
-        assertError("Exponent is too large (max 1000000)", result, 0)
-        assertError("Exponent is too large (max 1000000)", result, 1)
-        assertEquals("1.966270504755529136180759085269121E77", result[2].result)
-        assertError("Exponent is too large (max 1000000)", result, 3)
-        assertError("Exponent is too large (max 1000000)", result, 4)
-        assertError("Exponent is too large (max 1000000)", result, 5)
-        assertError("Exponent is too large (max 1000000)", result, 6)
-        assertError("Exponent is too large (max 1000000)", result, 7)
-        assertError("Exponent is too large (max 1000000)", result, 8)
-        assertEquals("9.900656229295898250697923616301903E301029", result[9].result)
-        assertError("Undefined", result, 10)
-        assertEquals("1.0E200", result[11].result)
-        assertEquals("1.0E200", result[12].result)
-        assertEquals("1.0E-80", result[13].result)
-    }
+    fun `power operator handles large exponents and nested powers`() =
+            testCalculate(
+                    "10^10^10",
+                    "9^9^9",
+                    "(9^9)^9",
+                    "(9)^(9^9)",
+                    "(9)^(9)^(9)",
+                    "2^1000001",
+                    "2^-1000001",
+                    "2^-2147483648",
+                    "2^1000000.5",
+                    "2^1000000",
+                    "(-2)^0.5",
+                    "1E400 ^ 0.5",
+                    "1E-400 ^ -0.5",
+                    "1E400 ^ -0.2"
+            ) { result ->
+                assertError("Exponent is too large (max 1000000)", result, 0)
+                assertError("Exponent is too large (max 1000000)", result, 1)
+                assertEquals("1.966270504755529136180759085269121E77", result[2].result)
+                assertError("Exponent is too large (max 1000000)", result, 3)
+                assertError("Exponent is too large (max 1000000)", result, 4)
+                assertError("Exponent is too large (max 1000000)", result, 5)
+                assertError("Exponent is too large (max 1000000)", result, 6)
+                assertError("Exponent is too large (max 1000000)", result, 7)
+                assertError("Exponent is too large (max 1000000)", result, 8)
+                assertEquals("9.900656229295898250697923616301903E301029", result[9].result)
+                assertError("Undefined", result, 10)
+                assertEquals("1.0E200", result[11].result)
+                assertEquals("1.0E200", result[12].result)
+                assertEquals("1.0E-80", result[13].result)
+            }
 
     @Test
-    fun `pow() function enforces magnitude limits`() = testCalculate(
-        "pow(10, pow(10, 10))",
-        "pow(9, pow(9, 9))",
-        "pow(pow(9, 9), 9)",
-        "pow(10, 10^10)",
-        "pow(2, 1000001)",
-        "pow(2, -1000001)",
-        "pow(2, -2147483648)",
-        "pow(2, 1000000.5)",
-        "pow(2, 1000000)",
-        "pow(-2, 0.5)",
-        "pow(1E400, 0.5)",
-        "pow(1E-400, -0.5)",
-        "pow(1E400, -0.2)",
-        "pow(10^3000, 1000000)"
-    ) { result ->
-        assertError("Exponent is too large (max 1000000)", result, 0)
-        assertError("Exponent is too large (max 1000000)", result, 1)
-        assertEquals("1.966270504755529136180759085269121E77", result[2].result)
-        assertError("Exponent is too large (max 1000000)", result, 3)
-        assertError("Exponent is too large (max 1000000)", result, 4)
-        assertError("Exponent is too large (max 1000000)", result, 5)
-        assertError("Exponent is too large (max 1000000)", result, 6)
-        assertError("Exponent is too large (max 1000000)", result, 7)
-        assertEquals("9.900656229295898250697923616301903E301029", result[8].result)
-        assertError("Undefined", result, 9)
-        assertEquals("1.0E200", result[10].result)
-        assertEquals("1.0E200", result[11].result)
-        assertEquals("1.0E-80", result[12].result)
-        assertError("Overflow", result, 13)
-    }
+    fun `pow() function enforces magnitude limits`() =
+            testCalculate(
+                    "pow(10, pow(10, 10))",
+                    "pow(9, pow(9, 9))",
+                    "pow(pow(9, 9), 9)",
+                    "pow(10, 10^10)",
+                    "pow(2, 1000001)",
+                    "pow(2, -1000001)",
+                    "pow(2, -2147483648)",
+                    "pow(2, 1000000.5)",
+                    "pow(2, 1000000)",
+                    "pow(-2, 0.5)",
+                    "pow(1E400, 0.5)",
+                    "pow(1E-400, -0.5)",
+                    "pow(1E400, -0.2)",
+                    "pow(10^3000, 1000000)"
+            ) { result ->
+                assertError("Exponent is too large (max 1000000)", result, 0)
+                assertError("Exponent is too large (max 1000000)", result, 1)
+                assertEquals("1.966270504755529136180759085269121E77", result[2].result)
+                assertError("Exponent is too large (max 1000000)", result, 3)
+                assertError("Exponent is too large (max 1000000)", result, 4)
+                assertError("Exponent is too large (max 1000000)", result, 5)
+                assertError("Exponent is too large (max 1000000)", result, 6)
+                assertError("Exponent is too large (max 1000000)", result, 7)
+                assertEquals("9.900656229295898250697923616301903E301029", result[8].result)
+                assertError("Undefined", result, 9)
+                assertEquals("1.0E200", result[10].result)
+                assertEquals("1.0E200", result[11].result)
+                assertEquals("1.0E-80", result[12].result)
+                assertError("Overflow", result, 13)
+            }
 
     @Test
     fun `power operator handles safety limits in rational mode`() = runBlocking {
-        val lines = listOf(
-            LineEntity(fileId = 1L, sortOrder = 0, expression = "2^10001"), // Exceeds MAX_EXACT_EXPONENT (10,000)
-            LineEntity(fileId = 1L, sortOrder = 1, expression = "2^10")    // Within limit
-        )
+        val lines =
+                listOf(
+                        LineEntity(
+                                fileId = 1L,
+                                sortOrder = 0,
+                                expression = "2^10001"
+                        ), // Exceeds MAX_EXACT_EXPONENT (10,000)
+                        LineEntity(fileId = 1L, sortOrder = 1, expression = "2^10") // Within limit
+                )
         val results = MathEngine.calculate(lines, rationalMode = true)
 
         // 2^10001 fallback to BigDecimal approximation (DECIMAL128 = 34 digits)
@@ -2175,49 +2430,48 @@ class MathEngineTest {
     }
 
     @Test
-    fun `lineno, linenumber, and currentLineNumber returns correct current line number`() = testCalculate(
-        "lineno",
-        "linenumber",
-        "currentLineNumber"
-    ) { result ->
-        assertEquals("1.0", result[0].result)
-        assertEquals("2.0", result[1].result)
-        assertEquals("3.0", result[2].result)
-    }
+    fun `lineno, linenumber, and currentLineNumber returns correct current line number`() =
+            testCalculate("lineno", "linenumber", "currentLineNumber") { result ->
+                assertEquals("1.0", result[0].result)
+                assertEquals("2.0", result[1].result)
+                assertEquals("3.0", result[2].result)
+            }
 
     @Test
-    fun `lineno works in expressions`() = testCalculate(
-        "10 + lineno",
-        "lineno * 5"
-    ) { result ->
-        assertEquals("11.0", result[0].result)
-        assertEquals("10.0", result[1].result)
-    }
+    fun `lineno works in expressions`() =
+            testCalculate("10 + lineno", "lineno * 5") { result ->
+                assertEquals("11.0", result[0].result)
+                assertEquals("10.0", result[1].result)
+            }
 
     @Test
-    fun `lineno is reserved and cannot be reassigned`() = testCalculate("lineno = 10") { result ->
-        assertError("`lineno` is a reserved name and cannot be changed", result, 0)
-    }
+    fun `lineno is reserved and cannot be reassigned`() =
+            testCalculate("lineno = 10") { result ->
+                assertError("`lineno` is a reserved name and cannot be changed", result, 0)
+            }
 
     @Test
-    fun `compound assignment to lineno is not allowed`() = testCalculate("lineno += 5") { result ->
-        assertError("`lineno` is a reserved name and cannot be changed", result, 0)
-    }
+    fun `compound assignment to lineno is not allowed`() =
+            testCalculate("lineno += 5") { result ->
+                assertError("`lineno` is a reserved name and cannot be changed", result, 0)
+            }
 
     @Test
-    fun `increment on lineno is not allowed`() = testCalculate("lineno++") { result ->
-        assertError("`lineno` is a reserved name and cannot be changed", result, 0)
-    }
+    fun `increment on lineno is not allowed`() =
+            testCalculate("lineno++") { result ->
+                assertError("`lineno` is a reserved name and cannot be changed", result, 0)
+            }
 
     @Test
     fun `lineno updates correctly after line insertion`() = runBlocking {
         // Initial state
-        val lines = mutableListOf(
-            createLine("x = 10", sortOrder = 0),
-            createLine("lineno", sortOrder = 1) // Should be 2
-        )
+        val lines =
+                mutableListOf(
+                        createLine("x = 10", sortOrder = 0),
+                        createLine("lineno", sortOrder = 1) // Should be 2
+                )
         val result1 = MathEngine.calculate(lines)
-            assertEquals("2.0", result1[1].result)
+        assertEquals("2.0", result1[1].result)
 
         // Insert line at index 1
         lines.add(1, createLine("y = 20", sortOrder = 1))
@@ -2225,27 +2479,31 @@ class MathEngineTest {
         val updatedLines = lines.mapIndexed { index, line -> line.copy(sortOrder = index) }
 
         val result2 = MathEngine.calculate(updatedLines)
-                assertEquals("10.0", result2[0].result) // L1: x=10
-                assertEquals("20.0", result2[1].result) // L2: y=20
-                assertEquals("3.0", result2[2].result)  // L3: lineno (was 2, now 3)
-            }
+        assertEquals("10.0", result2[0].result) // L1: x=10
+        assertEquals("20.0", result2[1].result) // L2: y=20
+        assertEquals("3.0", result2[2].result) // L3: lineno (was 2, now 3)
+    }
 
     @Test
     fun `lineno updates correctly after line deletion`() = runBlocking {
-        val lines = listOf(
-            createLine("10", sortOrder = 0),
-            createLine("20", sortOrder = 1),
-            createLine("lineno", sortOrder = 2) // Should be 3
-        )
+        val lines =
+                listOf(
+                        createLine("10", sortOrder = 0),
+                        createLine("20", sortOrder = 1),
+                        createLine("lineno", sortOrder = 2) // Should be 3
+                )
         val result1 = MathEngine.calculate(lines)
-            assertEquals("3.0", result1[2].result)
+        assertEquals("3.0", result1[2].result)
 
         // Delete line at index 1
-        val remainingLines = listOf(lines[0], lines[2]).mapIndexed { index, line -> line.copy(sortOrder = index) }
+        val remainingLines =
+                listOf(lines[0], lines[2]).mapIndexed { index, line ->
+                    line.copy(sortOrder = index)
+                }
         val result2 = MathEngine.calculate(remainingLines)
-                assertEquals("10.0", result2[0].result)
-                assertEquals("2.0", result2[1].result) // lineno (was 3, now 2)
-            }
+        assertEquals("10.0", result2[0].result)
+        assertEquals("2.0", result2[1].result) // lineno (was 3, now 2)
+    }
 
     @Test
     fun `calculateFrom handles lineno correctly for partial recalculation`() = runBlocking {
@@ -2255,29 +2513,33 @@ class MathEngineTest {
         }
     }
 
-    private class FakeFileContextLoader(private val contexts: Map<String, MathContext>) : FileContextLoader {
-        override suspend fun loadContext(fileName: String, loadingStack: Set<String>): MathContext? {
+    private class FakeFileContextLoader(private val contexts: Map<String, MathContext>) :
+            FileContextLoader {
+        override suspend fun loadContext(
+                fileName: String,
+                loadingStack: Set<String>
+        ): MathContext? {
             return contexts[fileName]
         }
     }
 
     @Test
     fun `evaluate resolves member access from linked file`() = runBlocking {
-        val remoteContext = MathContext(variables = mutableMapOf("x" to EvaluationResult(BigDecimal("20.0"))))
+        val remoteContext =
+                MathContext(variables = mutableMapOf("x" to EvaluationResult(BigDecimal("20.0"))))
         val loader = FakeFileContextLoader(mapOf("File B" to remoteContext))
 
-        testCalculate(
-            "f = file(\"File B\")",
-            "f.x + 5",
-            loader = loader
-        ) { result ->
+        testCalculate("f = file(\"File B\")", "f.x + 5", loader = loader) { result ->
             assertEquals("25.0", result[1].result)
         }
     }
 
     @Test
     fun `evaluate with direct file function access`() = runBlocking {
-        val remoteContext = MathContext(variables = mutableMapOf("total" to EvaluationResult(BigDecimal("100.0"))))
+        val remoteContext =
+                MathContext(
+                        variables = mutableMapOf("total" to EvaluationResult(BigDecimal("100.0")))
+                )
         val loader = FakeFileContextLoader(mapOf("Summary" to remoteContext))
 
         testCalculate("file(\"Summary\").total * 0.1", loader = loader) { result ->
@@ -2287,129 +2549,138 @@ class MathEngineTest {
 
     @Test
     fun `user-defined function cannot access variables from linked files`() = runBlocking {
-        val remoteContext = MathContext(variables = mutableMapOf("x" to EvaluationResult(BigDecimal("10.0"))))
+        val remoteContext =
+                MathContext(variables = mutableMapOf("x" to EvaluationResult(BigDecimal("10.0"))))
         val loader = FakeFileContextLoader(mapOf("File B" to remoteContext))
 
-        testCalculate(
-            "f = file(\"File B\")",
-            "a(n) = f.x + n",
-            "a(1)",
-            loader = loader
-        ) { result ->
+        testCalculate("f = file(\"File B\")", "a(n) = f.x + n", "a(1)", loader = loader) { result ->
             assertError("Cannot access file variables inside a function body", result, 2, loader)
         }
     }
 
     @Test
     fun `file reference via file call inside function body is not allowed`() = runBlocking {
-        val remoteContext = MathContext(variables = mutableMapOf("x" to EvaluationResult(BigDecimal("10.0"))))
+        val remoteContext =
+                MathContext(variables = mutableMapOf("x" to EvaluationResult(BigDecimal("10.0"))))
         val loader = FakeFileContextLoader(mapOf("File B" to remoteContext))
 
-        testCalculate(
-            "a(n) = file(\"File B\").x + n",
-            "a(1)",
-            loader = loader
-        ) { result ->
+        testCalculate("a(n) = file(\"File B\").x + n", "a(1)", loader = loader) { result ->
             assertError("Cannot access file variables inside a function body", result, 1, loader)
         }
     }
 
     @Test
-    fun `user-defined function cannot access local variables in the current file`() = testCalculate(
-        "x = 10",
-        "a(n) = x + n",
-        "a(1)"
-    ) { result ->
-        assertError("Unknown variable `x`", result, 2)
-    }
+    fun `user-defined function cannot access local variables in the current file`() =
+            testCalculate("x = 10", "a(n) = x + n", "a(1)") { result ->
+                assertError("Unknown variable `x`", result, 2)
+            }
 
     @Test
-    fun `user-defined function can access built-in constants`() = testCalculate(
-        "a(n) = PI + n",
-        "a(0)"
-    ) { result ->
-        assertEquals("3.1415926535897932384626433832795028841971", result[1].result)
-    }
+    fun `user-defined function can access built-in constants`() =
+            testCalculate("a(n) = PI + n", "a(0)") { result ->
+                assertEquals("3.1415926535897932384626433832795028841971", result[1].result)
+            }
 
     @Test
     fun `file reference cannot be passed as function argument`() = runBlocking {
-        val remoteContext = MathContext(variables = mutableMapOf("x" to EvaluationResult(BigDecimal("10.0"))))
+        val remoteContext =
+                MathContext(variables = mutableMapOf("x" to EvaluationResult(BigDecimal("10.0"))))
         val loader = FakeFileContextLoader(mapOf("File B" to remoteContext))
 
-        testCalculate(
-            "f = file(\"File B\")",
-            "a(arg) = arg.x + 1",
-            "a(f)",
-            loader = loader
-        ) { result ->
-            assertError("File references (like `f`) cannot be passed to functions. Pass the specific values you need instead (e.g., `a(f.variable)`).", result, 2, loader)
+        testCalculate("f = file(\"File B\")", "a(arg) = arg.x + 1", "a(f)", loader = loader) {
+                result ->
+            assertError(
+                    "File references (like `f`) cannot be passed to functions. Pass the specific values you need instead (e.g., `a(f.variable)`).",
+                    result,
+                    2,
+                    loader
+            )
         }
     }
 
     @Test
     fun `file reference cannot be used in expressions`() = runBlocking {
-        val remoteContext = MathContext(variables = mutableMapOf("x" to EvaluationResult(BigDecimal("10.0"))))
+        val remoteContext =
+                MathContext(variables = mutableMapOf("x" to EvaluationResult(BigDecimal("10.0"))))
         val loader = FakeFileContextLoader(mapOf("File B" to remoteContext))
 
-        testCalculate(
-            "f = file(\"File B\")",
-            "f + 1",
-            loader = loader
-        ) { result ->
-            assertError("`f` is a file reference and cannot be used as a value. Use dot notation (e.g., `f.variable`) to access its contents.", result, 1, loader)
+        testCalculate("f = file(\"File B\")", "f + 1", loader = loader) { result ->
+            assertError(
+                    "`f` is a file reference and cannot be used as a value. Use dot notation (e.g., `f.variable`) to access its contents.",
+                    result,
+                    1,
+                    loader
+            )
         }
     }
 
     @Test
     fun `evaluate clears file linked state after reassignment to number`() = runBlocking {
-        val remoteContext = MathContext(variables = mutableMapOf("x" to EvaluationResult(BigDecimal("20.0"))))
+        val remoteContext =
+                MathContext(variables = mutableMapOf("x" to EvaluationResult(BigDecimal("20.0"))))
         val loader = FakeFileContextLoader(mapOf("File B" to remoteContext))
 
-        testCalculate(
-            "f = file(\"File B\")",
-            "f = 42",
-            "f.x",
-            loader = loader
-        ) { result ->
-            assertError("`f` is not linked to any file. Use `file(\"...\")` to link first", result, 2, loader)
+        testCalculate("f = file(\"File B\")", "f = 42", "f.x", loader = loader) { result ->
+            assertError(
+                    "`f` is not linked to any file. Use `file(\"...\")` to link first",
+                    result,
+                    2,
+                    loader
+            )
         }
     }
 
     @Test
-    fun `evaluate remote file self-reference loop triggers CircularReferenceException`() = runBlocking {
-        val loader = object : FileContextLoader {
-            override suspend fun loadContext(fileName: String, loadingStack: Set<String>): MathContext? {
-                if (fileName == "File B") {
-                    // File B contains: f = file("File B") and x = f.y
-                    // Evaluating f.y will trigger a recursive load of "File B"
-                    val lines = listOf(createLine("f = file(\"File B\")"), createLine("x = f.y"))
-                    return MathEngine.buildVariableState(lines, this, loadingStack)
-                }
-                return null
-            }
-        }
+    fun `evaluate remote file self-reference loop triggers CircularReferenceException`() =
+            runBlocking {
+                val loader =
+                        object : FileContextLoader {
+                            override suspend fun loadContext(
+                                    fileName: String,
+                                    loadingStack: Set<String>
+                            ): MathContext? {
+                                if (fileName == "File B") {
+                                    // File B contains: f = file("File B") and x = f.y
+                                    // Evaluating f.y will trigger a recursive load of "File B"
+                                    val lines =
+                                            listOf(
+                                                    createLine("f = file(\"File B\")"),
+                                                    createLine("x = f.y")
+                                            )
+                                    return MathEngine.buildVariableState(lines, this, loadingStack)
+                                }
+                                return null
+                            }
+                        }
 
-        testCalculate("file(\"File B\").x", loader = loader) { result ->
-            assertError("File `File B` references itself, causing an endless loop", result, 0, loader)
-        }
-    }
+                testCalculate("file(\"File B\").x", loader = loader) { result ->
+                    assertError(
+                            "File `File B` references itself, causing an endless loop",
+                            result,
+                            0,
+                            loader
+                    )
+                }
+            }
 
     @Test
     fun `evaluate resolves remote function call from linked file`() = runBlocking {
         val remoteContext = MathContext()
-        remoteContext.localFunctions["double"] = LocalFunction(
-            name = "double",
-            params = listOf(Statement.FunctionParam("x")),
-            body = listOf(
-                Statement.ExprStatement(
-                    Expr.BinaryOp(
-                        Expr.Variable("x"),
-                        TokenKind.STAR,
-                        Expr.NumberLiteral(BigDecimal("2.0"))
-                    )
+        remoteContext.localFunctions["double"] =
+                LocalFunction(
+                        name = "double",
+                        params = listOf(Statement.FunctionParam("x")),
+                        body =
+                                listOf(
+                                        Statement.ExprStatement(
+                                                Expr.BinaryOp(
+                                                        Expr.Variable("x"),
+                                                        TokenKind.STAR,
+                                                        Expr.NumberLiteral(BigDecimal("2.0"))
+                                                )
+                                        )
+                                )
                 )
-            )
-        )
         val loader = FakeFileContextLoader(mapOf("Summary" to remoteContext))
 
         testCalculate("file(\"Summary\").double(5) + 3", loader = loader) { result ->
@@ -2420,19 +2691,26 @@ class MathEngineTest {
     @Test
     fun `cross-file function call keeps unit`() = runBlocking {
         val remoteContext = MathContext()
-        remoteContext.localFunctions["addOne"] = LocalFunction(
-            name = "addOne",
-            params = listOf(Statement.FunctionParam("x")),
-            body = listOf(
-                Statement.ExprStatement(
-                    Expr.BinaryOp(
-                        Expr.Variable("x"),
-                        TokenKind.PLUS,
-                        Expr.Quantity(Expr.NumberLiteral(BigDecimal("1.0")), "cm")
-                    )
+        remoteContext.localFunctions["addOne"] =
+                LocalFunction(
+                        name = "addOne",
+                        params = listOf(Statement.FunctionParam("x")),
+                        body =
+                                listOf(
+                                        Statement.ExprStatement(
+                                                Expr.BinaryOp(
+                                                        Expr.Variable("x"),
+                                                        TokenKind.PLUS,
+                                                        Expr.Quantity(
+                                                                Expr.NumberLiteral(
+                                                                        BigDecimal("1.0")
+                                                                ),
+                                                                "cm"
+                                                        )
+                                                )
+                                        )
+                                )
                 )
-            )
-        )
         val loader = FakeFileContextLoader(mapOf("Summary" to remoteContext))
 
         testCalculate("file(\"Summary\").addOne(10 cm)", loader = loader) { result ->
@@ -2441,46 +2719,51 @@ class MathEngineTest {
     }
 
     @Test
-    fun `standalone string literal works`() = testCalculate("\"hello\"") { result ->
-        assertEquals("hello", result[0].result)
-    }
-
+    fun `standalone string literal works`() =
+            testCalculate("\"hello\"") { result -> assertEquals("hello", result[0].result) }
 
     @Test
-    fun `writing to member access target is read-only`() = testCalculate(
-        "f = file(\"File B\")",
-        "f.x = 10"
-    ) { result ->
-        assertError("Variables from other files are read-only and cannot be changed", result, 1)
-    }
+    fun `writing to member access target is read-only`() =
+            testCalculate("f = file(\"File B\")", "f.x = 10") { result ->
+                assertError(
+                        "Variables from other files are read-only and cannot be changed",
+                        result,
+                        1
+                )
+            }
 
     @Test
     fun `dot notation on global functions throws error`() = runBlocking {
         val remoteContext = MathContext()
         val loader = FakeFileContextLoader(mapOf("File B" to remoteContext))
-        testCalculate(
-            "f = file(\"File B\")",
-            "f.sin(90)",
-            loader = loader
-        ) { result ->
-            assertError("`sin()` is a global function and should be called directly, not via dot notation", result, 1, loader)
+        testCalculate("f = file(\"File B\")", "f.sin(90)", loader = loader) { result ->
+            assertError(
+                    "`sin()` is a global function and should be called directly, not via dot notation",
+                    result,
+                    1,
+                    loader
+            )
         }
     }
 
     @Test
-    fun `file call missing closing parenthesis throws error`() = testCalculate("file(\"A\"") { result ->
-        assertError("Expected `)`, but found `end of line`", result, 0)
-    }
+    fun `file call missing closing parenthesis throws error`() =
+            testCalculate("file(\"A\"") { result ->
+                assertError("Expected `)`, but found `end of line`", result, 0)
+            }
 
     @Test
-    fun `dot notation missing identifier throws error`() = testCalculate("file(\"A\").") { result ->
-        assertError("Missing variable or function name after `.`", result, 0)
-    }
+    fun `dot notation missing identifier throws error`() =
+            testCalculate("file(\"A\").") { result ->
+                assertError("Missing variable or function name after `.`", result, 0)
+            }
 
-    private class RecursiveFakeFileContextLoader(
-        private val files: Map<String, List<LineEntity>>
-    ) : FileContextLoader {
-        override suspend fun loadContext(fileName: String, loadingStack: Set<String>): MathContext? {
+    private class RecursiveFakeFileContextLoader(private val files: Map<String, List<LineEntity>>) :
+            FileContextLoader {
+        override suspend fun loadContext(
+                fileName: String,
+                loadingStack: Set<String>
+        ): MathContext? {
             val lines = files[fileName] ?: return null
             return MathEngine.buildVariableState(lines, this, loadingStack)
         }
@@ -2488,22 +2771,21 @@ class MathEngineTest {
 
     @Test
     fun `circular dependency between files results in Err`() = runBlocking {
-        val fileALines = createLines(
-            "b = file(\"File B\")",
-            "b.y"
-        )
-        val fileBLines = createLines(
-            "a = file(\"File A\")",
-            "a.x"
-        )
+        val fileALines = createLines("b = file(\"File B\")", "b.y")
+        val fileBLines = createLines("a = file(\"File A\")", "a.x")
 
-        val loader = RecursiveFakeFileContextLoader(mapOf(
-            "File A" to fileALines,
-            "File B" to fileBLines
-        ))
+        val loader =
+                RecursiveFakeFileContextLoader(
+                        mapOf("File A" to fileALines, "File B" to fileBLines)
+                )
 
         testCalculate("b = file(\"File B\")", "b.y", loader = loader) { result ->
-            assertError("File `File A` also references file `File B`, causing an endless loop", result, 1, loader)
+            assertError(
+                    "File `File A` also references file `File B`, causing an endless loop",
+                    result,
+                    1,
+                    loader
+            )
         }
     }
 
@@ -2515,7 +2797,10 @@ class MathEngineTest {
 
         // Indirect double-hop loop: A -> B -> A
         val doubleHop = CircularReferenceException("Untitled", setOf("Untitled", "Salary"))
-        assertEquals("File `Salary` also references file `Untitled`, causing an endless loop", doubleHop.message)
+        assertEquals(
+                "File `Salary` also references file `Untitled`, causing an endless loop",
+                doubleHop.message
+        )
 
         // Deeper nested multi-hop loop: A -> B -> C -> D -> B (fallback to arrows)
         val genericChain = CircularReferenceException("D", setOf("A", "B", "C"))
@@ -2524,102 +2809,101 @@ class MathEngineTest {
 
     @Test
     fun `getErrorDetails reports intuitive circular messages with seeded stack`() = runBlocking {
-        val fileALines = listOf(
-            createLine("b = file(\"File B\")", fileId = 1L, sortOrder = 0),
-            createLine("b.y", fileId = 1L, sortOrder = 1)
-        )
-        val fileBLines = listOf(
-            createLine("a = file(\"File A\")", fileId = 2L, sortOrder = 0),
-            createLine("a.x", fileId = 2L, sortOrder = 1)
-        )
+        val fileALines =
+                listOf(
+                        createLine("b = file(\"File B\")", fileId = 1L, sortOrder = 0),
+                        createLine("b.y", fileId = 1L, sortOrder = 1)
+                )
+        val fileBLines =
+                listOf(
+                        createLine("a = file(\"File A\")", fileId = 2L, sortOrder = 0),
+                        createLine("a.x", fileId = 2L, sortOrder = 1)
+                )
 
-        val loader = RecursiveFakeFileContextLoader(mapOf(
-            "File A" to fileALines,
-            "File B" to fileBLines
-        ))
+        val loader =
+                RecursiveFakeFileContextLoader(
+                        mapOf("File A" to fileALines, "File B" to fileBLines)
+                )
 
         // Trigger loading B.y from A -> triggers circular loop back to A
-        val errMsg = MathEngine.getErrorDetails(
-            allLines = fileALines,
-            targetIndex = 1,
-            loader = loader,
-            loadingStack = setOf("File A")
-        )
+        val errMsg =
+                MathEngine.getErrorDetails(
+                        allLines = fileALines,
+                        targetIndex = 1,
+                        loader = loader,
+                        loadingStack = setOf("File A")
+                )
 
         assertEquals("File `File B` also references file `File A`, causing an endless loop", errMsg)
     }
 
     @Test
-    fun `unit conversion simple natural language`() = testCalculate(
-        "10 km in m",
-        "1000 m as kilometers",
-        "2 hours in seconds"
-    ) { result ->
-        assertEquals("10000.0 m", result[0].result)
-        assertEquals("1.0 km", result[1].result)
-        assertEquals("7200.0 s", result[2].result)
-    }
+    fun `unit conversion simple natural language`() =
+            testCalculate("10 km in m", "1000 m as kilometers", "2 hours in seconds") { result ->
+                assertEquals("10000.0 m", result[0].result)
+                assertEquals("1.0 km", result[1].result)
+                assertEquals("7200.0 s", result[2].result)
+            }
 
     @Test
-    fun `unit conversion mixed arithmetic`() = testCalculate(
-        "10 km + 5000 m in km",
-        "1 m + 100 cm in m",
-        "10 kg + 20 gram to kilograms",
-        "53 weeks - 20 days"
-    ) { result ->
-        assertEquals("15.0 km", result[0].result)
-        assertEquals("2.0 m", result[1].result)
-        assertEquals("10.02 kg", result[2].result)
-        assertEquals("351.0 d", result[3].result)
-    }
+    fun `unit conversion mixed arithmetic`() =
+            testCalculate(
+                    "10 km + 5000 m in km",
+                    "1 m + 100 cm in m",
+                    "10 kg + 20 gram to kilograms",
+                    "53 weeks - 20 days"
+            ) { result ->
+                assertEquals("15.0 km", result[0].result)
+                assertEquals("2.0 m", result[1].result)
+                assertEquals("10.02 kg", result[2].result)
+                assertEquals("351.0 d", result[3].result)
+            }
 
     @Test
-    fun `unit conversion temperature non linear`() = testCalculate(
-        "0 degC in F",
-        "212 F in C",
-        "0 C in K"
-    ) { result ->
-        assertEquals("32.0 °F", result[0].result)
-        assertEquals("100.0 °C", result[1].result)
-        assertEquals("273.15 K", result[2].result)
-    }
+    fun `unit conversion temperature non linear`() =
+            testCalculate("0 degC in F", "212 F in C", "0 C in K") { result ->
+                assertEquals("32.0 °F", result[0].result)
+                assertEquals("100.0 °C", result[1].result)
+                assertEquals("273.15 K", result[2].result)
+            }
 
     @Test
-    fun `unit conversion data storage`() = testCalculate(
-        "1 GB in MB",
-        "1 GiB in MiB"
-    ) { result ->
-        assertEquals("1000.0 MB", result[0].result)
-        assertEquals("1024.0 MiB", result[1].result)
-    }
+    fun `unit conversion data storage`() =
+            testCalculate("1 GB in MB", "1 GiB in MiB") { result ->
+                assertEquals("1000.0 MB", result[0].result)
+                assertEquals("1024.0 MiB", result[1].result)
+            }
 
     @Test
-    fun `unit conversion css dynamic ppi`() = testCalculate(
-        "96 px in inch",
-        "ppi = 300",
-        "300 px in inch",
-        "em = 21px",
-        "1.5 em in px"
-    ) { result ->
-        assertEquals(1.0, result[0].result.split(" ")[0].toDouble(), 0.0001)
-        assertEquals(1.0, result[2].result.split(" ")[0].toDouble(), 0.0001)
-        // em = 21px. 1.5 em = 1.5 * 21px = 31.5px
-        val resStr = result[4].result
-        val spaceIdx = resStr.indexOf(' ')
-        val valStr = if (spaceIdx > 0) resStr.substring(0, spaceIdx) else resStr
-        assertEquals(31.5, valStr.toDouble(), 0.0001)
-        assertEquals("px", resStr.substring(spaceIdx + 1))
-    }
+    fun `unit conversion css dynamic ppi`() =
+            testCalculate(
+                    "96 px in inch",
+                    "ppi = 300",
+                    "300 px in inch",
+                    "em = 21px",
+                    "1.5 em in px"
+            ) { result ->
+                assertEquals(1.0, result[0].result.split(" ")[0].toDouble(), 0.0001)
+                assertEquals(1.0, result[2].result.split(" ")[0].toDouble(), 0.0001)
+                // em = 21px. 1.5 em = 1.5 * 21px = 31.5px
+                val resStr = result[4].result
+                val spaceIdx = resStr.indexOf(' ')
+                val valStr = if (spaceIdx > 0) resStr.substring(0, spaceIdx) else resStr
+                assertEquals(31.5, valStr.toDouble(), 0.0001)
+                assertEquals("px", resStr.substring(spaceIdx + 1))
+            }
 
     @Test
-    fun `unit conversion function syntax`() = testCalculate("convert(10, \"km\", \"m\")") { result ->
-        assertEquals("10000.0 m", result[0].result)
-    }
+    fun `unit conversion function syntax`() =
+            testCalculate("convert(10, \"km\", \"m\")") { result ->
+                assertEquals("10000.0 m", result[0].result)
+            }
 
     @Test
-    fun `mixed unit addition picking smaller unit`() = testCalculate("53 weeks + 2 days") { result ->
-        assertEquals("373.0 d", result[0].result)
-    }
+    fun `mixed unit addition picking smaller unit`() =
+            testCalculate("53 weeks + 2 days") { result ->
+                assertEquals("373.0 d", result[0].result)
+            }
 
     @Test
     fun `multiplying length quantities promotes area and volume`() = runBlocking {
@@ -2675,16 +2959,12 @@ class MathEngineTest {
 
     @Test
     fun `convert function performs full conversion from base`() = runBlocking {
-        testCalculate("convert(10, \"km\", \"cm\")") {
-            assertEquals("1000000.0 cm", it[0].result)
-        }
+        testCalculate("convert(10, \"km\", \"cm\")") { assertEquals("1000000.0 cm", it[0].result) }
     }
 
     @Test
     fun `unit conversion expression performs full conversion from base`() = runBlocking {
-        testCalculate("10 km in cm") {
-            assertEquals("1000000.0 cm", it[0].result)
-        }
+        testCalculate("10 km in cm") { assertEquals("1000000.0 cm", it[0].result) }
     }
 
     @Test
@@ -2696,35 +2976,31 @@ class MathEngineTest {
 
     @Test
     fun `unit conversion multi word alias`() = runBlocking {
-        testCalculate("10 degree celsius in fahrenheit") {
-            assertEquals("50.0 °F", it[0].result)
-        }
+        testCalculate("10 degree celsius in fahrenheit") { assertEquals("50.0 °F", it[0].result) }
     }
 
     @Test
     fun `standalone quantity preserves unit in result`() = runBlocking {
-        testCalculate("10 kg") {
-            assertEquals("10.0 kg", it[0].result)
-        }
+        testCalculate("10 kg") { assertEquals("10.0 kg", it[0].result) }
     }
 
     @Test
     fun `quantity can be stripped to unitless value`() = runBlocking {
         testCalculate(
-            "area = 4.20",
-            "cost = area * 4.2 crores",
-            "saleable = area * (1 acre as sqft) * 70%",
-            "revenue = saleable * 5000",
-            "value(10 kg)",
-            "dropUnit(10 kg)",
-            "raw(10 kg)",
-            "value(128066.6 sqft)",
-            "value(12 million)",
-            "value(12 kg)",
-            "value(128066.6 sqft) - 1",
-            "12 kg - 1",
-            "value(12 kg) - 1",
-            "value(revenue) - cost"
+                "area = 4.20",
+                "cost = area * 4.2 crores",
+                "saleable = area * (1 acre as sqft) * 70%",
+                "revenue = saleable * 5000",
+                "value(10 kg)",
+                "dropUnit(10 kg)",
+                "raw(10 kg)",
+                "value(128066.6 sqft)",
+                "value(12 million)",
+                "value(12 kg)",
+                "value(128066.6 sqft) - 1",
+                "12 kg - 1",
+                "value(12 kg) - 1",
+                "value(revenue) - cost"
         ) {
             assertEquals("4.2", it[0].result)
             assertEquals("176400000.0", it[1].result)
@@ -2746,7 +3022,12 @@ class MathEngineTest {
 
     @Test
     fun `value and dropUnit preserve display-space rational value`() = runBlocking {
-        testCalculate("rational(value(5 km))", "rational(dropUnit(5 km))", "rational(raw(5 km))", rationalMode = true) {
+        testCalculate(
+                "rational(value(5 km))",
+                "rational(dropUnit(5 km))",
+                "rational(raw(5 km))",
+                rationalMode = true
+        ) {
             assertEquals("5", it[0].result)
             assertEquals("5", it[1].result)
             assertEquals("5", it[2].result)
@@ -2754,22 +3035,23 @@ class MathEngineTest {
     }
 
     @Test
-    fun `unit conversion calculation chain works as expected between different units by dropping units`() = runBlocking {
-        testCalculate(
-            "area = 4.20",
-            "cost = area * 4.2 crores",
-            "saleable = area * (1 acre as sqft) * 70%",
-            "revenue = saleable * 5000",
-            "value(revenue) - cost"
-        ) {
-            assertEquals("4.2", it[0].result)
-            assertEquals("176400000.0", it[1].result)
-            assertTrue(it[2].result.startsWith("128066.4"))
-            assertEquals(640332000.0, it[3].result.split(" ")[0].toDouble(), 0.1)
-            assertTrue(it[3].result.endsWith(" ft²"))
-            assertEquals("463932000.0", it[4].result)
-        }
-    }
+    fun `unit conversion calculation chain works as expected between different units by dropping units`() =
+            runBlocking {
+                testCalculate(
+                        "area = 4.20",
+                        "cost = area * 4.2 crores",
+                        "saleable = area * (1 acre as sqft) * 70%",
+                        "revenue = saleable * 5000",
+                        "value(revenue) - cost"
+                ) {
+                    assertEquals("4.2", it[0].result)
+                    assertEquals("176400000.0", it[1].result)
+                    assertTrue(it[2].result.startsWith("128066.4"))
+                    assertEquals(640332000.0, it[3].result.split(" ")[0].toDouble(), 0.1)
+                    assertTrue(it[3].result.endsWith(" ft²"))
+                    assertEquals("463932000.0", it[4].result)
+                }
+            }
 
     @Test
     fun `unit stripping helpers cannot be reassigned`() = runBlocking {
@@ -2789,28 +3071,30 @@ class MathEngineTest {
 
     @Test
     fun `compound assignment enforces unit consistency`() = runBlocking {
-        val lines = listOf(
-            createLine("distance = 10 km"),
-            createLine("distance += 1km"),
-            createLine("distance += 1")
-        )
+        val lines =
+                listOf(
+                        createLine("distance = 10 km"),
+                        createLine("distance += 1km"),
+                        createLine("distance += 1")
+                )
         val result = MathEngine.calculate(lines)
         assertEquals("11.0 km", result[1].result)
-        assertError("Addition of `Kilometer` and `unitless number` is not supported", result[2], lines, 2)
+        assertError(
+                "Addition of `Kilometer` and `unitless number` is not supported",
+                result[2],
+                lines,
+                2
+        )
     }
 
     @Test
     fun `increment support values with units`() = runBlocking {
-        testCalculate("distance = 10 km", "distance++") {
-            assertEquals("11.0 km", it[1].result)
-        }
+        testCalculate("distance = 10 km", "distance++") { assertEquals("11.0 km", it[1].result) }
     }
 
     @Test
     fun `decrement support values with units`() = runBlocking {
-        testCalculate("distance = 10 km", "distance--") {
-            assertEquals("9.0 km", it[1].result)
-        }
+        testCalculate("distance = 10 km", "distance--") { assertEquals("9.0 km", it[1].result) }
     }
 
     @Test
@@ -2855,7 +3139,10 @@ class MathEngineTest {
     @Test
     fun `decimals should preserve precision without extra zeros`() {
         assertEquals("3.14", MathEngine.formatBigDecimal(java.math.BigDecimal("3.14")))
-        assertEquals("0.123456789", MathEngine.formatBigDecimal(java.math.BigDecimal("0.123456789000")))
+        assertEquals(
+                "0.123456789",
+                MathEngine.formatBigDecimal(java.math.BigDecimal("0.123456789000"))
+        )
     }
 
     @Test
@@ -2884,7 +3171,11 @@ class MathEngineTest {
         // 1.23456...E20
         assertEquals("1.234567890123456789012345678901234E20", MathEngine.formatBigDecimal(large))
 
-        val small = highPrec.divide(java.math.BigDecimal("10").pow(20), java.math.MathContext.DECIMAL128)
+        val small =
+                highPrec.divide(
+                        java.math.BigDecimal("10").pow(20),
+                        java.math.MathContext.DECIMAL128
+                )
         // 1.23456...E-20
         assertEquals("1.234567890123456789012345678901234E-20", MathEngine.formatBigDecimal(small))
     }
@@ -2961,9 +3252,7 @@ class MathEngineTest {
 
     @Test
     fun `last with unit conversion should parse correctly`() = runBlocking {
-        testCalculate("10", "last km to m") {
-            assertEquals("10000.0 m", it[1].result)
-        }
+        testCalculate("10", "last km to m") { assertEquals("10000.0 m", it[1].result) }
     }
 
     @Test
@@ -2980,9 +3269,7 @@ class MathEngineTest {
             assertEquals("0.9999999999999999999999999999999999", it[0].result)
         }
 
-        testCalculate("1/3 + 1/3 + 1/3", rationalMode = true) {
-            assertEquals("1", it[0].result)
-        }
+        testCalculate("1/3 + 1/3 + 1/3", rationalMode = true) { assertEquals("1", it[0].result) }
     }
 
     @Test
@@ -2995,23 +3282,17 @@ class MathEngineTest {
 
     @Test
     fun `rational function still stores rational result in decimal mode`() = runBlocking {
-        testCalculate("rational(0.5)") {
-            assertEquals("1/2", it[0].result)
-        }
+        testCalculate("rational(0.5)") { assertEquals("1/2", it[0].result) }
     }
 
     @Test
     fun `fraction function still stores rational result in decimal mode`() = runBlocking {
-        testCalculate("fraction(0.75)") {
-            assertEquals("3/4", it[0].result)
-        }
+        testCalculate("fraction(0.75)") { assertEquals("3/4", it[0].result) }
     }
 
     @Test
     fun `rational function preserves rational result for rational expressions`() = runBlocking {
-        testCalculate("rational(1/3)") {
-            assertEquals("1/3", it[0].result)
-        }
+        testCalculate("rational(1/3)") { assertEquals("1/3", it[0].result) }
     }
 
     @Test
@@ -3024,25 +3305,24 @@ class MathEngineTest {
     @Test
     fun `in decimal unit conversion enforces integer check`() = runBlocking {
         testCalculate("1/3 in decimal", rationalMode = true) {
-            assertError("Fractional value cannot be converted to numeral system", it, 0, rationalMode = true)
+            assertError(
+                    "Fractional value cannot be converted to numeral system",
+                    it,
+                    0,
+                    rationalMode = true
+            )
         }
     }
 
     @Test
     fun `rational function preserves rational result for quantities`() = runBlocking {
-        testCalculate("rational(5 km / 2)") {
-            assertEquals("5/2 km", it[0].result)
-        }
+        testCalculate("rational(5 km / 2)") { assertEquals("5/2 km", it[0].result) }
     }
 
     @Test
     fun `global rational mode changes displayed quantity result`() = runBlocking {
-        testCalculate("5 km / 2") {
-            assertEquals("2.5 km", it[0].result)
-        }
-        testCalculate("5 km / 2", rationalMode = true) {
-            assertEquals("5/2 km", it[0].result)
-        }
+        testCalculate("5 km / 2") { assertEquals("2.5 km", it[0].result) }
+        testCalculate("5 km / 2", rationalMode = true) { assertEquals("5/2 km", it[0].result) }
     }
 
     @Test
@@ -3057,34 +3337,24 @@ class MathEngineTest {
         testCalculate("1 / 3") {
             assertEquals("0.3333333333333333333333333333333333", it[0].result)
         }
-        testCalculate("1 / 3", rationalMode = true) {
-            assertEquals("1/3", it[0].result)
-        }
+        testCalculate("1 / 3", rationalMode = true) { assertEquals("1/3", it[0].result) }
     }
 
     @Test
     fun `rational mode formatting for irrationals and units`() = runBlocking {
-        testCalculate("PI", rationalMode = true) {
-            assertEquals("80143857/25510582", it[0].result)
-        }
+        testCalculate("PI", rationalMode = true) { assertEquals("80143857/25510582", it[0].result) }
         testCalculate("pi °C", rationalMode = true) {
             assertEquals("80143857/25510582 °C", it[0].result)
         }
-        testCalculate("e", rationalMode = true) {
-            assertEquals("28245729/10391023", it[0].result)
-        }
+        testCalculate("e", rationalMode = true) { assertEquals("28245729/10391023", it[0].result) }
         testCalculate("e km", rationalMode = true) {
             assertEquals("28245729/10391023 km", it[0].result)
         }
         testCalculate("e degC", rationalMode = true) {
             assertEquals("28245729/10391023 °C", it[0].result)
         }
-        testCalculate("2000 / 6000", rationalMode = true) {
-            assertEquals("1/3", it[0].result)
-        }
-        testCalculate("1000 / 16", rationalMode = true) {
-            assertEquals("125/2", it[0].result)
-        }
+        testCalculate("2000 / 6000", rationalMode = true) { assertEquals("1/3", it[0].result) }
+        testCalculate("1000 / 16", rationalMode = true) { assertEquals("125/2", it[0].result) }
         testCalculate("x = 1.01234567895", "x °C", rationalMode = true) {
             assertEquals("20246913579/20000000000", it[0].result)
             assertEquals("20246913579/20000000000 °C", it[1].result)
@@ -3103,18 +3373,10 @@ class MathEngineTest {
             assertEquals("2/3 °C", it[0].result)
         }
 
-        testCalculate("1/3 + 1/6", rationalMode = true) {
-            assertEquals("1/2", it[0].result)
-        }
-        testCalculate("2/3 * 3/4", rationalMode = true) {
-            assertEquals("1/2", it[0].result)
-        }
-        testCalculate("1/2 / 2", rationalMode = true) {
-            assertEquals("1/4", it[0].result)
-        }
-        testCalculate("1 / (1/3)", rationalMode = true) {
-            assertEquals("3", it[0].result)
-        }
+        testCalculate("1/3 + 1/6", rationalMode = true) { assertEquals("1/2", it[0].result) }
+        testCalculate("2/3 * 3/4", rationalMode = true) { assertEquals("1/2", it[0].result) }
+        testCalculate("1/2 / 2", rationalMode = true) { assertEquals("1/4", it[0].result) }
+        testCalculate("1 / (1/3)", rationalMode = true) { assertEquals("3", it[0].result) }
 
         // Variable Propagation
         testCalculate("x = 1/3", "x + 1/3", rationalMode = true) {
@@ -3127,9 +3389,7 @@ class MathEngineTest {
         }
 
         // Unit Math & Conversions
-        testCalculate("(1/3) m", rationalMode = true) {
-            assertEquals("1/3 m", it[0].result)
-        }
+        testCalculate("(1/3) m", rationalMode = true) { assertEquals("1/3 m", it[0].result) }
         testCalculate("(1/3) m to cm", rationalMode = true) {
             assertEquals("100/3 cm", it[0].result)
         }
@@ -3138,20 +3398,12 @@ class MathEngineTest {
         testCalculate("rational(0.33333333333333333333)", rationalMode = false) {
             assertEquals("1/3", it[0].result)
         }
-        testCalculate("0.125", rationalMode = true) {
-            assertEquals("1/8", it[0].result)
-        }
-        testCalculate("1.1", rationalMode = true) {
-            assertEquals("11/10", it[0].result)
-        }
+        testCalculate("0.125", rationalMode = true) { assertEquals("1/8", it[0].result) }
+        testCalculate("1.1", rationalMode = true) { assertEquals("11/10", it[0].result) }
 
         // Roots
-        testCalculate("sqrt(1/4)", rationalMode = true) {
-            assertEquals("1/2", it[0].result)
-        }
-        testCalculate("cbrt(1/27)", rationalMode = true) {
-            assertEquals("1/3", it[0].result)
-        }
+        testCalculate("sqrt(1/4)", rationalMode = true) { assertEquals("1/2", it[0].result) }
+        testCalculate("cbrt(1/27)", rationalMode = true) { assertEquals("1/3", it[0].result) }
 
         // Compound Assignments
         testCalculate("z = 1/3", "z += 1/3", rationalMode = true) {
@@ -3170,7 +3422,12 @@ class MathEngineTest {
         assertEquals("9.0E-8", result1)
 
         // Very small value
-        val result2 = MathEngine.formatDisplayResult("0.00000000000000000000000000000000000000001", precisionOff, locale)
+        val result2 =
+                MathEngine.formatDisplayResult(
+                        "0.00000000000000000000000000000000000000001",
+                        precisionOff,
+                        locale
+                )
         assertEquals("1.0E-41", result2)
 
         // Significant digits are preserved
@@ -3186,51 +3443,47 @@ class MathEngineTest {
     fun `optional parameters support default expressions and range-based arity`() {
         // Basic and multiple optional parameters
         testCalculate(
-            "f(x, y=0) = x * (y + 4) / 2",
-            "f(2, 4)",
-            "f(2)",
-            "g(a, b=10, c=100) = a + b + c",
-            "g(1)",
-            "g(1, 2)",
-            "g(1, 2, 3)"
+                "f(x, y=0) = x * (y + 4) / 2",
+                "f(2, 4)",
+                "f(2)",
+                "g(a, b=10, c=100) = a + b + c",
+                "g(1)",
+                "g(1, 2)",
+                "g(1, 2, 3)"
         ) { result ->
             assertEquals("8.0", result[1].result) // f(2, 4)
             assertEquals("4.0", result[2].result) // f(2) uses y=0
             assertEquals("111.0", result[4].result) // g(1) uses b=10, c=100
             assertEquals("103.0", result[5].result) // g(1, 2) uses c=100
-            assertEquals("6.0", result[6].result)   // g(1, 2, 3)
+            assertEquals("6.0", result[6].result) // g(1, 2, 3)
         }
 
         // Self-referential default parameters
         testCalculate(
-            "h1(a, b = a + 1) = a + b",
-            "h1(5)",
-            "h2(a, b = a + 1, c = b * 2) = a + b + c",
-            "h2(5)"
+                "h1(a, b = a + 1) = a + b",
+                "h1(5)",
+                "h2(a, b = a + 1, c = b * 2) = a + b + c",
+                "h2(5)"
         ) { result ->
             assertEquals("11.0", result[1].result) // h1(5) -> a=5, b=6
             assertEquals("23.0", result[3].result) // h2(5) -> a=5, b=6, c=12
         }
 
         // Arity validation and ordering rules
-        testCalculate(
-            "h(x, y=0) = x + y",
-            "h(1, 2, 3)",
-            "fail(x=1, y) = x + y"
-        ) { result ->
+        testCalculate("h(x, y=0) = x + y", "h(1, 2, 3)", "fail(x=1, y) = x + y") { result ->
             assertError("Function `h()` expects 1 to 2 arguments, but got 3", result, 1)
             assertError("Required parameter `y` cannot follow an optional parameter", result, 2)
         }
 
         // Defaults using variables, constants, and function calls
         testCalculate(
-            "scale = 2",
-            "s(x, y=scale) = x * y",
-            "s(3)",
-            "c(x, y=PI) = x * y",
-            "c(2)",
-            "fn(x, y=sqrt(4)) = x + y",
-            "fn(3)"
+                "scale = 2",
+                "s(x, y=scale) = x * y",
+                "s(3)",
+                "c(x, y=PI) = x * y",
+                "c(2)",
+                "fn(x, y=sqrt(4)) = x + y",
+                "fn(3)"
         ) { result ->
             assertEquals("6.0", result[2].result) // s(3) uses scale=2
             assertEquals("6.283185307179586476925286766559006", result[4].result) // c(2) uses y=PI
@@ -3239,16 +3492,16 @@ class MathEngineTest {
 
         // Call-time evaluation semantics (dynamic variables and lazy evaluation)
         testCalculate(
-            "3",
-            "dv(x, y=prev) = x + y",
-            "5",
-            "dv(3)",
-            "a = 7",
-            "lazy(x, y=a) = x + y",
-            "a = 100",
-            "lazy(5)"
+                "3",
+                "dv(x, y=prev) = x + y",
+                "5",
+                "dv(3)",
+                "a = 7",
+                "lazy(x, y=a) = x + y",
+                "a = 100",
+                "lazy(5)"
         ) { result ->
-            assertEquals("8.0", result[3].result)   // dv(3) uses prev=5
+            assertEquals("8.0", result[3].result) // dv(3) uses prev=5
             assertEquals("105.0", result[7].result) // lazy(5) uses a=100 (lazy evaluation)
         }
     }
@@ -3257,22 +3510,18 @@ class MathEngineTest {
     fun `currying and partial application pattern works via wrapper functions`() {
         // Basic currying regression
         testCalculate(
-            "f(x, y) = x * (y + 4) / 2",
-            "f0(x) = f(x, 0)",
-            "f4(x) = f(x, 4)",
-            "f0(2)",
-            "f4(2)"
+                "f(x, y) = x * (y + 4) / 2",
+                "f0(x) = f(x, 0)",
+                "f4(x) = f(x, 4)",
+                "f0(2)",
+                "f4(2)"
         ) { result ->
             assertEquals("4.0", result[3].result)
             assertEquals("8.0", result[4].result)
         }
 
         // Multi-argument partial application
-        testCalculate(
-            "h(a, b, c) = a + b + c",
-            "h2(a, b) = h(a, b, 0)",
-            "h2(1, 2)"
-        ) { result ->
+        testCalculate("h(a, b, c) = a + b + c", "h2(a, b) = h(a, b, 0)", "h2(1, 2)") { result ->
             assertEquals("3.0", result[2].result)
         }
     }

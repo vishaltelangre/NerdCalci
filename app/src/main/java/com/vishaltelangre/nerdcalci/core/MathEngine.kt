@@ -39,6 +39,9 @@ object MathEngine {
         "sum"               to { results, _ -> computeBlockSum(results) },
         "total"             to { results, _ -> computeBlockSum(results) },
 
+        "grand_total"       to { results, _ -> computeGrandTotal(results) },
+        "grand_sum"         to { results, _ -> computeGrandTotal(results) },
+
         "avg"               to { results, _ -> computeBlockAverage(results) },
         "average"           to { results, _ -> computeBlockAverage(results) },
 
@@ -69,15 +72,12 @@ object MathEngine {
         '\u2019'  // Right Single Quotation Mark (Grouping - e.g. Switzerland)
     )
 
-    private val RESERVED_DYNAMIC_VARIABLES = TokenKind.entries
-        .filter { it.isPreviousLineAlias || it.isLineNumberAlias || it in setOf(
-            TokenKind.KW_TODAY, TokenKind.KW_YESTERDAY, TokenKind.KW_TOMORROW, TokenKind.KW_NOW,
-            TokenKind.KW_BEFORE, TokenKind.KW_AFTER, TokenKind.KW_AGO, TokenKind.KW_FROM,
-            TokenKind.KW_SINCE, TokenKind.KW_TILL, TokenKind.KW_UNTIL, TokenKind.KW_THROUGH,
-            TokenKind.KW_BETWEEN, TokenKind.KW_AND
-        ) }
-        .map { it.display }
-        .toSet()
+    private val RESERVED_DYNAMIC_VARIABLES: Set<String> = DYNAMIC_VARIABLES.keys + setOf(
+        TokenKind.KW_TODAY, TokenKind.KW_YESTERDAY, TokenKind.KW_TOMORROW, TokenKind.KW_NOW,
+        TokenKind.KW_BEFORE, TokenKind.KW_AFTER, TokenKind.KW_AGO, TokenKind.KW_FROM,
+        TokenKind.KW_SINCE, TokenKind.KW_TILL, TokenKind.KW_UNTIL, TokenKind.KW_THROUGH,
+        TokenKind.KW_BETWEEN, TokenKind.KW_AND
+    ).map { it.display }.toSet()
 
     val dynamicVariableNames: Set<String> get() = DYNAMIC_VARIABLES.keys
     val reservedVariableNames: Set<String> get() = RESERVED_DYNAMIC_VARIABLES
@@ -373,6 +373,69 @@ object MathEngine {
 
         var sumValue = BigDecimal.ZERO
         for (result in blockResults) {
+            val resultValue = result.value ?: BigDecimal.ZERO
+            val resultUnit = result.unit?.let { UnitConverter.findUnit(it) }
+            val resultCategory = resultUnit?.category
+
+            if (expectedCategory != null) {
+                // Block contains physical units: all lines must match that category
+                if (!isPhysicalCategory(resultCategory) || resultCategory != expectedCategory) {
+                    val expectedName = firstUnitSymbol?.let { UnitConverter.findUnit(it)?.name?.lowercase()?.replaceFirstChar { it.uppercase() } } ?: expectedCategory.name.lowercase().replaceFirstChar { it.uppercase() }
+                    val resultName = resultUnit?.name?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "unitless number"
+                    throw EvalException("Summation of `$expectedName` and `$resultName` is not supported")
+                }
+                sumValue = sumValue.add(resultValue)
+            } else {
+                // Block contains no physical units: all lines must be non-physical
+                if (isPhysicalCategory(resultCategory)) {
+                    throw EvalException("Summation of physical and unitless values is not supported")
+                }
+                sumValue = sumValue.add(resultValue)
+            }
+        }
+
+        return EvaluationResult(sumValue, targetUnitSymbol)
+    }
+
+    /**
+     * Returns the sum of ALL non-null line results above the current line,
+     * crossing blank/comment/error block boundaries.
+     *
+     * Unit-safety rules are identical to [computeBlockSum]: all physical values
+     * must share the same unit category, and physical values cannot be mixed with
+     * unitless numbers. The result unit is taken from the LAST line that carries a
+     * physical unit.
+     */
+    private fun computeGrandTotal(lineResults: List<EvaluationResult?>): EvaluationResult {
+        // Collect every non-null result (order preserved, no block-boundary stop)
+        val allResults = lineResults.filterNotNull()
+
+        if (allResults.isEmpty()) return EvaluationResult(BigDecimal.ZERO)
+
+        // Determine expected physical category from the FIRST line with a physical unit
+        var expectedCategory: UnitCategory? = null
+        var firstUnitSymbol: String? = null
+        for (res in allResults) {
+            val u = res.unit?.let { UnitConverter.findUnit(it) }
+            if (isPhysicalCategory(u?.category)) {
+                expectedCategory = u?.category
+                firstUnitSymbol = res.unit
+                break
+            }
+        }
+
+        // Target display unit is taken from the LAST line with a physical unit
+        var targetUnitSymbol: String? = null
+        for (i in allResults.indices.reversed()) {
+            val u = allResults[i].unit?.let { UnitConverter.findUnit(it) }
+            if (isPhysicalCategory(u?.category)) {
+                targetUnitSymbol = allResults[i].unit
+                break
+            }
+        }
+
+        var sumValue = BigDecimal.ZERO
+        for (result in allResults) {
             val resultValue = result.value ?: BigDecimal.ZERO
             val resultUnit = result.unit?.let { UnitConverter.findUnit(it) }
             val resultCategory = resultUnit?.category

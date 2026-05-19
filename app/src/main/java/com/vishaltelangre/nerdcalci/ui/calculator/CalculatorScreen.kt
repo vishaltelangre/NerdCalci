@@ -823,12 +823,13 @@ fun CalculatorScreen(
                                         .joinToString("\n")
                                     viewModel.copyToClipboard(context, text, "NerdCalci Lines")
                                     clearSelection()
-                                }
+                                },
+                                enabled = selectedIndices.isNotEmpty()
                             ) {
                                 Icon(
                                     Icons.Default.ContentCopy,
                                     "Copy selected lines",
-                                    tint = MaterialTheme.colorScheme.onSurface
+                                    tint = if (selectedIndices.isNotEmpty()) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
                                 )
                             }
                         } else {
@@ -2081,27 +2082,32 @@ private fun LineRow(
                         // Using indexOf('\n') is more reliable than selection.start because
                         // selection.start can jump ahead after character insertion.
                         if (newValue.text.contains("\n")) {
-                            val addedLength = newValue.text.length - textFieldValue.text.length
-                            if (addedLength > 1) {
-                                // Multi-line Clipboard Paste Interception
-                                val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                                val pastedText = clipboard.primaryClip?.getItemAt(0)?.text?.toString() ?: ""
-                                if (pastedText.contains("\n")) {
-                                    val pastedLines = pastedText.split(Regex("\\r?\\n"))
-                                    if (pastedLines.size > 1) {
-                                        val cursorPos = textFieldValue.selection.start
-                                        val cursorPosInExpr = if (lineNumber > 1) {
-                                            (cursorPos - 1).coerceAtLeast(0)
-                                        } else {
-                                            cursorPos
-                                        }
-                                        val firstChunk = pastedLines.first()
-                                        val middleLines = pastedLines.subList(1, pastedLines.size - 1)
-                                        val lastChunk = pastedLines.last()
+                            // Check if this is a multi-line clipboard paste
+                            val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                            val pastedText = clipboard.primaryClip?.getItemAt(0)?.text?.toString() ?: ""
 
-                                        onPasteLines(cursorPosInExpr, firstChunk, middleLines, lastChunk)
-                                        return@BasicTextField
+                            val selStart = minOf(textFieldValue.selection.start, textFieldValue.selection.end)
+                            val insertedText = if (selStart <= newValue.selection.start && newValue.selection.start <= newValue.text.length) {
+                                newValue.text.substring(selStart, newValue.selection.start)
+                            } else {
+                                ""
+                            }
+
+                            if (pastedText.contains("\n") && insertedText == pastedText) {
+                                val pastedLines = pastedText.split(Regex("\\r?\\n"))
+                                if (pastedLines.size > 1) {
+                                    val cursorPos = textFieldValue.selection.start
+                                    val cursorPosInExpr = if (lineNumber > 1) {
+                                        (cursorPos - 1).coerceAtLeast(0)
+                                    } else {
+                                        cursorPos
                                     }
+                                    val firstChunk = pastedLines.first()
+                                    val middleLines = pastedLines.subList(1, pastedLines.size - 1)
+                                    val lastChunk = pastedLines.last()
+
+                                    onPasteLines(cursorPosInExpr, firstChunk, middleLines, lastChunk)
+                                    return@BasicTextField
                                 }
                             }
 

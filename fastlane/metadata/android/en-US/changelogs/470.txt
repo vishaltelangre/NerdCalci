@@ -1,0 +1,2 @@
+- Added ability to select multiple lines for copying either by tapping on line number or using "Select lines..." menu (Issue #75).
+- Added multi-line paste support (Issue #75).

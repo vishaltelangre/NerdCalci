@@ -1098,6 +1098,81 @@ class CalculatorViewModel(
     }
 
     /**
+     * Pastes multi-line clipboard content into the document at [lineId].
+     *
+     * 1. Updates the current line: text-before-cursor + [firstChunk].
+     * 2. Inserts each of [middleLines] as whole new LineEntity rows after it.
+     * 3. Inserts a final line: [lastChunk] + text-after-cursor from the original line.
+     *
+     * Wrapped in a single [saveStateForUndo] call → one Undo step reverts everything.
+     *
+     * @return ID of the last inserted line (used to focus/scroll), or -1 on failure.
+     */
+    suspend fun pasteLines(
+        lineId: Long,
+        cursorPosInExpr: Int,
+        firstChunk: String,
+        middleLines: List<String>,
+        lastChunk: String,
+        rationalMode: Boolean? = null
+    ): Long {
+        return withContext(ioDispatcher) {
+            calculationMutex.withLock {
+                val line   = dao.getLineById(lineId) ?: return@withLock -1L
+                val fileId = line.fileId
+                if (isFileLocked(fileId)) return@withLock -1L
+                saveStateForUndo(fileId)
+
+                val safePos = cursorPosInExpr.coerceIn(0, line.expression.length)
+                val before  = line.expression.substring(0, safePos)
+                val after   = line.expression.substring(safePos)
+
+                // 1. Update current line
+                dao.updateLine(line.copy(
+                    expression = before + firstChunk,
+                    result = "",
+                    version = line.version + 1
+                ))
+
+                // 2. Insert middle lines in order
+                var prevId = line.id
+                for (midExpr in middleLines) {
+                    val newLine = LineEntity(
+                        fileId = fileId,
+                        sortOrder = 0,       // DAO normalizes order
+                        expression = midExpr,
+                        result = ""
+                    )
+                    prevId = dao.moveAndInsertLine(fileId, prevId, newLine)
+                }
+
+                // 3. Insert final line: last clipboard chunk + original suffix
+                val finalId = dao.moveAndInsertLine(
+                    fileId,
+                    prevId,
+                    LineEntity(fileId = fileId, sortOrder = 0, expression = lastChunk + after, result = "")
+                )
+
+                // 4. Recalculate from the modified line downward
+                val updatedLines = dao.getLinesForFileSync(fileId)
+                val startIndex   = updatedLines.indexOfFirst { it.id == line.id }.coerceAtLeast(0)
+                val effectiveRationalMode = rationalMode ?: _rationalMode.value
+                val effectiveDateFormat   = getResolvedDateFormat()
+                val affected = MathEngine.calculateFrom(
+                    updatedLines, startIndex,
+                    createFileContextLoader(fileId, effectiveRationalMode, effectiveDateFormat),
+                    rationalMode = effectiveRationalMode,
+                    dateFormat   = effectiveDateFormat
+                )
+                dao.updateLines(fileId, affected.map { it.copy(version = it.version + 1) },
+                    updateTimestamp = false)
+
+                finalId
+            }
+        }
+    }
+
+    /**
      * Merges [currentLineId] into [prevLineId].
      * The expression of [currentLineId] is appended to [prevLineId], and [currentLineId] is then deleted.
      */

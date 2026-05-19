@@ -69,6 +69,7 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.ViewHeadline
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
@@ -96,6 +97,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.navigation.NavHostController
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.derivedStateOf
@@ -595,6 +597,81 @@ fun CalculatorScreen(
     // Track which line is currently focused by the user
     var currentlyFocusedLineId by remember { mutableStateOf<Long?>(null) }
 
+    // Range selection state (for multi-line copy)
+    var selectionAnchorIndex by remember { mutableStateOf<Int?>(null) }
+    var selectionPivotIndex by remember { mutableStateOf<Int?>(null) }
+    var enteringSelectionMode by remember { mutableStateOf(false) }
+
+    val isInSelectionMode = selectionAnchorIndex != null || enteringSelectionMode
+
+    val selectedIndices: Set<Int> = remember(selectionAnchorIndex, selectionPivotIndex) {
+        val a = selectionAnchorIndex ?: return@remember emptySet()
+        val b = selectionPivotIndex ?: a
+        (minOf(a, b)..maxOf(a, b)).toSet()
+    }
+
+    fun clearSelection() {
+        selectionAnchorIndex = null
+        selectionPivotIndex = null
+        enteringSelectionMode = false
+    }
+
+    fun handleSelectionTap(tappedIndex: Int) {
+        val anchor = selectionAnchorIndex
+        val pivot = selectionPivotIndex
+        if (anchor != null && pivot != null && selectedIndices.contains(tappedIndex)) {
+            if (tappedIndex == anchor) {
+                clearSelection()
+            } else if (anchor < pivot) {
+                val newPivot = tappedIndex - 1
+                if (newPivot < anchor) {
+                    clearSelection()
+                } else {
+                    selectionPivotIndex = newPivot
+                }
+            } else {
+                val newPivot = tappedIndex + 1
+                if (newPivot > anchor) {
+                    clearSelection()
+                } else {
+                    selectionPivotIndex = newPivot
+                }
+            }
+        } else {
+            if (anchor != null && pivot != null) {
+                val minVal = minOf(anchor, pivot)
+                val maxVal = maxOf(anchor, pivot)
+                if (tappedIndex < minVal) {
+                    selectionAnchorIndex = maxVal
+                    selectionPivotIndex = tappedIndex
+                } else if (tappedIndex > maxVal) {
+                    selectionAnchorIndex = minVal
+                    selectionPivotIndex = tappedIndex
+                } else {
+                    selectionPivotIndex = tappedIndex
+                }
+            } else {
+                selectionAnchorIndex = tappedIndex
+                selectionPivotIndex = tappedIndex
+            }
+        }
+        enteringSelectionMode = false
+    }
+
+    BackHandler(enabled = isInSelectionMode) {
+        clearSelection()
+    }
+
+    val focusManager = LocalFocusManager.current
+
+    LaunchedEffect(isInSelectionMode) {
+        if (isInSelectionMode) {
+            focusManager.clearFocus()
+            focusLineId = null
+            focusCursorPosition = 0
+        }
+    }
+
     // Track toolbar text insertion requests (used for inserting symbols using custom keyboard shortcuts)
     var insertTextRequest by remember { mutableStateOf<Pair<Long, String>?>(null) }
     // Check if keyboard is visible
@@ -680,77 +757,103 @@ fun CalculatorScreen(
             Column {
                 TopAppBar(
                     title = {
-                        Column(
-                            modifier = if (!isScratchpad && !isLocked) {
-                                Modifier.clickable { showRenameDialog = true }
-                            } else {
-                                Modifier
-                            }
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = fileName,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                if (isLocked) {
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Icon(
-                                        Icons.Default.Lock,
-                                        contentDescription = "Locked",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(16.dp)
+                        if (isInSelectionMode) {
+                            Text(
+                                text = "${selectedIndices.size} line${if (selectedIndices.size == 1) "" else "s"} selected",
+                                color = MaterialTheme.colorScheme.onSurface,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        } else {
+                            Column(
+                                modifier = if (!isScratchpad && !isLocked) {
+                                    Modifier.clickable { showRenameDialog = true }
+                                } else {
+                                    Modifier
+                                }
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = fileName,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    if (isLocked) {
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Icon(
+                                            Icons.Default.Lock,
+                                            contentDescription = "Locked",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                                if (isScratchpad) {
+                                    Text(
+                                        text = "Temporary file • Changes not saved",
+                                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
-                            }
-                            if (isScratchpad) {
-                                Text(
-                                    text = "Temporary file • Changes not saved",
-                                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            if (isLocked) {
-                                Text(
-                                    text = "Locked file • Cannot be modified",
-                                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                if (isLocked) {
+                                    Text(
+                                        text = "Locked file • Cannot be modified",
+                                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
                     },
                     navigationIcon = {
-                        IconButton(onClick = handleBack) {
+                        IconButton(onClick = if (isInSelectionMode) ::clearSelection else handleBack) {
                             Icon(
-                                Icons.AutoMirrored.Filled.ArrowBack,
-                                "Back",
+                                if (isInSelectionMode) Icons.Default.Close else Icons.AutoMirrored.Filled.ArrowBack,
+                                if (isInSelectionMode) "Cancel selection" else "Back",
                                 tint = MaterialTheme.colorScheme.onSurface
                             )
                         }
                     },
                     actions = {
-                        if (!isLocked) {
+                        if (isInSelectionMode) {
                             IconButton(
-                                onClick = { viewModel.undo(fileId, effectiveRationalMode) },
-                                enabled = canUndo
+                                onClick = {
+                                    val text = selectedIndices.sorted()
+                                        .mapNotNull { lines.getOrNull(it)?.expression }
+                                        .joinToString("\n")
+                                    viewModel.copyToClipboard(context, text, "NerdCalci Lines")
+                                    clearSelection()
+                                }
                             ) {
                                 Icon(
-                                    Icons.AutoMirrored.Filled.Undo,
-                                    "Undo",
-                                    tint = if (canUndo) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                                    Icons.Default.ContentCopy,
+                                    "Copy selected lines",
+                                    tint = MaterialTheme.colorScheme.onSurface
                                 )
                             }
+                        } else {
+                            if (!isLocked) {
+                                IconButton(
+                                    onClick = { viewModel.undo(fileId, effectiveRationalMode) },
+                                    enabled = canUndo
+                                ) {
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.Undo,
+                                        "Undo",
+                                        tint = if (canUndo) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
 
-                            IconButton(
-                                onClick = { viewModel.redo(fileId, effectiveRationalMode) },
-                                enabled = canRedo
-                            ) {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.Redo,
-                                    "Redo",
-                                    tint = if (canRedo) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                IconButton(
+                                    onClick = { viewModel.redo(fileId, effectiveRationalMode) },
+                                    enabled = canRedo
+                                ) {
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.Redo,
+                                        "Redo",
+                                        tint = if (canRedo) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
 
@@ -782,6 +885,19 @@ fun CalculatorScreen(
                                     onClick = {
                                         showMenu = false
                                         onHelp()
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Select lines…") },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Default.FormatListNumbered,
+                                            contentDescription = null
+                                        )
+                                    },
+                                    onClick = {
+                                        showMenu = false
+                                        enteringSelectionMode = true
                                     }
                                 )
                                 HorizontalDivider()
@@ -1248,7 +1364,33 @@ fun CalculatorScreen(
                             viewModel.copyToClipboard(context, result)
                         },
                         bottomOffset = paddingValues.calculateBottomPadding(),
-                        onGetErrorMessage = { lineId -> viewModel.getLineErrorMessage(fileId, lineId, effectiveRationalMode) }
+                        onGetErrorMessage = { lineId -> viewModel.getLineErrorMessage(fileId, lineId, effectiveRationalMode) },
+                        isSelected = selectedIndices.contains(index),
+                        isInSelectionMode = isInSelectionMode,
+                        onTapLineNumber = {
+                            handleSelectionTap(index)
+                        },
+                        onTapRow = {
+                            handleSelectionTap(index)
+                        },
+                        onPasteLines = { cursorPos, firstChunk, middleLines, lastChunk ->
+                            coroutineScope.launch {
+                                val lastInsertedId = viewModel.pasteLines(
+                                    line.id,
+                                    cursorPos,
+                                    firstChunk,
+                                    middleLines,
+                                    lastChunk,
+                                    effectiveRationalMode
+                                )
+                                if (lastInsertedId != -1L) {
+                                    focusLineId = lastInsertedId
+                                    // Set focus/cursor at the end of the last clipboard chunk (or beginning of suffix)
+                                    focusCursorPosition = lastChunk.length
+                                    pendingScrollLineId = lastInsertedId
+                                }
+                            }
+                        }
                     )
                     if (index < lines.size - 1) {
                         HorizontalDivider(
@@ -1443,11 +1585,17 @@ private fun LineRow(
     onNavigateDown: () -> Unit,
     onCopyResult: (String) -> Unit,
     bottomOffset: Dp = 0.dp,
-    onGetErrorMessage: suspend (Long) -> String? = { null }
+    onGetErrorMessage: suspend (Long) -> String? = { null },
+    isSelected: Boolean,
+    isInSelectionMode: Boolean,
+    onTapLineNumber: () -> Unit,
+    onTapRow: () -> Unit,
+    onPasteLines: (Int, String, List<String>, String) -> Unit
 ) {
     // Add leading space for backspace detection trick (but not for first line)
     // This allows us to capture backspace even when TextField is at the start of original text
     val displayText = if (lineNumber > 1) " " + line.expression else line.expression
+    val context = LocalContext.current
     val defaultTextColor = MaterialTheme.colorScheme.onSurface
 
     var textFieldValue by remember(line.id) {
@@ -1869,25 +2017,38 @@ private fun LineRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(IntrinsicSize.Min),
+            .height(IntrinsicSize.Min)
+            .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f) else Color.Transparent)
+            .then(
+                if (isInSelectionMode) {
+                    Modifier.clickable { onTapRow() }
+                } else {
+                    Modifier
+                }
+            ),
         verticalAlignment = Alignment.Top
     ) {
         if (showLineNumbers) {
-            // Line Number Gutter
-            Text(
-                text = lineNumber.toString(),
-                style = MaterialTheme.typography.bodySmall.copy(
-                    fontFamily = FiraCodeFamily,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                    fontSize = 12.sp
-                ),
+            // Line Number Gutter (clickable to trigger selection)
+            Box(
                 modifier = Modifier
+                    .clickable { onTapLineNumber() }
                     .padding(start = 8.dp, top = 10.dp)
-                    .width(numberWidth),
-                textAlign = TextAlign.End,
-                softWrap = false,
-                maxLines = 1
-            )
+                    .width(numberWidth)
+            ) {
+                Text(
+                    text = lineNumber.toString(),
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontFamily = FiraCodeFamily,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        fontSize = 12.sp
+                    ),
+                    textAlign = TextAlign.End,
+                    softWrap = false,
+                    maxLines = 1,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
 
             // Spacer for the global vertical divider
             Spacer(modifier = Modifier.width(9.dp)) // 8.dp right padding + 1.dp divider
@@ -1910,15 +2071,41 @@ private fun LineRow(
             Column {
                 BasicTextField(
                     value = textFieldValue,
-                    readOnly = isLocked,
+                    enabled = !isInSelectionMode,
+                    readOnly = isLocked || isInSelectionMode,
                     onValueChange = { newValue ->
-                        if (isLocked) return@BasicTextField
+                        if (isLocked || isInSelectionMode) return@BasicTextField
                         val filteredText = newValue.text.replace("\n", "")
 
-                        // Handle Enter key (Line Splitting)
+                        // Handle Enter key (Line Splitting) / Multi-line Paste
                         // Using indexOf('\n') is more reliable than selection.start because
                         // selection.start can jump ahead after character insertion.
                         if (newValue.text.contains("\n")) {
+                            val addedLength = newValue.text.length - textFieldValue.text.length
+                            if (addedLength > 1) {
+                                // Multi-line Clipboard Paste Interception
+                                val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                val pastedText = clipboard.primaryClip?.getItemAt(0)?.text?.toString() ?: ""
+                                if (pastedText.contains("\n")) {
+                                    val pastedLines = pastedText.split(Regex("\\r?\\n"))
+                                    if (pastedLines.size > 1) {
+                                        val cursorPos = textFieldValue.selection.start
+                                        val cursorPosInExpr = if (lineNumber > 1) {
+                                            (cursorPos - 1).coerceAtLeast(0)
+                                        } else {
+                                            cursorPos
+                                        }
+                                        val firstChunk = pastedLines.first()
+                                        val middleLines = pastedLines.subList(1, pastedLines.size - 1)
+                                        val lastChunk = pastedLines.last()
+
+                                        onPasteLines(cursorPosInExpr, firstChunk, middleLines, lastChunk)
+                                        return@BasicTextField
+                                    }
+                                }
+                            }
+
+                            // Single Enter splitting
                             val splitIndexInTransformed = newValue.text.indexOf('\n')
                             val actualText = newValue.text.replace("\n", "")
                             val normalizedText = if (lineNumber > 1) actualText.removePrefix(" ") else actualText
@@ -2139,23 +2326,27 @@ private fun LineRow(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.End,
-                modifier = (if (isError) {
-                    Modifier
-                        .clickable {
-                            showTooltip = !showTooltip
-                            if (!showTooltip) {
-                                errorMessage = null
+                modifier = if (isInSelectionMode) {
+                    Modifier.fillMaxSize()
+                } else {
+                    (if (isError) {
+                        Modifier
+                            .clickable {
+                                showTooltip = !showTooltip
+                                if (!showTooltip) {
+                                    errorMessage = null
+                                }
+                            }
+                    } else {
+                        Modifier.clickable {
+                            if (line.result.isNotEmpty()) {
+                                // Copying always uses the standard rounded version without ellipsis
+                                onCopyResult(formatResult(line.result, precision, regionCode, groupingSeparatorEnabled, showEllipsis = false))
+                                showCopiedTooltip = true
                             }
                         }
-                } else {
-                    Modifier.clickable {
-                        if (line.result.isNotEmpty()) {
-                            // Copying always uses the standard rounded version without ellipsis
-                            onCopyResult(formatResult(line.result, precision, regionCode, groupingSeparatorEnabled, showEllipsis = false))
-                            showCopiedTooltip = true
-                        }
-                    }
-                }).fillMaxSize()
+                    }).fillMaxSize()
+                }
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,

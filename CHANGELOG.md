@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.7.0] - 2026-05-19
+### Added
+- Added ability to select multiple lines for copying either by tapping on line number or using "Select lines..." menu (Issue #75).
+- Added multi-line paste support (Issue #75).
+
 ## [4.6.0] - 2026-05-16
 ### Added
 - Added `grand_total` and `grand_sum` dynamic variables to calculate the sum of all results in the file above the current line, ignoring block boundaries (Issue #89).

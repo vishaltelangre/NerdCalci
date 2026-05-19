@@ -1,8 +1,8 @@
 package com.vishaltelangre.nerdcalci.ui.calculator
 
-import android.util.Log
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
 import com.vishaltelangre.nerdcalci.data.local.FakeCalculatorDao
 import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
@@ -22,7 +22,7 @@ import org.junit.rules.TestWatcher
 import org.junit.runner.Description
 
 class MainDispatcherRule(
-    val testDispatcher: TestDispatcher = UnconfinedTestDispatcher(TestCoroutineScheduler())
+        val testDispatcher: TestDispatcher = UnconfinedTestDispatcher(TestCoroutineScheduler())
 ) : TestWatcher() {
     override fun starting(description: Description) {
         Dispatchers.setMain(testDispatcher)
@@ -35,8 +35,7 @@ class MainDispatcherRule(
 
 class CalculatorViewModelTest {
 
-    @get:Rule
-    val mainDispatcherRule = MainDispatcherRule()
+    @get:Rule val mainDispatcherRule = MainDispatcherRule()
 
     private lateinit var viewModel: CalculatorViewModel
     private lateinit var fakeDao: FakeCalculatorDao
@@ -72,7 +71,14 @@ class CalculatorViewModelTest {
     @Test
     fun `splitLine split in middle of expression`() = runTest {
         fakeDao.insertFile(FileEntity(id = 1L, name = "TestFile"))
-        val line = LineEntity(id = 1L, fileId = 1L, expression = "a = 10 + 20", result = "30.0", sortOrder = 0)
+        val line =
+                LineEntity(
+                        id = 1L,
+                        fileId = 1L,
+                        expression = "a = 10 + 20",
+                        result = "30.0",
+                        sortOrder = 0
+                )
         fakeDao.insertLine(line)
 
         viewModel.splitLine(1L, 7)
@@ -88,14 +94,14 @@ class CalculatorViewModelTest {
         // Given a temporary scratchpad
         val tempFile = FileEntity(id = 10L, name = "Temp", isTemporary = true)
         fakeDao.insertFile(tempFile)
-        fakeDao.insertLine(LineEntity(fileId = 10L, expression = "1+1", result = "2", sortOrder = 0))
+        fakeDao.insertLine(
+                LineEntity(fileId = 10L, expression = "1+1", result = "2", sortOrder = 0)
+        )
 
         // When duplicating it
         val capturedNewId = CompletableDeferred<Long?>()
-        viewModel.duplicateFile(mockContext, 10L) { newId ->
-            capturedNewId.complete(newId)
-        }
-        
+        viewModel.duplicateFile(mockContext, 10L) { newId -> capturedNewId.complete(newId) }
+
         // Wait for coroutines
         val newId = capturedNewId.await()
         assertNotNull("New ID should not be null", newId)
@@ -112,17 +118,17 @@ class CalculatorViewModelTest {
         val existingTempFile = FileEntity(id = 20L, name = "Scratchpad", isTemporary = true)
         fakeDao.insertFile(existingTempFile)
         fakeDao.insertLine(LineEntity(id = 100L, fileId = 20L, expression = "1+1", sortOrder = 0))
-        
+
         // When a new ViewModel is initialized (it calls ensureScratchpadExists in init)
         val newViewModel = CalculatorViewModel(fakeDao)
-        
+
         // Wait for coroutines in init to finish
         testScheduler.advanceUntilIdle()
-        
+
         // Find the temporary file
         val currentTempFile = fakeDao.files.find { it.isTemporary }
         assertNotNull("Should have a temporary file", currentTempFile)
-        
+
         val lines = fakeDao.getLinesForFileSync(currentTempFile!!.id)
         // Should only have one empty line now (reset/cleared)
         assertEquals("Should have exactly 1 line", 1, lines.size)
@@ -165,9 +171,30 @@ class CalculatorViewModelTest {
 
         val suggestions = viewModel.getSuggestionsForFile("Dates")
 
-        assertTrue(suggestions.contains(com.vishaltelangre.nerdcalci.utils.Suggestion("today", SuggestionType.KEYWORD)))
-        assertTrue(suggestions.contains(com.vishaltelangre.nerdcalci.utils.Suggestion("between", SuggestionType.KEYWORD)))
-        assertTrue(suggestions.contains(com.vishaltelangre.nerdcalci.utils.Suggestion("tomorrow", SuggestionType.KEYWORD)))
+        assertTrue(
+                suggestions.contains(
+                        com.vishaltelangre.nerdcalci.utils.Suggestion(
+                                "today",
+                                SuggestionType.KEYWORD
+                        )
+                )
+        )
+        assertTrue(
+                suggestions.contains(
+                        com.vishaltelangre.nerdcalci.utils.Suggestion(
+                                "between",
+                                SuggestionType.KEYWORD
+                        )
+                )
+        )
+        assertTrue(
+                suggestions.contains(
+                        com.vishaltelangre.nerdcalci.utils.Suggestion(
+                                "tomorrow",
+                                SuggestionType.KEYWORD
+                        )
+                )
+        )
     }
 
     @Test
@@ -182,5 +209,35 @@ class CalculatorViewModelTest {
 
         // Then: lastSyncAt should reflect the stored timestamp
         assertEquals(expectedTimestamp, testViewModel.lastSyncAt.value)
+    }
+
+    @Test
+    fun `pasteLines inserts multi-line paste atomically`() = runTest {
+        fakeDao.insertFile(FileEntity(id = 1L, name = "TestFile"))
+        val line =
+                LineEntity(id = 10L, fileId = 1L, expression = "1 + ", result = "", sortOrder = 0)
+        fakeDao.insertLine(line)
+
+        val firstChunk = "2"
+        val middleLines = listOf("3 + 3", "4 + 4")
+        val lastChunk = "5"
+
+        val lastInsertedId =
+                viewModel.pasteLines(
+                        lineId = 10L,
+                        cursorPosInExpr = 4, // end of "1 + "
+                        firstChunk = firstChunk,
+                        middleLines = middleLines,
+                        lastChunk = lastChunk,
+                        rationalMode = false
+                )
+
+        val lines = fakeDao.getLinesForFileSync(1L)
+        assertEquals(4, lines.size)
+        assertEquals("1 + 2", lines[0].expression)
+        assertEquals("3 + 3", lines[1].expression)
+        assertEquals("4 + 4", lines[2].expression)
+        assertEquals("5", lines[3].expression)
+        assertEquals(lastInsertedId, lines[3].id)
     }
 }

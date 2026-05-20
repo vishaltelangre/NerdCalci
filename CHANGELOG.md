@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.7.1] - 2026-05-20
+### Added
+- Added ability to delete selected lines in multi-line selection mode (Issue #194).
+- Added ability to long-press a file in home screen to allow multi-select and batch delete files, replacing the swipe-to-delete feature (Issue #191).
+
 ## [4.7.0] - 2026-05-19
 ### Added
 - Added ability to select multiple lines for copying either by tapping on line number or using "Select lines..." menu (Issue #75).

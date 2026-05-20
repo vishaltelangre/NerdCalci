@@ -77,3 +77,66 @@ fun DeleteFileDialog(
         }
     )
 }
+
+/**
+ * Reusable confirmation dialog for deleting multiple files.
+ */
+@Composable
+fun DeleteFilesDialog(
+    count: Int,
+    onDismiss: () -> Unit,
+    onConfirm: suspend () -> Boolean
+) {
+    var deleteError by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun confirmDelete() {
+        coroutineScope.launch {
+            val success = runCatching { onConfirm() }
+                .getOrElse { throwable ->
+                    deleteError = throwable.message ?: "Failed to delete files"
+                    false
+                }
+            if (success) {
+                onDismiss()
+            } else if (deleteError == null) {
+                deleteError = "Failed to delete files"
+            }
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (count == 1) "Delete file?" else "Delete $count files?") },
+        text = {
+            Column {
+                Text(
+                    if (count == 1)
+                        "This will permanently delete the selected file and all its contents. This action cannot be undone."
+                    else
+                        "This will permanently delete the $count selected files and all their contents. This action cannot be undone."
+                )
+                if (deleteError != null) {
+                    Text(
+                        text = deleteError ?: "",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { confirmDelete() }
+            ) {
+                Text("Delete", color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}

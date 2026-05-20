@@ -1,0 +1,2 @@
+- Added ability to delete selected lines in multi-line selection mode (Issue #194).
+- Added ability to long-press a file in home screen to allow multi-select and batch delete files, replacing the swipe-to-delete feature (Issue: #191).

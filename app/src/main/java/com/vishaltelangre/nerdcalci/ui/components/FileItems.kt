@@ -1,9 +1,8 @@
 package com.vishaltelangre.nerdcalci.ui.components
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
@@ -13,23 +12,13 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.lifecycle.viewModelScope
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.text.SimpleDateFormat
@@ -37,19 +26,15 @@ import android.text.format.DateUtils
 import java.util.Calendar
 import java.util.Locale
 import java.util.Date
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
 import androidx.compose.ui.text.font.FontWeight
 
 import com.vishaltelangre.nerdcalci.core.Constants
 import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
 import com.vishaltelangre.nerdcalci.ui.calculator.CalculatorViewModel
 
-private const val UNDO_TIMEOUT_SECONDS = 5
 private val FILE_ITEM_CONTENT_HEIGHT = 56.dp
 private val FILE_ITEM_VERTICAL_PADDING = 8.dp
 private val FILE_ITEM_INTERNAL_PADDING = 16.dp
-private val UNDO_BUTTON_HEIGHT = 36.dp
 
 internal fun LazyListScope.addFileItems(
     files: List<FileEntity>,
@@ -77,24 +62,20 @@ internal fun LazyListScope.addFileItems(
 }
 
 /**
- * Adds a list of dismissible file items to a [LazyListScope].
- * This is used in the HomeScreen to provide swipe-to-delete functionality.
+ * Adds a list of home screen file items to a [LazyListScope].
+ * Supports long-press selection mode.
  */
-/**
- * Adds a list of dismissible file items to a [LazyListScope].
- * This is used in the HomeScreen to provide swipe-to-delete functionality.
- * Handles both the normal state and the "Deleted [Undo]" state for each item.
- */
-fun LazyListScope.addDismissibleFileItems(
+fun LazyListScope.addHomeFileItems(
     files: List<FileEntity>,
-    excludedIds: Set<Long>,
+    isSelectionMode: Boolean,
+    selectedFileIds: Set<Long>,
     onFileClick: (Long) -> Unit,
     onRename: (Long, String) -> Unit,
     onDuplicate: (Long) -> Unit,
     onDelete: (Long) -> Unit,
     onTogglePin: (Long) -> Unit,
-    onUndo: (Long) -> Unit,
-    onDismiss: (Long) -> Unit,
+    onLongClick: (Long) -> Unit,
+    onToggleSelect: (Long) -> Unit,
     viewModel: CalculatorViewModel
 ) {
     items(
@@ -105,92 +86,33 @@ fun LazyListScope.addDismissibleFileItems(
             .animateItem()
             .padding(vertical = FILE_ITEM_VERTICAL_PADDING)
 
-        if (excludedIds.contains(file.id)) {
-            DeletedUndoItem(
-                file = file,
-                onUndo = { onUndo(file.id) },
-                onTimeout = { onDelete(file.id) },
-                modifier = itemModifier
-            )
-        } else {
-            DismissibleFileItem(
-                file = file,
-                onFileClick = onFileClick,
-                onRename = { onRename(file.id, it) },
-                onDuplicate = { onDuplicate(file.id) },
-                onTogglePin = { onTogglePin(file.id) },
-                onDismiss = { onDismiss(file.id) },
-                viewModel = viewModel,
-                modifier = itemModifier
-            )
-        }
-    }
-}
+        val isSelected = selectedFileIds.contains(file.id)
 
-/**
- * A red row that replaces a swiped item, offering an "UNDO" action.
- */
-@Composable
-fun DeletedUndoItem(
-    file: FileEntity,
-    onUndo: () -> Unit,
-    onTimeout: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    var secondsLeft by remember(file.id) { mutableIntStateOf(UNDO_TIMEOUT_SECONDS) }
-
-    LaunchedEffect(file.id) {
-        while (secondsLeft > 0) {
-            delay(1000)
-            secondsLeft--
-        }
-        onTimeout()
-    }
-
-    Card(
-        modifier = modifier
-            .fillMaxWidth(),
-        shape = androidx.compose.ui.graphics.RectangleShape,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.error)
-    ) {
-        Row(
-            modifier = Modifier
-                .padding(FILE_ITEM_INTERNAL_PADDING)
-                .fillMaxWidth()
-                .height(FILE_ITEM_CONTENT_HEIGHT),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = "Deleted \"${file.name}\"",
-                color = MaterialTheme.colorScheme.onError,
-                style = MaterialTheme.typography.bodyLarge,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
-            )
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                TextButton(
-                    onClick = onUndo,
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                    modifier = Modifier.height(UNDO_BUTTON_HEIGHT)
-                ) {
-                    Text(
-                        text = "UNDO",
-                        color = MaterialTheme.colorScheme.onError,
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
-                    )
+        FileItem(
+            file = file,
+            isSelectionMode = isSelectionMode,
+            isSelected = isSelected,
+            onClick = {
+                if (isSelectionMode) {
+                    if (!file.isLocked) {
+                        onToggleSelect(file.id)
+                    }
+                } else {
+                    onFileClick(file.id)
                 }
-                Text(
-                    text = "${secondsLeft}s left",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onError.copy(alpha = 0.7f)
-                )
-            }
-        }
+            },
+            onLongClick = {
+                if (!file.isLocked) {
+                    onLongClick(file.id)
+                }
+            },
+            onRename = { onRename(file.id, it) },
+            onDuplicate = { onDuplicate(file.id) },
+            onDismiss = { onDelete(file.id) },
+            onTogglePin = { onTogglePin(file.id) },
+            viewModel = viewModel,
+            modifier = itemModifier
+        )
     }
 }
 
@@ -203,96 +125,117 @@ internal fun FileItem(
     onDismiss: () -> Unit,
     onTogglePin: () -> Unit,
     viewModel: CalculatorViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isSelectionMode: Boolean = false,
+    isSelected: Boolean = false,
+    onLongClick: (() -> Unit)? = null
 ) {
     var showMenu by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var showInfoDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     FileRowCard(
         file = file,
         title = AnnotatedString(file.name),
         onClick = onClick,
-        modifier = modifier
-    ) {
-        Box {
-            IconButton(onClick = { showMenu = true }) {
-                Icon(
-                    Icons.Default.MoreVert,
-                    contentDescription = "More options",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            DropdownMenu(
-                expanded = showMenu,
-                onDismissRequest = { showMenu = false },
-                modifier = Modifier.navigationBarsPadding()
-            ) {
-                DropdownMenuItem(
-                    text = { Text(if (file.isPinned) "Unpin" else "Pin") },
-                    leadingIcon = {
-                        Icon(
-                            if (file.isPinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
-                            contentDescription = null
-                        )
-                    },
-                    onClick = {
-                        showMenu = false
-                        onTogglePin()
-                    }
-                )
-                if (!file.isTemporary) {
-                    DropdownMenuItem(
-                        text = { Text(if (file.isLocked) "Unlock" else "Lock") },
-                        leadingIcon = {
-                            Icon(
-                                if (file.isLocked) Icons.Default.LockOpen else Icons.Default.Lock,
-                                contentDescription = null
-                            )
-                        },
-                        onClick = {
-                            showMenu = false
-                            viewModel.toggleLockFile(file.id)
-                        }
+        onLongClick = onLongClick,
+        modifier = modifier,
+        leadingContent = if (isSelectionMode) {
+            {
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = null,
+                    enabled = !file.isLocked,
+                    colors = CheckboxDefaults.colors(
+                        disabledUncheckedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                        disabledCheckedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                     )
-                }
-                DropdownMenuItem(
-                    text = { Text("Rename") },
-                    leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
-                    enabled = !file.isLocked,
-                    onClick = {
-                        showMenu = false
-                        showRenameDialog = true
-                    }
-                )
-                DropdownMenuItem(
-                    text = { Text("Duplicate") },
-                    leadingIcon = { Icon(Icons.Default.FileCopy, contentDescription = null) },
-                    onClick = {
-                        showMenu = false
-                        onDuplicate()
-                    }
-                )
-                DropdownMenuItem(
-                    text = { Text("Delete") },
-                    leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
-                    enabled = !file.isLocked,
-                    onClick = {
-                        showMenu = false
-                        onDismiss()
-                    }
-                )
-                DropdownMenuItem(
-                    text = { Text("File info") },
-                    leadingIcon = { Icon(Icons.Outlined.Info, contentDescription = null) },
-                    onClick = {
-                        showMenu = false
-                        showInfoDialog = true
-                    }
                 )
             }
-        }
-    }
+        } else null,
+        trailingContent = if (!isSelectionMode) {
+            {
+                Box {
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(
+                            Icons.Default.MoreVert,
+                            contentDescription = "More options",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false },
+                        modifier = Modifier.navigationBarsPadding()
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(if (file.isPinned) "Unpin" else "Pin") },
+                            leadingIcon = {
+                                Icon(
+                                    if (file.isPinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
+                                    contentDescription = null
+                                )
+                            },
+                            onClick = {
+                                showMenu = false
+                                onTogglePin()
+                            }
+                        )
+                        if (!file.isTemporary) {
+                            DropdownMenuItem(
+                                text = { Text(if (file.isLocked) "Unlock" else "Lock") },
+                                leadingIcon = {
+                                    Icon(
+                                        if (file.isLocked) Icons.Default.LockOpen else Icons.Default.Lock,
+                                        contentDescription = null
+                                    )
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    viewModel.toggleLockFile(file.id)
+                                }
+                            )
+                        }
+                        DropdownMenuItem(
+                            text = { Text("Rename") },
+                            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
+                            enabled = !file.isLocked,
+                            onClick = {
+                                showMenu = false
+                                showRenameDialog = true
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Duplicate") },
+                            leadingIcon = { Icon(Icons.Default.FileCopy, contentDescription = null) },
+                            onClick = {
+                                showMenu = false
+                                onDuplicate()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Delete") },
+                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
+                            enabled = !file.isLocked,
+                            onClick = {
+                                showMenu = false
+                                showDeleteDialog = true
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("File info") },
+                            leadingIcon = { Icon(Icons.Outlined.Info, contentDescription = null) },
+                            onClick = {
+                                showMenu = false
+                                showInfoDialog = true
+                            }
+                        )
+                    }
+                }
+            }
+        } else null
+    )
 
     if (showInfoDialog) {
         FileInfoDialog(
@@ -310,6 +253,17 @@ internal fun FileItem(
             onDismiss = { showRenameDialog = false },
             onConfirm = { newName ->
                 onRename(newName.take(Constants.MAX_FILE_NAME_LENGTH))
+                true
+            }
+        )
+    }
+
+    if (showDeleteDialog) {
+        DeleteFileDialog(
+            fileName = file.name,
+            onDismiss = { showDeleteDialog = false },
+            onConfirm = {
+                onDismiss()
                 true
             }
         )
@@ -335,18 +289,24 @@ private fun isYesterday(timestamp: Long): Boolean {
             yesterday.get(Calendar.DAY_OF_YEAR) == time.get(Calendar.DAY_OF_YEAR)
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun FileRowCard(
     file: FileEntity,
     title: AnnotatedString,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
+    leadingContent: (@Composable () -> Unit)? = null,
     trailingContent: (@Composable () -> Unit)? = null
 ) {
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clickable { onClick() },
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            ),
         shape = androidx.compose.ui.graphics.RectangleShape,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
     ) {
@@ -356,6 +316,10 @@ internal fun FileRowCard(
                 .height(FILE_ITEM_CONTENT_HEIGHT),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            if (leadingContent != null) {
+                leadingContent()
+                Spacer(modifier = Modifier.width(16.dp))
+            }
             Icon(
                 Icons.Default.Description,
                 contentDescription = null,
@@ -421,99 +385,6 @@ internal fun FileRowCard(
                 trailingContent()
             }
         }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun DismissibleFileItem(
-    file: FileEntity,
-    onFileClick: (Long) -> Unit,
-    onRename: (String) -> Unit,
-    onDuplicate: () -> Unit,
-    onTogglePin: () -> Unit,
-    onDismiss: () -> Unit,
-    viewModel: CalculatorViewModel,
-    modifier: Modifier = Modifier
-) {
-    val haptic = LocalHapticFeedback.current
-    val currentIsLocked by rememberUpdatedState(file.isLocked)
-    val dismissState = rememberSwipeToDismissBoxState(
-        confirmValueChange = { value ->
-            if (currentIsLocked) return@rememberSwipeToDismissBoxState false
-            value == SwipeToDismissBoxValue.EndToStart
-        }
-    )
-
-    // Handle dismissal when animation finishes
-    LaunchedEffect(dismissState.currentValue) {
-        if (dismissState.currentValue == SwipeToDismissBoxValue.EndToStart) {
-            onDismiss()
-            // Reset state so if/when the item is restored, it's not still "dismissed"
-            dismissState.snapTo(SwipeToDismissBoxValue.Settled)
-        }
-    }
-
-    // Trigger haptic feedback when the threshold is crossed
-    LaunchedEffect(dismissState.targetValue) {
-        if (dismissState.targetValue == SwipeToDismissBoxValue.EndToStart) {
-            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-        }
-    }
-
-    SwipeToDismissBox(
-        state = dismissState,
-        enableDismissFromStartToEnd = false,
-        enableDismissFromEndToStart = !file.isLocked,
-        backgroundContent = { SwipeToDismissBackground(dismissState) },
-        modifier = modifier
-            .fillMaxWidth()
-    ) {
-        FileItem(
-            file = file,
-            onClick = { onFileClick(file.id) },
-            onRename = onRename,
-            onDuplicate = onDuplicate,
-            onDismiss = onDismiss,
-            onTogglePin = onTogglePin,
-            viewModel = viewModel,
-            modifier = Modifier
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun SwipeToDismissBackground(dismissState: SwipeToDismissBoxState) {
-    val color by animateColorAsState(
-        when (dismissState.targetValue) {
-            SwipeToDismissBoxValue.Settled -> Color.Transparent
-            SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.error
-            SwipeToDismissBoxValue.StartToEnd -> Color.Transparent
-        }, label = "dismiss_background_color"
-    )
-
-    val alignment = Alignment.CenterEnd
-    val icon = Icons.Default.Delete
-
-    val scale by animateFloatAsState(
-        if (dismissState.targetValue == SwipeToDismissBoxValue.Settled) 0.75f else 1f,
-        label = "dismiss_background_scale"
-    )
-
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(color)
-            .padding(horizontal = 16.dp),
-        contentAlignment = alignment
-    ) {
-        Icon(
-            icon,
-            contentDescription = "Delete",
-            modifier = Modifier.scale(scale),
-            tint = MaterialTheme.colorScheme.onError
-        )
     }
 }
 

@@ -1340,6 +1340,20 @@ class CalculatorViewModel(
         }
     }
 
+    suspend fun deleteFiles(context: Context, fileIds: Collection<Long>): Boolean {
+        return withContext(ioDispatcher) {
+            calculationMutex.withLock {
+                var allSuccess = true
+                fileIds.forEach { fileId ->
+                    if (!performSyncAwareDelete(context, fileId)) {
+                        allSuccess = false
+                    }
+                }
+                allSuccess
+            }
+        }
+    }
+
     fun hideFile(fileId: Long) {
         viewModelScope.launch(ioDispatcher) {
             calculationMutex.withLock {

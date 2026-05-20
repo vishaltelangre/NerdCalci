@@ -362,8 +362,12 @@ abstract class CalculatorDao {
 
     @Transaction
     open suspend fun deleteLinesAndNormalize(fileId: Long, lines: List<LineEntity>) {
-        val targetLines = lines.filter { it.fileId == fileId }
+        val lineIdsToDelete = lines.map { it.id }.toSet()
+        val existingLines = getLinesForFileSync(fileId)
+        val targetLines = existingLines.filter { it.id in lineIdsToDelete }
+        
         targetLines.forEach { internalDeleteLine(it) }
+        
         val remainingLines = getLinesForFileSync(fileId)
         val normalizedLines = remainingLines.mapIndexed { index, l ->
             l.copy(sortOrder = index)

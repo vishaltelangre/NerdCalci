@@ -127,14 +127,11 @@ fun HomeScreen(
 
     fun toggleFileSelection(fileId: Long) {
         selectedFileIds = if (selectedFileIds.contains(fileId)) {
-            val newSet = selectedFileIds - fileId
-            if (newSet.isEmpty()) {
-                isSelectionMode = false
-            }
-            newSet
+            selectedFileIds - fileId
         } else {
             selectedFileIds + fileId
         }
+        isSelectionMode = selectedFileIds.isNotEmpty()
     }
 
     // Get app name from strings.xml
@@ -209,11 +206,18 @@ fun HomeScreen(
                         }
                     },
                     actions = {
-                        IconButton(onClick = { showBatchDeleteDialog = true }) {
+                        IconButton(
+                            onClick = { showBatchDeleteDialog = true },
+                            enabled = selectedFileIds.isNotEmpty()
+                        ) {
                             Icon(
                                 Icons.Default.Delete,
                                 contentDescription = "Delete selected files",
-                                tint = MaterialTheme.colorScheme.onSurface
+                                tint = if (selectedFileIds.isNotEmpty()) {
+                                    MaterialTheme.colorScheme.onSurface
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                }
                             )
                         }
                     },
@@ -472,7 +476,7 @@ fun HomeScreen(
                             isSelectionMode = isSelectionMode,
                             selectedFileIds = selectedFileIds,
                             onFileClick = onFileClick,
-                            onLongClick = { id -> toggleFileSelection(id); isSelectionMode = true },
+                            onLongClick = { id -> toggleFileSelection(id) },
                             onToggleSelect = { id -> toggleFileSelection(id) },
                             coroutineScope = coroutineScope,
                             snackbarHostState = snackbarHostState,
@@ -487,7 +491,7 @@ fun HomeScreen(
                         isSelectionMode = isSelectionMode,
                         selectedFileIds = selectedFileIds,
                         onFileClick = onFileClick,
-                        onLongClick = { id -> toggleFileSelection(id); isSelectionMode = true },
+                        onLongClick = { id -> toggleFileSelection(id) },
                         onToggleSelect = { id -> toggleFileSelection(id) },
                         coroutineScope = coroutineScope,
                         snackbarHostState = snackbarHostState,

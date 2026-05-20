@@ -832,6 +832,23 @@ fun CalculatorScreen(
                                     tint = if (selectedIndices.isNotEmpty()) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
                                 )
                             }
+                            if (!isLocked) {
+                                IconButton(
+                                    onClick = {
+                                        val linesToDelete = selectedIndices.sorted()
+                                            .mapNotNull { lines.getOrNull(it) }
+                                        viewModel.deleteLines(fileId, linesToDelete, effectiveRationalMode)
+                                        clearSelection()
+                                    },
+                                    enabled = selectedIndices.isNotEmpty()
+                                ) {
+                                    Icon(
+                                        Icons.Default.Delete,
+                                        "Delete selected lines",
+                                        tint = if (selectedIndices.isNotEmpty()) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                                    )
+                                }
+                            }
                         } else {
                             if (!isLocked) {
                                 IconButton(

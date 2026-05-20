@@ -1249,6 +1249,48 @@ class CalculatorViewModel(
         }
     }
 
+    fun deleteLines(fileId: Long, linesToDelete: List<LineEntity>, rationalMode: Boolean? = null) {
+        viewModelScope.launch(ioDispatcher) {
+            calculationMutex.withLock {
+                if (isFileLocked(fileId)) return@withLock
+                if (linesToDelete.isEmpty()) return@withLock
+
+                // Save state for undo
+                saveStateForUndo(fileId)
+
+                // Get current lines to find the minimum index before deletion
+                val currentLines = dao.getLinesForFileSync(fileId)
+                val deletedIndices = linesToDelete.map { line ->
+                    currentLines.indexOfFirst { it.id == line.id }
+                }.filter { it >= 0 }
+
+                if (deletedIndices.isEmpty()) return@withLock
+
+                val minDeletedIndex = deletedIndices.minOrNull() ?: 0
+
+                // Delete specified lines and normalize remaining lines in DB
+                dao.deleteLinesAndNormalize(fileId, linesToDelete)
+
+                val updatedLines = dao.getLinesForFileSync(fileId)
+
+                // Recalculate starting from the spot where we deleted.
+                if (minDeletedIndex in updatedLines.indices) {
+                    val effectiveRationalMode = rationalMode ?: _rationalMode.value
+                    val effectiveDateFormat = getResolvedDateFormat()
+                    val affectedLines = MathEngine.calculateFrom(
+                        updatedLines, 
+                        minDeletedIndex, 
+                        createFileContextLoader(fileId, effectiveRationalMode, effectiveDateFormat), 
+                        rationalMode = effectiveRationalMode,
+                        dateFormat = effectiveDateFormat
+                    )
+                    val versionedLines = affectedLines.map { l -> l.copy(version = l.version + 1) }
+                    dao.updateLines(fileId, versionedLines)
+                }
+            }
+        }
+    }
+
     fun clearAllLines(fileId: Long) {
         viewModelScope.launch(ioDispatcher) {
             calculationMutex.withLock {

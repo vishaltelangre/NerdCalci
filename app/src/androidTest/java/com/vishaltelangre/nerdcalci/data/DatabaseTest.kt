@@ -696,4 +696,51 @@ class DatabaseTest {
         val lines = dao.getLinesForFileSync(firstId)
         assertEquals(1, lines.size)
     }
+
+    @Test
+    fun deleteLinesAndNormalize_deletesAndNormalizesRemainingLines() = runBlocking {
+        val fileId = dao.insertFile(FileEntity(name = "DeleteLines", lastModified = 1000L))
+        dao.insertLine(LineEntity(fileId = fileId, sortOrder = 0, expression = "0"))
+        dao.insertLine(LineEntity(fileId = fileId, sortOrder = 1, expression = "1"))
+        dao.insertLine(LineEntity(fileId = fileId, sortOrder = 2, expression = "2"))
+        dao.insertLine(LineEntity(fileId = fileId, sortOrder = 3, expression = "3"))
+
+        val allLines = dao.getLinesForFileSync(fileId)
+        val linesToDelete = listOf(allLines[1], allLines[3]) // Deletes "1" and "3"
+
+        val beforeTouch = System.currentTimeMillis()
+        Thread.sleep(10)
+        dao.deleteLinesAndNormalize(fileId, linesToDelete)
+
+        val remaining = dao.getLinesForFileSync(fileId)
+        assertEquals(2, remaining.size)
+        assertEquals(0, remaining[0].sortOrder)
+        assertEquals(1, remaining[1].sortOrder)
+        assertEquals("0", remaining[0].expression)
+        assertEquals("2", remaining[1].expression)
+
+        val file = dao.getFileById(fileId)
+        assertTrue(file!!.lastModified >= beforeTouch)
+    }
+
+    @Test
+    fun deleteLinesAndNormalize_deletesAllLinesAndInsertsDefaultEmptyLine() = runBlocking {
+        val fileId = dao.insertFile(FileEntity(name = "DeleteAllLines", lastModified = 1000L))
+        dao.insertLine(LineEntity(fileId = fileId, sortOrder = 0, expression = "0"))
+        dao.insertLine(LineEntity(fileId = fileId, sortOrder = 1, expression = "1"))
+
+        val allLines = dao.getLinesForFileSync(fileId)
+
+        val beforeTouch = System.currentTimeMillis()
+        Thread.sleep(10)
+        dao.deleteLinesAndNormalize(fileId, allLines)
+
+        val remaining = dao.getLinesForFileSync(fileId)
+        assertEquals(1, remaining.size)
+        assertEquals(0, remaining[0].sortOrder)
+        assertEquals("", remaining[0].expression)
+
+        val file = dao.getFileById(fileId)
+        assertTrue(file!!.lastModified >= beforeTouch)
+    }
 }

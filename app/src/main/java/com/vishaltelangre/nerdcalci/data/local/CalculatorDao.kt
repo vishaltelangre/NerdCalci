@@ -359,4 +359,20 @@ abstract class CalculatorDao {
         updateFile(file.copy(isPinned = !file.isPinned))
         return true
     }
+
+    @Transaction
+    open suspend fun deleteLinesAndNormalize(fileId: Long, lines: List<LineEntity>) {
+        lines.forEach { internalDeleteLine(it) }
+        val remainingLines = getLinesForFileSync(fileId)
+        val normalizedLines = remainingLines.mapIndexed { index, l ->
+            l.copy(sortOrder = index)
+        }
+        if (normalizedLines.isNotEmpty()) {
+            internalUpdateLines(normalizedLines)
+        } else {
+            // Ensure at least one empty line if all were deleted
+            internalInsertLine(LineEntity(fileId = fileId, sortOrder = 0, expression = "", result = ""))
+        }
+        touchFile(fileId)
+    }
 }

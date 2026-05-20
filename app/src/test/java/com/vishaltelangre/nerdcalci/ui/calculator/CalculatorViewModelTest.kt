@@ -240,4 +240,55 @@ class CalculatorViewModelTest {
         assertEquals("5", lines[3].expression)
         assertEquals(lastInsertedId, lines[3].id)
     }
+
+    @Test
+    fun `deleteLines deletes multiple lines atomically, recalculates and supports undo`() = runTest {
+        // Given
+        val fileId = 1L
+        fakeDao.insertFile(FileEntity(id = fileId, name = "TestFile"))
+        val line0 = LineEntity(id = 10L, fileId = fileId, expression = "x = 10", result = "10.0", sortOrder = 0)
+        val line1 = LineEntity(id = 11L, fileId = fileId, expression = "y = 20", result = "20.0", sortOrder = 1)
+        val line2 = LineEntity(id = 12L, fileId = fileId, expression = "x + y", result = "30.0", sortOrder = 2)
+        val line3 = LineEntity(id = 13L, fileId = fileId, expression = "z = 40", result = "40.0", sortOrder = 3)
+        fakeDao.insertLine(line0)
+        fakeDao.insertLine(line1)
+        fakeDao.insertLine(line2)
+        fakeDao.insertLine(line3)
+
+        // When: Deleting line 1 ("y = 20") and line 3 ("z = 40")
+        val linesToDelete = listOf(line1, line3)
+        viewModel.deleteLines(fileId, linesToDelete, rationalMode = false)
+
+        // Advance coroutines
+        testScheduler.advanceUntilIdle()
+
+        // Then: remaining lines should be line0 (sortOrder 0) and line2 (sortOrder 1)
+        val remainingLines = fakeDao.getLinesForFileSync(fileId)
+        assertEquals(2, remainingLines.size)
+        
+        // Let's verify sortOrder normalization
+        assertEquals(0, remainingLines[0].sortOrder)
+        assertEquals(1, remainingLines[1].sortOrder)
+        
+        // Line0 is untouched
+        assertEquals("x = 10", remainingLines[0].expression)
+        
+        // Line2 expression was "x + y", but y was deleted.
+        // It should be recalculated. Since y is undefined now, evaluating "x + y" should result in an error or unresolved state.
+        // Let's assert that the recalculation was triggered.
+        assertNotEquals("30.0", remainingLines[1].result)
+
+        // Now test undo
+        assertTrue(viewModel.canUndo.value[fileId] == true)
+        viewModel.undo(fileId, rationalMode = false)
+        testScheduler.advanceUntilIdle()
+
+        val restoredLines = fakeDao.getLinesForFileSync(fileId)
+        assertEquals(4, restoredLines.size)
+        assertEquals("x = 10", restoredLines[0].expression)
+        assertEquals("y = 20", restoredLines[1].expression)
+        assertEquals("x + y", restoredLines[2].expression)
+        assertEquals("z = 40", restoredLines[3].expression)
+        assertEquals("30.0", restoredLines[2].result)
+    }
 }

@@ -12,7 +12,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.foundation.horizontalScroll
@@ -606,13 +605,10 @@ fun CalculatorScreen(
     // Individual multi-select state
     var selectedIndices by remember(fileId) { mutableStateOf(emptySet<Int>()) }
     var isInSelectionMode by remember(fileId) { mutableStateOf(false) }
-    // Drag-range tracking: true=select intent, false=deselect intent
-    var dragSelectIntent by remember(fileId) { mutableStateOf<Boolean?>(null) }
 
     fun clearSelection() {
         selectedIndices = emptySet()
         isInSelectionMode = false
-        dragSelectIntent = null
     }
 
     fun handleSelectionTap(tappedIndex: Int) {

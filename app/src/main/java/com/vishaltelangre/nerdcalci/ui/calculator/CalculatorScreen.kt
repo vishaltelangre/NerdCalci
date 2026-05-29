@@ -10,6 +10,11 @@ import com.vishaltelangre.nerdcalci.core.TokenKind
 import androidx.compose.foundation.background
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
@@ -105,6 +110,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -597,65 +603,23 @@ fun CalculatorScreen(
     // Track which line is currently focused by the user
     var currentlyFocusedLineId by remember { mutableStateOf<Long?>(null) }
 
-    // Range selection state (for multi-line copy)
-    var selectionAnchorIndex by remember { mutableStateOf<Int?>(null) }
-    var selectionPivotIndex by remember { mutableStateOf<Int?>(null) }
-    var enteringSelectionMode by remember { mutableStateOf(false) }
-
-    val isInSelectionMode = selectionAnchorIndex != null || enteringSelectionMode
-
-    val selectedIndices: Set<Int> = remember(selectionAnchorIndex, selectionPivotIndex) {
-        val a = selectionAnchorIndex ?: return@remember emptySet()
-        val b = selectionPivotIndex ?: a
-        (minOf(a, b)..maxOf(a, b)).toSet()
-    }
+    // Individual multi-select state
+    var selectedIndices by remember(fileId) { mutableStateOf(emptySet<Int>()) }
+    var isInSelectionMode by remember(fileId) { mutableStateOf(false) }
+    // Drag-range tracking: true=select intent, false=deselect intent
+    var dragSelectIntent by remember(fileId) { mutableStateOf<Boolean?>(null) }
 
     fun clearSelection() {
-        selectionAnchorIndex = null
-        selectionPivotIndex = null
-        enteringSelectionMode = false
+        selectedIndices = emptySet()
+        isInSelectionMode = false
+        dragSelectIntent = null
     }
 
     fun handleSelectionTap(tappedIndex: Int) {
-        val anchor = selectionAnchorIndex
-        val pivot = selectionPivotIndex
-        if (anchor != null && pivot != null && selectedIndices.contains(tappedIndex)) {
-            if (tappedIndex == anchor) {
-                clearSelection()
-            } else if (anchor < pivot) {
-                val newPivot = tappedIndex - 1
-                if (newPivot < anchor) {
-                    clearSelection()
-                } else {
-                    selectionPivotIndex = newPivot
-                }
-            } else {
-                val newPivot = tappedIndex + 1
-                if (newPivot > anchor) {
-                    clearSelection()
-                } else {
-                    selectionPivotIndex = newPivot
-                }
-            }
-        } else {
-            if (anchor != null && pivot != null) {
-                val minVal = minOf(anchor, pivot)
-                val maxVal = maxOf(anchor, pivot)
-                if (tappedIndex < minVal) {
-                    selectionAnchorIndex = maxVal
-                    selectionPivotIndex = tappedIndex
-                } else if (tappedIndex > maxVal) {
-                    selectionAnchorIndex = minVal
-                    selectionPivotIndex = tappedIndex
-                } else {
-                    selectionPivotIndex = tappedIndex
-                }
-            } else {
-                selectionAnchorIndex = tappedIndex
-                selectionPivotIndex = tappedIndex
-            }
-        }
-        enteringSelectionMode = false
+        selectedIndices = if (selectedIndices.contains(tappedIndex))
+            selectedIndices - tappedIndex
+        else
+            selectedIndices + tappedIndex
     }
 
     BackHandler(enabled = isInSelectionMode) {
@@ -759,7 +723,7 @@ fun CalculatorScreen(
                     title = {
                         if (isInSelectionMode) {
                             Text(
-                                text = "${selectedIndices.size} line${if (selectedIndices.size == 1) "" else "s"} selected",
+                                text = if (selectedIndices.isEmpty()) "Tap lines to select" else "${selectedIndices.size} line${if (selectedIndices.size == 1) "" else "s"} selected",
                                 color = MaterialTheme.colorScheme.onSurface,
                                 style = MaterialTheme.typography.titleMedium
                             )
@@ -915,7 +879,7 @@ fun CalculatorScreen(
                                     },
                                     onClick = {
                                         showMenu = false
-                                        enteringSelectionMode = true
+                                        isInSelectionMode = true
                                     }
                                 )
                                 HorizontalDivider()
@@ -1272,7 +1236,67 @@ fun CalculatorScreen(
             // LazyColumn with lines
             LazyColumn(
                 state = listState,
-                modifier = Modifier.fillMaxSize()
+                userScrollEnabled = !isInSelectionMode,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .then(
+                        if (isInSelectionMode) {
+                            val currentSelectedIndices by rememberUpdatedState(selectedIndices)
+                            Modifier.pointerInput(isInSelectionMode) {
+                                awaitPointerEventScope {
+                                    while (true) {
+                                        val down = awaitPointerEvent(PointerEventPass.Initial)
+                                        val downPointer = down.changes.firstOrNull() ?: continue
+                                        val startY = downPointer.position.y.toInt()
+                                        val startIndex = listState.layoutInfo.visibleItemsInfo
+                                            .firstOrNull { item ->
+                                                startY in item.offset..(item.offset + item.size)
+                                            }?.index
+
+                                        if (startIndex != null) {
+                                            downPointer.consume()
+                                            val initialSelected = currentSelectedIndices
+                                            val intent = !initialSelected.contains(startIndex)
+                                            var lastIndex = startIndex
+
+                                            selectedIndices = if (intent) {
+                                                initialSelected + startIndex
+                                            } else {
+                                                initialSelected - startIndex
+                                            }
+
+                                            while (true) {
+                                                val event = awaitPointerEvent(PointerEventPass.Initial)
+                                                val pointer = event.changes.firstOrNull { it.id == downPointer.id } ?: break
+
+                                                if (pointer.pressed) {
+                                                    pointer.consume()
+                                                    val currentY = pointer.position.y.toInt()
+                                                    val currentIndex = listState.layoutInfo.visibleItemsInfo
+                                                        .firstOrNull { item ->
+                                                            currentY in item.offset..(item.offset + item.size)
+                                                        }?.index
+
+                                                    if (currentIndex != null && currentIndex != lastIndex) {
+                                                        lastIndex = currentIndex
+                                                        val range = minOf(startIndex, currentIndex)..maxOf(startIndex, currentIndex)
+                                                        selectedIndices = if (intent) {
+                                                            initialSelected + range
+                                                        } else {
+                                                            initialSelected - range
+                                                        }
+                                                    }
+                                                } else {
+                                                    pointer.consume()
+                                                    break
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        } else Modifier
+                    )
             ) {
 
                 itemsIndexed(lines, key = { _, line -> line.id }) { index, line ->
@@ -1386,7 +1410,14 @@ fun CalculatorScreen(
                         isSelected = selectedIndices.contains(index),
                         isInSelectionMode = isInSelectionMode,
                         onTapLineNumber = {
+                            if (!isInSelectionMode) {
+                                isInSelectionMode = true
+                            }
                             handleSelectionTap(index)
+                        },
+                        onLongPressLineNumber = {
+                            isInSelectionMode = true
+                            selectedIndices = selectedIndices + index
                         },
                         onTapRow = {
                             handleSelectionTap(index)
@@ -1563,6 +1594,7 @@ private fun ShortcutButton(
 }
 
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun LineRow(
     line: LineEntity,
@@ -1607,6 +1639,7 @@ private fun LineRow(
     isSelected: Boolean,
     isInSelectionMode: Boolean,
     onTapLineNumber: () -> Unit,
+    onLongPressLineNumber: () -> Unit,
     onTapRow: () -> Unit,
     onPasteLines: (Int, String, List<String>, String) -> Unit
 ) {
@@ -2050,7 +2083,10 @@ private fun LineRow(
             // Line Number Gutter (clickable to trigger selection)
             Box(
                 modifier = Modifier
-                    .clickable { onTapLineNumber() }
+                    .combinedClickable(
+                        onClick = { onTapLineNumber() },
+                        onLongClick = { onLongPressLineNumber() }
+                    )
                     .padding(start = 8.dp, top = 10.dp)
                     .width(numberWidth)
             ) {

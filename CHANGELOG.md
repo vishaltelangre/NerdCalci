@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [4.7.2] - 2026-05-29
 ### Added
-- Added support for both non-adjacent individual line selection and range-select drag gestures (Issue #194, #199).
+- Added support for both non-adjacent individual line selection and range-select drag gestures (Issue #199).
 
 ## [4.7.1] - 2026-05-20
 ### Added

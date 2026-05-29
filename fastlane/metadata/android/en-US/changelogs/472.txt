@@ -1,1 +1,1 @@
-- Added support for both non-adjacent individual line selection and range-select drag gestures (Issue #194, #199).
+- Added support for both non-adjacent individual line selection and range-select drag gestures (Issue #199).

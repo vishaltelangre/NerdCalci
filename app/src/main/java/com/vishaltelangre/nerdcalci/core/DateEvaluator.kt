@@ -315,22 +315,22 @@ object DateEvaluator {
      *   Duration              → delta.format()  e.g. "3 w 5 d", "42 y", "2 mo"
      *   DayCount              → "N d"           e.g. "57 d", "30 d"
      */
-    fun format(result: DateTimeResult): String {
+    fun format(result: DateTimeResult, dateFormat: String = Constants.DATE_FORMAT_AUTO): String {
         val currentYear = today.year
         return when (result) {
             is DateTimeResult.Date -> {
                 if (result.date.year == currentYear) {
-                    formatDate(result.date, withYear = false)
+                    formatDate(result.date, withYear = false, dateFormat = dateFormat)
                 } else {
-                    formatDate(result.date, withYear = true)
+                    formatDate(result.date, withYear = true, dateFormat = dateFormat)
                 }
             }
             is DateTimeResult.DateTime -> {
                 val sameYear = result.instant.year == currentYear
                 val datePart = if (sameYear) {
-                    formatDate(result.instant.toLocalDate(), withYear = false)
+                    formatDate(result.instant.toLocalDate(), withYear = false, dateFormat = dateFormat)
                 } else {
-                    formatDate(result.instant.toLocalDate(), withYear = true)
+                    formatDate(result.instant.toLocalDate(), withYear = true, dateFormat = dateFormat)
                 }
                 val timePart = formatTime(result.instant)
                 val tzAbbr = TimezoneRegistry.getFriendlyName(result.instant)
@@ -342,11 +342,18 @@ object DateEvaluator {
         }
     }
 
-    // Formats: "July 1" or "July 1, 2019" — US month-first style, no leading zero on day.
-    private fun formatDate(date: LocalDate, withYear: Boolean): String {
+    // Formats: "July 1" / "1 July" or "July 1, 2019" / "1 July, 2019" depending on dateFormat
+    private fun formatDate(date: LocalDate, withYear: Boolean, dateFormat: String = Constants.DATE_FORMAT_AUTO): String {
         val month = date.month.getDisplayName(java.time.format.TextStyle.SHORT, Locale.ENGLISH)
         val day = date.dayOfMonth
-        return if (withYear) "$month $day, ${date.year}" else "$month $day"
+        
+        val isDayFirst = dateFormat == Constants.DATE_FORMAT_DMY || dateFormat == Constants.DATE_FORMAT_YMD
+        
+        return if (isDayFirst) {
+            if (withYear) "$day $month, ${date.year}" else "$day $month"
+        } else {
+            if (withYear) "$month $day, ${date.year}" else "$month $day"
+        }
     }
 
     // Formats: "2:30 PM" — 12-hour clock, no leading zero on hour.

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [4.7.3] - 2026-05-31
 ### Fixed
 - Fixed negative temperature conversions producing wrong results (Issue #197).
+- Fixed date output to respect the user's date format preference (Issue #184).
 
 ## [4.7.2] - 2026-05-29
 ### Added

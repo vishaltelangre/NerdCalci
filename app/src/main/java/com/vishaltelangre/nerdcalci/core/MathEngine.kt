@@ -246,7 +246,7 @@ object MathEngine {
                 val resultString = if (result.stringResult != null) {
                     result.stringResult
                 } else if (result.dateTimeResult != null) {
-                    DateEvaluator.format(result.dateTimeResult)
+                    DateEvaluator.format(result.dateTimeResult, isolatedContext.dateFormat)
                 } else {
                     val numericValue = result.value ?: BigDecimal.ZERO
                     val u = if (result.unit != null) UnitConverter.findUnit(result.unit) else null

@@ -1,1 +1,2 @@
 - Fixed negative temperature conversions producing wrong results (Issue #197).
+- Fixed date output to respect the user's date format preference (Issue #184).

@@ -56,7 +56,7 @@ class DateTimeFeaturesTest {
             "parseDate(\"25/12/2024\")",
             dateFormat = Constants.DATE_FORMAT_DMY
         ) { results ->
-            assertEquals("Dec 25, 2024", results[0].result)
+            assertEquals("25 Dec, 2024", results[0].result)
         }
 
         // Test with MDY preference
@@ -72,7 +72,7 @@ class DateTimeFeaturesTest {
             "parseDate(\"2024/12/25\")",
             dateFormat = Constants.DATE_FORMAT_YMD
         ) { results ->
-            assertEquals("Dec 25, 2024", results[0].result)
+            assertEquals("25 Dec, 2024", results[0].result)
         }
     }
 
@@ -376,13 +376,13 @@ class DateTimeFeaturesTest {
         assertEquals("Err", results[0].result)
         assertEquals("Err", results[1].result)
         assertEquals("Err", results[2].result)
-        assertEquals("Feb 28, 2025", results[3].result)
+        assertEquals("28 Feb, 2025", results[3].result)
         assertEquals("Err", results[4].result)
         assertEquals("Err", results[5].result)
         assertEquals("Err", results[6].result)
         assertNotEquals("Err", results[7].result) // Truncates to 1 day
-        assertEquals("Feb 1, 2025", results[8].result)
-        assertEquals("Feb 12, 1988", results[9].result)
+        assertEquals("1 Feb, 2025", results[8].result)
+        assertEquals("12 Feb, 1988", results[9].result)
     }
 
     @Test
@@ -618,6 +618,44 @@ class DateTimeFeaturesTest {
             val actualDaily = results[6].result.toDoubleOrNull()
             assertNotNull("Result should not be Err and should be numeric", actualDaily)
             assertEquals(expectedDaily, actualDaily!!, 0.001)
+        }
+    }
+    @Test
+    fun `date output respects dateFormat locale setting`() {        
+        // 1. DMY preference -> D Mon
+        testCalculate(
+            "date(2025, 1, 1)",
+            "parseDate(\"01/02/2025\")",
+            "date(${LocalDate.now().year}, 5, 7)",
+            dateFormat = Constants.DATE_FORMAT_DMY
+        ) { results ->
+            assertEquals("1 Jan, 2025", results[0].result)
+            assertEquals("1 Feb, 2025", results[1].result) // Parses as 1st Feb, outputs D Mon
+            assertEquals("7 May", results[2].result)
+        }
+
+        // 2. MDY preference -> Mon D
+        testCalculate(
+            "date(2025, 1, 1)",
+            "parseDate(\"01/02/2025\")",
+            "date(${LocalDate.now().year}, 5, 7)",
+            dateFormat = Constants.DATE_FORMAT_MDY
+        ) { results ->
+            assertEquals("Jan 1, 2025", results[0].result)
+            assertEquals("Jan 2, 2025", results[1].result) // Parses as Jan 2nd, outputs Mon D
+            assertEquals("May 7", results[2].result)
+        }
+
+        // 3. AUTO preference -> Mon D (default US style for display)
+        testCalculate(
+            "date(2025, 1, 1)",
+            "parseDate(\"2025-02-01\")", // Use ISO so parsing is unambiguous
+            "date(${LocalDate.now().year}, 5, 7)",
+            dateFormat = Constants.DATE_FORMAT_AUTO
+        ) { results ->
+            assertEquals("Jan 1, 2025", results[0].result)
+            assertEquals("Feb 1, 2025", results[1].result) // Outputs Mon D
+            assertEquals("May 7", results[2].result)
         }
     }
 }

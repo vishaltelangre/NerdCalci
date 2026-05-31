@@ -204,12 +204,10 @@ class Evaluator(
                 val displayValue = UnitConverter.fromBase(operand, unit, variables)
                 val negatedDisplay = displayValue.negate()
                 val negatedBase = UnitConverter.toBase(negatedDisplay, unit, variables)
-                val negatedRational = operandRational?.let {
-                    UnitConverter.toBase(
-                        UnitConverter.fromBase(it, unit, variables)?.negate() ?: it.negate(),
-                        unit,
-                        variables
-                    )
+                val negatedRational = operandRational?.let { rational ->
+                    UnitConverter.fromBase(rational, unit, variables)?.let { displayRational ->
+                        UnitConverter.toBase(displayRational.negate(), unit, variables)
+                    }
                 }
                 eval.copy(value = negatedBase, rationalValue = negatedRational)
             } else {

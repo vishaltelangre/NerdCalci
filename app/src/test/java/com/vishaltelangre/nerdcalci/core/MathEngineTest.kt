@@ -2868,6 +2868,38 @@ class MathEngineTest {
             }
 
     @Test
+    fun `negative temperature conversion is correct`() = runBlocking {
+        // -65°F → Celsius: (-65 - 32) × 5/9 = -53.888...°C
+        testCalculate("-65 fahrenheit in celsius") {
+            val celsius = it[0].result.substringBefore(' ').toDouble()
+            assertEquals(-53.888, celsius, 0.001)
+            assertTrue(it[0].result.endsWith(" °C"))
+        }
+        // -40°F = -40°C (the one point where the two scales are equal)
+        testCalculate("-40 fahrenheit in celsius") {
+            val celsius = it[0].result.substringBefore(' ').toDouble()
+            assertEquals(-40.0, celsius, 0.001)
+        }
+        // -10°C → Fahrenheit: (-10 × 9/5) + 32 = 14°F
+        testCalculate("-10 celsius in fahrenheit") {
+            val fahrenheit = it[0].result.substringBefore(' ').toDouble()
+            assertEquals(14.0, fahrenheit, 0.001)
+            assertTrue(it[0].result.endsWith(" °F"))
+        }
+        // -40°C → Fahrenheit: symmetric point where both scales meet at -40
+        testCalculate("-40 celsius in fahrenheit") {
+            val fahrenheit = it[0].result.substringBefore(' ').toDouble()
+            assertEquals(-40.0, fahrenheit, 0.001)
+        }
+        // Standalone negative temperature quantity preserves unit symbol
+        testCalculate("-10 celsius") {
+            val celsius = it[0].result.substringBefore(' ').toDouble()
+            assertEquals(-10.0, celsius, 0.001)
+            assertTrue(it[0].result.endsWith(" °C"))
+        }
+    }
+
+    @Test
     fun `unit conversion data storage`() =
             testCalculate("1 GB in MB", "1 GiB in MiB") { result ->
                 assertEquals("1000.0 MB", result[0].result)

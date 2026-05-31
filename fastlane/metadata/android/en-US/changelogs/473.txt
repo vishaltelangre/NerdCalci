@@ -1,0 +1,1 @@
+- Fixed negative temperature conversions producing wrong results (Issue #197).

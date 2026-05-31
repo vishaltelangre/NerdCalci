@@ -195,7 +195,26 @@ class Evaluator(
             val eval = evaluate(expr.operand)
             val operand = eval.value ?: throw EvalException("Cannot negate a non-numeric value")
             val operandRational = eval.rationalValue ?: Rational.toRational(operand)
-            eval.copy(value = operand.negate(), rationalValue = operandRational?.negate())
+            // Non-linear units (e.g. temperature scales with an offset) store their value in
+            // base units (Kelvin). Blindly negating the base value gives a wrong result:
+            //   toBase(-65°F) = 208.706 K  ✓  but  -toBase(65°F) = -291.483 K  ✗
+            // Fix: convert back to the display-space value, negate there, then re-encode in base.
+            val unit = eval.unit?.let { UnitConverter.findUnit(it) }
+            if (unit != null && unit.customToBase != null) {
+                val displayValue = UnitConverter.fromBase(operand, unit, variables)
+                val negatedDisplay = displayValue.negate()
+                val negatedBase = UnitConverter.toBase(negatedDisplay, unit, variables)
+                val negatedRational = operandRational?.let {
+                    UnitConverter.toBase(
+                        UnitConverter.fromBase(it, unit, variables)?.negate() ?: it.negate(),
+                        unit,
+                        variables
+                    )
+                }
+                eval.copy(value = negatedBase, rationalValue = negatedRational)
+            } else {
+                eval.copy(value = operand.negate(), rationalValue = operandRational?.negate())
+            }
         }
         is Expr.Variable       -> resolveVariable(expr.name)
         is Expr.FunctionCall   -> evaluateFunction(expr.name, expr.args)

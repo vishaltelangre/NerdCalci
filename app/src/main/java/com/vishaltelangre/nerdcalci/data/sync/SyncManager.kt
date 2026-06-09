@@ -182,7 +182,6 @@ object SyncManager {
                 val updatedById = filesToUpdate.associateBy { it.id }
                 roomFilesSnapshot.map { file -> updatedById[file.id] ?: file }
             }
-            val roomFilesById = roomFiles.associateBy { it.syncId }
 
             // 2. Gather SAF Files and read metadata for IDs (Parallel)
             // Pre-index by filename for O(1) matching in the loop
@@ -237,6 +236,28 @@ object SyncManager {
                     )
                 }
             }.awaitAll()
+
+            // Align local syncIds with remote syncIds for name matches (or global) to ensure they are paired in handleFileInBoth
+            val updatedRoomFiles = roomFiles.map { file ->
+                val matchingSaf = if (file.isGlobal) {
+                    safFiles.find { it.name.lowercase() == (Constants.GLOBAL_FILE_DISPLAY_NAME + EXPORT_FILE_EXTENSION).lowercase() }
+                } else {
+                    safFiles.find { it.name.removeSuffix(EXPORT_FILE_EXTENSION).equals(file.name, ignoreCase = true) }
+                }
+                if (matchingSaf != null && matchingSaf.syncId != file.syncId) {
+                    val isSyncIdUnique = dao.getFileBySyncId(matchingSaf.syncId) == null
+                    if (isSyncIdUnique) {
+                        Log.d(TAG, "Aligning local syncId for ${file.name} to match remote: ${file.syncId} -> ${matchingSaf.syncId}")
+                        dao.updateSyncId(file.id, matchingSaf.syncId)
+                        file.copy(syncId = matchingSaf.syncId)
+                    } else {
+                        file
+                    }
+                } else {
+                    file
+                }
+            }
+            val roomFilesById = updatedRoomFiles.associateBy { it.syncId }
 
             val safFilesById = safFiles.groupBy { it.syncId }.mapValues { (syncId, files) ->
                 if (files.size > 1) {
@@ -326,7 +347,12 @@ object SyncManager {
         // Compare against appropriate component of the snapshot
         val lastSyncTimestamp = if (safFile.lastModified > 0) lastMetadataTimestamp else lastOsTimestamp
 
-        val localChanged = localTime > lastMetadataTimestamp + SYNC_TIMESTAMP_TOLERANCE_MS
+        val isLocalBlank = roomFile.isGlobal && lastInfo == null && run {
+            val lines = dao.getLinesForFileSync(roomFile.id)
+            lines.size <= 1 && lines.all { it.expression.isBlank() }
+        }
+
+        val localChanged = !isLocalBlank && (localTime > lastMetadataTimestamp + SYNC_TIMESTAMP_TOLERANCE_MS)
         val remoteChanged = remoteTime > lastSyncTimestamp + SYNC_TIMESTAMP_TOLERANCE_MS
 
         val syncId = roomFile.syncId
@@ -525,6 +551,7 @@ object SyncManager {
                 id = file.syncId,
                 isPinned = file.isPinned,
                 isLocked = file.isLocked,
+                isGlobal = file.isGlobal,
                 lastModified = file.lastModified,
                 createdAt = file.createdAt,
                 contentHash = contentHash
@@ -617,25 +644,38 @@ object SyncManager {
             dao.updateFileFromSync(updatedFile)
             existingFile.id
         } else {
-            // Check if name collision exists for a DIFFERENT syncId (should be rare)
-            dao.getFileByName(fileName)?.let { existingFile ->
-                val conflictName = "$fileName (local)"
-                dao.renameFileFromSync(existingFile.id, conflictName)
-                Log.w(TAG, "Name collision: Renamed existing local file to $conflictName")
-            }
+            val nameCollidedFile = dao.getFileByName(fileName)
+            if (metadata.isGlobal && nameCollidedFile != null) {
+                val updatedFile = nameCollidedFile.copy(
+                    syncId = syncId,
+                    lastModified = finalLastModified,
+                    createdAt = if (metadata.createdAt != -1L) metadata.createdAt else nameCollidedFile.createdAt,
+                    isPinned = metadata.isPinned,
+                    isLocked = metadata.isLocked,
+                    isGlobal = true
+                )
+                dao.updateFileFromSync(updatedFile)
+                nameCollidedFile.id
+            } else {
+                nameCollidedFile?.let { collided ->
+                    val conflictName = "$fileName (local)"
+                    dao.renameFileFromSync(collided.id, conflictName)
+                    Log.w(TAG, "Name collision: Renamed existing local file to $conflictName")
+                }
 
-            // Create new
-            val newFile = FileEntity(
-                name = fileName,
-                syncId = syncId,
-                lastModified = finalLastModified,
-                createdAt = metadata.createdAt.takeIf { it != -1L } ?: finalLastModified,
-                isPinned = metadata.isPinned,
-                isLocked = metadata.isLocked,
-                isGlobal = metadata.isGlobal
-            )
-            dao.insertFile(newFile)
-            dao.getFileBySyncId(syncId)?.id ?: throw Exception("Failed to retrieve inserted file")
+                // Create new
+                val newFile = FileEntity(
+                    name = fileName,
+                    syncId = syncId,
+                    lastModified = finalLastModified,
+                    createdAt = metadata.createdAt.takeIf { it != -1L } ?: finalLastModified,
+                    isPinned = metadata.isPinned,
+                    isLocked = metadata.isLocked,
+                    isGlobal = metadata.isGlobal
+                )
+                dao.insertFile(newFile)
+                dao.getFileBySyncId(syncId)?.id ?: throw Exception("Failed to retrieve inserted file")
+            }
         }
 
         val lineEntities = expressions.mapIndexed { index, expr ->

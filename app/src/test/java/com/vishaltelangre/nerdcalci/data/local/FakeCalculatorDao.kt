@@ -179,7 +179,8 @@ open class FakeCalculatorDao : CalculatorDao() {
             isPinned = false,
             syncId = newSyncId,
             lastModified = lastModified ?: now,
-            isTemporary = false
+            isTemporary = false,
+            isGlobal = false
         )
         _files.value = _files.value + newFile
         

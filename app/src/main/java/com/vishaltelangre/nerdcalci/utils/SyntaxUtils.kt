@@ -150,7 +150,7 @@ fun getSuggestionContext(
         val dotMatch = dotRegex.find(beforeCursor)
         if (dotMatch != null) {
             val objectName = dotMatch.groupValues[1]
-            val linkedFile = if (objectName.lowercase() == Constants.GLOBAL_NAMESPACE) {
+            val linkedFile = if (objectName == Constants.GLOBAL_NAMESPACE) {
                 Constants.GLOBAL_NAMESPACE
             } else if (objectName.startsWith("file(")) {
                 Regex("""file\(\s*"([^"]+)"\s*\)""").find(objectName)?.groupValues?.getOrNull(1)

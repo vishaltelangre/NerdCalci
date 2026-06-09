@@ -761,7 +761,10 @@ class CalculatorViewModel(
                     res
                 }
             )
-        }, onSuccess = { refreshBackups(context) })
+        }, onSuccess = {
+            refreshBackups(context)
+            viewModelScope.launch { ensureGlobalFileExists() }
+        })
     }
 
     private val undoStacks = mutableMapOf<Long, MutableList<FileSnapshot>>()
@@ -1533,6 +1536,8 @@ class CalculatorViewModel(
                     res
                 }
             )
+        }, onSuccess = {
+            viewModelScope.launch { ensureGlobalFileExists() }
         })
     }
 

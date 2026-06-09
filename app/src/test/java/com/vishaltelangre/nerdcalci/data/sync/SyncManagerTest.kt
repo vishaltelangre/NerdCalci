@@ -641,7 +641,7 @@ class SyncManagerTest {
             // Local: Edited to 25000L (Conflict!)
             dao.addFile(FileEntity(name = "old", syncId = syncId, lastModified = 25000L))
             dao.addLine(LineEntity(fileId = 1, expression = "old", sortOrder = 0))
-            
+
             val result = SyncManager.performSync(context, dao)
             val stats = result.getOrThrow()
             println("CONFLICT_STATS: $stats")
@@ -803,5 +803,108 @@ class SyncManagerTest {
 
         val result = SyncManager.performSync(context, dao)
         org.junit.Assert.assertTrue("Sync failed: ${result.exceptionOrNull()?.message}", result.isSuccess)
+    }
+
+    @Test
+    fun `test first sync empty local global file does not overwrite remote`() = runBlocking {
+        every { prefs.getBoolean(SyncManager.PREF_SYNC_ENABLED, false) } returns true
+        every { prefs.getString(SyncManager.PREF_SYNC_FOLDER_URI, null) } returns "content://mock"
+
+        val remoteSyncId = "remote-global-id"
+        val filename = "Global${EXPORT_FILE_EXTENSION}"
+
+        // Remote Global.nerdcalci file exists and has content (a = 2)
+        val safFile = mockk<DocumentFile>(relaxed = true)
+        val safUri = Uri.parse("content://mock/Global")
+        every { safFile.isFile } returns true
+        every { safFile.name } returns filename
+        every { safFile.uri } returns safUri
+        every { safFile.lastModified() } returns 10000L
+        every { folder.listFiles() } returns arrayOf(safFile)
+
+        every { FileUtils.readMetadataHeader(any<java.io.BufferedReader>()) } returns FileMetadata(
+            id = remoteSyncId,
+            lastModified = 10000L,
+            isGlobal = true,
+            contentHash = "hash-of-remote-global"
+        )
+
+        val remoteMetadata = FileMetadata(id = remoteSyncId, lastModified = 10000L, isGlobal = true, contentHash = "hash-of-remote-global")
+        val content = FileUtils.formatFileContent(listOf(LineEntity(fileId = 1, sortOrder = 0, expression = "a = 2")), 2, remoteMetadata)
+        every { contentResolver.openInputStream(safUri) } answers { java.io.ByteArrayInputStream(content.toByteArray()) }
+
+        // Local global file is default-initialized (blank) with different UUID
+        val localGlobalId = dao.ensureGlobalFileExists()
+        val localGlobalFileBefore = dao.getGlobalFile()
+        assertNotNull(localGlobalFileBefore)
+        val initialLocalSyncId = localGlobalFileBefore!!.syncId
+        assertNotEquals(remoteSyncId, initialLocalSyncId)
+
+        // Perform Sync
+        val result = SyncManager.performSync(context, dao)
+        assertTrue("Sync failed", result.isSuccess)
+
+        // Verify that the local global file was updated with the remote syncId and content
+        val localGlobalFileAfter = dao.getGlobalFile()
+        assertNotNull(localGlobalFileAfter)
+        assertEquals(remoteSyncId, localGlobalFileAfter!!.syncId)
+
+        val lines = dao.getLinesForFileSync(localGlobalFileAfter.id)
+        assertEquals(1, lines.size)
+        assertEquals("a = 2", lines[0].expression)
+
+        // Ensure no write/overwrite was performed on the SAF file
+        verify(exactly = 0) { contentResolver.openOutputStream(safUri, eq("wt")) }
+    }
+
+    @Test
+    fun `test first sync non-empty local global file triggers conflict`() = runBlocking {
+        every { prefs.getBoolean(SyncManager.PREF_SYNC_ENABLED, false) } returns true
+        every { prefs.getString(SyncManager.PREF_SYNC_FOLDER_URI, null) } returns "content://mock"
+
+        val remoteSyncId = "remote-global-id"
+        val filename = "Global${EXPORT_FILE_EXTENSION}"
+
+        // Remote Global.nerdcalci file exists and has content (a = 2)
+        val safFile = mockk<DocumentFile>(relaxed = true)
+        val safUri = Uri.parse("content://mock/Global")
+        every { safFile.isFile } returns true
+        every { safFile.name } returns filename
+        every { safFile.uri } returns safUri
+        every { safFile.lastModified() } returns 10000L
+        every { folder.listFiles() } returns arrayOf(safFile)
+
+        every { FileUtils.readMetadataHeader(any<java.io.BufferedReader>()) } returns FileMetadata(
+            id = remoteSyncId,
+            lastModified = 10000L,
+            isGlobal = true,
+            contentHash = "hash-of-remote-global"
+        )
+
+        val remoteMetadata = FileMetadata(id = remoteSyncId, lastModified = 10000L, isGlobal = true, contentHash = "hash-of-remote-global")
+        val content = FileUtils.formatFileContent(listOf(LineEntity(fileId = 1, sortOrder = 0, expression = "a = 2")), 2, remoteMetadata)
+        every { contentResolver.openInputStream(safUri) } answers { java.io.ByteArrayInputStream(content.toByteArray()) }
+
+        // Local global file is NOT blank (has user content "b = 3")
+        val localGlobalId = dao.ensureGlobalFileExists()
+        dao.restoreLines(localGlobalId, listOf(LineEntity(fileId = localGlobalId, sortOrder = 0, expression = "b = 3")), true)
+
+        // Perform Sync
+        val result = SyncManager.performSync(context, dao)
+        val stats = result.getOrThrow()
+        assertTrue("Expected conflict in stats: $stats", stats.contains("Conflicts 1"))
+
+        // Verify that original global has remote content
+        val localGlobalFileAfter = dao.getGlobalFile()
+        assertEquals(remoteSyncId, localGlobalFileAfter?.syncId)
+        val originalLines = dao.getLinesForFileSync(localGlobalFileAfter!!.id)
+        assertEquals("a = 2", originalLines[0].expression)
+
+        // Verify that duplicate conflict copy was created with local content
+        val allFiles = dao.getAllFilesSync()
+        val conflictCopy = allFiles.find { it.name.contains("(conflict copy)") }
+        assertNotNull("Conflict copy should exist", conflictCopy)
+        val conflictLines = dao.getLinesForFileSync(conflictCopy!!.id)
+        assertEquals("b = 3", conflictLines[0].expression)
     }
 }

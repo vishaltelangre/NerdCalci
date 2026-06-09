@@ -195,7 +195,8 @@ abstract class CalculatorDao {
             isPinned = false,
             isLocked = false,
             syncId = newSyncId,
-            lastModified = lastModified ?: now
+            lastModified = lastModified ?: now,
+            isGlobal = false
         )
         val newFileId = insertFile(newFile)
         val originalLines = getLinesForFileSync(fileId)

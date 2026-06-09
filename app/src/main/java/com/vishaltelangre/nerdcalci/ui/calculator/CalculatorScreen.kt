@@ -577,8 +577,8 @@ fun CalculatorScreen(
     val scratchpadFileId by viewModel.scratchpadFileId.collectAsState(initial = null)
     val globalFileId by viewModel.globalFileId.collectAsState(initial = null)
     val isScratchpad = scratchpadFileId != null && fileId == scratchpadFileId
-    val isGlobalFile = globalFileId != null && fileId == globalFileId
     val currentFile = files.find { it.id == fileId }
+    val isGlobalFile = currentFile?.isGlobal ?: ((currentFile?.id == globalFileId || fileId == globalFileId) && globalFileId != null)
     val isLocked = currentFile?.isLocked ?: false
     val fileName = when {
         isScratchpad -> Constants.SCRATCHPAD_DISPLAY_NAME

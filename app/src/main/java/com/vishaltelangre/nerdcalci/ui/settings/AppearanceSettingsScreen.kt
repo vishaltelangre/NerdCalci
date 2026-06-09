@@ -127,7 +127,8 @@ fun AppearanceSettingsScreen(
                     PaletteInfo("solar", "Solar Flare", SolarPrimaryLight, SolarSecondaryLight, SolarTertiaryLight),
                     PaletteInfo("arctic", "Arctic Frost", ArcticPrimaryLight, ArcticSecondaryLight, ArcticTertiaryLight),
                     PaletteInfo("nature", "Nature's Breath", NaturePrimaryLight, NatureSecondaryLight, NatureTertiaryLight),
-                    PaletteInfo("royal", "Royal Velvet", RoyalPrimaryLight, RoyalSecondaryLight, RoyalTertiaryLight)
+                    PaletteInfo("royal", "Royal Velvet", RoyalPrimaryLight, RoyalSecondaryLight, RoyalTertiaryLight),
+                    PaletteInfo("oled", "OLED Black", OledPrimaryLight, OledSecondaryLight, OledTertiaryLight, "Pure black for OLED displays")
                 )
             }
 

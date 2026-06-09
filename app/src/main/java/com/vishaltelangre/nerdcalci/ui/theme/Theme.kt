@@ -243,6 +243,53 @@ private val RoyalVelvetLightColorScheme = lightColorScheme(
     outlineVariant = RoyalOutlineVariantLight
 )
 
+private val OledBlackDarkColorScheme = darkColorScheme(
+    primary = OledPrimaryDark,
+    onPrimary = Color.Black,
+    primaryContainer = OledPrimaryContainerDark,
+    onPrimaryContainer = OledPrimaryDark,
+    secondary = OledSecondaryDark,
+    secondaryContainer = OledSecondaryDark.copy(alpha = 0.15f),
+    onSecondaryContainer = OledSecondaryDark,
+    tertiary = OledTertiaryDark,
+    background = Color.Black,
+    surface = Color(0xFF050505),
+    surfaceVariant = Color(0xFF0D0D0D),
+    surfaceContainer = Color(0xFF111111),
+    surfaceContainerHigh = Color(0xFF1A1A1A),
+    surfaceContainerHighest = Color(0xFF222222),
+    surfaceContainerLow = Color(0xFF080808),
+    surfaceContainerLowest = Color(0xFF000000),
+    onBackground = Color.White,
+    onSurface = Color.White,
+    onSurfaceVariant = Color(0xFFAAAAAA),
+    outline = OledOutlineDark,
+    outlineVariant = OledOutlineVariantDark
+)
+
+private val OledBlackLightColorScheme = lightColorScheme(
+    primary = OledPrimaryLight,
+    onPrimary = Color.White,
+    primaryContainer = OledPrimaryContainerLight,
+    onPrimaryContainer = OledPrimaryLight,
+    secondary = OledSecondaryLight,
+    secondaryContainer = OledSecondaryLight.copy(alpha = 0.1f),
+    onSecondaryContainer = OledSecondaryLight,
+    tertiary = OledTertiaryLight,
+    background = Color(0xFFFAFAFA),
+    surface = Color.White,
+    surfaceVariant = Color(0xFFF5F5F5),
+    surfaceContainer = Color(0xFFEEEEEE),
+    surfaceContainerHigh = Color(0xFFE0E0E0),
+    surfaceContainerHighest = Color(0xFFD6D6D6),
+    surfaceContainerLow = Color(0xFFF9F9F9),
+    surfaceContainerLowest = Color(0xFFFFFFFF),
+    onBackground = Color(0xFF1C1B1F),
+    onSurface = Color(0xFF1C1B1F),
+    outline = OledOutlineLight,
+    outlineVariant = OledOutlineVariantLight
+)
+
 @Composable
 fun NerdCalciTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -255,6 +302,7 @@ fun NerdCalciTheme(
             "arctic" -> ArcticFrostDarkColorScheme
             "nature" -> NaturesBreathDarkColorScheme
             "royal" -> RoyalVelvetDarkColorScheme
+            "oled" -> OledBlackDarkColorScheme
             else -> MidnightDarkColorScheme
         }
     } else {
@@ -263,6 +311,7 @@ fun NerdCalciTheme(
             "arctic" -> ArcticFrostLightColorScheme
             "nature" -> NaturesBreathLightColorScheme
             "royal" -> RoyalVelvetLightColorScheme
+            "oled" -> OledBlackLightColorScheme
             else -> MidnightLightColorScheme
         }
     }

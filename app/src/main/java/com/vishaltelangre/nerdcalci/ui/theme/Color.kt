@@ -72,6 +72,20 @@ val RoyalOutlineVariantDark = Color(0xFF514343)
 val RoyalOutlineLight = Color(0xFF857373)
 val RoyalOutlineVariantLight = Color(0xFFD8C2C2)
 
+// Palette: OLED Black
+val OledPrimaryDark = Color(0xFFCFCFCF)
+val OledSecondaryDark = Color(0xFF9E9E9E)
+val OledTertiaryDark = Color(0xFF757575)
+val OledPrimaryLight = Color(0xFF212121)
+val OledSecondaryLight = Color(0xFF424242)
+val OledTertiaryLight = Color(0xFF616161)
+val OledPrimaryContainerDark = Color(0xFF1A1A1A)
+val OledPrimaryContainerLight = Color(0xFFE0E0E0)
+val OledOutlineDark = Color(0xFF555555)
+val OledOutlineVariantDark = Color(0xFF2A2A2A)
+val OledOutlineLight = Color(0xFF757575)
+val OledOutlineVariantLight = Color(0xFFBDBDBD)
+
 // Calculator result color
 val ResultSuccess = Color(0xFF00C853)
 val ResultError = Color(0xFFF44336)

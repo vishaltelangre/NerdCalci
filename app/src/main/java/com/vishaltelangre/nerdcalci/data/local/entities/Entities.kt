@@ -19,7 +19,8 @@ data class FileEntity(
     val isPinned: Boolean = false,
     val isLocked: Boolean = false,
     val syncId: String = UUID.randomUUID().toString(),
-    val isTemporary: Boolean = false
+    val isTemporary: Boolean = false,
+    val isGlobal: Boolean = false
 )
 
 @Entity(

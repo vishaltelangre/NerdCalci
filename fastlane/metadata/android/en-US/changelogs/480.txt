@@ -1,0 +1,1 @@
+- Added global file feature allowing users to define shared variables and functions once and access them across any file using "global.varName" or "global.fnName()" syntax (Issue: #76).

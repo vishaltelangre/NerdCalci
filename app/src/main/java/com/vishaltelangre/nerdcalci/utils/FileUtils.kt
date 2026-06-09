@@ -13,6 +13,7 @@ data class FileMetadata(
     val id: String? = null,
     val isPinned: Boolean = false,
     val isLocked: Boolean = false,
+    val isGlobal: Boolean = false,
     val lastModified: Long = -1L,
     val createdAt: Long = -1L,
     val contentHash: String? = null
@@ -67,6 +68,7 @@ object FileUtils {
                 id = if (json.has("id")) json.getString("id") else null,
                 isPinned = json.optBoolean("isPinned", false),
                 isLocked = json.optBoolean("isLocked", false),
+                isGlobal = json.optBoolean("isGlobal", false),
                 lastModified = json.optLong("lastModified", -1L),
                 createdAt = json.optLong("createdAt", -1L),
                 contentHash = if (json.has("contentHash")) json.getString("contentHash") else null
@@ -112,6 +114,7 @@ object FileUtils {
                 meta.id?.let { put("id", it) }
                 if (meta.isPinned) put("isPinned", true)
                 if (meta.isLocked) put("isLocked", true)
+                if (meta.isGlobal) put("isGlobal", true)
                 if (meta.lastModified != -1L) put("lastModified", meta.lastModified)
                 if (meta.createdAt != -1L) put("createdAt", meta.createdAt)
                 meta.contentHash?.let { put("contentHash", it) }

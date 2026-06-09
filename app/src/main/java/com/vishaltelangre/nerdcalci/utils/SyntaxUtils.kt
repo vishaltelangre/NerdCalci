@@ -7,6 +7,7 @@ import com.vishaltelangre.nerdcalci.core.UnitConverter
 import com.vishaltelangre.nerdcalci.core.Unit
 import com.vishaltelangre.nerdcalci.core.UnitCategory
 import com.vishaltelangre.nerdcalci.core.DateKeywords
+import com.vishaltelangre.nerdcalci.core.Constants
 
 enum class TokenType {
     Number, Variable, Keyword, DateKeyword, Conversion, Operator, Percent, Comment, Function, StringLiteral, Default
@@ -149,7 +150,9 @@ fun getSuggestionContext(
         val dotMatch = dotRegex.find(beforeCursor)
         if (dotMatch != null) {
             val objectName = dotMatch.groupValues[1]
-            val linkedFile = if (objectName.startsWith("file(")) {
+            val linkedFile = if (objectName.lowercase() == Constants.GLOBAL_NAMESPACE) {
+                Constants.GLOBAL_NAMESPACE
+            } else if (objectName.startsWith("file(")) {
                 Regex("""file\(\s*"([^"]+)"\s*\)""").find(objectName)?.groupValues?.getOrNull(1)
             } else {
                 fileVariables[objectName]

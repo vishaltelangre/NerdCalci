@@ -13,15 +13,34 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 abstract class CalculatorDao {
     // Returns files with pinned files first, then sorted by most recently modified.
-    // Excludes temporary files.
-    @Query("SELECT * FROM files WHERE isTemporary = 0 ORDER BY isPinned DESC, lastModified DESC")
+    // Excludes temporary and global files.
+    @Query("SELECT * FROM files WHERE isTemporary = 0 AND isGlobal = 0 ORDER BY isPinned DESC, lastModified DESC")
     abstract fun getAllFiles(): Flow<List<FileEntity>>
 
     @Query("SELECT * FROM files WHERE isTemporary = 1 LIMIT 1")
     abstract suspend fun getTemporaryFile(): FileEntity?
 
-    @Query("SELECT * FROM files WHERE isTemporary = 0 ORDER BY isPinned DESC, lastModified DESC")
+    @Query("SELECT * FROM files WHERE isTemporary = 0 AND isGlobal = 0 ORDER BY isPinned DESC, lastModified DESC")
     abstract suspend fun getAllFilesSync(): List<FileEntity>
+
+    @Query("SELECT * FROM files WHERE isGlobal = 1 LIMIT 1")
+    abstract suspend fun getGlobalFile(): FileEntity?
+
+    @Transaction
+    open suspend fun ensureGlobalFileExists(createdAt: Long = System.currentTimeMillis()): Long {
+        val existing = getGlobalFile()
+        if (existing != null) return existing.id
+        val fileId = insertFile(
+            FileEntity(
+                name = Constants.GLOBAL_FILE_DISPLAY_NAME,
+                lastModified = createdAt,
+                createdAt = createdAt,
+                isGlobal = true
+            )
+        )
+        internalInsertLine(LineEntity(fileId = fileId, sortOrder = 0, expression = "", result = ""))
+        return fileId
+    }
 
     @Query("SELECT name FROM files WHERE isTemporary = 0 AND name LIKE 'Untitled %'")
     abstract suspend fun getUntitledFileNames(): List<String>

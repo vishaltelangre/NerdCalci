@@ -311,6 +311,9 @@ class Evaluator(
 
 
     private fun resolveVariable(name: String): EvaluationResult {
+        if (name == Constants.GLOBAL_NAMESPACE) {
+            throw EvalException("`global` is a reserved namespace. Use `global.varName` to access the global file's contents.")
+        }
         variables[name]?.let { return it }
         injectionErrors[name]?.let { throw it }
 
@@ -327,8 +330,13 @@ class Evaluator(
     private suspend fun evaluateFunction(name: String, argExprs: List<Expr>): EvaluationResult {
         // Prevent passing file references as arguments to any function
         argExprs.forEach { argExpr ->
-            if (argExpr is Expr.Variable && fileVariables.containsKey(argExpr.name)) {
-                throw EvalException("File references (like `${argExpr.name}`) cannot be passed to functions. Pass the specific values you need instead (e.g., `${name}(${argExpr.name}.variable)`).")
+            if (argExpr is Expr.Variable) {
+                if (argExpr.name == Constants.GLOBAL_NAMESPACE) {
+                    throw EvalException("`global` is a reserved namespace and cannot be passed to functions. Pass the specific values you need instead (e.g., `func(global.variable)`).")
+                }
+                if (fileVariables.containsKey(argExpr.name)) {
+                    throw EvalException("File references (like `${argExpr.name}`) cannot be passed to functions. Pass the specific values you need instead (e.g., `${name}(${argExpr.name}.variable)`).")
+                }
             }
         }
 
@@ -571,6 +579,9 @@ class Evaluator(
     }
 
     private fun validateVariableOrFunctionName(name: String) {
+        if (name == Constants.GLOBAL_NAMESPACE) {
+            throw EvalException("`global` is a reserved namespace and cannot be used as a variable or function name")
+        }
         if (!name.matches(Regex(Constants.VAR_FUNC_NAME_PATTERN))) {
             throw EvalException("Invalid variable or function name `$name`")
         }
@@ -1202,6 +1213,12 @@ class Evaluator(
     private fun getFileNameFromObj(obj: Expr, isFunctionCall: Boolean): String {
         val operation = if (isFunctionCall) "call functions from" else "access items from"
         return if (obj is Expr.Variable) {
+            if (obj.name == Constants.GLOBAL_NAMESPACE) {
+                if (isFunctionScope) {
+                    throw EvalException("Cannot access the global file inside a function body")
+                }
+                return Constants.GLOBAL_NAMESPACE
+            }
             fileVariables[obj.name] ?: if (isFunctionScope) {
                 throw EvalException("Cannot access file variables inside a function body")
             } else {
@@ -1214,7 +1231,12 @@ class Evaluator(
             if (obj.args.size != 1 || obj.args[0] !is Expr.StringLiteral) {
                 throw EvalException("`file()` expects exactly one file name in quotes, e.g., `file(\"FileName\")`")
             }
-            (obj.args[0] as Expr.StringLiteral).value
+            val targetFileName = (obj.args[0] as Expr.StringLiteral).value
+            if (targetFileName.lowercase() == Constants.GLOBAL_NAMESPACE) {
+                Constants.GLOBAL_NAMESPACE
+            } else {
+                targetFileName
+            }
         } else {
             throw EvalException("You can only $operation other files using dot notation")
         }

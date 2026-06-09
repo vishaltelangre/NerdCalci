@@ -169,7 +169,7 @@ object SyncManager {
             val stats = SyncStats()
 
             // 1. Gather Room Files and ensure they have a syncId
-            val roomFilesSnapshot = dao.getAllFiles().first()
+            val roomFilesSnapshot = dao.getAllFilesSync() + listOfNotNull(dao.getGlobalFile())
             val filesToUpdate = roomFilesSnapshot.mapNotNull { file ->
                 if (file.syncId.isEmpty()) file.copy(syncId = UUID.randomUUID().toString()) else null
             }
@@ -411,7 +411,7 @@ object SyncManager {
     }
 
     private suspend fun createConflictFilename(baseName: String, dao: CalculatorDao): String {
-        val existingNames = dao.getAllFilesSync().map { it.name }.toHashSet()
+        val existingNames = (dao.getAllFilesSync() + listOfNotNull(dao.getGlobalFile())).map { it.name }.toHashSet()
         var suffix = 0
 
         while (suffix < MAX_CONFLICT_FILENAME_ATTEMPTS) {
@@ -610,6 +610,7 @@ object SyncManager {
                 name = fileName,
                 isPinned = metadata.isPinned,
                 isLocked = metadata.isLocked,
+                isGlobal = metadata.isGlobal,
                 lastModified = finalLastModified,
                 createdAt = if (metadata.createdAt != -1L) metadata.createdAt else existingFile.createdAt
             )
@@ -630,7 +631,8 @@ object SyncManager {
                 lastModified = finalLastModified,
                 createdAt = metadata.createdAt.takeIf { it != -1L } ?: finalLastModified,
                 isPinned = metadata.isPinned,
-                isLocked = metadata.isLocked
+                isLocked = metadata.isLocked,
+                isGlobal = metadata.isGlobal
             )
             dao.insertFile(newFile)
             dao.getFileBySyncId(syncId)?.id ?: throw Exception("Failed to retrieve inserted file")

@@ -33,6 +33,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.RssFeed
@@ -53,6 +54,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
@@ -148,6 +150,7 @@ fun HomeScreen(
     // Handle UI events like Undo Snackbars and other messages
     val excludedFileIds by viewModel.excludedFileIds.collectAsState(initial = emptySet())
     val scratchpadFileId by viewModel.scratchpadFileId.collectAsState()
+    val globalFileId by viewModel.globalFileId.collectAsState()
 
     val syncEnabled by viewModel.syncEnabled.collectAsState()
     val isSyncing by viewModel.isSyncing.collectAsState()
@@ -337,6 +340,16 @@ fun HomeScreen(
                         }
                     }
 
+                    globalFileId?.let { id ->
+                        FloatingActionButton(
+                            onClick = { onFileClick(id) },
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer.compositeOver(MaterialTheme.colorScheme.background),
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        ) {
+                            Icon(Icons.Default.Language, contentDescription = "Open global file")
+                        }
+                    }
+
                     FloatingActionButton(
                         onClick = { createFile() },
                         containerColor = MaterialTheme.colorScheme.primary
@@ -419,6 +432,17 @@ fun HomeScreen(
                                 }
                                 Spacer(modifier = Modifier.height(10.dp))
                             }
+                        }
+                        globalFileId?.let { id ->
+                            OutlinedButton(
+                                onClick = { onFileClick(id) },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(Icons.Default.Language, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Open global file")
+                            }
+                            Spacer(modifier = Modifier.height(10.dp))
                         }
                         Button(
                             onClick = { createFile() },

@@ -64,6 +64,8 @@ object Constants {
     const val PREF_FILE_SORT_CRITERIA = "file_sort_criteria"
     const val PREF_COLOR_PALETTE = "color_palette"
     const val SCRATCHPAD_DISPLAY_NAME = "Scratchpad"
+    const val GLOBAL_FILE_DISPLAY_NAME = "Global"
+    const val GLOBAL_NAMESPACE = "global"
 
     // Date format settings
     const val PREF_DATE_FORMAT = "date_format"

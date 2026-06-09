@@ -124,6 +124,9 @@ class CalculatorViewModel(
     private val _isScratchpadReady = MutableStateFlow(false)
     val isScratchpadReady: StateFlow<Boolean> = _isScratchpadReady
 
+    private val _globalFileId = MutableStateFlow<Long?>(null)
+    val globalFileId: StateFlow<Long?> = _globalFileId
+
     private val _precision = MutableStateFlow(
         prefs?.getInt(Constants.SYNC_ENGINE_PRECISION, Constants.DEFAULT_PRECISION)
             ?.let { if (it == Constants.PRECISION_OFF) Constants.PRECISION_OFF else it.coerceIn(Constants.MIN_PRECISION, Constants.MAX_PRECISION) }
@@ -194,6 +197,9 @@ class CalculatorViewModel(
 
                 // Initialize scratchpad (always needed for the "Open Scratchpad" button)
                 ensureScratchpadExists()
+
+                // Initialize global file
+                ensureGlobalFileExists()
 
                 // Resolve which file to auto-open based on current mode
                 resolveAutoOpenFile()
@@ -288,7 +294,11 @@ class CalculatorViewModel(
         return object : FileContextLoader {
             override suspend fun loadContext(fileName: String, loadingStack: Set<String>): MathContext? {
                 cache[fileName]?.let { return it }
-                val file = dao.getFileByName(fileName) ?: return null
+                val file = if (fileName == Constants.GLOBAL_NAMESPACE) {
+                    dao.getGlobalFile()
+                } else {
+                    dao.getFileByName(fileName)
+                } ?: return null
                 val lines = dao.getLinesForFileSync(file.id)
                 val context = MathEngine.buildVariableState(lines, this, loadingStack, rationalMode = rationalMode, dateFormat = dateFormat)
                 cache[fileName] = context
@@ -317,9 +327,23 @@ class CalculatorViewModel(
             }
         }
     }
-
+    private suspend fun ensureGlobalFileExists() {
+        withContext(ioDispatcher) {
+            try {
+                _globalFileId.value = dao.ensureGlobalFileExists()
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                Log.e(TAG, "Failed to ensure global file exists", e)
+                _globalFileId.value = null
+            }
+        }
+    }
     suspend fun getSuggestionsForFile(fileName: String): Set<Suggestion> {
-        val file = dao.getFileByName(fileName) ?: return emptySet()
+        val file = if (fileName.lowercase() == Constants.GLOBAL_NAMESPACE) {
+            dao.getGlobalFile()
+        } else {
+            dao.getFileByName(fileName)
+        } ?: return emptySet()
         val lines = dao.getLinesForFileSync(file.id)
         val effectiveRationalMode = _rationalMode.value
         val context = try {
@@ -1426,6 +1450,10 @@ class CalculatorViewModel(
                 }
 
                 if (finalName.isBlank()) return@withLock false
+
+                if (finalName.equals(Constants.GLOBAL_FILE_DISPLAY_NAME, ignoreCase = true)) {
+                    return@withLock false
+                }
 
                 // Check if name is taken by another file
                 if (dao.doesFileExist(finalName, fileId)) return@withLock false

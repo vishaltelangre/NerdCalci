@@ -401,8 +401,9 @@ private fun extractAllSuggestions(lines: List<LineEntity>): List<Pair<Set<Sugges
 
     MathEngine.dynamicVariableNames.forEach { suggestionMap[it] = Suggestion(it, SuggestionType.DYNAMIC_VARIABLE) }
     Builtins.constantNames.forEach { suggestionMap[it] = Suggestion(it, SuggestionType.CONSTANT) }
-    Builtins.functionNames.forEach { 
-        suggestionMap[it] = Suggestion(it, SuggestionType.GLOBAL_FUNCTION, description = functionHints[it]) 
+    suggestionMap[Constants.GLOBAL_NAMESPACE] = Suggestion(Constants.GLOBAL_NAMESPACE, SuggestionType.KEYWORD)
+    Builtins.functionNames.forEach {
+        suggestionMap[it] = Suggestion(it, SuggestionType.GLOBAL_FUNCTION, description = functionHints[it])
     }
     listOf("parseDate", "date", "datetime", "datetimeZ", "getDay", "getMonth", "getYear", "daysInMonth", "file", "convert").forEach {
         suggestionMap[it] = Suggestion(it, SuggestionType.GLOBAL_FUNCTION, description = functionHints[it])
@@ -574,10 +575,16 @@ fun CalculatorScreen(
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var showInfoDialog by remember { mutableStateOf(false) }
     val scratchpadFileId by viewModel.scratchpadFileId.collectAsState(initial = null)
+    val globalFileId by viewModel.globalFileId.collectAsState(initial = null)
     val isScratchpad = scratchpadFileId != null && fileId == scratchpadFileId
+    val isGlobalFile = globalFileId != null && fileId == globalFileId
     val currentFile = files.find { it.id == fileId }
     val isLocked = currentFile?.isLocked ?: false
-    val fileName = if (isScratchpad) Constants.SCRATCHPAD_DISPLAY_NAME else (currentFile?.name ?: "Editor")
+    val fileName = when {
+        isScratchpad -> Constants.SCRATCHPAD_DISPLAY_NAME
+        isGlobalFile -> Constants.GLOBAL_FILE_DISPLAY_NAME
+        else -> currentFile?.name ?: "Editor"
+    }
 
     // Track which line should be focused and cursor position
     var focusLineId by remember { mutableStateOf<Long?>(null) }
@@ -725,7 +732,7 @@ fun CalculatorScreen(
                             )
                         } else {
                             Column(
-                                modifier = if (!isScratchpad && !isLocked) {
+                                modifier = if (!isScratchpad && !isGlobalFile && !isLocked) {
                                     Modifier.clickable { showRenameDialog = true }
                                 } else {
                                     Modifier
@@ -751,6 +758,13 @@ fun CalculatorScreen(
                                 if (isScratchpad) {
                                     Text(
                                         text = "Temporary file • Changes not saved",
+                                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                if (isGlobalFile) {
+                                    Text(
+                                        text = "Variables & functions defined here are shared across all files",
                                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp),
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -969,7 +983,7 @@ fun CalculatorScreen(
                                     },
                                     leadingIcon = { Icon(Icons.Default.SpaceBar, contentDescription = null) }
                                 )
-                                if (!isScratchpad) {
+                                if (!isScratchpad && !isGlobalFile) {
                                     DropdownMenuItem(
                                         text = { Text(if (isLocked) "Unlock File" else "Lock File") },
                                         leadingIcon = {
@@ -984,7 +998,7 @@ fun CalculatorScreen(
                                         }
                                     )
                                 }
-                                if (!isScratchpad) {
+                                if (!isScratchpad && !isGlobalFile) {
                                     DropdownMenuItem(
                                         text = { Text("Rename File") },
                                         leadingIcon = {
@@ -1013,21 +1027,23 @@ fun CalculatorScreen(
                                         }
                                     )
                                 }
-                                DropdownMenuItem(
-                                    text = { Text("Duplicate File") },
-                                    leadingIcon = {
-                                        Icon(
-                                            Icons.Default.FileCopy,
-                                            contentDescription = null
-                                        )
-                                    },
-                                    onClick = {
-                                        showMenu = false
-                                        viewModel.duplicateFile(context, fileId) { newFileId ->
-                                            onNavigateToFile(newFileId)
+                                if (!isGlobalFile) {
+                                    DropdownMenuItem(
+                                        text = { Text("Duplicate File") },
+                                        leadingIcon = {
+                                            Icon(
+                                                Icons.Default.FileCopy,
+                                                contentDescription = null
+                                            )
+                                        },
+                                        onClick = {
+                                            showMenu = false
+                                            viewModel.duplicateFile(context, fileId) { newFileId ->
+                                                onNavigateToFile(newFileId)
+                                            }
                                         }
-                                    }
-                                )
+                                    )
+                                }
                                 HorizontalDivider()
                                 DropdownMenuItem(
                                     text = { Text("Copy File Content") },
@@ -1102,7 +1118,7 @@ fun CalculatorScreen(
                                         showClearConfirmDialog = true
                                     }
                                 )
-                                if (!isScratchpad) {
+                                if (!isScratchpad && !isGlobalFile) {
                                     DropdownMenuItem(
                                         text = { Text("Delete File") },
                                         leadingIcon = {
@@ -1734,6 +1750,8 @@ private fun LineRow(
                 if (objectName.startsWith("file(")) {
                     val m = Regex("""file\(\s*"([^"]+)"\s*\)""").find(objectName)
                     m?.groupValues?.getOrNull(1)
+                } else if (objectName == Constants.GLOBAL_NAMESPACE) {
+                    Constants.GLOBAL_FILE_DISPLAY_NAME
                 } else {
                     // Otherwise resolve linked file name using local variable references mapping
                     fileVariables[objectName]
@@ -1862,7 +1880,7 @@ private fun LineRow(
                         )
                     } else null
                 }
-                
+
                 val timeUnits = UnitConverter.UNITS.filter { it.category == UnitCategory.TIME }
                     .flatMap { unit ->
                         unit.symbols.map { symbol ->
@@ -1896,13 +1914,13 @@ private fun LineRow(
                 val isAtWordEnd = lastTok?.kind == TokenKind.IDENTIFIER ||
                     ((lastTok?.kind == TokenKind.KW_OF || lastTok?.kind == TokenKind.KW_WHAT) &&
                      cursorPos == lastTok.position + lastTok.lexeme.length)
-                
+
                 val baseIdx = if (isAtWordEnd) cleanTokens.size - 2 else cleanTokens.size - 1
-                
+
                 // Always suggest the full phrases. Since SyntaxUtils anchors the replaceStart
                 // to the beginning of the sequence, these will correctly replace partial typing.
                 val suffixSuggestions = listOf("of what is", "of", "off")
-                
+
                 suffixSuggestions.mapNotNull { name ->
                     val match = name.calculateFuzzyMatch(currentWord, SuggestionType.PERCENT_SUFFIX)
                     if (match != null || currentWord.isEmpty()) {
@@ -1917,7 +1935,7 @@ private fun LineRow(
                 }.sortedByDescending { it.score }
             } else if (contextType == SuggestionType.KEYWORD || contextType == SuggestionType.CONVERSION) {
                 val keywords = mutableListOf<Suggestion>()
-                
+
                 listOf("to", "in", "as").forEach { name ->
                     val match = name.calculateFuzzyMatch(currentWord, SuggestionType.CONVERSION)
                     if (match != null && name != currentWord) {

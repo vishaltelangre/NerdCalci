@@ -39,6 +39,7 @@
   - [Recursion](#recursion)
 - [9. Cross-file references](#9-cross-file-references)
   - [Referencing a file](#referencing-a-file)
+  - [The global file](#the-global-file)
   - [Accessing variables from other files](#accessing-variables-from-other-files)
   - [Accessing functions from other files](#accessing-functions-from-other-files)
   - [Circular references](#circular-references)
@@ -559,6 +560,25 @@ Use `file("FileName")` to load the context of another file. The file name must b
 ```text
 f = file("Summary")
 ```
+
+### The global file
+
+NerdCalci provides a special built-in file named **"Global"**. Any variables and functions defined in this file are automatically accessible in all other files without needing an explicit `file("Global")` import.
+
+To access items from the global file, prefix them with `global.`:
+
+```text
+# In any file:
+price = 100
+tax_amount = global.tax(price)
+total = price * global.vat_rate
+```
+
+**Notes:**
+- `"Global"` is a reserved file name and cannot be used for user-created files.
+- The `global` namespace cannot be used as a variable or function name.
+- Accessing `global.` inside a user-defined function body is blocked to preserve strict function isolation.
+- If you prefer, `file("global")` can also be used; it will route to the same Global file context.
 
 ### Accessing variables from other files
 

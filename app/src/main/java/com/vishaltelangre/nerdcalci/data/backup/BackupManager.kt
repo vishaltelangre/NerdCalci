@@ -372,7 +372,7 @@ object BackupManager {
     }
 
     private suspend fun writeBackupZip(context: Context, dao: CalculatorDao, outputStream: OutputStream): Int {
-        val filesList = dao.getAllFiles().first()
+        val filesList = dao.getAllFilesSync() + listOfNotNull(dao.getGlobalFile())
         var exportedCount = 0
 
         ZipOutputStream(outputStream).use { zipOut ->
@@ -386,6 +386,7 @@ object BackupManager {
                         id = file.syncId,
                         isPinned = file.isPinned,
                         isLocked = file.isLocked,
+                        isGlobal = file.isGlobal,
                         lastModified = file.lastModified,
                         createdAt = file.createdAt,
                         contentHash = contentHash
@@ -417,7 +418,7 @@ object BackupManager {
         onProgress: suspend (current: Int, total: Int, fileName: String) -> Unit,
         onConflict: suspend (fileName: String, localModified: Long, zipModified: Long) -> ConflictResolution
     ): RestoreResult {
-        val existingFiles = dao.getAllFiles().first()
+        val existingFiles = dao.getAllFilesSync() + listOfNotNull(dao.getGlobalFile())
         val existingNames = existingFiles.map { it.name }.toMutableSet()
         var overwrittenCount = 0
         var skippedCount = 0
@@ -558,6 +559,7 @@ object BackupManager {
                                     createdAt = finalCreateTime,
                                     isPinned = metadata.isPinned,
                                     isLocked = metadata.isLocked,
+                                    isGlobal = metadata.isGlobal,
                                     syncId = syncId
                                 )
                             )
@@ -566,6 +568,7 @@ object BackupManager {
                                 name = finalFileName,
                                 lastModified = finalModifiedTime,
                                 createdAt = finalCreateTime,
+                                isGlobal = metadata.isGlobal,
                                 syncId = syncId
                             )
                             insertedFiles.add(currentInsertedFile)

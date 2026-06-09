@@ -646,6 +646,15 @@ object SyncManager {
         } else {
             val nameCollidedFile = dao.getFileByName(fileName)
             if (metadata.isGlobal && nameCollidedFile != null) {
+                // Check if another file already has isGlobal = true
+                val currentGlobalFile = dao.getGlobalFile()
+                if (currentGlobalFile != null && currentGlobalFile.id != nameCollidedFile.id) {
+                    // Clear isGlobal on the existing global file to prevent unique constraint violation
+                    Log.d(TAG, "Clearing isGlobal on existing global file (id=${currentGlobalFile.id}) before setting on ${nameCollidedFile.name}")
+                    val clearedGlobalFile = currentGlobalFile.copy(isGlobal = false)
+                    dao.updateFileFromSync(clearedGlobalFile)
+                }
+
                 val updatedFile = nameCollidedFile.copy(
                     syncId = syncId,
                     lastModified = finalLastModified,

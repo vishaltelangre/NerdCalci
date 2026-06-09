@@ -114,11 +114,11 @@ IzzyOnDroid">](https://apt.izzysoft.de/packages/com.vishaltelangre.nerdcalci)
   now - 4 hours 30 mins
   3 days ago
   2 days from now
-  
+
   # Intervals
   days between today and date(2025, 1, 1)
   today through tomorrow in hours
-  
+
   # Timezones
   now in "Japan"
   datetimeZ(2024, 1, 1, 12, 0, 0, "UTC") in "Tokyo"
@@ -223,11 +223,20 @@ To run instrumentation tests:
 ./gradlew :app:connectedDebugAndroidTest
 ```
 
+## Community calci submissions
+
+The [`community-submissions/`](community-submissions/) directory is a curated
+collection of NerdCalci files ("**calcis**") shared by the community. Each
+calci is a plain-text `.nerdcalci` file that showcases reusable calculations,
+domain-specific helpers, or handy formulas.
+
+Refer to [community submissions guidelines](community-submissions/README.md) for details.
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-1. Fork the project
+1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
 3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
 4. Push to the branch (`git push origin feature/AmazingFeature`)

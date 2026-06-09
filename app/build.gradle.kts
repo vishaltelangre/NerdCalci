@@ -29,6 +29,11 @@ android {
                 events("failed")
                 exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
             }
+            // Register community-submissions directory as an input to invalidate unit test cache
+            // when community calcis are added, modified, or removed.
+            it.inputs.dir(rootProject.file("community-submissions"))
+                .withPropertyName("communitySubmissions")
+                .withPathSensitivity(PathSensitivity.RELATIVE)
         }
     }
 

@@ -1,0 +1,2 @@
+- Added a folder "community-submissions" for sharing useful calcis with the community (Issue: #203).
+- Added OLED Black color palette (Issue: #198).

@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.7.4] - 2026-06-09
+### Added
+- Added a folder "community-submissions" for sharing useful calcis with the community (Issue #203).
+- Added OLED Black color palette (Issue #198).
+
 ## [4.7.3] - 2026-05-31
 ### Fixed
 - Fixed negative temperature conversions producing wrong results (Issue #197).

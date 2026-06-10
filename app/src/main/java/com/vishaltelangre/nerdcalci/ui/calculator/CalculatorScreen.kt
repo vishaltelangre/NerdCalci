@@ -1678,12 +1678,14 @@ private fun LineRow(
     var lastSentExpression by remember(line.id) { mutableStateOf<String?>(null) }
     var lastSentVersion by remember(line.id) { mutableStateOf(line.version) }
 
-    // Guard flag to prevent double-triggering of backspace handlers
+    // Guard flags to prevent double-triggering of event handlers
     var backspaceHandled by remember { mutableStateOf(false) }
+    var enterHandled by remember { mutableStateOf(false) }
 
-    // Reset the backspace guard flag after a short delay or when the line expression changes
+    // Reset guard flags after a short delay or when the line expression changes
     LaunchedEffect(line.expression, line.id, line.version) {
         backspaceHandled = false
+        enterHandled = false
     }
 
     val syntaxHighlightingTransformation = remember(
@@ -2197,7 +2199,8 @@ private fun LineRow(
                                     val newFirstLineText = prefix + firstChunk
                                     textFieldValue = adjustedValue.copy(
                                         text = newFirstLineText,
-                                        selection = TextRange(newFirstLineText.length)
+                                        selection = TextRange(newFirstLineText.length),
+                                        composition = null
                                     )
                                     lastSentExpression = if (lineNumber > 1) newFirstLineText.removePrefix(" ") else newFirstLineText
 
@@ -2220,11 +2223,15 @@ private fun LineRow(
                             val keepPart = actualText.substring(0, splitIndexInTransformed)
                             textFieldValue = adjustedValue.copy(
                                 text = keepPart,
-                                selection = TextRange(keepPart.length)
+                                selection = TextRange(keepPart.length),
+                                composition = null
                             )
                             lastSentExpression = if (lineNumber > 1) keepPart.removePrefix(" ") else keepPart
 
-                            onEnter(normalizedText, splitIndex)
+                            if (!enterHandled) {
+                                enterHandled = true
+                                onEnter(normalizedText, splitIndex)
+                            }
                             return@BasicTextField
                         }
 
@@ -2266,6 +2273,7 @@ private fun LineRow(
                             if (focusState.isFocused) {
                                 onFocused()
                             } else {
+                                enterHandled = false
                                 onBlur()
                             }
                         }
@@ -2322,6 +2330,16 @@ private fun LineRow(
                                         }
                                     }
 
+                                    Key.Enter, Key.NumPadEnter -> {
+                                        if (!enterHandled) {
+                                            enterHandled = true
+                                            val actualText = if (lineNumber > 1) textFieldValue.text.removePrefix(" ") else textFieldValue.text
+                                            val cursorInActual = if (lineNumber > 1) (textFieldValue.selection.start - 1).coerceAtLeast(0) else textFieldValue.selection.start
+                                            onEnter(actualText, cursorInActual)
+                                        }
+                                        true // Consume the event to prevent inserting newline
+                                    }
+
                                     else -> false
                                 }
                             } else {
@@ -2338,9 +2356,12 @@ private fun LineRow(
                     visualTransformation = syntaxHighlightingTransformation,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Default),
                     keyboardActions = KeyboardActions(onDone = {
-                        val actualText = if (lineNumber > 1) textFieldValue.text.removePrefix(" ") else textFieldValue.text
-                        val cursorInActual = if (lineNumber > 1) (textFieldValue.selection.start - 1).coerceAtLeast(0) else textFieldValue.selection.start
-                        onEnter(actualText, cursorInActual)
+                        if (!enterHandled) {
+                            enterHandled = true
+                            val actualText = if (lineNumber > 1) textFieldValue.text.removePrefix(" ") else textFieldValue.text
+                            val cursorInActual = if (lineNumber > 1) (textFieldValue.selection.start - 1).coerceAtLeast(0) else textFieldValue.selection.start
+                            onEnter(actualText, cursorInActual)
+                        }
                     }),
                     onTextLayout = { textLayoutResult = it },
                     decorationBox = { innerTextField ->

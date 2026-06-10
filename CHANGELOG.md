@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Fixed HeliBoard keyboard issue where newline clears/merges and cursor jumps to previous line when swiping left and typing (Issue: #195).
 - Attempted a fix for duplicate multi-line paste issue using HeliBoard keyboard (Issue: #193).
+- Fixed Microsoft SwiftKey Keyboard issue where pressing Enter inserts multiple new lines (Issue: #186).
 
 ## [4.8.1] - 2026-06-09
 ### Fixed

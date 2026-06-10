@@ -589,6 +589,7 @@ fun CalculatorScreen(
     // Track which line should be focused and cursor position
     var focusLineId by remember { mutableStateOf<Long?>(null) }
     var focusCursorPosition by remember { mutableStateOf<Int?>(null) }
+    var focusLineTextOverride by remember { mutableStateOf<String?>(null) }
     var pendingScrollLineId by remember { mutableStateOf<Long?>(null) }
 
     // Track if auto-focus has been tried for the current file to avoid repeating it
@@ -1332,6 +1333,7 @@ fun CalculatorScreen(
                         onGetSuggestionsForFile = viewModel::getSuggestionsForFile,
                         shouldFocus = focusLineId == line.id,
                         focusCursorPos = if (focusLineId == line.id) focusCursorPosition else null,
+                        textOverride = if (focusLineId == line.id) focusLineTextOverride else null,
                         insertTextRequest = if (insertTextRequest?.first == line.id) insertTextRequest?.second else null,
                         onInsertHandled = { insertTextRequest = null },
                         numberColor = numberColor,
@@ -1347,6 +1349,7 @@ fun CalculatorScreen(
                             currentlyFocusedLineId = line.id
                             focusLineId = null
                             focusCursorPosition = null
+                            focusLineTextOverride = null
                         },
                         onBlur = {
                             if (currentlyFocusedLineId == line.id) {
@@ -1388,15 +1391,16 @@ fun CalculatorScreen(
                                 viewModel.deleteLine(line, effectiveRationalMode)
                             }
                         },
-                        onMergeWithPrevious = {
+                        onMergeWithPrevious = { currentExpr ->
                             if (index > 0) {
                                 val prevLine = lines[index - 1]
                                 val currentLine = line
                                 focusLineId = prevLine.id
                                 focusCursorPosition = prevLine.expression.length
+                                focusLineTextOverride = prevLine.expression + currentExpr
 
                                 coroutineScope.launch {
-                                    viewModel.mergeLines(prevLine.id, currentLine.id, effectiveRationalMode)
+                                    viewModel.mergeLines(prevLine.id, currentLine.id, effectiveRationalMode, currentExpression = currentExpr)
                                 }
                             }
                         },
@@ -1625,6 +1629,7 @@ private fun LineRow(
     onGetSuggestionsForFile: suspend (String) -> Set<Suggestion>,
     shouldFocus: Boolean,
     focusCursorPos: Int?,
+    textOverride: String? = null,
     insertTextRequest: String?,
     onInsertHandled: () -> Unit,
     numberColor: Color,
@@ -1642,7 +1647,7 @@ private fun LineRow(
     onValueChange: (String, Long) -> Unit,
     onEnter: (String, Int) -> Unit,
     onDelete: () -> Unit,
-    onMergeWithPrevious: () -> Unit,
+    onMergeWithPrevious: (String) -> Unit,
     onNavigateUp: () -> Unit,
     onNavigateDown: () -> Unit,
     onCopyResult: (String) -> Unit,
@@ -2015,8 +2020,9 @@ private fun LineRow(
         if (isFocused) return@LaunchedEffect
 
         if (textFieldValue.text != displayText) {
-            val clampedStart = textFieldValue.selection.start.coerceIn(0, displayText.length)
-            val clampedEnd = textFieldValue.selection.end.coerceIn(0, displayText.length)
+            val minSelect = if (lineNumber > 1) 1 else 0
+            val clampedStart = textFieldValue.selection.start.coerceIn(minSelect, displayText.length)
+            val clampedEnd = textFieldValue.selection.end.coerceIn(minSelect, displayText.length)
             textFieldValue = textFieldValue.copy(
                 text = displayText,
                 selection = TextRange(clampedStart, clampedEnd)
@@ -2028,23 +2034,30 @@ private fun LineRow(
     }
 
     // Handle programmatic focus requests (from navigation or deletion)
-    LaunchedEffect(shouldFocus, focusCursorPos) {
+    LaunchedEffect(shouldFocus, focusCursorPos, textOverride, displayText) {
         if (shouldFocus && focusCursorPos != null) {
             focusRequester.requestFocus()
 
             // Set cursor position - focusCursorPos is the desired position in the expression
             // We need to map this to the displayText position
+            val textToUse = textOverride ?: line.expression
+            val actualDisplayText = if (lineNumber > 1) " $textToUse" else textToUse
+
             val actualPos = if (lineNumber > 1) {
                 // Account for the leading dummy space
                 focusCursorPos + 1
             } else {
                 focusCursorPos
             }
-            val coercedPos = actualPos.coerceIn(0, textFieldValue.text.length)
+            val coercedPos = actualPos.coerceIn(0, actualDisplayText.length)
 
-            textFieldValue = textFieldValue.copy(
+            textFieldValue = TextFieldValue(
+                text = actualDisplayText,
                 selection = TextRange(coercedPos)
             )
+            // Sync our local tracking with the actual DB state
+            lastSentExpression = textToUse
+            lastSentVersion = line.version
             // onFocused() will be called by onFocusChanged when focus is gained
         }
     }
@@ -2142,20 +2155,33 @@ private fun LineRow(
                     enabled = !isInSelectionMode,
                     readOnly = isLocked || isInSelectionMode,
                     onValueChange = { newValue ->
-                        if (isLocked || isInSelectionMode) return@BasicTextField
-                        val filteredText = newValue.text.replace("\n", "")
+                        if (isLocked || isInSelectionMode || !isFocused) return@BasicTextField
+
+                        // Coerce selection to start at least at index 1 on non-first lines if the leading dummy space is present.
+                        // This prevents swiping left on the spacebar (or other methods) from placing the cursor before the dummy space,
+                        // which would otherwise shift the space to index 1 upon typing and trigger incorrect line merge/deletion.
+                        var adjustedValue = newValue
+                        if (lineNumber > 1 && adjustedValue.text.startsWith(" ")) {
+                            val newStart = adjustedValue.selection.start.coerceAtLeast(1)
+                            val newEnd = adjustedValue.selection.end.coerceAtLeast(1)
+                            if (newStart != adjustedValue.selection.start || newEnd != adjustedValue.selection.end) {
+                                adjustedValue = adjustedValue.copy(selection = TextRange(newStart, newEnd))
+                            }
+                        }
+
+                        val filteredText = adjustedValue.text.replace("\n", "")
 
                         // Handle Enter key (Line Splitting) / Multi-line Paste
                         // Using indexOf('\n') is more reliable than selection.start because
                         // selection.start can jump ahead after character insertion.
-                        if (newValue.text.contains("\n")) {
+                        if (adjustedValue.text.contains("\n")) {
                             // Check if this is a multi-line clipboard paste
                             val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                             val pastedText = clipboard.primaryClip?.getItemAt(0)?.text?.toString() ?: ""
 
                             val selStart = minOf(textFieldValue.selection.start, textFieldValue.selection.end)
-                            val insertedText = if (selStart <= newValue.selection.start && newValue.selection.start <= newValue.text.length) {
-                                newValue.text.substring(selStart, newValue.selection.start)
+                            val insertedText = if (selStart <= adjustedValue.selection.start && adjustedValue.selection.start <= adjustedValue.text.length) {
+                                adjustedValue.text.substring(selStart, adjustedValue.selection.start)
                             } else {
                                 ""
                             }
@@ -2173,20 +2199,38 @@ private fun LineRow(
                                     val middleLines = pastedLines.subList(1, pastedLines.size - 1)
                                     val lastChunk = pastedLines.last()
 
+                                    // Update local text field state immediately to contain the first chunk
+                                    val prefix = adjustedValue.text.substring(0, selStart)
+                                    val newFirstLineText = prefix + firstChunk
+                                    textFieldValue = adjustedValue.copy(
+                                        text = newFirstLineText,
+                                        selection = TextRange(newFirstLineText.length)
+                                    )
+                                    lastSentExpression = if (lineNumber > 1) newFirstLineText.removePrefix(" ") else newFirstLineText
+
                                     onPasteLines(cursorPosInExpr, firstChunk, middleLines, lastChunk)
                                     return@BasicTextField
                                 }
                             }
 
                             // Single Enter splitting
-                            val splitIndexInTransformed = newValue.text.indexOf('\n')
-                            val actualText = newValue.text.replace("\n", "")
+                            val splitIndexInTransformed = adjustedValue.text.indexOf('\n')
+                            val actualText = adjustedValue.text.replace("\n", "")
                             val normalizedText = if (lineNumber > 1) actualText.removePrefix(" ") else actualText
                             val splitIndex = if (lineNumber > 1) {
                                 (splitIndexInTransformed - 1).coerceAtLeast(0)
                             } else {
                                 splitIndexInTransformed
                             }
+
+                            // Update local text field state immediately to keep only the prefix text
+                            val keepPart = actualText.substring(0, splitIndexInTransformed)
+                            textFieldValue = adjustedValue.copy(
+                                text = keepPart,
+                                selection = TextRange(keepPart.length)
+                            )
+                            lastSentExpression = if (lineNumber > 1) keepPart.removePrefix(" ") else keepPart
+
                             onEnter(normalizedText, splitIndex)
                             return@BasicTextField
                         }
@@ -2200,7 +2244,7 @@ private fun LineRow(
                                 if (filteredText.isEmpty()) {
                                     onDelete() // Line was empty, just delete it
                                 } else {
-                                    onMergeWithPrevious() // Line has content, merge with previous
+                                    onMergeWithPrevious(filteredText) // Line has content, merge with previous
                                 }
                             }
                             return@BasicTextField
@@ -2219,7 +2263,7 @@ private fun LineRow(
                             onValueChange(actualText, lastSentVersion)
                         }
 
-                        textFieldValue = newValue
+                        textFieldValue = adjustedValue
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -2276,7 +2320,7 @@ private fun LineRow(
                                                 if (textFieldValue.text.removePrefix(" ").isEmpty()) {
                                                     onDelete()
                                                 } else {
-                                                    onMergeWithPrevious()
+                                                    onMergeWithPrevious(textFieldValue.text.removePrefix(" "))
                                                 }
                                             }
                                             true // Consume the event to prevent default backspace behavior

@@ -1,0 +1,2 @@
+- Fixed HeliBoard keyboard issue where newline clears/merges and cursor jumps to previous line when swiping left and typing (Issue: #195).
+-

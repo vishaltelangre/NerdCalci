@@ -1206,7 +1206,8 @@ class CalculatorViewModel(
     suspend fun mergeLines(
         prevLineId: Long,
         currentLineId: Long,
-        rationalMode: Boolean? = null
+        rationalMode: Boolean? = null,
+        currentExpression: String? = null
     ) {
         withContext(ioDispatcher) {
             calculationMutex.withLock {
@@ -1217,7 +1218,8 @@ class CalculatorViewModel(
                 if (isFileLocked(fileId)) return@withLock
                 saveStateForUndo(fileId)
 
-                val mergedExpression = prevLine.expression + currentLine.expression
+                val expressionToMerge = currentExpression ?: currentLine.expression
+                val mergedExpression = prevLine.expression + expressionToMerge
                 // Update and clear result to prevent stale data display during calculation
                 dao.updateLine(prevLine.copy(expression = mergedExpression, result = "", version = prevLine.version + 1))
                 dao.deleteAndNormalize(currentLine)

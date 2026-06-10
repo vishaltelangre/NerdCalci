@@ -2171,14 +2171,7 @@ private fun LineRow(
 
                         val filteredText = adjustedValue.text.replace("\n", "")
 
-                        // Handle Enter key (Line Splitting) / Multi-line Paste
-                        // Using indexOf('\n') is more reliable than selection.start because
-                        // selection.start can jump ahead after character insertion.
                         if (adjustedValue.text.contains("\n")) {
-                            // Check if this is a multi-line clipboard paste
-                            val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                            val pastedText = clipboard.primaryClip?.getItemAt(0)?.text?.toString() ?: ""
-
                             val selStart = minOf(textFieldValue.selection.start, textFieldValue.selection.end)
                             val insertedText = if (selStart <= adjustedValue.selection.start && adjustedValue.selection.start <= adjustedValue.text.length) {
                                 adjustedValue.text.substring(selStart, adjustedValue.selection.start)
@@ -2186,8 +2179,8 @@ private fun LineRow(
                                 ""
                             }
 
-                            if (pastedText.contains("\n") && insertedText == pastedText) {
-                                val pastedLines = pastedText.split(Regex("\\r?\\n"))
+                            if (insertedText.contains("\n") && insertedText.length > 1) {
+                                val pastedLines = insertedText.split(Regex("\\r?\\n"))
                                 if (pastedLines.size > 1) {
                                     val cursorPos = textFieldValue.selection.start
                                     val cursorPosInExpr = if (lineNumber > 1) {

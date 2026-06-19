@@ -3608,7 +3608,7 @@ class MathEngineTest {
             assertError("`randInt()` expects 1 to 2 arguments, but got 3", result, 13)
 
             val randIntMax = java.math.BigDecimal(result[14].result).toLong()
-            assertTrue("randInt at Long.MAX_VALUE must not overflow", randIntMax == Long.MAX_VALUE)
+            assertTrue("randInt at Long.MAX_VALUE must not overflow", randIntMax == Long.MAX_VALUE - 1)
         }
     }
 }

@@ -22,6 +22,7 @@
   - [Logarithmic \& Exponential](#logarithmic--exponential)
   - [Factorial](#factorial)
   - [Trigonometry](#trigonometry)
+  - [Random numbers](#random-numbers)
 - [5. Built-in constants](#5-built-in-constants)
 - [6. Comments](#6-comments)
 - [7. Dynamic variables](#7-dynamic-variables)
@@ -284,6 +285,15 @@ Trigonometric functions expect angles in **radians** by default, but also native
 | `sinh(x)` | `sinh(1)`   | 1.18   | Hyperbolic sine    |
 | `cosh(x)` | `cosh(1)`   | 1.54   | Hyperbolic cosine  |
 | `tanh(x)` | `tanh(1)`   | 0.76   | Hyperbolic tangent |
+
+### Random numbers
+
+| Function        | Example         | Result | Description                          |
+| --------------- | --------------- | ------ | ------------------------------------ |
+| `rand(n)`       | `rand(10)`      | `6.73` | Random decimal in `0 <= x <= n`      |
+| `rand(a, b)`    | `rand(5, 10)`   | `8.41` | Random decimal in `a <= x <= b`      |
+| `randInt(n)`    | `randInt(6)`    | `4`    | Random whole number in `0 <= x <= n` |
+| `randInt(a, b)` | `randInt(1, 6)` | `5`    | Random whole number in `a <= x <= b` |
 
 ## 5. Built-in constants
 

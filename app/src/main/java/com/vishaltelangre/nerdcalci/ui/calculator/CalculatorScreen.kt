@@ -396,7 +396,8 @@ private fun extractAllSuggestions(lines: List<LineEntity>): List<Pair<Set<Sugges
         "abs" to "x", "floor" to "x", "ceil" to "x", "signum" to "x",
         "factorial" to "x", "fact" to "x",
         "rational" to "x", "fraction" to "x", "float" to "x",
-        "value" to "x", "dropUnit" to "x", "raw" to "x"
+        "value" to "x", "dropUnit" to "x", "raw" to "x",
+        "rand" to "n or a, b", "randInt" to "n or a, b"
     )
 
     MathEngine.dynamicVariableNames.forEach { suggestionMap[it] = Suggestion(it, SuggestionType.DYNAMIC_VARIABLE) }
@@ -405,7 +406,7 @@ private fun extractAllSuggestions(lines: List<LineEntity>): List<Pair<Set<Sugges
     Builtins.functionNames.forEach {
         suggestionMap[it] = Suggestion(it, SuggestionType.GLOBAL_FUNCTION, description = functionHints[it])
     }
-    listOf("parseDate", "date", "datetime", "datetimeZ", "getDay", "getMonth", "getYear", "daysInMonth", "file", "convert").forEach {
+    listOf("parseDate", "date", "datetime", "datetimeZ", "getDay", "getMonth", "getYear", "daysInMonth", "file", "convert", "rand", "randInt").forEach {
         suggestionMap[it] = Suggestion(it, SuggestionType.GLOBAL_FUNCTION, description = functionHints[it])
     }
     DateKeywords.RESERVED.forEach { suggestionMap[it] = Suggestion(it, SuggestionType.KEYWORD) }

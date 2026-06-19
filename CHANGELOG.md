@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.0] - 2026-06-19
+### Added
+- Added `rand()` and `randInt()` built-in functions to generate random numbers (Issue: #211).
+
 ## [4.8.2] - 2026-06-10
 ### Fixed
 - Fixed HeliBoard keyboard issue where newline clears/merges and cursor jumps to previous line when swiping left and typing (Issue: #195).

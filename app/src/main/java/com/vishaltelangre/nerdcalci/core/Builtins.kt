@@ -311,6 +311,8 @@ object Builtins {
             "getMonth" -> return executeGetMonth(args)
             "getYear" -> return executeGetYear(args)
             "daysInMonth" -> return executeDaysInMonth(args)
+            "rand" -> return executeRand(args)
+            "randInt" -> return executeRandInt(args)
         }
         val fn = functions[name] ?: throw UnknownFunctionException(name)
         if (fn.arity != args.size) {
@@ -361,7 +363,7 @@ object Builtins {
         if (args.size != 7) throw ArityMismatchException("datetimeZ", 7, args.size)
         val zoneText = args[6].stringResult ?: args[6].value?.toString() ?: throw EvalException("`datetimeZ()` expects a timezone string")
         val zone = TimezoneRegistry.resolve(zoneText) ?: throw EvalException("Unknown timezone `$zoneText`")
-        
+
         val y = args[0].value?.toInt() ?: throw EvalException("`datetimeZ()` expects numeric year")
         val m = args[1].value?.toInt() ?: throw EvalException("`datetimeZ()` expects numeric month")
         val d = args[2].value?.toInt() ?: throw EvalException("`datetimeZ()` expects numeric day")
@@ -401,10 +403,54 @@ object Builtins {
         return EvaluationResult(BigDecimal.valueOf(result), rationalValue = Rational.fromLong(result))
     }
 
-    private val DATE_FUNCTIONS = setOf("parseDate", "date", "datetime", "datetimeZ", "getDay", "getMonth", "getYear", "daysInMonth")
+    private fun executeRand(args: List<EvaluationResult>): EvaluationResult {
+        if (args.isEmpty() || args.size > 2) throw EvalException("`rand()` expects 1 to 2 arguments, but got ${args.size}")
+        if (args.any { it.unit != null }) throw EvalException("`rand()` requires unitless inputs")
+
+        val a: Double
+        val b: Double
+        if (args.size == 1) {
+            a = 0.0
+            b = args[0].value?.toDouble() ?: throw EvalException("`rand()` requires numeric arguments")
+        } else {
+            a = args[0].value?.toDouble() ?: throw EvalException("`rand()` requires numeric arguments")
+            b = args[1].value?.toDouble() ?: throw EvalException("`rand()` requires numeric arguments")
+        }
+
+        if (a > b) throw EvalException("`rand()` requires the first argument to be ≤ the second")
+
+        val result = if (a == b) a else {
+            val nextB = java.lang.Math.nextUp(b)
+            val r = kotlin.random.Random.nextDouble(a, if (nextB > a) nextB else a + Double.MIN_VALUE)
+            if (r > b) b else r
+        }
+        return EvaluationResult(BigDecimal.valueOf(result))
+    }
+
+    private fun executeRandInt(args: List<EvaluationResult>): EvaluationResult {
+        if (args.isEmpty() || args.size > 2) throw EvalException("`randInt()` expects 1 to 2 arguments, but got ${args.size}")
+        if (args.any { it.unit != null }) throw EvalException("`randInt()` requires unitless inputs")
+
+        val a: Long
+        val b: Long
+        if (args.size == 1) {
+            a = 0L
+            b = args[0].value?.toLong() ?: throw EvalException("`randInt()` requires numeric arguments")
+        } else {
+            a = args[0].value?.toLong() ?: throw EvalException("`randInt()` requires numeric arguments")
+            b = args[1].value?.toLong() ?: throw EvalException("`randInt()` requires numeric arguments")
+        }
+
+        if (a > b) throw EvalException("`randInt()` requires the first argument to be ≤ the second")
+
+        val result = if (a == b) a else kotlin.random.Random.nextLong(a, b + 1)
+        return EvaluationResult(BigDecimal.valueOf(result), rationalValue = Rational.fromLong(result))
+    }
+
+    private val VARIABLE_ARITY_FUNCTIONS = setOf("parseDate", "date", "datetime", "datetimeZ", "getDay", "getMonth", "getYear", "daysInMonth", "rand", "randInt")
 
     /** Returns true if [name] is a registered function (any arity). */
-    fun isFunction(name: String): Boolean = name in functions || name in DATE_FUNCTIONS
+    fun isFunction(name: String): Boolean = name in functions || name in VARIABLE_ARITY_FUNCTIONS
 
     /** Return the expected arity of a built-in function, or null if it's not a function. */
     fun getArity(name: String): Int? {

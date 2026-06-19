@@ -3557,4 +3557,54 @@ class MathEngineTest {
             assertEquals("3.0", result[2].result)
         }
     }
+
+    @Test
+    fun `rand and randInt functions`() {
+        testCalculate(
+            "rand(10)",
+            "rand(5, 15)",
+            "rand(-5, 5)",
+            "rand(3, 3)",
+            "randInt(6)",
+            "randInt(1, 6)",
+            "randInt(2.7, 5.9)",
+            "rand(10, 5)",
+            "rand(1 kg, 10)",
+            "rand()",
+            "randInt(10, 5)",
+            "randInt(1kg, 10)",
+            "randInt()",
+            "randInt(1, 10, 1)"
+        ) { result ->
+            val rand10 = result[0].result.toDouble()
+            assertTrue("rand(10) must be between 0 and 10", rand10 in 0.0..10.0)
+
+            val rand5_15 = result[1].result.toDouble()
+            assertTrue("rand(5, 15) must be between 5 and 15", rand5_15 in 5.0..15.0)
+
+            val randNeg5_5 = result[2].result.toDouble()
+            assertTrue("rand(-5, 5) must be between -5 and 5", randNeg5_5 in -5.0..5.0)
+
+            assertEquals("3.0", result[3].result)
+
+            val randInt6 = result[4].result
+            assertTrue("randInt(6) must be a whole number", randInt6.endsWith(".0"))
+            assertTrue("randInt(6) must be between 0 and 6", randInt6.toDouble() in 0.0..6.0)
+
+            val randInt1_6 = result[5].result
+            assertTrue("randInt(1, 6) must be a whole number", randInt1_6.endsWith(".0"))
+            assertTrue("randInt(1, 6) must be between 1 and 6", randInt1_6.toDouble() in 1.0..6.0)
+
+            val randInt2_5 = result[6].result
+            assertTrue("randInt(2.7, 5.9) must be between 2 and 5", randInt2_5.toDouble() in 2.0..5.0)
+
+            assertError("`rand()` requires the first argument to be ≤ the second", result, 7)
+            assertError("`rand()` requires unitless inputs", result, 8)
+            assertError("`rand()` expects 1 to 2 arguments, but got 0", result, 9)
+            assertError("`randInt()` requires the first argument to be ≤ the second", result, 10)
+            assertError("`randInt()` requires unitless inputs", result, 11)
+            assertError("`randInt()` expects 1 to 2 arguments, but got 0", result, 12)
+            assertError("`randInt()` expects 1 to 2 arguments, but got 3", result, 13)
+        }
+    }
 }

@@ -1,0 +1,1 @@
+- Added rand() and randInt() built-in functions to generate random numbers (Issue #211).

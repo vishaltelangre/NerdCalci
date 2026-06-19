@@ -443,7 +443,7 @@ object Builtins {
 
         if (a > b) throw EvalException("`randInt()` requires the first argument to be ≤ the second")
 
-        val result = if (a == b) a else kotlin.random.Random.nextLong(a, b + 1)
+        val result = if (a == b) a else (a..b).random()
         return EvaluationResult(BigDecimal.valueOf(result), rationalValue = Rational.fromLong(result))
     }
 

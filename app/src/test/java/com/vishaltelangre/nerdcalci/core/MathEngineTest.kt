@@ -3574,7 +3574,8 @@ class MathEngineTest {
             "randInt(10, 5)",
             "randInt(1kg, 10)",
             "randInt()",
-            "randInt(1, 10, 1)"
+            "randInt(1, 10, 1)",
+            "randInt(9223372036854775806, 9223372036854775807)"
         ) { result ->
             val rand10 = result[0].result.toDouble()
             assertTrue("rand(10) must be between 0 and 10", rand10 in 0.0..10.0)
@@ -3605,6 +3606,9 @@ class MathEngineTest {
             assertError("`randInt()` requires unitless inputs", result, 11)
             assertError("`randInt()` expects 1 to 2 arguments, but got 0", result, 12)
             assertError("`randInt()` expects 1 to 2 arguments, but got 3", result, 13)
+
+            val randIntMax = java.math.BigDecimal(result[14].result).toLong()
+            assertTrue("randInt at Long.MAX_VALUE must not overflow", randIntMax == Long.MAX_VALUE)
         }
     }
 }

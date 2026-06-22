@@ -3,6 +3,7 @@ package com.vishaltelangre.nerdcalci.utils
 import android.os.Environment
 import com.vishaltelangre.nerdcalci.core.MathEngine
 import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
+import com.vishaltelangre.nerdcalci.data.local.entities.toTagString
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStream
@@ -73,7 +74,7 @@ object FileUtils {
                 lastModified = json.optLong("lastModified", -1L),
                 createdAt = json.optLong("createdAt", -1L),
                 contentHash = if (json.has("contentHash")) json.getString("contentHash") else null,
-                tags = json.optString("tags", "")
+                tags = json.optString("tags", "").split(",").toTagString()
             )
         } catch (_: Exception) {
             null

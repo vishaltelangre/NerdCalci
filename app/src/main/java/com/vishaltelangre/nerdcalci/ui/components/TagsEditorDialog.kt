@@ -99,7 +99,7 @@ fun TagsEditorDialog(
                                     currentTags.forEach { tag ->
                                         InputChip(
                                             selected = false,
-                                            onClick = { },
+                                            onClick = { removeTag(tag) },
                                             label = { Text("#$tag") },
                                             trailingIcon = {
                                                 Icon(

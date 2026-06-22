@@ -236,6 +236,6 @@ open class FakeCalculatorDao : CalculatorDao() {
 
     override fun getAllNonEmptyTagStrings(): Flow<List<String>> =
         _files.map { files ->
-            files.filter { it.tags.isNotBlank() }.map { it.tags }
+            files.filter { !it.isTemporary && !it.isGlobal && it.tags.isNotBlank() }.map { it.tags }
         }
 }

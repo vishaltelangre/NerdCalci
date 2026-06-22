@@ -117,7 +117,7 @@ fun HomeScreen(
 ) {
     val context = LocalContext.current
     val files by viewModel.allFiles.collectAsState(initial = null)
-    val allTags by viewModel.allTags.collectAsState(initial = emptyList())
+    val tagCounts by viewModel.tagCounts.collectAsState(initial = emptyList())
     val activeTagFilter by viewModel.activeTagFilter.collectAsState()
     val fileSortCriteria by viewModel.fileSortCriteria.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -376,7 +376,7 @@ fun HomeScreen(
                     .fillMaxSize()
                     .padding(padding)
             )
-        } else if (files!!.isEmpty()) {
+        } else if (files!!.isEmpty() && activeTagFilter == null) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -512,7 +512,7 @@ fun HomeScreen(
                             snackbarHostState = snackbarHostState,
                             context = context,
                             viewModel = viewModel,
-                            allTags = allTags,
+                            tagCounts = tagCounts,
                             activeTagFilter = activeTagFilter
                         )
                     }
@@ -529,7 +529,7 @@ fun HomeScreen(
                         snackbarHostState = snackbarHostState,
                         context = context,
                         viewModel = viewModel,
-                        allTags = allTags,
+                        tagCounts = tagCounts,
                         activeTagFilter = activeTagFilter
                     )
                 }
@@ -565,14 +565,14 @@ private fun HomeFileList(
     snackbarHostState: SnackbarHostState,
     context: android.content.Context,
     viewModel: CalculatorViewModel,
-    allTags: List<String>,
+    tagCounts: List<Pair<String, Int>>,
     activeTagFilter: String?
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 96.dp)
     ) {
-        if (allTags.isNotEmpty()) {
+        if (tagCounts.isNotEmpty() || activeTagFilter != null) {
             item {
                 LazyRow(
                     modifier = Modifier
@@ -581,7 +581,16 @@ private fun HomeFileList(
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(allTags) { tag ->
+                    val activeTagCount = if (activeTagFilter != null) {
+                        tagCounts.find { it.first == activeTagFilter }?.second ?: 0
+                    } else 0
+                    
+                    val displayTags = if (activeTagFilter != null && tagCounts.none { it.first == activeTagFilter }) {
+                        listOf(Pair(activeTagFilter, activeTagCount)) + tagCounts
+                    } else {
+                        tagCounts
+                    }
+                    items(displayTags) { (tag, count) ->
                         FilterChip(
                             selected = activeTagFilter == tag,
                             onClick = {
@@ -597,6 +606,9 @@ private fun HomeFileList(
                                         append("#")
                                     }
                                     append(tag)
+                                    withStyle(SpanStyle(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))) {
+                                        append(" ($count)")
+                                    }
                                 })
                             }
                         )

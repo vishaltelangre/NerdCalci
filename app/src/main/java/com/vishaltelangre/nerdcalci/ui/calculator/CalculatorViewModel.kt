@@ -789,13 +789,19 @@ class CalculatorViewModel(
     private val _activeTagFilter = MutableStateFlow<String?>(null)
     val activeTagFilter: StateFlow<String?> = _activeTagFilter.asStateFlow()
 
-    val allTags: Flow<List<String>> = dao.getAllFiles()
-        .map { files ->
-            files
-                .flatMap { it.tagList }
-                .distinct()
-                .sorted()
+    val tagCounts: Flow<List<Pair<String, Int>>> = dao.getAllNonEmptyTagStrings()
+        .map { strings ->
+            strings
+                .flatMap { it.split(",") }
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+                .groupingBy { it }
+                .eachCount()
+                .toList()
+                .sortedBy { it.first }
         }
+
+    val allTags: Flow<List<String>> = tagCounts.map { list -> list.map { it.first } }
 
     val allFiles: Flow<List<FileEntity>> = combine(
         dao.getAllFiles(),

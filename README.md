@@ -165,9 +165,10 @@ IzzyOnDroid">](https://apt.izzysoft.de/packages/com.vishaltelangre.nerdcalci)
 
 ### File management
 - **Multiple files**: Create and manage separate calculation files
+- **Tags**: Organize files with custom tags
 - **Auto-save**: Changes are saved automatically
 - **Pin files**: Keep important files at the top (max 10 pinned files)
-- **Search**: Search files easily
+- **Search**: Search files easily by name or tag
 - **Duplicate files**: Create a copy of a file with a new name
 - **Backups**: Automatically or manually backup your files to app storage or a custom folder
 - **Restore from backups**: Restore your files safely with support for conflict resolution (Keep local, replace, or keep both)

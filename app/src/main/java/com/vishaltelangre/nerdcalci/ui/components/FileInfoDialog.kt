@@ -19,10 +19,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import java.text.SimpleDateFormat
 import java.util.Locale
 import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
+import com.vishaltelangre.nerdcalci.data.local.entities.tagList
 import com.vishaltelangre.nerdcalci.ui.calculator.CalculatorViewModel
 
 @Composable
@@ -63,6 +68,23 @@ fun FileInfoDialog(
                 InfoRow(label = "Locked?", value = if (file.isLocked) "Yes" else "No")
                 Spacer(modifier = Modifier.height(12.dp))
                 InfoRow(label = "Pinned?", value = if (file.isPinned) "Yes" else "No")
+                Spacer(modifier = Modifier.height(12.dp))
+                if (file.tags.isNotBlank()) {
+                    InfoRow(
+                        label = "Tags",
+                        value = buildAnnotatedString {
+                            file.tagList.forEachIndexed { index, tag ->
+                                if (index > 0) append(", ")
+                                withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary)) {
+                                    append("#")
+                                }
+                                append(tag)
+                            }
+                        }
+                    )
+                } else {
+                    InfoRow(label = "Tags", value = "None")
+                }
             }
         },
         confirmButton = {
@@ -75,6 +97,23 @@ fun FileInfoDialog(
 
 @Composable
 private fun InfoRow(label: String, value: String) {
+    Column {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
+
+@Composable
+private fun InfoRow(label: String, value: AnnotatedString) {
     Column {
         Text(
             text = label,

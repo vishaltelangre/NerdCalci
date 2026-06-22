@@ -30,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 
 import com.vishaltelangre.nerdcalci.core.Constants
 import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
+import com.vishaltelangre.nerdcalci.data.local.entities.tagList
 import com.vishaltelangre.nerdcalci.ui.calculator.CalculatorViewModel
 
 private val FILE_ITEM_CONTENT_HEIGHT = 56.dp
@@ -132,6 +133,7 @@ internal fun FileItem(
 ) {
     var showMenu by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
+    var showTagsEditorDialog by remember { mutableStateOf(false) }
     var showInfoDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
@@ -207,6 +209,15 @@ internal fun FileItem(
                             }
                         )
                         DropdownMenuItem(
+                            text = { Text("Edit tags…") },
+                            leadingIcon = { Icon(Icons.Default.Tag, contentDescription = null) },
+                            enabled = !file.isLocked,
+                            onClick = {
+                                showMenu = false
+                                showTagsEditorDialog = true
+                            }
+                        )
+                        DropdownMenuItem(
                             text = { Text("Duplicate") },
                             leadingIcon = { Icon(Icons.Default.FileCopy, contentDescription = null) },
                             onClick = {
@@ -258,6 +269,18 @@ internal fun FileItem(
         )
     }
 
+    if (showTagsEditorDialog) {
+        TagsEditorDialog(
+            initialTags = file.tagList,
+            viewModel = viewModel,
+            onDismiss = { showTagsEditorDialog = false },
+            onConfirm = { newTags ->
+                viewModel.updateFileTags(file.id, newTags)
+                showTagsEditorDialog = false
+            }
+        )
+    }
+
     if (showDeleteDialog) {
         DeleteFileDialog(
             fileName = file.name,
@@ -298,7 +321,8 @@ internal fun FileRowCard(
     onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     leadingContent: (@Composable () -> Unit)? = null,
-    trailingContent: (@Composable () -> Unit)? = null
+    trailingContent: (@Composable () -> Unit)? = null,
+    tagsContent: (@Composable () -> Unit)? = null
 ) {
     Card(
         modifier = modifier
@@ -313,7 +337,7 @@ internal fun FileRowCard(
         Row(
             modifier = Modifier
                 .padding(FILE_ITEM_INTERNAL_PADDING)
-                .height(FILE_ITEM_CONTENT_HEIGHT),
+                .heightIn(min = FILE_ITEM_CONTENT_HEIGHT),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (leadingContent != null) {
@@ -377,9 +401,11 @@ internal fun FileRowCard(
                         fontWeight = FontWeight.Normal
                     ),
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 6.dp)
+                    overflow = TextOverflow.Ellipsis
                 )
+                if (tagsContent != null) {
+                    tagsContent()
+                }
             }
             if (trailingContent != null) {
                 trailingContent()

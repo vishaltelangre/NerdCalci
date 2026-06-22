@@ -20,7 +20,8 @@ data class FileEntity(
     val isLocked: Boolean = false,
     val syncId: String = UUID.randomUUID().toString(),
     val isTemporary: Boolean = false,
-    val isGlobal: Boolean = false
+    val isGlobal: Boolean = false,
+    val tags: String = ""
 )
 
 @Entity(
@@ -41,3 +42,37 @@ data class LineEntity(
     val result: String = "",
     val version: Long = 0
 )
+
+/**
+ * Returns the file's tags as a list.
+ * The stored string is already normalized (lowercase, hyphenated, sorted, deduplicated).
+ */
+val FileEntity.tagList: List<String>
+    get() = if (tags.isBlank()) emptyList()
+            else tags.split(",").map { it.trim() }.filter { it.isNotBlank() }
+
+/**
+ * Normalizes a raw user-typed tag:
+ * - Lowercase
+ * - Trim leading/trailing whitespace
+ * - Replace spaces and any character that isn't a letter, digit, or hyphen with a hyphen
+ * - Collapse consecutive hyphens
+ * - Strip leading/trailing hyphens
+ */
+fun String.normalizeTag(): String =
+    this.trim()
+        .lowercase()
+        .replace(Regex("[^a-z0-9-]+"), "-")
+        .replace(Regex("-{2,}"), "-")
+        .trim('-')
+
+/**
+ * Converts a list of tags into the canonical storage string:
+ * normalize each tag, remove blanks, deduplicate, sort alphabetically, join with comma.
+ */
+fun List<String>.toTagString(): String =
+    this.map { it.normalizeTag() }
+        .filter { it.isNotBlank() }
+        .distinct()
+        .sorted()
+        .joinToString(",")

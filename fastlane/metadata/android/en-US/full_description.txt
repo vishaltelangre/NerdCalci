@@ -14,8 +14,9 @@ Features:
 - Auto-completion - Smart suggestions for variable names
 - Comments - Document your calculations with # comments
 - Multiple files - Organize calculations in separate files with auto-save
+- Tags - Organize files with custom tags
 - Pin files - Keep frequently used files at the top
-- Search - Search your files easily
+- Search - Search your files easily by name or tag
 - Duplicate files - Create a copy of a file with a new name
 - Undo/Redo - Up to 30 steps per file
 - Backups - Automatically or manually backup your files to app storage or a custom folder

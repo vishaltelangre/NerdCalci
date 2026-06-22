@@ -62,6 +62,7 @@ import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.Pin
+import androidx.compose.material.icons.filled.Tag
 import androidx.compose.material.icons.filled.FormatListNumbered
 import androidx.compose.material.icons.filled.Functions
 import androidx.compose.material.icons.filled.Lock
@@ -159,7 +160,9 @@ import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
 import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
 import com.vishaltelangre.nerdcalci.ui.components.DeleteFileDialog
 import com.vishaltelangre.nerdcalci.ui.components.RenameFileDialog
+import com.vishaltelangre.nerdcalci.ui.components.TagsEditorDialog
 import com.vishaltelangre.nerdcalci.ui.components.FileInfoDialog
+import com.vishaltelangre.nerdcalci.data.local.entities.tagList
 import com.vishaltelangre.nerdcalci.ui.theme.FiraCodeFamily
 import com.vishaltelangre.nerdcalci.utils.ExportUtils
 import com.vishaltelangre.nerdcalci.utils.SyntaxUtils
@@ -572,6 +575,7 @@ fun CalculatorScreen(
 
     var showMenu by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
+    var showTagsEditorDialog by remember { mutableStateOf(false) }
     var showClearConfirmDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var showInfoDialog by remember { mutableStateOf(false) }
@@ -1013,6 +1017,20 @@ fun CalculatorScreen(
                                         onClick = {
                                             showMenu = false
                                             showRenameDialog = true
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Edit tags…") },
+                                        leadingIcon = {
+                                            Icon(
+                                                Icons.Default.Tag,
+                                                contentDescription = null
+                                            )
+                                        },
+                                        enabled = !isLocked,
+                                        onClick = {
+                                            showMenu = false
+                                            showTagsEditorDialog = true
                                         }
                                     )
                                     DropdownMenuItem(
@@ -1482,6 +1500,18 @@ fun CalculatorScreen(
                     showRenameDialog = false
                 }
                 success
+            }
+        )
+    }
+
+    if (showTagsEditorDialog && currentFile != null) {
+        TagsEditorDialog(
+            initialTags = currentFile.tagList,
+            viewModel = viewModel,
+            onDismiss = { showTagsEditorDialog = false },
+            onConfirm = { newTags ->
+                viewModel.updateFileTags(fileId, newTags)
+                showTagsEditorDialog = false
             }
         )
     }

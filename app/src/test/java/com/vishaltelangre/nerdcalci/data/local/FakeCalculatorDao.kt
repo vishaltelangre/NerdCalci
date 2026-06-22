@@ -210,6 +210,8 @@ open class FakeCalculatorDao : CalculatorDao() {
                 createdAt = createdAt,
                 isPinned = false,
                 isTemporary = false,
+                isLocked = false,
+                tags = sourceFile.tags,
                 syncId = UUID.randomUUID().toString()
             )
         )
@@ -227,4 +229,13 @@ open class FakeCalculatorDao : CalculatorDao() {
     override suspend fun updateFileFromSync(file: FileEntity) {
         internalUpdateFile(file)
     }
+
+    override suspend fun updateFileTags(fileId: Long, tags: String) {
+        _files.value = _files.value.map { if (it.id == fileId) it.copy(tags = tags) else it }
+    }
+
+    override fun getAllNonEmptyTagStrings(): Flow<List<String>> =
+        _files.map { files ->
+            files.filter { it.tags.isNotBlank() }.map { it.tags }
+        }
 }

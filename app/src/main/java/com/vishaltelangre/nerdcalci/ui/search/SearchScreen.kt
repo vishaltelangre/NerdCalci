@@ -3,6 +3,7 @@ package com.vishaltelangre.nerdcalci.ui.search
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -29,10 +30,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.vishaltelangre.nerdcalci.data.local.entities.FileEntity
+import com.vishaltelangre.nerdcalci.data.local.entities.tagList
 import com.vishaltelangre.nerdcalci.ui.calculator.CalculatorViewModel
 import com.vishaltelangre.nerdcalci.utils.FileFuzzyMatcher
 import com.vishaltelangre.nerdcalci.utils.FileFuzzyMatchResult
 import com.vishaltelangre.nerdcalci.ui.components.FileRowCard
+
+internal data class SearchMatch(
+    val file: FileEntity,
+    val nameMatch: FileFuzzyMatchResult?,
+    val tagMatches: List<Pair<String, FileFuzzyMatchResult>>
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,11 +70,17 @@ fun SearchScreen(
     val suggestions = remember(trimmedQuery, files) {
         val query = trimmedQuery
         if (query.isEmpty()) {
-            files.take(10).map { it to FileFuzzyMatchResult(0, emptyList()) }
+            files.take(10).map { SearchMatch(it, FileFuzzyMatchResult(0, emptyList()), emptyList()) }
         } else {
             files.mapNotNull { file ->
-                FileFuzzyMatcher.fuzzyMatch(file.name, query)?.let { file to it }
-            }.sortedByDescending { it.second.score }
+                val nameMatch = FileFuzzyMatcher.fuzzyMatch(file.name, query)
+                val allTagMatches = file.tagList.mapNotNull { tag ->
+                    FileFuzzyMatcher.fuzzyMatch(tag, query)?.let { tag to it }
+                }
+
+                if (nameMatch == null && allTagMatches.isEmpty()) null
+                else SearchMatch(file, nameMatch, allTagMatches)
+            }.sortedByDescending { maxOf(it.nameMatch?.score ?: -1, it.tagMatches.maxOfOrNull { tagMatch -> tagMatch.second.score } ?: -1) }
         }
     }
 
@@ -141,17 +155,62 @@ fun SearchScreen(
                     state = searchResultsListState,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    items(items = suggestions, key = { it.first.id }) { (file, match) ->
-                        val highlightedName = buildHighlightedFileName(
-                            fileName = file.name,
-                            matchedIndices = match.matchedIndices,
-                            highlightColor = MaterialTheme.colorScheme.primary
-                        )
+                    items(items = suggestions, key = { it.file.id }) { matchItem ->
+                        val file = matchItem.file
+                        val nameMatch = matchItem.nameMatch
+                        val allTagMatches = matchItem.tagMatches
+                        val highlightedName = if (nameMatch != null) {
+                            buildHighlightedFileName(
+                                fileName = file.name,
+                                matchedIndices = nameMatch.matchedIndices,
+                                highlightColor = MaterialTheme.colorScheme.primary
+                            )
+                        } else {
+                            AnnotatedString(file.name)
+                        }
                         FileRowCard(
                             file = file,
                             title = highlightedName,
                             onClick = { onFileClick(file.id) },
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            tagsContent = if (trimmedQuery.isNotBlank() && allTagMatches.isNotEmpty()) {
+                                {
+                                    LazyRow(
+                                        modifier = Modifier.padding(top = 8.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        items(items = allTagMatches, key = { it.first }) { tagMatchItem ->
+                                            val tag = tagMatchItem.first
+                                            val match = tagMatchItem.second
+                                            Surface(
+                                                shape = MaterialTheme.shapes.small,
+                                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                                modifier = Modifier.height(24.dp)
+                                            ) {
+                                                val tagsString = buildAnnotatedString {
+                                                    withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary)) {
+                                                        append("#")
+                                                    }
+                                                    val textStart = length
+                                                    append(tag)
+                                                    match.matchedIndices.forEach { matchIdx ->
+                                                        addStyle(
+                                                            SpanStyle(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold),
+                                                            textStart + matchIdx,
+                                                            textStart + matchIdx + 1
+                                                        )
+                                                    }
+                                                }
+                                                androidx.compose.material3.Text(
+                                                    text = tagsString,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            } else null
                         )
                     }
                 }

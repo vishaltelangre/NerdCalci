@@ -16,7 +16,8 @@ data class FileMetadata(
     val isGlobal: Boolean = false,
     val lastModified: Long = -1L,
     val createdAt: Long = -1L,
-    val contentHash: String? = null
+    val contentHash: String? = null,
+    val tags: String = ""
 )
 
 data class ParsedFileContent(
@@ -71,7 +72,8 @@ object FileUtils {
                 isGlobal = json.optBoolean("isGlobal", false),
                 lastModified = json.optLong("lastModified", -1L),
                 createdAt = json.optLong("createdAt", -1L),
-                contentHash = if (json.has("contentHash")) json.getString("contentHash") else null
+                contentHash = if (json.has("contentHash")) json.getString("contentHash") else null,
+                tags = json.optString("tags", "")
             )
         } catch (_: Exception) {
             null
@@ -118,6 +120,7 @@ object FileUtils {
                 if (meta.lastModified != -1L) put("lastModified", meta.lastModified)
                 if (meta.createdAt != -1L) put("createdAt", meta.createdAt)
                 meta.contentHash?.let { put("contentHash", it) }
+                if (meta.tags.isNotBlank()) put("tags", meta.tags)
             }
             sb.append("# @metadata ").append(json.toString()).append("\n")
         }

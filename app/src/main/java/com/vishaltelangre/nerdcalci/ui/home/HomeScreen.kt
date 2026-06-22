@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -58,6 +59,9 @@ import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewModelScope
 import com.vishaltelangre.nerdcalci.R
@@ -113,6 +117,8 @@ fun HomeScreen(
 ) {
     val context = LocalContext.current
     val files by viewModel.allFiles.collectAsState(initial = null)
+    val allTags by viewModel.allTags.collectAsState(initial = emptyList())
+    val activeTagFilter by viewModel.activeTagFilter.collectAsState()
     val fileSortCriteria by viewModel.fileSortCriteria.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
@@ -505,7 +511,9 @@ fun HomeScreen(
                             coroutineScope = coroutineScope,
                             snackbarHostState = snackbarHostState,
                             context = context,
-                            viewModel = viewModel
+                            viewModel = viewModel,
+                            allTags = allTags,
+                            activeTagFilter = activeTagFilter
                         )
                     }
                 } else {
@@ -520,7 +528,9 @@ fun HomeScreen(
                         coroutineScope = coroutineScope,
                         snackbarHostState = snackbarHostState,
                         context = context,
-                        viewModel = viewModel
+                        viewModel = viewModel,
+                        allTags = allTags,
+                        activeTagFilter = activeTagFilter
                     )
                 }
             }
@@ -554,12 +564,46 @@ private fun HomeFileList(
     coroutineScope: CoroutineScope,
     snackbarHostState: SnackbarHostState,
     context: android.content.Context,
-    viewModel: CalculatorViewModel
+    viewModel: CalculatorViewModel,
+    allTags: List<String>,
+    activeTagFilter: String?
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 96.dp)
     ) {
+        if (allTags.isNotEmpty()) {
+            item {
+                LazyRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(allTags) { tag ->
+                        FilterChip(
+                            selected = activeTagFilter == tag,
+                            onClick = {
+                                if (activeTagFilter == tag) {
+                                    viewModel.setTagFilter(null)
+                                } else {
+                                    viewModel.setTagFilter(tag)
+                                }
+                            },
+                            label = {
+                                Text(buildAnnotatedString {
+                                    withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary)) {
+                                        append("#")
+                                    }
+                                    append(tag)
+                                })
+                            }
+                        )
+                    }
+                }
+            }
+        }
 
         if (visiblePinnedFiles.isNotEmpty()) {
             item { SectionHeader(title = "PINNED") }

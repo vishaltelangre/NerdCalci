@@ -554,7 +554,8 @@ object SyncManager {
                 isGlobal = file.isGlobal,
                 lastModified = file.lastModified,
                 createdAt = file.createdAt,
-                contentHash = contentHash
+                contentHash = contentHash,
+                tags = file.tags
             )
         )
 
@@ -639,7 +640,8 @@ object SyncManager {
                 isLocked = metadata.isLocked,
                 isGlobal = metadata.isGlobal,
                 lastModified = finalLastModified,
-                createdAt = if (metadata.createdAt != -1L) metadata.createdAt else existingFile.createdAt
+                createdAt = if (metadata.createdAt != -1L) metadata.createdAt else existingFile.createdAt,
+                tags = metadata.tags
             )
             dao.updateFileFromSync(updatedFile)
             existingFile.id
@@ -661,7 +663,8 @@ object SyncManager {
                     createdAt = if (metadata.createdAt != -1L) metadata.createdAt else nameCollidedFile.createdAt,
                     isPinned = metadata.isPinned,
                     isLocked = metadata.isLocked,
-                    isGlobal = true
+                    isGlobal = true,
+                    tags = metadata.tags
                 )
                 dao.updateFileFromSync(updatedFile)
                 nameCollidedFile.id
@@ -680,7 +683,8 @@ object SyncManager {
                     createdAt = metadata.createdAt.takeIf { it != -1L } ?: finalLastModified,
                     isPinned = metadata.isPinned,
                     isLocked = metadata.isLocked,
-                    isGlobal = metadata.isGlobal
+                    isGlobal = metadata.isGlobal,
+                    tags = metadata.tags
                 )
                 dao.insertFile(newFile)
                 dao.getFileBySyncId(syncId)?.id ?: throw Exception("Failed to retrieve inserted file")

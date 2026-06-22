@@ -28,6 +28,8 @@ import com.vishaltelangre.nerdcalci.data.local.entities.LineEntity
 import com.vishaltelangre.nerdcalci.data.local.entities.FileSortCriteria
 import com.vishaltelangre.nerdcalci.data.local.entities.FileSortOption
 import com.vishaltelangre.nerdcalci.data.local.entities.FileSortDirection
+import com.vishaltelangre.nerdcalci.data.local.entities.tagList
+import com.vishaltelangre.nerdcalci.data.local.entities.toTagString
 
 import com.vishaltelangre.nerdcalci.utils.Suggestion
 import com.vishaltelangre.nerdcalci.utils.SuggestionType
@@ -39,6 +41,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -783,14 +786,39 @@ class CalculatorViewModel(
     private val _uiEvents = MutableSharedFlow<HomeUiEvent>()
     val uiEvents = _uiEvents.asSharedFlow()
 
+    private val _activeTagFilter = MutableStateFlow<String?>(null)
+    val activeTagFilter: StateFlow<String?> = _activeTagFilter.asStateFlow()
+
+    val allTags: Flow<List<String>> = dao.getAllFiles()
+        .map { files ->
+            files
+                .flatMap { it.tagList }
+                .distinct()
+                .sorted()
+        }
+
     val allFiles: Flow<List<FileEntity>> = combine(
         dao.getAllFiles(),
-        _fileSortCriteria
-    ) { files: List<FileEntity>, criteria: FileSortCriteria ->
-        files.sortedWith(
+        _fileSortCriteria,
+        _activeTagFilter
+    ) { files: List<FileEntity>, criteria: FileSortCriteria, tagFilter: String? ->
+        val filtered = if (tagFilter == null) files
+                       else files.filter { tagFilter in it.tagList }
+        filtered.sortedWith(
             compareByDescending<FileEntity> { it.isPinned }
                 .thenComparing(getFileComparator(criteria))
         )
+    }
+
+    fun setTagFilter(tag: String?) {
+        _activeTagFilter.value = tag
+    }
+
+    fun updateFileTags(fileId: Long, newTags: List<String>) {
+        viewModelScope.launch(ioDispatcher) {
+            val canonical = newTags.toTagString()
+            dao.updateFileTags(fileId, canonical)
+        }
     }
 
     private fun getFileComparator(criteria: FileSortCriteria): Comparator<FileEntity> {

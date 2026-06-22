@@ -208,6 +208,18 @@ abstract class CalculatorDao {
     @Query("UPDATE files SET syncId = :newSyncId WHERE id = :fileId")
     abstract suspend fun updateSyncId(fileId: Long, newSyncId: String)
 
+    /** Updates the tags column for a single file. */
+    @Query("UPDATE files SET tags = :tags WHERE id = :fileId")
+    abstract suspend fun updateFileTags(fileId: Long, tags: String)
+
+    /**
+     * Returns all non-empty tags strings from user files.
+     * Excludes temporary and global files.
+     * Parsing into a distinct tag list is handled in the ViewModel.
+     */
+    @Query("SELECT tags FROM files WHERE isTemporary = 0 AND isGlobal = 0 AND tags != ''")
+    abstract fun getAllNonEmptyTagStrings(): Flow<List<String>>
+
     @Transaction
     open suspend fun createNewFile(baseName: String, createdAt: Long): Long {
         val uniqueName = FilenameUtils.generateUniqueFileName(baseName) { name ->
@@ -266,7 +278,8 @@ abstract class CalculatorDao {
                 lastModified = createdAt,
                 createdAt = createdAt,
                 isPinned = false,
-                isLocked = false
+                isLocked = false,
+                tags = sourceFile.tags
             )
         )
 

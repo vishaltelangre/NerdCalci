@@ -880,12 +880,41 @@ cos(60 degree) # 0.5
 | Kilocalorie                | `kCal`, `kcal`, `kilocalorie`, `kilocalories`                                         | `10 kCal`   |
 | Watt hour                  | `Wh`, `watt hour`, `watt hours`                                                       | `10 Wh`     |
 | Kilowatt hour              | `kWh`, `kilowatt hour`, `kilowatt hours`                                              | `10 kWh`    |
+| Milliwatt hour             | `mWh`, `milliwatt hour`, `milliwatt hours`                                            | `10 mWh`    |
+| Megawatt hour              | `MWh`, `megawatt hour`, `megawatt hours`                                              | `10 MWh`    |
+| Gigawatt hour              | `GWh`, `gigawatt hour`, `gigawatt hours`                                              | `10 GWh`    |
+| Terawatt hour              | `TWh`, `terawatt hour`, `terawatt hours`                                              | `10 TWh`    |
+| Watt second                | `Ws`, `watt second`, `watt seconds`                                                   | `10 Ws`     |
+| Milliwatt second           | `mWs`, `milliwatt second`, `milliwatt seconds`                                        | `10 mWs`    |
+| Kilowatt second            | `kWs`, `kilowatt second`, `kilowatt seconds`                                          | `10 kWs`    |
+| Megawatt second            | `MWs`, `megawatt second`, `megawatt seconds`                                          | `10 MWs`    |
+| Gigawatt second            | `GWs`, `gigawatt second`, `gigawatt seconds`                                          | `10 GWs`    |
+| Terawatt second            | `TWs`, `terawatt second`, `terawatt seconds`                                          | `10 TWs`    |
+| Watt minute                | `Wmin`, `watt minute`, `watt minutes`                                                 | `10 Wmin`   |
+| Milliwatt minute           | `mWmin`, `mWm`, `milliwatt minute`, `milliwatt minutes`                               | `10 mWmin`  |
+| Kilowatt minute            | `kWmin`, `kWm`, `kilowatt minute`, `kilowatt minutes`                                 | `10 kWmin`  |
+| Megawatt minute            | `MWmin`, `MWm`, `megawatt minute`, `megawatt minutes`                                 | `10 MWmin`  |
+| Gigawatt minute            | `GWmin`, `GWm`, `gigawatt minute`, `gigawatt minutes`                                 | `10 GWmin`  |
+| Terawatt minute            | `TWmin`, `TWm`, `terawatt minute`, `terawatt minutes`                                 | `10 TWmin`  |
 | Electron volt              | `eV`, `electronvolt`, `electron volts`                                                | `10 eV`     |
 | Foot pound-force           | `ft_lbf`, `foot_pound`                                                                | `10 ft_lbf` |
 | British thermal unit       | `BTU`, `btu`                                                                          | `10 BTU`    |
 | Tons of TNT equivalent     | `tTNT`, `ton of TNT`, `tons of TNT`, `tonne of TNT`, `tonnes of TNT`                  | `10 tTNT`   |
 | Kilotons of TNT equivalent | `ktTNT`, `kiloton of TNT`, `kilotons of TNT`, `kilotonne of TNT`, `kilotonnes of TNT` | `10 ktTNT`  |
 | Megatons of TNT equivalent | `MtTNT`, `megaton of TNT`, `megatons of TNT`, `megatonne of TNT`, `megatonnes of TNT` | `10 MtTNT`  |
+
+Dimension-safe power/energy arithmetic is supported:
+- `W * h` results in `Wh`
+- `kW * h` results in `kWh`
+- `W * s` results in `J`
+- `kW * s` results in `kWs`
+- `W * min` results in `Wmin`
+- `Wh / h` results in `W`
+- `kWh / h` results in `kW`
+- `Wh / W` results in `h`
+- `kWh / kW` results in `h`
+- `J / W` results in `s`
+- `J / s` results in `W`
 
 ### Power
 

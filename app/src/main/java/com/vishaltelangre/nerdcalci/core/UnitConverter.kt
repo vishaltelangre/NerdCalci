@@ -69,7 +69,9 @@ object UnitConverter {
         UnitRule(UnitCategory.ELECTRIC_POTENTIAL, UnitCategory.ELECTRIC_CURRENT, result = { _, _ -> "W" }),
         UnitRule(UnitCategory.ELECTRIC_CURRENT, UnitCategory.ELECTRIC_POTENTIAL, result = { _, _ -> "W" }),
         UnitRule(UnitCategory.ELECTRIC_CURRENT, UnitCategory.TIME, result = { left, right -> matchCurrentTimeToCharge(left, right) }),
-        UnitRule(UnitCategory.TIME, UnitCategory.ELECTRIC_CURRENT, result = { left, right -> matchCurrentTimeToCharge(right, left) })
+        UnitRule(UnitCategory.TIME, UnitCategory.ELECTRIC_CURRENT, result = { left, right -> matchCurrentTimeToCharge(right, left) }),
+        UnitRule(UnitCategory.POWER, UnitCategory.TIME, result = { left, right -> matchPowerTimeToEnergy(left, right) }),
+        UnitRule(UnitCategory.TIME, UnitCategory.POWER, result = { left, right -> matchPowerTimeToEnergy(right, left) })
     )
 
     // Division rules are explicit, reversible, and keep same-category cancellation separate.
@@ -153,6 +155,12 @@ object UnitConverter {
         }),
         UnitRule(UnitCategory.LENGTH, UnitCategory.SPEED, result = { left, right ->
             matchSpeedToTime(right.symbols[0])
+        }),
+        UnitRule(UnitCategory.ENERGY, UnitCategory.TIME, result = { left, right ->
+            matchEnergyTimeToPower(left, right)
+        }),
+        UnitRule(UnitCategory.ENERGY, UnitCategory.POWER, result = { left, right ->
+            matchEnergyPowerToTime(left, right)
         })
     )
 
@@ -354,6 +362,22 @@ object UnitConverter {
         Unit("Tons of TNT equivalent", listOf("tTNT", "ton of TNT", "tons of TNT", "tonne of TNT", "tonnes of TNT"), UnitCategory.ENERGY, BigDecimal("4.184e9")),
         Unit("Kilotons of TNT equivalent", listOf("ktTNT", "kiloton of TNT", "kilotons of TNT", "kilotonne of TNT", "kilotonnes of TNT"), UnitCategory.ENERGY, BigDecimal("4.184e12")),
         Unit("Megatons of TNT equivalent", listOf("MtTNT", "megaton of TNT", "megatons of TNT", "megatonne of TNT", "megatonnes of TNT"), UnitCategory.ENERGY, BigDecimal("4.184e15")),
+        Unit("Watt second", listOf("Ws", "watt second", "watt seconds"), UnitCategory.ENERGY, BigDecimal.ONE),
+        Unit("Watt minute", listOf("Wmin", "watt minute", "watt minutes"), UnitCategory.ENERGY, BigDecimal("60.0")),
+        Unit("Milliwatt hour", listOf("mWh", "milliwatt hour", "milliwatt hours"), UnitCategory.ENERGY, BigDecimal("3.6")),
+        Unit("Megawatt hour", listOf("MWh", "megawatt hour", "megawatt hours"), UnitCategory.ENERGY, BigDecimal("3.6e9")),
+        Unit("Gigawatt hour", listOf("GWh", "gigawatt hour", "gigawatt hours"), UnitCategory.ENERGY, BigDecimal("3.6e12")),
+        Unit("Terawatt hour", listOf("TWh", "terawatt hour", "terawatt hours"), UnitCategory.ENERGY, BigDecimal("3.6e15")),
+        Unit("Kilowatt second", listOf("kWs", "kilowatt second", "kilowatt seconds"), UnitCategory.ENERGY, BigDecimal("1000.0")),
+        Unit("Megawatt second", listOf("MWs", "megawatt second", "megawatt seconds"), UnitCategory.ENERGY, BigDecimal("1e6")),
+        Unit("Gigawatt second", listOf("GWs", "gigawatt second", "gigawatt seconds"), UnitCategory.ENERGY, BigDecimal("1e9")),
+        Unit("Terawatt second", listOf("TWs", "terawatt second", "terawatt seconds"), UnitCategory.ENERGY, BigDecimal("1e12")),
+        Unit("Milliwatt second", listOf("mWs", "milliwatt second", "milliwatt seconds"), UnitCategory.ENERGY, BigDecimal("0.001")),
+        Unit("Kilowatt minute", listOf("kWmin", "kWm", "kilowatt minute", "kilowatt minutes"), UnitCategory.ENERGY, BigDecimal("60000.0")),
+        Unit("Megawatt minute", listOf("MWmin", "MWm", "megawatt minute", "megawatt minutes"), UnitCategory.ENERGY, BigDecimal("6e7")),
+        Unit("Gigawatt minute", listOf("GWmin", "GWm", "gigawatt minute", "gigawatt minutes"), UnitCategory.ENERGY, BigDecimal("6e10")),
+        Unit("Terawatt minute", listOf("TWmin", "TWm", "terawatt minute", "terawatt minutes"), UnitCategory.ENERGY, BigDecimal("6e13")),
+        Unit("Milliwatt minute", listOf("mWmin", "mWm", "milliwatt minute", "milliwatt minutes"), UnitCategory.ENERGY, BigDecimal("0.06")),
 
         // --- POWER --- (Base: Watt)
         Unit("Watt", listOf("W", "watt", "watts"), UnitCategory.POWER, BigDecimal.ONE),
@@ -874,6 +898,15 @@ object UnitConverter {
         "G" to "G"
     )
 
+    private val POWER_PREFIX_MAP = mapOf(
+        "" to "",
+        "m" to "m",
+        "k" to "k",
+        "M" to "M",
+        "G" to "G",
+        "T" to "T"
+    )
+
     private fun matchCurrentTimeToCharge(current: Unit, time: Unit): String? {
         val currentSym = current.symbols.first()
         val timeSym = time.symbols.first()
@@ -886,6 +919,61 @@ object UnitConverter {
             "s" -> prefix + "As"
             "min" -> prefix + "Amin"
             "h" -> prefix + "Ah"
+            else -> null
+        }
+    }
+
+    private fun matchPowerTimeToEnergy(power: Unit, time: Unit): String? {
+        val powerSym = power.symbols.first()
+        val timeSym = time.symbols.first()
+
+        if (!powerSym.endsWith("W")) return null
+        val prefixRaw = powerSym.removeSuffix("W")
+        val prefix = POWER_PREFIX_MAP[prefixRaw] ?: return null
+
+        val candidate = when (timeSym) {
+            "s" -> if (prefix == "") "J" else prefix + "Ws"
+            "min" -> prefix + "Wmin"
+            "h" -> prefix + "Wh"
+            else -> null
+        }
+        return if (candidate != null && findUnit(candidate) != null) candidate else null
+    }
+
+    private fun matchEnergyTimeToPower(energy: Unit, time: Unit): String? {
+        val energySym = energy.symbols.first()
+        val timeSym = time.symbols.first()
+
+        return when {
+            energySym == "J" && timeSym == "s" -> "W"
+            energySym.endsWith("Wh") && timeSym == "h" -> {
+                val prefix = energySym.removeSuffix("Wh")
+                if (prefix.isEmpty() || prefix in POWER_PREFIX_MAP) prefix + "W" else null
+            }
+            energySym.endsWith("Wmin") && timeSym == "min" -> {
+                val prefix = energySym.removeSuffix("Wmin")
+                if (prefix.isEmpty() || prefix in POWER_PREFIX_MAP) prefix + "W" else null
+            }
+            energySym.endsWith("Ws") && timeSym == "s" -> {
+                val prefix = energySym.removeSuffix("Ws")
+                if (prefix.isEmpty() || prefix in POWER_PREFIX_MAP) prefix + "W" else null
+            }
+            else -> null
+        }
+    }
+
+    private fun matchEnergyPowerToTime(energy: Unit, power: Unit): String? {
+        val energySym = energy.symbols.first()
+        val powerSym = power.symbols.first()
+
+        if (!powerSym.endsWith("W")) return null
+        val powerPrefix = POWER_PREFIX_MAP[powerSym.removeSuffix("W")] ?: return null
+
+        return when {
+            energySym == powerPrefix + "Wh" -> "h"
+            energySym == powerPrefix + "Wmin" -> "min"
+            energySym == powerPrefix + "Ws" -> "s"
+            energySym == "J" && powerPrefix == "" -> "s"
             else -> null
         }
     }

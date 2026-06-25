@@ -116,4 +116,104 @@ class ElectricalUnitConversionTest {
         val flow3Base = UnitConverter.toBase(BigDecimal("60"), mAmin, emptyMap())
         assertEquals(1.0, UnitConverter.fromBase(flow3Base, mAh, emptyMap()).toDouble(), 0.001)
     }
+
+    @Test
+    fun `W times h results in Wh`() {
+        val watt = UnitConverter.findUnit("W")!!
+        val hour = UnitConverter.findUnit("h")!!
+        assertEquals("Wh", UnitConverter.deriveUnit(watt, hour, TokenKind.STAR))
+        assertEquals("Wh", UnitConverter.deriveUnit(hour, watt, TokenKind.STAR))
+
+        val w = BigDecimal("12")
+        val h = BigDecimal("5")
+        val resultBase = UnitConverter.toBase(w, watt, emptyMap()) * UnitConverter.toBase(h, hour, emptyMap())
+        val wh = UnitConverter.findUnit("Wh")!!
+        val resultValue = UnitConverter.fromBase(resultBase, wh, emptyMap())
+        assertEquals(60.0, resultValue.toDouble(), 0.001)
+    }
+
+    @Test
+    fun `kW times h results in kWh`() {
+        val kW = UnitConverter.findUnit("kW")!!
+        val hour = UnitConverter.findUnit("h")!!
+        assertEquals("kWh", UnitConverter.deriveUnit(kW, hour, TokenKind.STAR))
+        assertEquals("kWh", UnitConverter.deriveUnit(hour, kW, TokenKind.STAR))
+
+        val kw = BigDecimal("3")
+        val h = BigDecimal("2")
+        val resultBase = UnitConverter.toBase(kw, kW, emptyMap()) * UnitConverter.toBase(h, hour, emptyMap())
+        val kwh = UnitConverter.findUnit("kWh")!!
+        val resultValue = UnitConverter.fromBase(resultBase, kwh, emptyMap())
+        assertEquals(6.0, resultValue.toDouble(), 0.001)
+    }
+
+    @Test
+    fun `W times s results in J`() {
+        val watt = UnitConverter.findUnit("W")!!
+        val sec = UnitConverter.findUnit("s")!!
+        assertEquals("J", UnitConverter.deriveUnit(watt, sec, TokenKind.STAR))
+
+        val w = BigDecimal("100")
+        val s = BigDecimal("30")
+        val resultBase = UnitConverter.toBase(w, watt, emptyMap()) * UnitConverter.toBase(s, sec, emptyMap())
+        val joule = UnitConverter.findUnit("J")!!
+        val resultValue = UnitConverter.fromBase(resultBase, joule, emptyMap())
+        assertEquals(3000.0, resultValue.toDouble(), 0.001)
+    }
+
+    @Test
+    fun `Wh divided by h results in W`() {
+        val wh = UnitConverter.findUnit("Wh")!!
+        val h = UnitConverter.findUnit("h")!!
+        assertEquals("W", UnitConverter.deriveUnit(wh, h, TokenKind.SLASH))
+
+        val whVal = BigDecimal("60")
+        val hVal = BigDecimal("5")
+        val resultBase = UnitConverter.toBase(whVal, wh, emptyMap()).divide(UnitConverter.toBase(hVal, h, emptyMap()), java.math.MathContext.DECIMAL128)
+        val watt = UnitConverter.findUnit("W")!!
+        val resultValue = UnitConverter.fromBase(resultBase, watt, emptyMap())
+        assertEquals(12.0, resultValue.toDouble(), 0.001)
+    }
+
+    @Test
+    fun `kWh divided by h results in kW`() {
+        val kwh = UnitConverter.findUnit("kWh")!!
+        val h = UnitConverter.findUnit("h")!!
+        assertEquals("kW", UnitConverter.deriveUnit(kwh, h, TokenKind.SLASH))
+
+        val kwhVal = BigDecimal("6")
+        val hVal = BigDecimal("2")
+        val resultBase = UnitConverter.toBase(kwhVal, kwh, emptyMap()).divide(UnitConverter.toBase(hVal, h, emptyMap()), java.math.MathContext.DECIMAL128)
+        val kw = UnitConverter.findUnit("kW")!!
+        val resultValue = UnitConverter.fromBase(resultBase, kw, emptyMap())
+        assertEquals(3.0, resultValue.toDouble(), 0.001)
+    }
+
+    @Test
+    fun `Wh divided by W results in h`() {
+        val wh = UnitConverter.findUnit("Wh")!!
+        val watt = UnitConverter.findUnit("W")!!
+        assertEquals("h", UnitConverter.deriveUnit(wh, watt, TokenKind.SLASH))
+
+        val whVal = BigDecimal("60")
+        val wVal = BigDecimal("12")
+        val resultBase = UnitConverter.toBase(whVal, wh, emptyMap()).divide(UnitConverter.toBase(wVal, watt, emptyMap()), java.math.MathContext.DECIMAL128)
+        val hour = UnitConverter.findUnit("h")!!
+        val resultValue = UnitConverter.fromBase(resultBase, hour, emptyMap())
+        assertEquals(5.0, resultValue.toDouble(), 0.001)
+    }
+
+    @Test
+    fun `J divided by W results in s`() {
+        val joule = UnitConverter.findUnit("J")!!
+        val watt = UnitConverter.findUnit("W")!!
+        assertEquals("s", UnitConverter.deriveUnit(joule, watt, TokenKind.SLASH))
+
+        val jVal = BigDecimal("3000")
+        val wVal = BigDecimal("100")
+        val resultBase = UnitConverter.toBase(jVal, joule, emptyMap()).divide(UnitConverter.toBase(wVal, watt, emptyMap()), java.math.MathContext.DECIMAL128)
+        val sec = UnitConverter.findUnit("s")!!
+        val resultValue = UnitConverter.fromBase(resultBase, sec, emptyMap())
+        assertEquals(30.0, resultValue.toDouble(), 0.001)
+    }
 }

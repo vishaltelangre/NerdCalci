@@ -465,4 +465,143 @@ class MixedUnitUsageTest {
             }
         }
     }
+
+    @Test
+    fun `multiply power by time yields energy`() {
+        testCalculate(
+            "12 W * 5 h",
+            "5 h * 12 W",
+            "3 kW * 2 h",
+            "2 h * 3 kW",
+            "100 W * 30 s",
+            "30 s * 100 W",
+            "5 W * 10 min",
+            "10 min * 5 W"
+        ) { result ->
+            assertEquals("60.0 Wh", result[0].result)
+            assertEquals("60.0 Wh", result[1].result)
+            assertEquals("6.0 kWh", result[2].result)
+            assertEquals("6.0 kWh", result[3].result)
+            assertEquals("3000.0 J", result[4].result)
+            assertEquals("3000.0 J", result[5].result)
+            assertEquals("50.0 Wmin", result[6].result)
+            assertEquals("50.0 Wmin", result[7].result)
+        }
+    }
+
+    @Test
+    fun `divide energy by time yields power`() {
+        testCalculate(
+            "60 Wh / 5 h",
+            "6 kWh / 2 h",
+            "3000 J / 30 s"
+        ) { result ->
+            assertEquals("12.0 W", result[0].result)
+            assertEquals("3.0 kW", result[1].result)
+            assertEquals("100.0 W", result[2].result)
+        }
+    }
+
+    @Test
+    fun `divide energy by power yields time`() {
+        testCalculate(
+            "60 Wh / 12 W",
+            "6 kWh / 3 kW",
+            "3000 J / 100 W"
+        ) { result ->
+            assertEquals("5.0 h", result[0].result)
+            assertEquals("2.0 h", result[1].result)
+            assertEquals("30.0 s", result[2].result)
+        }
+    }
+
+    @Test
+    fun `prefixed power times second yields prefixed Ws`() {
+        testCalculate(
+            "3 kW * 30 s",
+            "30 s * 3 kW",
+            "2 MW * 5 s",
+            "5 GW * 2 s"
+        ) { result ->
+            assertEquals("90.0 kWs", result[0].result)
+            assertEquals("90.0 kWs", result[1].result)
+            assertEquals("10.0 MWs", result[2].result)
+            assertEquals("10.0 GWs", result[3].result)
+        }
+    }
+
+    @Test
+    fun `prefixed power times minute yields prefixed Wmin`() {
+        testCalculate(
+            "4 kW * 5 min",
+            "5 min * 4 kW",
+            "2 MW * 3 min"
+        ) { result ->
+            assertEquals("20.0 kWmin", result[0].result)
+            assertEquals("20.0 kWmin", result[1].result)
+            assertEquals("6.0 MWmin", result[2].result)
+        }
+    }
+
+    @Test
+    fun `divide prefixed Ws by time or power`() {
+        testCalculate(
+            "90 kWs / 30 s",
+            "90 kWs / 3 kW",
+            "10 MWs / 5 s",
+            "10 MWs / 2 MW"
+        ) { result ->
+            assertEquals("3.0 kW", result[0].result)
+            assertEquals("30.0 s", result[1].result)
+            assertEquals("2.0 MW", result[2].result)
+            assertEquals("5.0 s", result[3].result)
+        }
+    }
+
+    @Test
+    fun `divide plain Wmin and Ws by time or power`() {
+        testCalculate(
+            "50 Wmin / 5 min",
+            "50 Wmin / 10 W",
+            "90 Ws / 30 s",
+            "90 Ws / 9 W"
+        ) { result ->
+            assertEquals("10.0 W", result[0].result)
+            assertEquals("5.0 min", result[1].result)
+            assertEquals("3.0 W", result[2].result)
+            assertEquals("10.0 s", result[3].result)
+        }
+    }
+
+    @Test
+    fun `divide MWh GWh mWh by time or power`() {
+        testCalculate(
+            "10 MWh / 5 h",
+            "10 MWh / 2 MW",
+            "15 GWh / 3 h",
+            "15 GWh / 5 GW",
+            "12 mWh / 4 mW"
+        ) { result ->
+            assertEquals("2.0 MW", result[0].result)
+            assertEquals("5.0 h", result[1].result)
+            assertEquals("5.0 GW", result[2].result)
+            assertEquals("3.0 h", result[3].result)
+            assertEquals("3.0 h", result[4].result)
+        }
+    }
+
+    @Test
+    fun `divide prefixed Wmin by time or power`() {
+        testCalculate(
+            "20 kWmin / 5 min",
+            "20 kWmin / 4 kW",
+            "6 MWmin / 2 min",
+            "6 MWmin / 3 MW"
+        ) { result ->
+            assertEquals("4.0 kW", result[0].result)
+            assertEquals("5.0 min", result[1].result)
+            assertEquals("3.0 MW", result[2].result)
+            assertEquals("2.0 min", result[3].result)
+        }
+    }
 }

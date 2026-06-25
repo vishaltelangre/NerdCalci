@@ -611,6 +611,21 @@ object MathEngine {
         }
 
         val trimmedUnit = unitStr.trim().lowercase()
+
+        // Guard: if the suffix after the first number looks like a date/duration fragment
+        // rather than a unit abbreviation, return the raw result unchanged.
+        // Date strings (DMY format) have a capitalized month abbreviation ("Oct", "Dec") as the
+        // first token, multi-component durations have internal spaces ("3 wk 5 d"), and
+        // other-year date strings have commas ("Oct, 2025"). None of these patterns can appear
+        // in a valid unit abbreviation, so we can safely bail out here.
+        val trimmedUnitRaw = unitStr.trim()
+        if (trimmedUnitRaw.isNotEmpty() &&
+            (trimmedUnitRaw.first().isUpperCase() ||
+             trimmedUnitRaw.contains(' ') ||
+             trimmedUnitRaw.contains(','))) {
+            return rawResult
+        }
+
         val isNumeralSystem = UnitConverter.isNumeralSystemSymbol(trimmedUnit)
 
         val (formattedResult, isTruncated) = if (isNumeralSystem) {

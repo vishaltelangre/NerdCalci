@@ -2244,6 +2244,39 @@ class MathEngineTest {
             }
 
     @Test
+    fun `formatDisplayResult passes date strings through unchanged regardless of precision or locale`() =
+        runBlocking {
+            // DMY format, current-year dates: day number followed by capitalized month abbreviation.
+            // "Oct" was being misidentified as the octal numeral system unit ("oct"),
+            // causing "1 Oct" to render as "0o1".
+            assertEquals("1 Oct", MathEngine.formatDisplayResult("1 Oct", Constants.PRECISION_OFF, Locale.GERMANY))
+            assertEquals("1 Oct", MathEngine.formatDisplayResult("1 Oct", 2, Locale.GERMANY))
+            // "Dec" was misidentified as the decimal numeral system unit ("dec"),
+            // causing "1 Dec" to strip the month and render as just "1".
+            assertEquals("1 Dec", MathEngine.formatDisplayResult("1 Dec", Constants.PRECISION_OFF, Locale.GERMANY))
+            assertEquals("1 Dec", MathEngine.formatDisplayResult("1 Dec", 2, Locale.GERMANY))
+            // Other months in DMY current-year format should also be unaffected.
+            assertEquals("1 Nov", MathEngine.formatDisplayResult("1 Nov", Constants.PRECISION_OFF, Locale.GERMANY))
+            assertEquals("15 Mar", MathEngine.formatDisplayResult("15 Mar", Constants.PRECISION_OFF, Locale.GERMANY))
+
+            // Other-year DMY format: "1 Oct, 2025" was rendered as "1,0 Oct, 2025" (or "1.0 Oct,
+            // 2025") because the day number "1" was reformatted as a decimal value.
+            assertEquals("1 Oct, 2025", MathEngine.formatDisplayResult("1 Oct, 2025", Constants.PRECISION_OFF, Locale.GERMANY))
+            assertEquals("1 Oct, 2025", MathEngine.formatDisplayResult("1 Oct, 2025", 2, Locale.GERMANY))
+            assertEquals("1 Dec, 2025", MathEngine.formatDisplayResult("1 Dec, 2025", Constants.PRECISION_OFF, Locale.GERMANY))
+            assertEquals("15 Mar, 2027", MathEngine.formatDisplayResult("15 Mar, 2027", Constants.PRECISION_OFF, Locale.GERMANY))
+
+            // MDY format strings already worked (non-numeric first token); verify they still do.
+            assertEquals("Oct 1", MathEngine.formatDisplayResult("Oct 1", Constants.PRECISION_OFF, Locale.GERMANY))
+            assertEquals("Oct 1, 2025", MathEngine.formatDisplayResult("Oct 1, 2025", Constants.PRECISION_OFF, Locale.GERMANY))
+            assertEquals("Dec 1", MathEngine.formatDisplayResult("Dec 1", Constants.PRECISION_OFF, Locale.GERMANY))
+
+            // Multi-component duration strings should also pass through unchanged.
+            assertEquals("3 wk 5 d", MathEngine.formatDisplayResult("3 wk 5 d", Constants.PRECISION_OFF, Locale.GERMANY))
+            assertEquals("2 h 30 min", MathEngine.formatDisplayResult("2 h 30 min", Constants.PRECISION_OFF, Locale.GERMANY))
+        }
+
+    @Test
     fun `getErrorDetails handles undefined variable`() =
             testCalculate("x + 5") { result ->
                 assertError("Unknown variable `x`", result[0], result, 0)

@@ -2274,6 +2274,14 @@ class MathEngineTest {
             // Multi-component duration strings should also pass through unchanged.
             assertEquals("3 wk 5 d", MathEngine.formatDisplayResult("3 wk 5 d", Constants.PRECISION_OFF, Locale.GERMANY))
             assertEquals("2 h 30 min", MathEngine.formatDisplayResult("2 h 30 min", Constants.PRECISION_OFF, Locale.GERMANY))
+
+            // Regression: uppercase-first unit symbols (K=Kelvin, L=Liter, Pa=Pascal, NM=Nautical
+            // Mile) must NOT be treated as date strings — they should still receive normal numeric
+            // locale-formatting.
+            assertEquals("300,50 K", MathEngine.formatDisplayResult("300.5 K", 2, Locale.GERMANY))
+            assertEquals("1,23 L", MathEngine.formatDisplayResult("1.234 L", 2, Locale.GERMANY))
+            assertEquals("101.325 Pa", MathEngine.formatDisplayResult("101325.0 Pa", 2, Locale.GERMANY))
+            assertEquals("1,85 NM", MathEngine.formatDisplayResult("1.852 NM", 2, Locale.GERMANY))
         }
 
     @Test

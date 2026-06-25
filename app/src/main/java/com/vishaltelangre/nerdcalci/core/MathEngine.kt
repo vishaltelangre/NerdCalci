@@ -29,6 +29,14 @@ data class MathContext(
 
 object MathEngine {
 
+    // English 3-letter month abbreviations produced by DateEvaluator (TextStyle.SHORT + Locale.ENGLISH).
+    // Used to detect DMY-format date strings in formatDisplayResult without conflating them with
+    // legitimate uppercase unit symbols (K, L, N, Pa, NM, Hz, …).
+    private val MONTH_ABBREVIATIONS = setOf(
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+    )
+
     /**
      * Registry of dynamic variable keywords.
      *
@@ -614,13 +622,22 @@ object MathEngine {
 
         // Guard: if the suffix after the first number looks like a date/duration fragment
         // rather than a unit abbreviation, return the raw result unchanged.
-        // Date strings (DMY format) have a capitalized month abbreviation ("Oct", "Dec") as the
-        // first token, multi-component durations have internal spaces ("3 wk 5 d"), and
-        // other-year date strings have commas ("Oct, 2025"). None of these patterns can appear
-        // in a valid unit abbreviation, so we can safely bail out here.
+        //
+        // Three cases to detect:
+        // 1. DMY current-year dates: day number + English month abbreviation
+        //    e.g. "1 Oct", "15 Dec" — the month token is always one of the 12 short names
+        //    produced by DateEvaluator (TextStyle.SHORT + Locale.ENGLISH, so first letter
+        //    uppercase, rest lowercase). No real unit symbol matches these case-sensitively.
+        // 2. Multi-component duration strings: internal space after trimming
+        //    e.g. "3 wk 5 d", "2 h 30 min" — unit abbreviations are always a single token.
+        // 3. Other-year date strings: contain a comma
+        //    e.g. "1 Oct, 2025", "15 Dec, 2027".
+        //
+        // Note: the first().isUpperCase() check is intentionally avoided here — many real unit
+        // symbols start with an uppercase letter (K, L, N, J, Pa, NM, AU, Hz, GB, …).
         val trimmedUnitRaw = unitStr.trim()
         if (trimmedUnitRaw.isNotEmpty() &&
-            (trimmedUnitRaw.first().isUpperCase() ||
+            (MONTH_ABBREVIATIONS.contains(trimmedUnitRaw) ||
              trimmedUnitRaw.contains(' ') ||
              trimmedUnitRaw.contains(','))) {
             return rawResult

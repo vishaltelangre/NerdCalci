@@ -1,0 +1,2 @@
+- Added support for deriving and converting energy units from power/time combinations (Issue: #209).
+- Fixed the display bug in date results for the Oct/Dec months for the current year (Issue: #215).

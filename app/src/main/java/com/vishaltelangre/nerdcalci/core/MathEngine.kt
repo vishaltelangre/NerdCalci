@@ -443,7 +443,7 @@ object MathEngine {
             }
         }
 
-        var maxValue = BigDecimal.ZERO
+        var maxValue: BigDecimal? = null
         for (result in blockResults) {
             val resultValue = result.value ?: BigDecimal.ZERO
             val resultUnit = result.unit?.let { UnitConverter.findUnit(it) }
@@ -467,7 +467,7 @@ object MathEngine {
                 }
             }
 
-            if (resultValue > maxValue)
+            if (maxValue == null || resultValue > maxValue)
                 maxValue = resultValue
         }
 

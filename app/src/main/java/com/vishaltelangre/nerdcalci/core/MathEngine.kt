@@ -506,7 +506,7 @@ object MathEngine {
             }
         }
 
-        var minValue = BigDecimal.ZERO
+        var minValue: BigDecimal? = null
         for (result in blockResults) {
             val resultValue = result.value ?: BigDecimal.ZERO
             val resultUnit = result.unit?.let { UnitConverter.findUnit(it) }
@@ -520,17 +520,17 @@ object MathEngine {
                     } ?: expectedCategory.name.lowercase().replaceFirstChar { it.uppercase() }
                     val resultName =
                         resultUnit?.name?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "unitless number"
-                    throw EvalException("Maximum of `$expectedName` and `$resultName` is not supported")
+                    throw EvalException("Minimum of `$expectedName` and `$resultName` is not supported")
                 }
 
             } else {
                 // Block contains no physical units: all lines must be non-physical
                 if (isPhysicalCategory(resultCategory)) {
-                    throw EvalException("Maximum of physical and unitless values is not supported")
+                    throw EvalException("Minimum of physical and unitless values is not supported")
                 }
             }
 
-            if (resultValue < minValue)
+            if (minValue == null || resultValue < minValue)
                 minValue = resultValue
         }
 

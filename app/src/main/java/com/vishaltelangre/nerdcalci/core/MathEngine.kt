@@ -530,7 +530,7 @@ object MathEngine {
                 }
             }
 
-            if (resultValue > minValue)
+            if (resultValue < minValue)
                 minValue = resultValue
         }
 

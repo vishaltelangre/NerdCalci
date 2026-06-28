@@ -19,7 +19,7 @@ object SyntaxUtils {
 
     /** Identifiers that are highlighted as keywords rather than variables. */
     private val KEYWORD_NAMES = setOf(
-        "sum", "total", "avg", "average", "last", "prev", "previous", "above", "_",
+        "sum", "total", "avg", "average", "max", "maximum", "min", "minimum", "last", "prev", "previous", "above", "_",
         "lineno", "linenumber", "currentLineNumber"
     )
 

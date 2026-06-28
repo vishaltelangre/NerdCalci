@@ -53,6 +53,12 @@ object MathEngine {
         "avg"               to { results, _ -> computeBlockAverage(results) },
         "average"           to { results, _ -> computeBlockAverage(results) },
 
+        "min"               to { results, _ -> computeBlockMin(results) },
+        "minimum"           to { results, _ -> computeBlockMin(results) },
+
+        "max"               to { results, _ -> computeBlockMax(results) },
+        "maximum"           to { results, _ -> computeBlockMax(results) },
+
         "last"              to { results, _ -> computePreviousLineResult(results) },
         "prev"              to { results, _ -> computePreviousLineResult(results) },
         "previous"          to { results, _ -> computePreviousLineResult(results) },
@@ -403,6 +409,132 @@ object MathEngine {
         }
 
         return EvaluationResult(sumValue, targetUnitSymbol)
+    }
+
+    private fun computeBlockMax(lineResults: List<EvaluationResult?>): EvaluationResult {
+        val blockResults = mutableListOf<EvaluationResult>()
+        for (i in lineResults.indices.reversed()) {
+            val result = lineResults[i] ?: break
+            blockResults.add(0, result)
+        }
+
+        if (blockResults.isEmpty()) return EvaluationResult(BigDecimal.ZERO)
+
+        var expectedCategory: UnitCategory? = null
+        var firstUnitSymbol: String? = null
+        for (res in blockResults) {
+            if (res.unit != null) {
+                val u = UnitConverter.findUnit(res.unit)
+                if (isPhysicalCategory(u?.category)) {
+                    expectedCategory = u?.category
+                    firstUnitSymbol = res.unit
+                    break
+                }
+            }
+        }
+
+        // Target unit for final result is the unit of the LAST line with a physical unit
+        var targetUnitSymbol: String? = null
+        for (i in blockResults.indices.reversed()) {
+            val u = blockResults[i].unit?.let { UnitConverter.findUnit(it) }
+            if (isPhysicalCategory(u?.category)) {
+                targetUnitSymbol = blockResults[i].unit
+                break
+            }
+        }
+
+        var maxValue = BigDecimal.ZERO
+        for (result in blockResults) {
+            val resultValue = result.value ?: BigDecimal.ZERO
+            val resultUnit = result.unit?.let { UnitConverter.findUnit(it) }
+            val resultCategory = resultUnit?.category
+
+            if (expectedCategory != null) {
+                // Block contains physical units: all lines must match that category
+                if (!isPhysicalCategory(resultCategory) || resultCategory != expectedCategory) {
+                    val expectedName = firstUnitSymbol?.let {
+                        UnitConverter.findUnit(it)?.name?.lowercase()?.replaceFirstChar { it.uppercase() }
+                    } ?: expectedCategory.name.lowercase().replaceFirstChar { it.uppercase() }
+                    val resultName =
+                        resultUnit?.name?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "unitless number"
+                    throw EvalException("Maximum of `$expectedName` and `$resultName` is not supported")
+                }
+
+            } else {
+                // Block contains no physical units: all lines must be non-physical
+                if (isPhysicalCategory(resultCategory)) {
+                    throw EvalException("Maximum of physical and unitless values is not supported")
+                }
+            }
+
+            if (resultValue > maxValue)
+                maxValue = resultValue
+        }
+
+        return EvaluationResult(maxValue, targetUnitSymbol)
+    }
+
+    private fun computeBlockMin(lineResults: List<EvaluationResult?>): EvaluationResult {
+        val blockResults = mutableListOf<EvaluationResult>()
+        for (i in lineResults.indices.reversed()) {
+            val result = lineResults[i] ?: break
+            blockResults.add(0, result)
+        }
+
+        if (blockResults.isEmpty()) return EvaluationResult(BigDecimal.ZERO)
+
+        var expectedCategory: UnitCategory? = null
+        var firstUnitSymbol: String? = null
+        for (res in blockResults) {
+            if (res.unit != null) {
+                val u = UnitConverter.findUnit(res.unit)
+                if (isPhysicalCategory(u?.category)) {
+                    expectedCategory = u?.category
+                    firstUnitSymbol = res.unit
+                    break
+                }
+            }
+        }
+
+        // Target unit for final result is the unit of the LAST line with a physical unit
+        var targetUnitSymbol: String? = null
+        for (i in blockResults.indices.reversed()) {
+            val u = blockResults[i].unit?.let { UnitConverter.findUnit(it) }
+            if (isPhysicalCategory(u?.category)) {
+                targetUnitSymbol = blockResults[i].unit
+                break
+            }
+        }
+
+        var minValue = BigDecimal.ZERO
+        for (result in blockResults) {
+            val resultValue = result.value ?: BigDecimal.ZERO
+            val resultUnit = result.unit?.let { UnitConverter.findUnit(it) }
+            val resultCategory = resultUnit?.category
+
+            if (expectedCategory != null) {
+                // Block contains physical units: all lines must match that category
+                if (!isPhysicalCategory(resultCategory) || resultCategory != expectedCategory) {
+                    val expectedName = firstUnitSymbol?.let {
+                        UnitConverter.findUnit(it)?.name?.lowercase()?.replaceFirstChar { it.uppercase() }
+                    } ?: expectedCategory.name.lowercase().replaceFirstChar { it.uppercase() }
+                    val resultName =
+                        resultUnit?.name?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "unitless number"
+                    throw EvalException("Maximum of `$expectedName` and `$resultName` is not supported")
+                }
+
+            } else {
+                // Block contains no physical units: all lines must be non-physical
+                if (isPhysicalCategory(resultCategory)) {
+                    throw EvalException("Maximum of physical and unitless values is not supported")
+                }
+            }
+
+            if (resultValue > minValue)
+                minValue = resultValue
+        }
+
+        return EvaluationResult(minValue, targetUnitSymbol)
     }
 
     /**

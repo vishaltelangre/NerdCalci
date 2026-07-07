@@ -1,0 +1,1 @@
+- Added `min`/`minimum` and `max`/`maximum` dynamic variables to find the smallest or largest value in the preceding block (Issue: #220).

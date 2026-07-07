@@ -1706,6 +1706,84 @@ class MathEngineTest {
     }
 
     @Test
+    fun `min finds smallest result in same block`() =
+            testCalculate("10", "5", "20", "min", "5m", "10", "min") { result ->
+                assertEquals("10.0", result[0].result)
+                assertEquals("5.0", result[1].result)
+                assertEquals("20.0", result[2].result)
+                assertEquals("5.0", result[3].result)
+                assertEquals("5.0 m", result[4].result)
+                assertEquals("10.0", result[5].result)
+                assertError("Minimum of `Meter` and `unitless number` is not supported", result, 6)
+            }
+
+    @Test
+    fun `minimum is an alias for min`() =
+            testCalculate("10", "30", "5", "minimum") { result ->
+                assertEquals("5.0", result[3].result)
+            }
+
+    @Test
+    fun `min with no preceding results is 0`() =
+            testCalculate("min") { result -> assertEquals("0.0", result[0].result) }
+
+    @Test
+    fun `blank line resets the block for min`() =
+            testCalculate("10", "5", "min", "", "20", "15", "min") { result ->
+                assertEquals("5.0", result[2].result)
+                assertEquals("", result[3].result)
+                assertEquals("15.0", result[6].result)
+            }
+
+    @Test
+    fun `min handles all negative numbers correctly`() =
+            testCalculate("-5", "-10", "-3", "min") { result ->
+                assertEquals("-10.0", result[3].result)
+            }
+
+    @Test
+    fun `max finds largest result in same block`() =
+            testCalculate("10", "5", "20", "max", "5m", "10", "max") { result ->
+                assertEquals("10.0", result[0].result)
+                assertEquals("5.0", result[1].result)
+                assertEquals("20.0", result[2].result)
+                assertEquals("20.0", result[3].result)
+                assertEquals("5.0 m", result[4].result)
+                assertEquals("10.0", result[5].result)
+                assertError("Maximum of `Meter` and `unitless number` is not supported", result, 6)
+            }
+
+    @Test
+    fun `maximum is an alias for max`() =
+            testCalculate("10", "30", "5", "maximum") { result ->
+                assertEquals("30.0", result[3].result)
+            }
+
+    @Test
+    fun `max with no preceding results is 0`() =
+            testCalculate("max") { result -> assertEquals("0.0", result[0].result) }
+
+    @Test
+    fun `blank line resets the block for max`() =
+            testCalculate("10", "5", "max", "", "20", "15", "max") { result ->
+                assertEquals("10.0", result[2].result)
+                assertEquals("", result[3].result)
+                assertEquals("20.0", result[6].result)
+            }
+
+    @Test
+    fun `max handles all negative numbers correctly`() =
+            testCalculate("-5", "-10", "-3", "max") { result ->
+                assertEquals("-3.0", result[3].result)
+            }
+
+    @Test
+    fun `min and max ignore non-numeric results like dates and throw exception`() =
+            testCalculate("10", "\"Hello\"", "min") { result ->
+                assertError("Minimum of non-numeric values is not supported", result, 2)
+            }
+
+    @Test
     fun `grand_total sums all results above across block boundaries`() =
             testCalculate("a = 10", "b = 20", "total", "", "c = 5", "total", "grand_total") { result
                 ->
@@ -1949,6 +2027,30 @@ class MathEngineTest {
     fun `average alias assignment is blocked`() =
             testCalculate("average = 5") { result ->
                 assertError("`average` is a reserved name and cannot be changed", result, 0)
+            }
+
+    @Test
+    fun `min alias assignment is blocked`() =
+            testCalculate("min = 5") { result ->
+                assertError("`min` is a reserved name and cannot be changed", result, 0)
+            }
+
+    @Test
+    fun `minimum alias assignment is blocked`() =
+            testCalculate("minimum = 5") { result ->
+                assertError("`minimum` is a reserved name and cannot be changed", result, 0)
+            }
+
+    @Test
+    fun `max alias assignment is blocked`() =
+            testCalculate("max = 5") { result ->
+                assertError("`max` is a reserved name and cannot be changed", result, 0)
+            }
+
+    @Test
+    fun `maximum alias assignment is blocked`() =
+            testCalculate("maximum = 5") { result ->
+                assertError("`maximum` is a reserved name and cannot be changed", result, 0)
             }
 
     @Test

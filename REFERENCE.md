@@ -411,6 +411,38 @@ half_avg = avg / 2  # evaluates to 25
 
 `avg` and `average` are reserved keywords and cannot be reassigned.
 
+### Min / Max
+
+Use `min` (or `minimum`) and `max` (or `maximum`) to find the smallest or largest line result above, up to the nearest blank/comment/error line.
+
+```text
+jan = 100
+feb = 200
+mar = 300
+max                 # evaluates to 300
+```
+
+Blank/comment/error lines create blocks — `min` and `max` only check within the current block:
+
+```text
+a = 10
+b = 20
+max                 # evaluates to 20
+
+c = 5
+min                 # evaluates to 5
+```
+
+Use them inside expressions:
+
+```text
+item1 = 25
+item2 = 75
+diff = max - min    # evaluates to 50
+```
+
+`min`, `minimum`, `max`, and `maximum` are reserved keywords and cannot be reassigned.
+
 ### Reference to previous line result
 
 Use `last`, `prev`, `previous`, `above`, or `_` to reference the result of the immediately preceding line.

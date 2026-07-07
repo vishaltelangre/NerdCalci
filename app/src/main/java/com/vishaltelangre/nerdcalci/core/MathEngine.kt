@@ -53,6 +53,12 @@ object MathEngine {
         "avg"               to { results, _ -> computeBlockAverage(results) },
         "average"           to { results, _ -> computeBlockAverage(results) },
 
+        "min"               to { results, _ -> computeBlockMin(results) },
+        "minimum"           to { results, _ -> computeBlockMin(results) },
+
+        "max"               to { results, _ -> computeBlockMax(results) },
+        "maximum"           to { results, _ -> computeBlockMax(results) },
+
         "last"              to { results, _ -> computePreviousLineResult(results) },
         "prev"              to { results, _ -> computePreviousLineResult(results) },
         "previous"          to { results, _ -> computePreviousLineResult(results) },
@@ -347,62 +353,105 @@ object MathEngine {
         }
     }
 
-    private fun computeBlockSum(lineResults: List<EvaluationResult?>): EvaluationResult {
+    private fun getBlockResults(lineResults: List<EvaluationResult?>): List<EvaluationResult> {
         val blockResults = mutableListOf<EvaluationResult>()
         for (i in lineResults.indices.reversed()) {
             val result = lineResults[i] ?: break
             blockResults.add(0, result)
         }
+        return blockResults
+    }
 
-        if (blockResults.isEmpty()) return EvaluationResult(BigDecimal.ZERO)
-
+    private fun validateUnitsAndGetTarget(results: List<EvaluationResult>, operationName: String): String? {
         var expectedCategory: UnitCategory? = null
         var firstUnitSymbol: String? = null
-        for (res in blockResults) {
-            if (res.unit != null) {
-                val u = UnitConverter.findUnit(res.unit)
-                if (isPhysicalCategory(u?.category)) {
-                    expectedCategory = u?.category
-                    firstUnitSymbol = res.unit
-                    break
-                }
-            }
-        }
-
-        // Target unit for final result is the unit of the LAST line with a physical unit
-        var targetUnitSymbol: String? = null
-        for (i in blockResults.indices.reversed()) {
-            val u = blockResults[i].unit?.let { UnitConverter.findUnit(it) }
-            if (isPhysicalCategory(u?.category)) {
-                targetUnitSymbol = blockResults[i].unit
+        for (res in results) {
+            val u = res.unit?.let { UnitConverter.findUnit(it) }
+            val cat = u?.category
+            if (isPhysicalCategory(cat)) {
+                expectedCategory = cat
+                firstUnitSymbol = res.unit
                 break
             }
         }
 
-        var sumValue = BigDecimal.ZERO
-        for (result in blockResults) {
-            val resultValue = result.value ?: BigDecimal.ZERO
+        var targetUnitSymbol: String? = null
+        for (i in results.indices.reversed()) {
+            val u = results[i].unit?.let { UnitConverter.findUnit(it) }
+            if (isPhysicalCategory(u?.category)) {
+                targetUnitSymbol = results[i].unit
+                break
+            }
+        }
+
+        for (result in results) {
             val resultUnit = result.unit?.let { UnitConverter.findUnit(it) }
             val resultCategory = resultUnit?.category
 
             if (expectedCategory != null) {
-                // Block contains physical units: all lines must match that category
                 if (!isPhysicalCategory(resultCategory) || resultCategory != expectedCategory) {
                     val expectedName = firstUnitSymbol?.let { UnitConverter.findUnit(it)?.name?.lowercase()?.replaceFirstChar { it.uppercase() } } ?: expectedCategory.name.lowercase().replaceFirstChar { it.uppercase() }
                     val resultName = resultUnit?.name?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "unitless number"
-                    throw EvalException("Summation of `$expectedName` and `$resultName` is not supported")
+                    throw EvalException("$operationName of `$expectedName` and `$resultName` is not supported")
                 }
-                sumValue = sumValue.add(resultValue)
             } else {
-                // Block contains no physical units: all lines must be non-physical
                 if (isPhysicalCategory(resultCategory)) {
-                    throw EvalException("Summation of physical and unitless values is not supported")
+                    throw EvalException("$operationName of physical and unitless values is not supported")
                 }
-                sumValue = sumValue.add(resultValue)
             }
+        }
+        return targetUnitSymbol
+    }
+
+    private fun computeBlockSum(lineResults: List<EvaluationResult?>): EvaluationResult {
+        val blockResults = getBlockResults(lineResults)
+        if (blockResults.isEmpty()) return EvaluationResult(BigDecimal.ZERO)
+
+        val targetUnitSymbol = validateUnitsAndGetTarget(blockResults, "Summation")
+
+        var sumValue = BigDecimal.ZERO
+        for (result in blockResults) {
+            val resultValue = result.value ?: BigDecimal.ZERO
+            sumValue = sumValue.add(resultValue)
         }
 
         return EvaluationResult(sumValue, targetUnitSymbol)
+    }
+
+    private fun computeBlockMax(lineResults: List<EvaluationResult?>): EvaluationResult {
+        val blockResults = getBlockResults(lineResults)
+        if (blockResults.isEmpty()) return EvaluationResult(BigDecimal.ZERO)
+
+        val targetUnitSymbol = validateUnitsAndGetTarget(blockResults, "Maximum")
+
+        var maxValue: BigDecimal? = null
+        for (result in blockResults) {
+            val resultValue = result.value
+                ?: throw EvalException("Maximum of non-numeric values is not supported")
+
+            if (maxValue == null || resultValue > maxValue)
+                maxValue = resultValue
+        }
+
+        return EvaluationResult(maxValue ?: BigDecimal.ZERO, targetUnitSymbol)
+    }
+
+    private fun computeBlockMin(lineResults: List<EvaluationResult?>): EvaluationResult {
+        val blockResults = getBlockResults(lineResults)
+        if (blockResults.isEmpty()) return EvaluationResult(BigDecimal.ZERO)
+
+        val targetUnitSymbol = validateUnitsAndGetTarget(blockResults, "Minimum")
+
+        var minValue: BigDecimal? = null
+        for (result in blockResults) {
+            val resultValue = result.value
+                ?: throw EvalException("Minimum of non-numeric values is not supported")
+
+            if (minValue == null || resultValue < minValue)
+                minValue = resultValue
+        }
+
+        return EvaluationResult(minValue ?: BigDecimal.ZERO, targetUnitSymbol)
     }
 
     /**
@@ -415,109 +464,30 @@ object MathEngine {
      * physical unit.
      */
     private fun computeGrandTotal(lineResults: List<EvaluationResult?>): EvaluationResult {
-        // Collect every non-null result (order preserved, no block-boundary stop)
         val allResults = lineResults.filterNotNull()
-
         if (allResults.isEmpty()) return EvaluationResult(BigDecimal.ZERO)
 
-        // Determine expected physical category from the FIRST line with a physical unit
-        var expectedCategory: UnitCategory? = null
-        var firstUnitSymbol: String? = null
-        for (res in allResults) {
-            val u = res.unit?.let { UnitConverter.findUnit(it) }
-            if (isPhysicalCategory(u?.category)) {
-                expectedCategory = u?.category
-                firstUnitSymbol = res.unit
-                break
-            }
-        }
-
-        // Target display unit is taken from the LAST line with a physical unit
-        var targetUnitSymbol: String? = null
-        for (i in allResults.indices.reversed()) {
-            val u = allResults[i].unit?.let { UnitConverter.findUnit(it) }
-            if (isPhysicalCategory(u?.category)) {
-                targetUnitSymbol = allResults[i].unit
-                break
-            }
-        }
+        val targetUnitSymbol = validateUnitsAndGetTarget(allResults, "Summation")
 
         var sumValue = BigDecimal.ZERO
         for (result in allResults) {
             val resultValue = result.value ?: BigDecimal.ZERO
-            val resultUnit = result.unit?.let { UnitConverter.findUnit(it) }
-            val resultCategory = resultUnit?.category
-
-            if (expectedCategory != null) {
-                // Block contains physical units: all lines must match that category
-                if (!isPhysicalCategory(resultCategory) || resultCategory != expectedCategory) {
-                    val expectedName = firstUnitSymbol?.let { UnitConverter.findUnit(it)?.name?.lowercase()?.replaceFirstChar { it.uppercase() } } ?: expectedCategory.name.lowercase().replaceFirstChar { it.uppercase() }
-                    val resultName = resultUnit?.name?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "unitless number"
-                    throw EvalException("Summation of `$expectedName` and `$resultName` is not supported")
-                }
-                sumValue = sumValue.add(resultValue)
-            } else {
-                // Block contains no physical units: all lines must be non-physical
-                if (isPhysicalCategory(resultCategory)) {
-                    throw EvalException("Summation of physical and unitless values is not supported")
-                }
-                sumValue = sumValue.add(resultValue)
-            }
+            sumValue = sumValue.add(resultValue)
         }
 
         return EvaluationResult(sumValue, targetUnitSymbol)
     }
 
     private fun computeBlockAverage(lineResults: List<EvaluationResult?>): EvaluationResult {
-        val blockResults = mutableListOf<EvaluationResult>()
-        for (i in lineResults.indices.reversed()) {
-            val result = lineResults[i] ?: break
-            blockResults.add(0, result)
-        }
-
+        val blockResults = getBlockResults(lineResults)
         if (blockResults.isEmpty()) return EvaluationResult(BigDecimal.ZERO)
 
-        // Use logic similar to sum for dimension checking
-        var expectedCategory: UnitCategory? = null
-        var firstUnitSymbol: String? = null
-        for (res in blockResults) {
-            val u = res.unit?.let { UnitConverter.findUnit(it) }
-            val cat = u?.category
-            if (isPhysicalCategory(cat)) {
-                expectedCategory = cat
-                firstUnitSymbol = res.unit
-                break
-            }
-        }
-
-        var targetUnitSymbol: String? = null
-        for (i in blockResults.indices.reversed()) {
-            val u = blockResults[i].unit?.let { UnitConverter.findUnit(it) }
-            if (isPhysicalCategory(u?.category)) {
-                targetUnitSymbol = blockResults[i].unit
-                break
-            }
-        }
+        val targetUnitSymbol = validateUnitsAndGetTarget(blockResults, "Average")
 
         var sumValue = BigDecimal.ZERO
         var count = 0
         for (result in blockResults) {
             val resultValue = result.value ?: BigDecimal.ZERO
-            val resultUnit = result.unit?.let { UnitConverter.findUnit(it) }
-            val resultCategory = resultUnit?.category
-
-            if (expectedCategory != null) {
-                if (!isPhysicalCategory(resultCategory) || resultCategory != expectedCategory) {
-                    val expectedName = firstUnitSymbol?.let { UnitConverter.findUnit(it)?.name?.lowercase()?.replaceFirstChar { it.uppercase() } } ?: expectedCategory.name.lowercase().replaceFirstChar { it.uppercase() }
-                    val resultName = resultUnit?.name?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "unitless number"
-                    throw EvalException("Average of `$expectedName` and `$resultName` is not supported")
-                }
-            } else {
-                if (isPhysicalCategory(resultCategory)) {
-                    throw EvalException("Average of physical and unitless values is not supported")
-                }
-            }
-
             sumValue = sumValue.add(resultValue)
             count++
         }

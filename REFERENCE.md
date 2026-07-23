@@ -1243,16 +1243,16 @@ You can query interval counts using any standard time unit symbol or name:
     *   If the target is a plain `Date` (e.g. `date(2024, 1, 1)`), it measures calendar days relative to `today` (midnight).
     *   If the target is a `DateTime` with time components (e.g. `datetimeZ(2026, 6, 9, 21, 21, 11, "GMT")` or `now - 2 hours`), it measures elapsed time down to the exact second relative to `now`, returning decimal precision.
     *   *Examples*:
-        *   `days since date(2024, 1, 1)` &rarr; `934 d` (Integer calendar days)
-        *   `days since datetimeZ(2026, 6, 9, 21, 21, 11, "GMT")` &rarr; `17.7769560185 d` (High-precision decimal days)
-        *   `hours since mydate` &rarr; `426.6469444444 h` (Precise elapsed hours)
-        *   `minutes since mydate` &rarr; `25598.8166666667 min` (Precise elapsed minutes)
-        *   `seconds since mydate` &rarr; `1535929 s` (Precise elapsed seconds)
+        *   `days since date(2024, 1, 1)` &rarr; `<elapsed_days> d` (Whole calendar days elapsed)
+        *   `days since datetimeZ(2026, 6, 9, 21, 21, 11, "GMT")` &rarr; `<elapsed_decimal_days> d` (High-precision decimal days, e.g. `17.7769... d`)
+        *   `hours since mydate` &rarr; `<elapsed_hours> h` (Precise elapsed hours, e.g. `426.64... h`)
+        *   `minutes since mydate` &rarr; `<elapsed_minutes> min` (Precise elapsed minutes)
+        *   `seconds since mydate` &rarr; `<elapsed_seconds> s` (Precise elapsed seconds)
 
 *   **`<unit> till <date/datetime>`** or **`<unit> until <date/datetime>`**: Calculates the remaining time from the present until a target date or datetime.
     *   *Examples*:
-        *   `days till date(2026, 12, 31)` &rarr; `160 d`
-        *   `hours until datetime(2026, 12, 31, 23, 59, 59)` &rarr; `3847.7997222222 h`
+        *   `days till date(2026, 12, 31)` &rarr; `<remaining_days> d`
+        *   `hours until datetime(2026, 12, 31, 23, 59, 59)` &rarr; `<remaining_hours> h`
 
 *   **`<unit> between <start> and <end>`**: Calculates the distance/difference between two dates or datetimes. The result is always non-negative (absolute).
     *   *Examples*:
@@ -1273,25 +1273,24 @@ You can query interval counts using any standard time unit symbol or name:
 #### 3. Unit projections and formatting
 
 You can append `in <unit>` to project any date/time query into another target time unit:
-*   `days since date(2024, 1, 1) in hours` &rarr; `22416 h`
+*   `days since date(2024, 1, 1) in hours` &rarr; `<elapsed_hours> h`
 *   `days between date(2024, 1, 1) and date(2024, 1, 2) in seconds` &rarr; `86400 s`
 
 You can also apply standard math functions to date/time query results:
-*   `ceil(days since mydate)` &rarr; `18 d`
-*   `floor(days since mydate)` &rarr; `17 d`
-*   `(hours since mydate) / 24` &rarr; `17.7769560185`
+*   `ceil(days since mydate)` &rarr; `<rounded_days>.0 d`
+*   `floor(days since mydate)` &rarr; `<rounded_days>.0 d`
 
 #### Summary Table
 
-| Operation               | Syntax Example                                         | Output Format      | Description                                                            |
-| :---------------------- | :----------------------------------------------------- | :----------------- | :--------------------------------------------------------------------- |
-| **Days since Date**     | `days since date(2024, 1, 1)`                          | `934 d`            | Days elapsed since midnight of a plain date                            |
-| **Time unit query**     | `hours since datetimeZ(2026, 6, 9, 21, 21, 11, "GMT")` | `426.6469444444 h` | Precise elapsed time in requested unit (hours, minutes, seconds, etc.) |
-| **Time till Date/Time** | `hours until date(2026, 12, 31)`                       | `3847.8 h`         | Precise hours remaining until target date/datetime                     |
-| **Time between**        | `hours between dt1 and dt2`                            | `30.5 h`           | Absolute difference between two datetimes                              |
-| **Calendar interval**   | `date(2024, 1, 1) to today`                            | `4 mo 1 wk`        | Calendar-aware duration (years/months/weeks/days)                      |
-| **Unit projection**     | `days since date(2024, 1, 1) in hours`                 | `22416 h`          | Projects date difference into target unit                              |
-| **Rounded query**       | `ceil(days since mydate)`                              | `18.0 d`           | Forces integer rounding on fractional queries                          |
+| Operation               | Syntax Example                                            | Output Format         | Description                                                            |
+| :---------------------- | :-------------------------------------------------------- | :-------------------- | :--------------------------------------------------------------------- |
+| **Days since Date**     | `days since date(2024, 1, 1)`                             | `<elapsed_days> d`    | Whole calendar days elapsed since midnight                             |
+| **Time unit query**     | `hours since datetimeZ(2026, 6, 9, 21, 21, 11, "GMT")`    | `<elapsed_hours> h`   | Precise elapsed time in requested unit (hours, minutes, seconds, etc.) |
+| **Time till Date/Time** | `hours until date(2026, 12, 31)`                          | `<remaining_hours> h` | Precise hours remaining until target date/datetime                     |
+| **Time between**        | `hours between dt1 and dt2`                               | `30.5 h`              | Absolute difference between two datetimes                              |
+| **Calendar interval**   | `date(2024, 1, 1) to date(2024, 5, 15)`                   | `4 mo 14 d`           | Calendar-aware duration (years/months/weeks/days)                      |
+| **Unit projection**     | `days between date(2024, 1, 1) and date(2024, 1, 2) in s` | `86400 s`             | Projects date difference into target unit                              |
+| **Rounded query**       | `ceil(days between dt1 and dt2)`                          | `2.0 d`               | Forces integer rounding on fractional queries                          |
 
 > **Note**: While `to`, `through`, `since`, and `till` are signed (e.g., `tomorrow to today` is `-1 d`), the `between` operator is always absolute (e.g., `between tomorrow and today` is `1 d`).
 

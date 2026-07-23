@@ -676,7 +676,8 @@ class DateTimeFeaturesTest {
         "hours between datetime(2024, 1, 1, 12, 0, 0) and datetime(2024, 1, 2, 18, 30, 0)",
         "minutes between datetime(2024, 1, 1, 12, 0, 0) and datetime(2024, 1, 1, 12, 45, 0)",
         "date(2024, 1, 1) to date(2024, 5, 15)",
-        "days between date(2024, 1, 1) and date(2024, 1, 2) in seconds"
+        "days between date(2024, 1, 1) and date(2024, 1, 2) in seconds",
+        "datetimeZ(2024, 1, 1, 0, 0, 0, \"UTC\") + (hours between dt1 and dt2)"
     ) { results ->
         assertEquals("1.2708333333 d", results[2].result)
         assertEquals("30.5 h", results[3].result)
@@ -692,5 +693,6 @@ class DateTimeFeaturesTest {
         assertEquals("45 min", results[13].result)
         assertEquals("4 mo 14 d", results[14].result)
         assertEquals("86400 s", results[15].result)
+        assertEquals("Jan 2, 2024, 6:30 AM UTC", results[16].result)
     }
 }

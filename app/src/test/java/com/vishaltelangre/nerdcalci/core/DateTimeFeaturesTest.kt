@@ -658,4 +658,39 @@ class DateTimeFeaturesTest {
             assertEquals("May 7", results[2].result)
         }
     }
+
+    @Test
+    fun `precision date time queries and units`() = testCalculate(
+        "dt1 = datetimeZ(2024, 1, 1, 12, 0, 0, \"UTC\")",
+        "dt2 = datetimeZ(2024, 1, 2, 18, 30, 0, \"UTC\")",
+        "days between dt1 and dt2",
+        "hours between dt1 and dt2",
+        "minutes between dt1 and dt2",
+        "seconds between dt1 and dt2",
+        "hours since dt2",
+        "minutes since dt2",
+        "seconds since dt2",
+        "ceil(days between dt1 and dt2)",
+        "floor(days between dt1 and dt2)",
+        "days between date(2024, 1, 1) and date(2024, 1, 10)",
+        "hours between datetime(2024, 1, 1, 12, 0, 0) and datetime(2024, 1, 2, 18, 30, 0)",
+        "minutes between datetime(2024, 1, 1, 12, 0, 0) and datetime(2024, 1, 1, 12, 45, 0)",
+        "date(2024, 1, 1) to date(2024, 5, 15)",
+        "days between date(2024, 1, 1) and date(2024, 1, 2) in seconds"
+    ) { results ->
+        assertEquals("1.2708333333 d", results[2].result)
+        assertEquals("30.5 h", results[3].result)
+        assertEquals("1830 min", results[4].result)
+        assertEquals("109800 s", results[5].result)
+        assertTrue(results[6].result.endsWith(" h"))
+        assertTrue(results[7].result.endsWith(" min"))
+        assertTrue(results[8].result.endsWith(" s"))
+        assertEquals("2.0 d", results[9].result)
+        assertEquals("1.0 d", results[10].result)
+        assertEquals("9 d", results[11].result)
+        assertEquals("30.5 h", results[12].result)
+        assertEquals("45 min", results[13].result)
+        assertEquals("4 mo 14 d", results[14].result)
+        assertEquals("86400 s", results[15].result)
+    }
 }

@@ -1,5 +1,6 @@
 package com.vishaltelangre.nerdcalci.core
 
+import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.ZonedDateTime
 
@@ -34,11 +35,17 @@ sealed class DateTimeResult {
      * The result of a day-count query: days since / days till / days between.
      * Displayed as "N d".
      */
-    data class DayCount(val days: Long) : DateTimeResult()
+    data class DayCount(val days: BigDecimal) : DateTimeResult() {
+        constructor(days: Long) : this(BigDecimal.valueOf(days))
+        constructor(days: Double) : this(BigDecimal.valueOf(days))
+    }
 
     /**
      * The result of a specific unit count: through ... in hours/minutes/weeks etc.
      * Displayed exactly as "<value> <unit>".
      */
-    data class TimeCount(val value: Long, val unit: String) : DateTimeResult()
+    data class TimeCount(val value: BigDecimal, val unit: String) : DateTimeResult() {
+        constructor(value: Long, unit: String) : this(BigDecimal.valueOf(value), unit)
+        constructor(value: Double, unit: String) : this(BigDecimal.valueOf(value), unit)
+    }
 }

@@ -29,6 +29,7 @@
   - [Sum / Total](#sum--total)
   - [Grand total](#grand-total)
   - [Average](#average)
+  - [Min / Max](#min--max)
   - [Reference to previous line result](#reference-to-previous-line-result)
   - [Reference to current line number](#reference-to-current-line-number)
 - [8. User-defined functions](#8-user-defined-functions)
@@ -80,6 +81,10 @@
   - [Relative keywords](#relative-keywords)
   - [Date arithmetic](#date-arithmetic)
   - [Intervals and duration queries](#intervals-and-duration-queries)
+    - [1. Supported time units in queries](#1-supported-time-units-in-queries)
+    - [2. Query operators and syntax](#2-query-operators-and-syntax)
+    - [3. Unit projections and formatting](#3-unit-projections-and-formatting)
+    - [Summary Table](#summary-table)
   - [Timezones](#timezones)
   - [Date component extraction](#date-component-extraction)
   - [Output formats](#output-formats)
@@ -1219,19 +1224,74 @@ Durations can be combined freely: `2 years 3 months 1 week 5 days`.
 
 ### Intervals and duration queries
 
-Calculate the time between two dates or find out how many days have passed. You can also project the result into a specific time unit using `in <unit>`.
+NerdCalci provides date and time interval queries for measuring elapsed time, calculating remaining time, or projecting differences into specific time units.
 
-| Operation             | Example                                               | Result                     |
-| :-------------------- | :---------------------------------------------------- | :------------------------- |
-| **Interval**          | `date(2024, 1, 1) to today`                           | `4 mo 1 wk` (Duration)     |
-| **Year interval**     | `1978 to 2021`                                        | `43 y`                     |
-| **Days since**        | `days since date(2024, 1, 1)`                         | `122 d` (Total days)       |
-| **Days till**         | `days till date(2024, 12, 25)`                        | `237 d`                    |
-| **Days between**      | `days between today and tomorrow`                     | `1 d`                      |
-| **Absolute interval** | `between today and date(2025, 1, 1)`                  | `1 y 4 mo 4 d`             |
-| **Inclusive count**   | `today through tomorrow`                              | `2 d` (Includes both days) |
-| **Projection**        | `days since date(2024, 1, 1) in hours`                | `2928 h`                   |
-| **Distance**          | `days between date(2024,1,2) and date(2024,1,1) in s` | `86400 s`                  |
+#### 1. Supported time units in queries
+
+You can query interval counts using any standard time unit symbol or name:
+*   **Days**: `days`, `day`, `d`
+*   **Hours**: `hours`, `hour`, `hrs`, `hr`, `h`
+*   **Minutes**: `minutes`, `minute`, `mins`, `min`
+*   **Seconds**: `seconds`, `second`, `secs`, `sec`, `s`
+*   **Weeks**: `weeks`, `week`, `wks`, `wk`
+*   **Months**: `months`, `month`, `mo`
+*   **Years**: `years`, `year`, `yrs`, `yr`, `y`
+
+#### 2. Query operators and syntax
+
+*   **`<unit> since <date/datetime>`**: Calculates the elapsed time from a target date or datetime up to the present.
+    *   If the target is a plain `Date` (e.g. `date(2024, 1, 1)`), it measures calendar days relative to `today` (midnight).
+    *   If the target is a `DateTime` with time components (e.g. `datetimeZ(2026, 6, 9, 21, 21, 11, "GMT")` or `now - 2 hours`), it measures elapsed time down to the exact second relative to `now`, returning decimal precision.
+    *   *Examples*:
+        *   `days since date(2024, 1, 1)` &rarr; `934 d` (Integer calendar days)
+        *   `days since datetimeZ(2026, 6, 9, 21, 21, 11, "GMT")` &rarr; `17.7769560185 d` (High-precision decimal days)
+        *   `hours since mydate` &rarr; `426.6469444444 h` (Precise elapsed hours)
+        *   `minutes since mydate` &rarr; `25598.8166666667 min` (Precise elapsed minutes)
+        *   `seconds since mydate` &rarr; `1535929 s` (Precise elapsed seconds)
+
+*   **`<unit> till <date/datetime>`** or **`<unit> until <date/datetime>`**: Calculates the remaining time from the present until a target date or datetime.
+    *   *Examples*:
+        *   `days till date(2026, 12, 31)` &rarr; `160 d`
+        *   `hours until datetime(2026, 12, 31, 23, 59, 59)` &rarr; `3847.7997222222 h`
+
+*   **`<unit> between <start> and <end>`**: Calculates the distance/difference between two dates or datetimes. The result is always non-negative (absolute).
+    *   *Examples*:
+        *   `days between date(2024, 1, 1) and date(2024, 1, 10)` &rarr; `9 d`
+        *   `hours between datetime(2024, 1, 1, 12, 0, 0) and datetime(2024, 1, 2, 18, 30, 0)` &rarr; `30.5 h`
+        *   `minutes between datetime(2024, 1, 1, 12, 0, 0) and datetime(2024, 1, 1, 12, 45, 0)` &rarr; `45 min`
+
+*   **`<start> to <end>`**: Calculates a calendar-aware interval duration (expressed in years, months, weeks, days).
+    *   *Examples*:
+        *   `date(2024, 1, 1) to date(2024, 5, 15)` &rarr; `4 mo 14 d`
+        *   `1978 to 2021` &rarr; `43 y`
+
+*   **`<start> through <end>`**: Inclusive calendar count including both start and end dates.
+    *   *Examples*:
+        *   `today through tomorrow` &rarr; `2 d`
+        *   `date(2024, 1, 1) through date(2024, 1, 31) in days` &rarr; `31 d`
+
+#### 3. Unit projections and formatting
+
+You can append `in <unit>` to project any date/time query into another target time unit:
+*   `days since date(2024, 1, 1) in hours` &rarr; `22416 h`
+*   `days between date(2024, 1, 1) and date(2024, 1, 2) in seconds` &rarr; `86400 s`
+
+You can also apply standard math functions to date/time query results:
+*   `ceil(days since mydate)` &rarr; `18 d`
+*   `floor(days since mydate)` &rarr; `17 d`
+*   `(hours since mydate) / 24` &rarr; `17.7769560185`
+
+#### Summary Table
+
+| Operation               | Syntax Example                                         | Output Format      | Description                                                            |
+| :---------------------- | :----------------------------------------------------- | :----------------- | :--------------------------------------------------------------------- |
+| **Days since Date**     | `days since date(2024, 1, 1)`                          | `934 d`            | Days elapsed since midnight of a plain date                            |
+| **Time unit query**     | `hours since datetimeZ(2026, 6, 9, 21, 21, 11, "GMT")` | `426.6469444444 h` | Precise elapsed time in requested unit (hours, minutes, seconds, etc.) |
+| **Time till Date/Time** | `hours until date(2026, 12, 31)`                       | `3847.8 h`         | Precise hours remaining until target date/datetime                     |
+| **Time between**        | `hours between dt1 and dt2`                            | `30.5 h`           | Absolute difference between two datetimes                              |
+| **Calendar interval**   | `date(2024, 1, 1) to today`                            | `4 mo 1 wk`        | Calendar-aware duration (years/months/weeks/days)                      |
+| **Unit projection**     | `days since date(2024, 1, 1) in hours`                 | `22416 h`          | Projects date difference into target unit                              |
+| **Rounded query**       | `ceil(days since mydate)`                              | `18.0 d`           | Forces integer rounding on fractional queries                          |
 
 > **Note**: While `to`, `through`, `since`, and `till` are signed (e.g., `tomorrow to today` is `-1 d`), the `between` operator is always absolute (e.g., `between tomorrow and today` is `1 d`).
 

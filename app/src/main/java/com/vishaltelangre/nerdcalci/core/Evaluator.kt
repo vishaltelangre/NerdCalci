@@ -106,10 +106,15 @@ class Evaluator(
         }
         is Expr.DayCountQuery -> {
             val target = coerceToDate(evaluate(expr.target))
-            val today = DateEvaluator.resolveRelativeKeyword("today")
+            val relativeEndpoint = if (target is DateTimeResult.DateTime) {
+                DateEvaluator.resolveRelativeKeyword("now")
+            } else {
+                DateEvaluator.resolveRelativeKeyword("today")
+            }
+
             val res = when (expr.kind) {
-                TokenKind.KW_SINCE -> DateEvaluator.interval(target, today, projectionUnit = expr.projectionUnit ?: "days")
-                TokenKind.KW_TILL, TokenKind.KW_UNTIL -> DateEvaluator.interval(today, target, projectionUnit = expr.projectionUnit ?: "days")
+                TokenKind.KW_SINCE -> DateEvaluator.interval(target, relativeEndpoint, projectionUnit = expr.projectionUnit ?: "days")
+                TokenKind.KW_TILL, TokenKind.KW_UNTIL -> DateEvaluator.interval(relativeEndpoint, target, projectionUnit = expr.projectionUnit ?: "days")
                 else -> throw EvalException("Unsupported day-count query")
             }
             mapDateTimeResult(res)
@@ -1014,19 +1019,20 @@ class Evaluator(
     private fun toDateDelta(result: EvaluationResult): DateTimeDelta {
         result.dateTimeResult?.let {
             if (it is DateTimeResult.Duration) return it.delta
-            if (it is DateTimeResult.DayCount) return DateTimeDelta(days = it.days)
+            if (it is DateTimeResult.DayCount) return DateTimeDelta(days = it.days.toLong())
             if (it is DateTimeResult.TimeCount) {
                 val unit = UnitConverter.findUnit(it.unit)!!
+                val longVal = it.value.toLong()
                 val delta = when (unit.name.lowercase()) {
-                    "year" -> DateTimeDelta(years = it.value)
-                    "month" -> DateTimeDelta(months = it.value)
-                    "week" -> DateTimeDelta(weeks = it.value)
-                    "day" -> DateTimeDelta(days = it.value)
-                    "hour" -> DateTimeDelta(hours = it.value)
-                    "minute" -> DateTimeDelta(minutes = it.value)
-                    "second" -> DateTimeDelta(seconds = it.value)
+                    "year" -> DateTimeDelta(years = longVal)
+                    "month" -> DateTimeDelta(months = longVal)
+                    "week" -> DateTimeDelta(weeks = longVal)
+                    "day" -> DateTimeDelta(days = longVal)
+                    "hour" -> DateTimeDelta(hours = longVal)
+                    "minute" -> DateTimeDelta(minutes = longVal)
+                    "second" -> DateTimeDelta(seconds = longVal)
                     else -> {
-                        val seconds = UnitConverter.toBase(BigDecimal.valueOf(it.value), unit, variables).toLong()
+                        val seconds = UnitConverter.toBase(it.value, unit, variables).toLong()
                         DateTimeDelta(seconds = seconds)
                     }
                 }
@@ -1264,11 +1270,11 @@ class Evaluator(
     private fun mapDateTimeResult(res: DateTimeResult): EvaluationResult {
         return when (res) {
             is DateTimeResult.DayCount -> {
-                EvaluationResult(value = BigDecimal.valueOf(res.days * 86400L), unit = "d", dateTimeResult = res)
+                EvaluationResult(value = res.days.multiply(BigDecimal("86400")), unit = "d", dateTimeResult = res)
             }
             is DateTimeResult.TimeCount -> {
                 val unit = UnitConverter.findUnit(res.unit) ?: throw EvalException("Unknown unit: ${res.unit}")
-                EvaluationResult(value = UnitConverter.toBase(BigDecimal.valueOf(res.value), unit, variables), unit = res.unit, dateTimeResult = res)
+                EvaluationResult(value = UnitConverter.toBase(res.value, unit, variables), unit = res.unit, dateTimeResult = res)
             }
             is DateTimeResult.Duration -> {
                 EvaluationResult(

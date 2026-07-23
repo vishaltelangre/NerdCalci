@@ -106,10 +106,16 @@ class Evaluator(
         }
         is Expr.DayCountQuery -> {
             val target = coerceToDate(evaluate(expr.target))
-            val today = DateEvaluator.resolveRelativeKeyword("today")
+            val isSubDay = isSubDayUnit(expr.unit)
+            val relativeEndpoint = if (target is DateTimeResult.DateTime || isSubDay) {
+                DateEvaluator.resolveRelativeKeyword("now")
+            } else {
+                DateEvaluator.resolveRelativeKeyword("today")
+            }
+
             val res = when (expr.kind) {
-                TokenKind.KW_SINCE -> DateEvaluator.interval(target, today, projectionUnit = expr.projectionUnit ?: "days")
-                TokenKind.KW_TILL, TokenKind.KW_UNTIL -> DateEvaluator.interval(today, target, projectionUnit = expr.projectionUnit ?: "days")
+                TokenKind.KW_SINCE -> DateEvaluator.interval(target, relativeEndpoint, projectionUnit = expr.projectionUnit ?: "days")
+                TokenKind.KW_TILL, TokenKind.KW_UNTIL -> DateEvaluator.interval(relativeEndpoint, target, projectionUnit = expr.projectionUnit ?: "days")
                 else -> throw EvalException("Unsupported day-count query")
             }
             mapDateTimeResult(res)
@@ -1014,23 +1020,30 @@ class Evaluator(
     private fun toDateDelta(result: EvaluationResult): DateTimeDelta {
         result.dateTimeResult?.let {
             if (it is DateTimeResult.Duration) return it.delta
-            if (it is DateTimeResult.DayCount) return DateTimeDelta(days = it.days)
+            if (it is DateTimeResult.DayCount) {
+                val isWhole = it.days.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) == 0
+                return if (isWhole) {
+                    DateTimeDelta(days = it.days.toLong())
+                } else {
+                    val seconds = (it.days * BigDecimal("86400")).toLong()
+                    DateTimeDelta(seconds = seconds)
+                }
+            }
             if (it is DateTimeResult.TimeCount) {
                 val unit = UnitConverter.findUnit(it.unit)!!
-                val delta = when (unit.name.lowercase()) {
-                    "year" -> DateTimeDelta(years = it.value)
-                    "month" -> DateTimeDelta(months = it.value)
-                    "week" -> DateTimeDelta(weeks = it.value)
-                    "day" -> DateTimeDelta(days = it.value)
-                    "hour" -> DateTimeDelta(hours = it.value)
-                    "minute" -> DateTimeDelta(minutes = it.value)
-                    "second" -> DateTimeDelta(seconds = it.value)
-                    else -> {
-                        val seconds = UnitConverter.toBase(BigDecimal.valueOf(it.value), unit, variables).toLong()
-                        DateTimeDelta(seconds = seconds)
+                val isWhole = it.value.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) == 0
+                val unitName = unit.name.lowercase()
+                if (isWhole && unitName in setOf("year", "month", "week", "day")) {
+                    val longVal = it.value.toLong()
+                    return when (unitName) {
+                        "year" -> DateTimeDelta(years = longVal)
+                        "month" -> DateTimeDelta(months = longVal)
+                        "week" -> DateTimeDelta(weeks = longVal)
+                        else -> DateTimeDelta(days = longVal)
                     }
                 }
-                return delta
+                val seconds = UnitConverter.toBase(it.value, unit, variables).toLong()
+                return DateTimeDelta(seconds = seconds)
             }
         }
 
@@ -1041,24 +1054,30 @@ class Evaluator(
         }
 
         val amount = (result.value ?: BigDecimal.ZERO).divide(unit.factor, mc)
-        val amountLong = amount.toLong()
-        return when (unit.name.lowercase()) {
-            "year" -> DateTimeDelta(years = amountLong)
-            "month" -> DateTimeDelta(months = amountLong)
-            "week" -> DateTimeDelta(weeks = amountLong)
-            "day" -> DateTimeDelta(days = amountLong)
-            "hour" -> DateTimeDelta(hours = amountLong)
-            "minute" -> DateTimeDelta(minutes = amountLong)
-            "second" -> DateTimeDelta(seconds = amountLong)
-            "lustrum" -> DateTimeDelta(years = amountLong * 5)
-            "decade" -> DateTimeDelta(years = amountLong * 10)
-            "century" -> DateTimeDelta(years = amountLong * 100)
-            "millennium" -> DateTimeDelta(years = amountLong * 1000)
-            else -> {
-                val seconds = UnitConverter.toBase(amount, unit, variables)
-                DateTimeDelta(seconds = seconds.toLong())
+        val isWhole = amount.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) == 0
+        val unitName = unit.name.lowercase()
+        if (isWhole) {
+            val amountLong = amount.toLong()
+            when (unitName) {
+                "year" -> return DateTimeDelta(years = amountLong)
+                "month" -> return DateTimeDelta(months = amountLong)
+                "week" -> return DateTimeDelta(weeks = amountLong)
+                "day" -> return DateTimeDelta(days = amountLong)
+                "lustrum" -> return DateTimeDelta(years = amountLong * 5)
+                "decade" -> return DateTimeDelta(years = amountLong * 10)
+                "century" -> return DateTimeDelta(years = amountLong * 100)
+                "millennium" -> return DateTimeDelta(years = amountLong * 1000)
             }
         }
+
+        val seconds = UnitConverter.toBase(amount, unit, variables).toLong()
+        return DateTimeDelta(seconds = seconds)
+    }
+
+    private fun isSubDayUnit(unitStr: String?): Boolean {
+        if (unitStr == null) return false
+        val unit = UnitConverter.findUnit(unitStr) ?: return false
+        return unit.category == UnitCategory.TIME && unit.factor < BigDecimal("86400")
     }
 
     private fun applyOp(left: BigDecimal, op: TokenKind, right: BigDecimal): BigDecimal = when (op) {
@@ -1264,11 +1283,11 @@ class Evaluator(
     private fun mapDateTimeResult(res: DateTimeResult): EvaluationResult {
         return when (res) {
             is DateTimeResult.DayCount -> {
-                EvaluationResult(value = BigDecimal.valueOf(res.days * 86400L), unit = "d", dateTimeResult = res)
+                EvaluationResult(value = res.days.multiply(BigDecimal("86400")), unit = "d", dateTimeResult = res)
             }
             is DateTimeResult.TimeCount -> {
                 val unit = UnitConverter.findUnit(res.unit) ?: throw EvalException("Unknown unit: ${res.unit}")
-                EvaluationResult(value = UnitConverter.toBase(BigDecimal.valueOf(res.value), unit, variables), unit = res.unit, dateTimeResult = res)
+                EvaluationResult(value = UnitConverter.toBase(res.value, unit, variables), unit = res.unit, dateTimeResult = res)
             }
             is DateTimeResult.Duration -> {
                 EvaluationResult(

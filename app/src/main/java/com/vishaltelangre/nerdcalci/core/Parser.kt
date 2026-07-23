@@ -529,20 +529,20 @@ class Parser(private val tokens: List<Token>) {
                         numericValue *= multiplier
                     }
                 }
-
                 parseQuantityIfPossible(Expr.NumberLiteral(numericValue))
             }
-
 
             TokenKind.IDENTIFIER -> {
                 val nameToken = advance()
                 val name = nameToken.lexeme
-                if (name.equals("days", ignoreCase = true) && peekKind() == TokenKind.KW_BETWEEN) {
+                val timeUnit = UnitConverter.findUnit(name)
+                val isTimeUnit = timeUnit != null && timeUnit.category == UnitCategory.TIME
+                if (isTimeUnit && peekKind() == TokenKind.KW_BETWEEN) {
                     advance()
                     val start = parseExpression()
                     expect(TokenKind.KW_AND)
                     val end = parseAddSub(allowUnitConversion = false)
-                    var unit: String? = "days"
+                    var unit: String? = name
                     if (peekKind() == TokenKind.KW_IN && tokens.getOrNull(pos + 1)?.kind == TokenKind.IDENTIFIER) {
                         val nextLexeme = tokens[pos + 1].lexeme
                         if (UnitConverter.findUnit(nextLexeme)?.category == UnitCategory.TIME) {
@@ -552,27 +552,22 @@ class Parser(private val tokens: List<Token>) {
                         }
                     }
                     Expr.DateInterval(start, end, projectionUnit = unit, inclusive = false, absolute = true)
-                }
- else if (name.equals("days", ignoreCase = true) &&
+                } else if (isTimeUnit &&
                     (peekKind() == TokenKind.KW_SINCE || peekKind() == TokenKind.KW_TILL || peekKind() == TokenKind.KW_UNTIL)
                 ) {
                     val op = advance().kind
                     val base = parseAddSub(allowUnitConversion = false)
-                    var unit: String? = "days"
+                    val queryUnit: String = name
+                    var projUnit: String? = name
                     if (peekKind() == TokenKind.KW_IN && tokens.getOrNull(pos + 1)?.kind == TokenKind.IDENTIFIER) {
                         val nextLexeme = tokens[pos + 1].lexeme
                         if (UnitConverter.findUnit(nextLexeme)?.category == UnitCategory.TIME) {
                             advance() // consume "in"
                             advance() // consume unit
-                            unit = nextLexeme
+                            projUnit = nextLexeme
                         }
                     }
-                    if (unit != null && !unit.equals("days", ignoreCase = true)) {
-                        // Return as a TimeCount if a specific unit is requested
-                        Expr.DayCountQuery(op, base, projectionUnit = unit)
-                    } else {
-                        Expr.DayCountQuery(op, base)
-                    }
+                    Expr.DayCountQuery(op, base, unit = queryUnit, projectionUnit = projUnit)
                 } else if (peekKind() == TokenKind.LPAREN) {
                     // e.g. sqrt(16), pow(2, 8)
                     advance() // skip past "("

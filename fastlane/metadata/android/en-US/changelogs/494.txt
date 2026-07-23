@@ -1,0 +1,1 @@
+- Added support for sub-day time unit queries (`hours since`, `minutes since`, `seconds since`, etc.) and decimal precision for date/time queries (Issue: #218).

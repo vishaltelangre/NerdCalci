@@ -125,15 +125,16 @@ object DateEvaluator {
                     rawEndInstant.plusSeconds(86400L) else rawEndInstant
 
                 val duration = java.time.Duration.between(startInstant, endInstant)
-                val totalSeconds = duration.seconds
+                val totalSeconds = BigDecimal.valueOf(duration.seconds).add(BigDecimal.valueOf(duration.nano.toLong(), 9))
 
                 if (projectionUnit.lowercase() in setOf("d", "day", "days")) {
-                    val days = totalSeconds / 86400L
-                    return DateTimeResult.DayCount(if (absolute) Math.abs(days) else days)
+                    val days = totalSeconds.divide(BigDecimal("86400"), java.math.MathContext.DECIMAL128).stripTrailingZeros()
+                    val value = if (absolute) days.abs() else days
+                    return DateTimeResult.DayCount(value)
                 }
 
-                val baseValue = UnitConverter.fromBase(BigDecimal.valueOf(totalSeconds), unit, emptyMap<String, EvaluationResult>()).toLong()
-                val value = if (absolute) Math.abs(baseValue) else baseValue
+                val baseValue = UnitConverter.fromBase(totalSeconds, unit, emptyMap<String, EvaluationResult>()).stripTrailingZeros()
+                val value = if (absolute) baseValue.abs() else baseValue
                 return DateTimeResult.TimeCount(value, unit.symbols.first())
             } else {
                 // Both operands are plain dates — use the original LocalDate-based path.
@@ -143,12 +144,12 @@ object DateEvaluator {
 
                 val totalDays = ChronoUnit.DAYS.between(fromDate, toDate)
                 if (projectionUnit.lowercase() in setOf("d", "day", "days")) {
-                    return DateTimeResult.DayCount(if (absolute) Math.abs(totalDays) else totalDays)
+                    return DateTimeResult.DayCount(BigDecimal.valueOf(if (absolute) Math.abs(totalDays) else totalDays))
                 }
 
-                val totalSeconds = totalDays * 24 * 3600L
-                val baseValue = UnitConverter.fromBase(BigDecimal.valueOf(totalSeconds), unit, emptyMap<String, EvaluationResult>()).toLong()
-                val value = if (absolute) Math.abs(baseValue) else baseValue
+                val totalSeconds = BigDecimal.valueOf(totalDays * 86400L)
+                val baseValue = UnitConverter.fromBase(totalSeconds, unit, emptyMap<String, EvaluationResult>()).stripTrailingZeros()
+                val value = if (absolute) baseValue.abs() else baseValue
                 return DateTimeResult.TimeCount(value, unit.symbols.first())
             }
         }
@@ -337,8 +338,16 @@ object DateEvaluator {
                 "$datePart, $timePart $tzAbbr"
             }
             is DateTimeResult.Duration -> result.delta.format()
-            is DateTimeResult.DayCount -> "${result.days} d"
-            is DateTimeResult.TimeCount -> "${result.value} ${result.unit}"
+            is DateTimeResult.DayCount -> {
+                val stz = result.days.stripTrailingZeros()
+                val d = if (stz.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) == 0) stz.setScale(0) else stz.setScale(10, java.math.RoundingMode.HALF_UP).stripTrailingZeros()
+                "${d.toPlainString()} d"
+            }
+            is DateTimeResult.TimeCount -> {
+                val stz = result.value.stripTrailingZeros()
+                val v = if (stz.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) == 0) stz.setScale(0) else stz.setScale(10, java.math.RoundingMode.HALF_UP).stripTrailingZeros()
+                "${v.toPlainString()} ${result.unit}"
+            }
         }
     }
 

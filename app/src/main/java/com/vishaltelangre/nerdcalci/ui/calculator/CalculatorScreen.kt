@@ -2024,7 +2024,7 @@ private fun LineRow(
                 if (currentWord.isEmpty() || (currentWord.any { char -> char.isLetter() || char == '_' } &&
                     currentWord.all { char -> char.isLetterOrDigit() || char == '_' })) {
                     val prevToken = cleanTokens.getOrNull(cleanTokens.size - 2)
-                    val showUnits = prevToken?.kind == TokenKind.NUMBER
+                    val showUnits = prevToken?.kind == TokenKind.NUMBER || currentWord.isNotEmpty()
                     val unitsList = if (showUnits) {
                         UnitConverter.UNITS.flatMap { u -> u.symbols.map { Suggestion(it, SuggestionType.UNIT) } }
                     } else emptyList()

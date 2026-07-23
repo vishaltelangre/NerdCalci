@@ -106,7 +106,8 @@ class Evaluator(
         }
         is Expr.DayCountQuery -> {
             val target = coerceToDate(evaluate(expr.target))
-            val relativeEndpoint = if (target is DateTimeResult.DateTime) {
+            val isSubDay = isSubDayUnit(expr.unit)
+            val relativeEndpoint = if (target is DateTimeResult.DateTime || isSubDay) {
                 DateEvaluator.resolveRelativeKeyword("now")
             } else {
                 DateEvaluator.resolveRelativeKeyword("today")
@@ -1071,6 +1072,12 @@ class Evaluator(
 
         val seconds = UnitConverter.toBase(amount, unit, variables).toLong()
         return DateTimeDelta(seconds = seconds)
+    }
+
+    private fun isSubDayUnit(unitStr: String?): Boolean {
+        if (unitStr == null) return false
+        val unit = UnitConverter.findUnit(unitStr) ?: return false
+        return unit.category == UnitCategory.TIME && unit.factor < BigDecimal("86400")
     }
 
     private fun applyOp(left: BigDecimal, op: TokenKind, right: BigDecimal): BigDecimal = when (op) {

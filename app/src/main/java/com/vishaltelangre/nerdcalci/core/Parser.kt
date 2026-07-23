@@ -557,16 +557,17 @@ class Parser(private val tokens: List<Token>) {
                 ) {
                     val op = advance().kind
                     val base = parseAddSub(allowUnitConversion = false)
-                    var unit: String? = name
+                    val queryUnit: String = name
+                    var projUnit: String? = name
                     if (peekKind() == TokenKind.KW_IN && tokens.getOrNull(pos + 1)?.kind == TokenKind.IDENTIFIER) {
                         val nextLexeme = tokens[pos + 1].lexeme
                         if (UnitConverter.findUnit(nextLexeme)?.category == UnitCategory.TIME) {
                             advance() // consume "in"
                             advance() // consume unit
-                            unit = nextLexeme
+                            projUnit = nextLexeme
                         }
                     }
-                    Expr.DayCountQuery(op, base, projectionUnit = unit)
+                    Expr.DayCountQuery(op, base, unit = queryUnit, projectionUnit = projUnit)
                 } else if (peekKind() == TokenKind.LPAREN) {
                     // e.g. sqrt(16), pow(2, 8)
                     advance() // skip past "("

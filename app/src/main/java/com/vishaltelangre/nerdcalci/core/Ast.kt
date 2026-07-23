@@ -93,7 +93,7 @@ sealed class Expr {
     data class YearInterval(val fromYear: Expr, val toYear: Expr) : Expr()
 
     /** Day-count query: `days since <date>` / `days till <date>` / `days until <date>` */
-    data class DayCountQuery(val kind: TokenKind, val target: Expr, val projectionUnit: String? = null) : Expr()
+    data class DayCountQuery(val kind: TokenKind, val target: Expr, val unit: String? = null, val projectionUnit: String? = null) : Expr()
 
     /** Timezone conversion or date formatting: `<expr> in "Zone"` / `<expr> as "iso8601"` */
     data class DateModifier(val expr: Expr, val modifier: String, val value: String) : Expr()

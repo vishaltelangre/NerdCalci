@@ -1,0 +1,1 @@
+- Fixed `grand_total` and other dynamic variables double-counting subtotals by automatically excluding standalone aggregate results (Issue: #221).

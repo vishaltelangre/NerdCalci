@@ -17,7 +17,8 @@ data class EvaluationResult(
     val explicitRational: Boolean = false,
     val forceFloat: Boolean = false,
     val dateTimeResult: DateTimeResult? = null,
-    val stringResult: String? = null
+    val stringResult: String? = null,
+    val isDynamicAggregate: Boolean = false
 )
 
 /**

@@ -326,7 +326,7 @@ rent + utilities # Total housing cost
 
 ### Sum / Total
 
-Use `sum` or `total` to get the sum of all line results above, up to the nearest blank/comment/error line.
+Use `sum` or `total` to get the sum of all line results above, up to the nearest blank/comment/error line. Standalone aggregate line results (such as `total`, `avg`, etc.) within the block are automatically ignored to prevent double-counting.
 
 ```text
 groceries = 45.50
@@ -358,7 +358,7 @@ tax = sum * 0.10    # evaluates to 10
 
 ### Grand total
 
-Use `grand_total` or `grand_sum` to get the sum of **all** line results in the file above the current line, crossing blank/comment/error block boundaries.
+Use `grand_total` or `grand_sum` to get the sum of **all** line results in the file above the current line, crossing blank/comment/error block boundaries. Standalone aggregate line results (such as `total`, `avg`, `grand_total`, etc.) are automatically excluded from the calculation.
 
 ```text
 # Section A
@@ -371,7 +371,7 @@ rent = 1000
 utilities = 150
 total               # evaluates to 1150  (block sum)
 
-grand_total         # 2310, sum of all results above
+grand_total         # 1155, sum of all non-aggregate results above (3 + 2 + 1000 + 150)
 ```
 
 Unlike `sum`/`total`, blank and comment lines do **not** reset `grand_total` — it always accumulates everything above.
@@ -386,7 +386,7 @@ tax = grand_total * 0.10
 
 ### Average
 
-Use `avg` or `average` to get the mathematical average of all line results above, up to the nearest blank/comment/error line.
+Use `avg` or `average` to get the mathematical average of all line results above, up to the nearest blank/comment/error line. Standalone aggregate line results within the block are automatically ignored.
 
 ```text
 jan = 100
@@ -418,7 +418,7 @@ half_avg = avg / 2  # evaluates to 25
 
 ### Min / Max
 
-Use `min` (or `minimum`) and `max` (or `maximum`) to find the smallest or largest line result above, up to the nearest blank/comment/error line.
+Use `min` (or `minimum`) and `max` (or `maximum`) to find the smallest or largest line result above, up to the nearest blank/comment/error line. Standalone aggregate line results within the block are automatically ignored.
 
 ```text
 jan = 100

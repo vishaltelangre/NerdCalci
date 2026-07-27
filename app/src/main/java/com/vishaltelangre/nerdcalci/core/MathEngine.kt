@@ -86,6 +86,19 @@ object MathEngine {
         '\u2019'  // Right Single Quotation Mark (Grouping - e.g. Switzerland)
     )
 
+    /**
+     * Subset of dynamic variable keywords that represent aggregate computations.
+     * Standalone results from these keywords are excluded from other aggregates'
+     * input to prevent double-counting.
+     */
+    private val AGGREGATE_DYNAMIC_VARIABLES: Set<String> = setOf(
+        "sum", "total",
+        "grand_total", "grand_sum",
+        "avg", "average",
+        "min", "minimum",
+        "max", "maximum"
+    )
+
     private val RESERVED_DYNAMIC_VARIABLES: Set<String> = DYNAMIC_VARIABLES.keys + setOf(
         TokenKind.KW_TODAY, TokenKind.KW_YESTERDAY, TokenKind.KW_TOMORROW, TokenKind.KW_NOW,
         TokenKind.KW_BEFORE, TokenKind.KW_AFTER, TokenKind.KW_AGO, TokenKind.KW_FROM,
@@ -156,7 +169,12 @@ object MathEngine {
                 injectDynamicVariables(context)
                 val result = evaluateLine(line.expression, context, loader, loadingStack)
                 val hasResult = result.value != null || result.dateTimeResult != null || result.stringResult != null
-                context.lineResults.add(if (hasResult) result else null)
+                val taggedResult = if (hasResult) {
+                    if (isStandaloneDynamicAggregate(line.expression, context.userAssignedDynamicVariables))
+                        result.copy(isDynamicAggregate = true)
+                    else result
+                } else null
+                context.lineResults.add(taggedResult)
                 trackDynamicVariableAssignment(line.expression, context.userAssignedDynamicVariables)
             } catch (e: Exception) {
                 if (e is CircularReferenceException && loadingStack.isNotEmpty()) throw e
@@ -251,7 +269,12 @@ object MathEngine {
                     return@map line.copy(result = "")
                 }
 
-                lineResults.add(result)
+                // Tag standalone aggregate lines so other aggregates can exclude them
+                lineResults.add(
+                    if (isStandaloneDynamicAggregate(line.expression, userAssignedDynamicVariables))
+                        result.copy(isDynamicAggregate = true)
+                    else result
+                )
 
                 // Track if user explicitly assigned a dynamic variable name
                 trackDynamicVariableAssignment(line.expression, userAssignedDynamicVariables)
@@ -335,6 +358,21 @@ object MathEngine {
     }
 
     /**
+     * Returns `true` if [expression] is a standalone reference to an aggregate
+     * dynamic variable (e.g. bare "total", "avg").  Lines like "total * 2" or
+     * "tax = total * 0.10" return `false` because they use the variable inside
+     * a larger expression.
+     */
+    private fun isStandaloneDynamicAggregate(
+        expression: String,
+        userAssigned: Set<String>
+    ): Boolean {
+        val hashIdx = expression.indexOf('#')
+        val stripped = (if (hashIdx >= 0) expression.substring(0, hashIdx) else expression).trim()
+        return stripped in AGGREGATE_DYNAMIC_VARIABLES && stripped !in userAssigned
+    }
+
+    /**
      * Inject each registered dynamic variable into [variables] by calling its computation
      * function against the current [lineResults].  Skips any name the user has
      * explicitly assigned.
@@ -357,7 +395,9 @@ object MathEngine {
         val blockResults = mutableListOf<EvaluationResult>()
         for (i in lineResults.indices.reversed()) {
             val result = lineResults[i] ?: break
-            blockResults.add(0, result)
+            if (!result.isDynamicAggregate) {
+                blockResults.add(0, result)
+            }
         }
         return blockResults
     }
@@ -464,7 +504,7 @@ object MathEngine {
      * physical unit.
      */
     private fun computeGrandTotal(lineResults: List<EvaluationResult?>): EvaluationResult {
-        val allResults = lineResults.filterNotNull()
+        val allResults = lineResults.filter { it != null && !it.isDynamicAggregate }.filterNotNull()
         if (allResults.isEmpty()) return EvaluationResult(BigDecimal.ZERO)
 
         val targetUnitSymbol = validateUnitsAndGetTarget(allResults, "Summation")

@@ -1791,8 +1791,8 @@ class MathEngineTest {
                 assertEquals("", result[3].result)
                 assertEquals("5.0", result[4].result)
                 assertEquals("5.0", result[5].result) // only c = 5 in this block
-                // grand_total sees: 10, 20, 30, 5, 5 -> 70
-                assertEquals("70.0", result[6].result)
+                // grand_total sees: 10, 20, 5 -> 35 (excludes standalone aggregate results)
+                assertEquals("35.0", result[6].result)
             }
 
     @Test
@@ -1926,6 +1926,156 @@ class MathEngineTest {
         val result = MathEngine.calculateFrom(lines, changedIndex = 3)
         assertEquals(1, result.size)
         assertEquals("60.0", result[0].result)
+    }
+
+    @Test
+    fun `total excludes standalone total in same block`() =
+        testCalculate("10", "20", "total", "5", "total") { result ->
+            assertEquals("30.0", result[2].result)  // first total: 10 + 20
+            assertEquals("5.0", result[3].result)
+            // second total: 10 + 20 + 5 = 35 (excludes the first total's result)
+            assertEquals("35.0", result[4].result)
+        }
+
+    @Test
+    fun `total excludes standalone avg in same block`() =
+        testCalculate("10", "30", "avg", "total") { result ->
+            assertEquals("20.0", result[2].result)  // avg(10, 30) = 20
+            // total: 10 + 30 = 40 (excludes standalone avg)
+            assertEquals("40.0", result[3].result)
+        }
+
+    @Test
+    fun `avg excludes standalone total in same block`() =
+        testCalculate("10", "20", "total", "avg") { result ->
+            assertEquals("30.0", result[2].result)  // total: 10 + 20
+            // avg: avg(10, 20) = 15 (excludes standalone total)
+            assertEquals("15.0", result[3].result)
+        }
+
+    @Test
+    fun `min excludes standalone aggregates in same block`() =
+        testCalculate("10", "20", "total", "min") { result ->
+            assertEquals("30.0", result[2].result)  // total: 10 + 20
+            // min: min(10, 20) = 10 (excludes standalone total)
+            assertEquals("10.0", result[3].result)
+        }
+
+    @Test
+    fun `max excludes standalone aggregates in same block`() =
+        testCalculate("10", "20", "total", "max") { result ->
+            assertEquals("30.0", result[2].result)  // total: 10 + 20
+            // max: max(10, 20) = 20 (excludes standalone total)
+            assertEquals("20.0", result[3].result)
+        }
+
+    @Test
+    fun `standalone aggregate does not break block boundary`() =
+        testCalculate("10", "total", "20", "total") { result ->
+            assertEquals("10.0", result[1].result)  // first total: just 10
+            assertEquals("20.0", result[2].result)
+            // second total: 10 + 20 = 30 (skips first total but doesn't break scan)
+            assertEquals("30.0", result[3].result)
+        }
+
+    // --- Grand-total level ---
+
+    @Test
+    fun `grand_total excludes standalone total lines`() =
+        testCalculate("10", "20", "total", "", "5", "grand_total") { result ->
+            assertEquals("30.0", result[2].result)
+            // grand_total: 10 + 20 + 5 = 35 (excludes standalone total)
+            assertEquals("35.0", result[5].result)
+        }
+
+    @Test
+    fun `grand_total excludes standalone avg lines`() =
+        testCalculate("10", "30", "avg", "", "5", "grand_total") { result ->
+            assertEquals("20.0", result[2].result)
+            // grand_total: 10 + 30 + 5 = 45 (excludes standalone avg)
+            assertEquals("45.0", result[5].result)
+        }
+
+    @Test
+    fun `grand_total excludes standalone min and max lines`() =
+        testCalculate("10", "20", "min", "", "30", "max", "", "grand_total") { result ->
+            assertEquals("10.0", result[2].result)  // min
+            assertEquals("30.0", result[5].result)  // max
+            // grand_total: 10 + 20 + 30 = 60 (excludes standalone min and max)
+            assertEquals("60.0", result[7].result)
+        }
+
+    @Test
+    fun `grand_total excludes other standalone grand_totals`() =
+        testCalculate("10", "", "20", "grand_total", "", "5", "grand_total") { result ->
+            // first grand_total: 10 + 20 = 30
+            assertEquals("30.0", result[3].result)
+            // second grand_total: 10 + 20 + 5 = 35 (excludes first grand_total)
+            assertEquals("35.0", result[6].result)
+        }
+
+    // --- Expressions that USE aggregates (not standalone) ---
+
+    @Test
+    fun `total includes result of expression using total`() =
+        testCalculate("10", "20", "total * 2", "total") { result ->
+            assertEquals("60.0", result[2].result)  // total*2 = 30*2 = 60
+            // "total * 2" is not standalone, so it's included
+            // total: 10 + 20 + 60 = 90
+            assertEquals("90.0", result[3].result)
+        }
+
+    @Test
+    fun `grand_total includes result of expression using total`() =
+        testCalculate("10", "20", "total * 2", "", "5", "grand_total") { result ->
+            assertEquals("60.0", result[2].result)
+            // grand_total: 10 + 20 + 60 + 5 = 95 (includes total*2 because it's not standalone)
+            assertEquals("95.0", result[5].result)
+        }
+
+    @Test
+    fun `grand_total includes last and prev results`() =
+        testCalculate("10", "last", "", "20", "grand_total") { result ->
+            assertEquals("10.0", result[1].result)  // last = 10
+            // grand_total: 10 + 10 + 20 = 40 (includes "last" — it's not an aggregate)
+            assertEquals("40.0", result[4].result)
+        }
+
+    @Test
+    fun `standalone aggregate with comment suffix is still excluded`() =
+        testCalculate("10", "20", "total # subtotal", "", "5", "grand_total") { result ->
+            assertEquals("30.0", result[2].result)
+            // grand_total: 10 + 20 + 5 = 35
+            assertEquals("35.0", result[5].result)
+        }
+
+    @Test
+    fun `calculateFrom correctly handles grand_total excluding aggregates`() = runBlocking {
+        val lines = listOf(
+            createLine("10", sortOrder = 0),
+            createLine("20", sortOrder = 1),
+            createLine("total", sortOrder = 2),
+            createLine("", sortOrder = 3),
+            createLine("5", sortOrder = 4),
+            createLine("grand_total", sortOrder = 5)
+        )
+        val result = MathEngine.calculateFrom(lines, changedIndex = 5)
+        assertEquals(1, result.size)
+        assertEquals("35.0", result[0].result) // 10 + 20 + 5, not 65
+    }
+
+    @Test
+    fun `calculateFrom correctly handles block total excluding aggregates`() = runBlocking {
+        val lines = listOf(
+            createLine("10", sortOrder = 0),
+            createLine("total", sortOrder = 1),
+            createLine("20", sortOrder = 2),
+            createLine("total", sortOrder = 3)
+        )
+        val result = MathEngine.calculateFrom(lines, changedIndex = 3)
+        assertEquals(1, result.size)
+        // total: 10 + 20 = 30 (skips standalone total)
+        assertEquals("30.0", result[0].result)
     }
 
     @Test

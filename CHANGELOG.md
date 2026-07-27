@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.5] - 2026-07-27
+### Fixed
+- Fixed `grand_total` and other dynamic variables double-counting subtotals by automatically excluding standalone aggregate results (Issue: #221).
+
 ## [4.9.4] - 2026-07-23
 ### Added
 - Added support for sub-day time unit queries (`hours since`, `minutes since`, `seconds since`, etc.) and decimal precision for date/time queries (Issue: #218).

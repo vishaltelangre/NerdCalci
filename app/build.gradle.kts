@@ -6,13 +6,14 @@ plugins {
 
 android {
     namespace = "com.vishaltelangre.nerdcalci"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.vishaltelangre.nerdcalci"
         minSdk = 23
-        versionCode = 495
-        versionName = "4.9.5"
+        targetSdk = 36
+        versionCode = 496
+        versionName = "4.9.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

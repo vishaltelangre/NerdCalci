@@ -3904,4 +3904,48 @@ class MathEngineTest {
             assertTrue("randInt at Long.MAX_VALUE must not overflow", randIntMax == Long.MAX_VALUE || randIntMax == Long.MAX_VALUE - 1)
         }
     }
+
+    @Test
+    fun `calculateFrom preserves evaluated result of rand when evaluating prev and total`() = runBlocking {
+        val lines = listOf(
+            createLine("rand(100)").copy(result = "34.851"),
+            createLine("prev"),
+            createLine("prev"),
+            createLine("total")
+        )
+
+        // Recalculating from line 1 onward should use the stored result of line 0 ("34.851")
+        val affected = MathEngine.calculateFrom(lines, changedIndex = 1)
+        assertEquals(3, affected.size)
+        assertEquals("34.851", affected[0].result) // line 1: prev
+        assertEquals("34.851", affected[1].result) // line 2: prev
+        assertEquals("104.553", affected[2].result) // line 3: total (34.851 * 3)
+    }
+
+    @Test
+    fun `calculateFrom preserves variable assigned to rand`() = runBlocking {
+        val lines = listOf(
+            createLine("x = rand(100)").copy(result = "42.5"),
+            createLine("x + 10"),
+            createLine("prev * 2")
+        )
+
+        val affected = MathEngine.calculateFrom(lines, changedIndex = 1)
+        assertEquals(2, affected.size)
+        assertEquals("52.5", affected[0].result) // line 1: x + 10
+        assertEquals("105.0", affected[1].result) // line 2: prev * 2
+    }
+
+    @Test
+    fun `calculateFrom preserves randInt with unit`() = runBlocking {
+        val lines = listOf(
+            createLine("x = (randInt(1, 10)) kg").copy(result = "7.0 kg"),
+            createLine("x in g")
+        )
+
+        val affected = MathEngine.calculateFrom(lines, changedIndex = 1)
+        assertEquals(1, affected.size)
+        assertEquals("7000.0 g", affected[0].result)
+    }
 }
+

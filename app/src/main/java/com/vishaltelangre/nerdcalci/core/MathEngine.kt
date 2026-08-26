@@ -167,7 +167,7 @@ object MathEngine {
             }
             try {
                 injectDynamicVariables(context)
-                val result = evaluateLine(line.expression, context, loader, loadingStack)
+                val result = processPrecedingLine(line, context, loader, loadingStack)
                 val hasResult = result.value != null || result.dateTimeResult != null || result.stringResult != null
                 val taggedResult = if (hasResult) {
                     if (isStandaloneDynamicAggregate(line.expression, context.userAssignedDynamicVariables))
@@ -553,6 +553,120 @@ object MathEngine {
      */
     private fun computeCurrentLineNumber(lineResults: List<EvaluationResult?>): EvaluationResult {
         return EvaluationResult(BigDecimal(lineResults.size + 1))
+    }
+
+    private val NON_DETERMINISTIC_FUNCTIONS = setOf("rand", "randInt")
+
+    private fun hasNonDeterministicCalls(stmt: Statement): Boolean = when (stmt) {
+        is Statement.ExprStatement -> hasNonDeterministicCalls(stmt.expr)
+        is Statement.Assignment -> hasNonDeterministicCalls(stmt.expr)
+        is Statement.CompoundAssignment -> hasNonDeterministicCalls(stmt.expr)
+        is Statement.Increment -> false
+        is Statement.Decrement -> false
+        is Statement.FunctionDefinition -> false
+        is Statement.Empty -> false
+    }
+
+    private fun hasNonDeterministicCalls(expr: Expr): Boolean = when (expr) {
+        is Expr.FunctionCall -> expr.name in NON_DETERMINISTIC_FUNCTIONS || expr.args.any { hasNonDeterministicCalls(it) }
+        is Expr.MemberFunctionCall -> expr.args.any { hasNonDeterministicCalls(it) } || hasNonDeterministicCalls(expr.obj)
+        is Expr.BinaryOp -> hasNonDeterministicCalls(expr.left) || hasNonDeterministicCalls(expr.right)
+        is Expr.UnaryMinus -> hasNonDeterministicCalls(expr.operand)
+        is Expr.PercentLiteral -> hasNonDeterministicCalls(expr.value)
+        is Expr.PercentOf -> hasNonDeterministicCalls(expr.percent) || hasNonDeterministicCalls(expr.base)
+        is Expr.PercentOff -> hasNonDeterministicCalls(expr.percent) || hasNonDeterministicCalls(expr.base)
+        is Expr.ReversePercentOf -> hasNonDeterministicCalls(expr.percent) || hasNonDeterministicCalls(expr.value)
+        is Expr.Quantity -> hasNonDeterministicCalls(expr.value)
+        is Expr.UnitConversion -> hasNonDeterministicCalls(expr.expr)
+        is Expr.CompositeQuantity -> expr.quantities.any { hasNonDeterministicCalls(it.value) }
+        is Expr.DateInterval -> hasNonDeterministicCalls(expr.start) || hasNonDeterministicCalls(expr.end)
+        is Expr.YearInterval -> hasNonDeterministicCalls(expr.fromYear) || hasNonDeterministicCalls(expr.toYear)
+        is Expr.DayCountQuery -> hasNonDeterministicCalls(expr.target)
+        is Expr.DateModifier -> hasNonDeterministicCalls(expr.expr)
+        is Expr.MemberAccess -> hasNonDeterministicCalls(expr.obj)
+        is Expr.NumberLiteral, is Expr.Variable, is Expr.StringLiteral -> false
+    }
+
+    private fun parseStoredResult(rawResult: String, context: MathContext): EvaluationResult? {
+        if (rawResult.isBlank() || rawResult == "Err") return null
+        val trimmed = rawResult.trim()
+
+        val spaceIndex = trimmed.indexOf(' ')
+        val (numStr, unitStr) = if (spaceIndex > 0) {
+            trimmed.substring(0, spaceIndex) to trimmed.substring(spaceIndex + 1).trim()
+        } else {
+            trimmed to null
+        }
+
+        val displayValue = numStr.toBigDecimalOrNull()
+        if (displayValue != null) {
+            val unitName = unitStr?.takeIf { it.isNotEmpty() }
+            val unit = unitName?.let { UnitConverter.findUnit(it) }
+            val baseValue = if (unit != null) {
+                UnitConverter.toBase(displayValue, unit, context.variables)
+            } else {
+                displayValue
+            }
+            val displayRational = Rational.fromBigDecimalSmart(displayValue)
+            val baseRational = if (unit != null && displayRational != null) {
+                UnitConverter.toBase(displayRational, unit, context.variables)
+            } else {
+                displayRational
+            }
+            return EvaluationResult(
+                value = baseValue,
+                unit = unitName,
+                rationalValue = baseRational
+            )
+        }
+
+        return null
+    }
+
+    private suspend fun processPrecedingLine(
+        line: LineEntity,
+        context: MathContext,
+        loader: FileContextLoader? = null,
+        loadingStack: Set<String> = emptySet()
+    ): EvaluationResult {
+        if (line.result.isNotBlank() && line.result != "Err") {
+            try {
+                val tokens = Lexer(line.expression).tokenize()
+                if (tokens.size > 1 || tokens[0].kind != TokenKind.EOF) {
+                    val statement = Parser(tokens).parse()
+                    if (hasNonDeterministicCalls(statement)) {
+                        val parsedResult = parseStoredResult(line.result, context)
+                        if (parsedResult != null) {
+                            when (statement) {
+                                is Statement.Assignment -> {
+                                    val target = statement.target
+                                    if (target is Expr.Variable) {
+                                        context.fileVariables.remove(target.name)
+                                        context.variables[target.name] = parsedResult
+                                    }
+                                    return parsedResult
+                                }
+                                is Statement.CompoundAssignment -> {
+                                    val target = statement.target
+                                    if (target is Expr.Variable) {
+                                        context.fileVariables.remove(target.name)
+                                        context.variables[target.name] = parsedResult
+                                    }
+                                    return parsedResult
+                                }
+                                is Statement.ExprStatement -> {
+                                    return parsedResult
+                                }
+                                else -> {}
+                            }
+                        }
+                    }
+                }
+            } catch (_: Exception) {
+                // If lexing/parsing fails here, fall back to evaluateLine
+            }
+        }
+        return evaluateLine(line.expression, context, loader, loadingStack)
     }
 
     /**

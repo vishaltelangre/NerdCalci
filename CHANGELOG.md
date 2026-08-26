@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [4.9.7] - 2026-08-26
+### Added
+- Added bottom border divider to the last calculation row (Issue: #226).
+
 ### Fixed
 - Fixed `prev` and `total` re-evaluating `rand()` / `randInt()` instead of preserving already computed values during incremental recalculation (Issue: #227).
 - Fixed numeral system conversions (e.g., `15 dec in hex`, `1 bin`, `1 oct`, `1 hex`) incorrectly multiplying input numbers by their base radix.

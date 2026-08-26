@@ -207,8 +207,8 @@ class MixedUnitUsageTest {
     @Test
     fun `numeral system mixed with unitless passes`() {
         testCalculate("10 + 20 hex", "20 hex + 10") { result ->
-            assertEquals("0x14a", result[0].result.lowercase())
-            assertEquals("0x14a", result[1].result.lowercase())
+            assertEquals("0x1e", result[0].result.lowercase())
+            assertEquals("0x1e", result[1].result.lowercase())
         }
     }
 

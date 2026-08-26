@@ -513,10 +513,10 @@ object UnitConverter {
         Unit("Inches of Mercury", listOf("inHg"), UnitCategory.PRESSURE, BigDecimal("3386.388")),
 
         // --- NUMERAL SYSTEM ---
-        Unit("Decimal", listOf("dec", "decimal"), UnitCategory.NUMERAL_SYSTEM, BigDecimal.TEN),
-        Unit("Hexadecimal", listOf("hex", "hexadecimal"), UnitCategory.NUMERAL_SYSTEM, BigDecimal("16.0")),
-        Unit("Octal", listOf("oct", "octal"), UnitCategory.NUMERAL_SYSTEM, BigDecimal("8.0")),
-        Unit("Binary", listOf("bin", "binary"), UnitCategory.NUMERAL_SYSTEM, BigDecimal("2.0")),
+        Unit("Decimal", listOf("dec", "decimal"), UnitCategory.NUMERAL_SYSTEM, BigDecimal.ONE),
+        Unit("Hexadecimal", listOf("hex", "hexadecimal"), UnitCategory.NUMERAL_SYSTEM, BigDecimal.ONE),
+        Unit("Octal", listOf("oct", "octal"), UnitCategory.NUMERAL_SYSTEM, BigDecimal.ONE),
+        Unit("Binary", listOf("bin", "binary"), UnitCategory.NUMERAL_SYSTEM, BigDecimal.ONE),
 
         // --- SCALAR MULTIPLIERS ---
         Unit("Dozens", listOf("dozen", "dozens"), UnitCategory.SCALAR, BigDecimal("12.0")),
@@ -981,5 +981,12 @@ object UnitConverter {
     fun isNumeralSystemSymbol(symbol: String): Boolean {
         val unit = findUnit(symbol)
         return unit != null && unit.category == UnitCategory.NUMERAL_SYSTEM
+    }
+
+    fun getRadix(symbol: String): Int = when (symbol.trim().lowercase()) {
+        "bin", "binary" -> 2
+        "oct", "octal" -> 8
+        "hex", "hexadecimal" -> 16
+        else -> 10
     }
 }

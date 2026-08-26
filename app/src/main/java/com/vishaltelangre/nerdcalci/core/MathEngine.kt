@@ -293,7 +293,7 @@ object MathEngine {
                             if (numericValue.compareTo(BigDecimal(Long.MIN_VALUE)) < 0 || numericValue.compareTo(BigDecimal(Long.MAX_VALUE)) > 0) {
                                 formatBigDecimal(numericValue)
                             } else {
-                                formatNumeralSystem(numericValue.toLong(), u.factor.toInt())
+                                formatNumeralSystem(numericValue.toLong(), UnitConverter.getRadix(u.symbols.first()))
                             }
                         } else {
                             val formattedValue = if (!result.forceFloat && (isolatedContext.rationalMode || result.explicitRational)) {
@@ -771,12 +771,7 @@ object MathEngine {
 
         val (formattedResult, isTruncated) = if (isNumeralSystem) {
             if (value.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) != 0) return "Err"
-            val radix = when (trimmedUnit) {
-                "bin" -> 2
-                "hex" -> 16
-                "oct" -> 8
-                else -> 10
-            }
+            val radix = UnitConverter.getRadix(trimmedUnit)
             formatNumeralSystem(value.toLong(), radix) to false
         } else {
             val roundsToZero = value.signum() != 0 && precision != Constants.PRECISION_OFF && safePrecision > 0 &&

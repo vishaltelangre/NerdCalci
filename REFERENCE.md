@@ -52,6 +52,7 @@
   - [The `convert()` function](#the-convert-function)
   - [Extracting numerical values](#extracting-numerical-values)
   - [Quantities inside Trigonometry](#quantities-inside-trigonometry)
+  - [Compound & Rate Units](#compound--rate-units)
   - [Time](#time)
   - [Length](#length)
   - [Area](#area)
@@ -751,6 +752,32 @@ sin(30 deg)    # 0.5
 cos(60 degree) # 0.5
 ```
 
+### Compound & Rate Units
+
+NerdCalci supports dynamic composite rate units (e.g. `liters per hour`, `L/h`, `MB/s`, `kg/day`), enabling rate calculations, unit cancellation, and conversions.
+
+```text
+# Dividing quantities creates rate units
+50 liters / 2 hours             # 25 L/h
+500 kg / 10 days                # 50 kg/d
+100 MB / 10 seconds             # 10 MB/s
+
+# Multiplying rates by time cancels the denominator
+(25 L/h) * 4 hours              # 100 L
+(10 MB/s) * 10 seconds          # 100 MB
+
+# Dividing total quantity by a rate calculates required duration
+100 liters / (25 L/h)           # 4 h
+1000 MB / (50 MB/s)             # 20 s
+
+# Convert rates between compatible units
+(120 L/h) in L/min              # 2 L/min
+
+# `per` keyword syntax is also supported
+50 liters per hour              # 50 L/h
+(50 liters per hour) * 3 hours  # 150 L
+```
+
 ### Time
 
 | Unit        | Symbols (Aliases)                         | Example         |
@@ -1138,7 +1165,7 @@ NerdCalci supports converting decimal numbers to/from other number bases using t
 | Hexadecimal | `hex`, `hexadecimal` | 16   | `15 dec in hex` | `0xF`    |
 | Binary      | `bin`, `binary`      | 2    | `10 in bin`     | `0b1010` |
 | Octal       | `oct`, `octal`       | 8    | `64 in oct`     | `0o100`  |
-| Decimal     | `dec`, `decimal`     | 10   | `10.5 in dec`   | `10`     |
+| Decimal     | `dec`, `decimal`     | 10   | `10 in dec`     | `10`     |
 
 > **⚠️ Important**: NerdCalci currently only supports decimal literals as numerical inputs in expressions. While you can convert **to** Hex/Binary representations for display, you cannot directly use hex literals like `0x10` or `0b1101` in calculation inputs.
 

@@ -102,4 +102,44 @@ class GlobalFileTest {
             assertError("File `other` also references file `global`, causing an endless loop", results, 0, loader = loader)
         }
     }
+
+    @Test
+    fun `global function with date argument resolves successfully`() {
+        val loader = createMockLoaderWithGlobal(
+            listOf("depositPerDay(cost, saved, due) = (cost - saved) / dropUnit(days until due)")
+        )
+        testCalculate(
+            "cost = 1000",
+            "saved = 500",
+            "due = date(2026, 10, 31)",
+            "global.depositPerDay(cost, saved, due)",
+            loader = loader
+        ) { results ->
+            assertEquals("1000.0", results[0].result)
+            assertEquals("500.0", results[1].result)
+            assertEquals("Oct 31", results[2].result)
+            val result = results[3].result.toDouble()
+            // days until 2026-10-31 is > 0, so 500 / days produces a valid positive float
+            org.junit.Assert.assertTrue(result > 0)
+        }
+    }
+
+    @Test
+    fun `file function with unit arguments resolves successfully`() {
+        val loader = createMockLoaderWithGlobal(
+            globalExpressions = emptyList(),
+            otherExpressions = mapOf(
+                "helper" to listOf(
+                    "addWeights(a, b) = a + b"
+                )
+            )
+        )
+        testCalculate(
+            "h = file(\"helper\")",
+            "h.addWeights(5 kg, 500 g)",
+            loader = loader
+        ) { results ->
+            assertEquals("5500.0 g", results[1].result)
+        }
+    }
 }

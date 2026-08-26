@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.7] - 2026-08-26
+### Added
+- Added support for rate and compound units with automatic cancellation and conversion, e.g., `50 liters / 2 hours = 25 L/h`, `(25 L/h) * 4 hours = 100 L`, `1000 MB / (50 MB/s) = 20 s`, and `per` syntax (Issue: #160).
+- Added bottom border divider to the last calculation row (Issue: #226).
+
+### Fixed
+- Fixed `prev` and `total` re-evaluating `rand()` / `randInt()` instead of preserving already computed values during incremental recalculation (Issue: #227).
+- Fixed numeral system conversions (e.g., `15 dec in hex`, `1 bin`, `1 oct`, `1 hex`) incorrectly multiplying input numbers by their base radix.
+- Fixed non-numeric arguments (such as dates, date-times, and durations) being discarded or defaulting to zero when passed to global/cross-file functions (Issue: #228).
+
 ## [4.9.6] - 2026-07-28
 ### Changed
 - Target Android 16 (API level 36).

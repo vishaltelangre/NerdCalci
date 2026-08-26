@@ -415,9 +415,34 @@ class MathEngineTest {
                 assertEquals("200.0 thousand", result[9].result)
                 assertEquals("5.0 km", result[10].result)
                 assertEquals("0x2710", result[11].result)
-                assertEquals("0x140", result[12].result)
-                assertEquals("0xA0", result[13].result)
+                assertEquals("0x14", result[12].result)
+                assertEquals("0xA", result[13].result)
             }
+
+    @Test
+    fun `numeral system conversions evaluate correctly`() = testCalculate(
+        "15 in hex",
+        "15 dec in hex",
+        "1 bin",
+        "1 oct",
+        "1 dec",
+        "1 hex",
+        "10 in bin",
+        "64 in oct",
+        "15 in bin",
+        "15 in oct"
+    ) { result ->
+        assertEquals("0xF", result[0].result)
+        assertEquals("0xF", result[1].result)
+        assertEquals("0b1", result[2].result)
+        assertEquals("0o1", result[3].result)
+        assertEquals("1", result[4].result)
+        assertEquals("0x1", result[5].result)
+        assertEquals("0b1010", result[6].result)
+        assertEquals("0o100", result[7].result)
+        assertEquals("0b1111", result[8].result)
+        assertEquals("0o17", result[9].result)
+    }
 
     @Test
     fun `all numeral multiplier aliases evaluate correctly`() =
@@ -3904,4 +3929,48 @@ class MathEngineTest {
             assertTrue("randInt at Long.MAX_VALUE must not overflow", randIntMax == Long.MAX_VALUE || randIntMax == Long.MAX_VALUE - 1)
         }
     }
+
+    @Test
+    fun `calculateFrom preserves evaluated result of rand when evaluating prev and total`() = runBlocking {
+        val lines = listOf(
+            createLine("rand(100)").copy(result = "34.851"),
+            createLine("prev"),
+            createLine("prev"),
+            createLine("total")
+        )
+
+        // Recalculating from line 1 onward should use the stored result of line 0 ("34.851")
+        val affected = MathEngine.calculateFrom(lines, changedIndex = 1)
+        assertEquals(3, affected.size)
+        assertEquals("34.851", affected[0].result) // line 1: prev
+        assertEquals("34.851", affected[1].result) // line 2: prev
+        assertEquals("104.553", affected[2].result) // line 3: total (34.851 * 3)
+    }
+
+    @Test
+    fun `calculateFrom preserves variable assigned to rand`() = runBlocking {
+        val lines = listOf(
+            createLine("x = rand(100)").copy(result = "42.5"),
+            createLine("x + 10"),
+            createLine("prev * 2")
+        )
+
+        val affected = MathEngine.calculateFrom(lines, changedIndex = 1)
+        assertEquals(2, affected.size)
+        assertEquals("52.5", affected[0].result) // line 1: x + 10
+        assertEquals("105.0", affected[1].result) // line 2: prev * 2
+    }
+
+    @Test
+    fun `calculateFrom preserves randInt with unit`() = runBlocking {
+        val lines = listOf(
+            createLine("x = (randInt(1, 10)) kg").copy(result = "7.0 kg"),
+            createLine("x in g")
+        )
+
+        val affected = MathEngine.calculateFrom(lines, changedIndex = 1)
+        assertEquals(1, affected.size)
+        assertEquals("7000.0 g", affected[0].result)
+    }
 }
+

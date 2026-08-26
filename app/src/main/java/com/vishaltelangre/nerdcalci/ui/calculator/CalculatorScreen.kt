@@ -1476,12 +1476,10 @@ fun CalculatorScreen(
                             }
                         }
                     )
-                    if (index < lines.size - 1) {
-                        HorizontalDivider(
-                            thickness = 1.dp,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.20f)
-                        )
-                    }
+                    HorizontalDivider(
+                        thickness = 1.dp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.20f)
+                    )
                 }
             }
         }

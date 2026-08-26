@@ -753,6 +753,18 @@ class Parser(private val tokens: List<Token>) {
                     consumeCount = (tempPos - pos) + 1
                 }
                 tempPos++
+            } else if (t.kind == TokenKind.SLASH) {
+                val nextIdx = tempPos + 1
+                if (nextIdx < tokens.size && (tokens[nextIdx].kind == TokenKind.IDENTIFIER || isUnitOperator(tokens[nextIdx].kind))) {
+                    currentCombined += "/${tokens[nextIdx].lexeme}"
+                    if (UnitConverter.findUnit(currentCombined) != null) {
+                        bestCombined = currentCombined
+                        consumeCount = (nextIdx - pos) + 1
+                    }
+                    tempPos = nextIdx + 1
+                } else {
+                    break
+                }
             } else if (t.kind == TokenKind.MINUS) {
                 val nextIdx = tempPos + 1
                 if (nextIdx < tokens.size && tokens[nextIdx].kind == TokenKind.IDENTIFIER) {

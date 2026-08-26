@@ -167,7 +167,7 @@ object MathEngine {
             }
             try {
                 injectDynamicVariables(context)
-                val result = evaluateLine(line.expression, context, loader, loadingStack)
+                val result = processPrecedingLine(line, context, loader, loadingStack)
                 val hasResult = result.value != null || result.dateTimeResult != null || result.stringResult != null
                 val taggedResult = if (hasResult) {
                     if (isStandaloneDynamicAggregate(line.expression, context.userAssignedDynamicVariables))
@@ -293,7 +293,7 @@ object MathEngine {
                             if (numericValue.compareTo(BigDecimal(Long.MIN_VALUE)) < 0 || numericValue.compareTo(BigDecimal(Long.MAX_VALUE)) > 0) {
                                 formatBigDecimal(numericValue)
                             } else {
-                                formatNumeralSystem(numericValue.toLong(), u.factor.toInt())
+                                formatNumeralSystem(numericValue.toLong(), UnitConverter.getRadix(u.symbols.first()))
                             }
                         } else {
                             val formattedValue = if (!result.forceFloat && (isolatedContext.rationalMode || result.explicitRational)) {
@@ -429,7 +429,13 @@ object MathEngine {
             val resultCategory = resultUnit?.category
 
             if (expectedCategory != null) {
-                if (!isPhysicalCategory(resultCategory) || resultCategory != expectedCategory) {
+                val firstUnit = firstUnitSymbol?.let { UnitConverter.findUnit(it) }
+                val isComp = if (firstUnit != null && resultUnit != null) {
+                    UnitConverter.areCompatible(firstUnit, resultUnit)
+                } else {
+                    isPhysicalCategory(resultCategory) && resultCategory == expectedCategory
+                }
+                if (!isComp) {
                     val expectedName = firstUnitSymbol?.let { UnitConverter.findUnit(it)?.name?.lowercase()?.replaceFirstChar { it.uppercase() } } ?: expectedCategory.name.lowercase().replaceFirstChar { it.uppercase() }
                     val resultName = resultUnit?.name?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "unitless number"
                     throw EvalException("$operationName of `$expectedName` and `$resultName` is not supported")
@@ -555,6 +561,120 @@ object MathEngine {
         return EvaluationResult(BigDecimal(lineResults.size + 1))
     }
 
+    private val NON_DETERMINISTIC_FUNCTIONS = setOf("rand", "randInt")
+
+    private fun hasNonDeterministicCalls(stmt: Statement): Boolean = when (stmt) {
+        is Statement.ExprStatement -> hasNonDeterministicCalls(stmt.expr)
+        is Statement.Assignment -> hasNonDeterministicCalls(stmt.expr)
+        is Statement.CompoundAssignment -> hasNonDeterministicCalls(stmt.expr)
+        is Statement.Increment -> false
+        is Statement.Decrement -> false
+        is Statement.FunctionDefinition -> false
+        is Statement.Empty -> false
+    }
+
+    private fun hasNonDeterministicCalls(expr: Expr): Boolean = when (expr) {
+        is Expr.FunctionCall -> expr.name in NON_DETERMINISTIC_FUNCTIONS || expr.args.any { hasNonDeterministicCalls(it) }
+        is Expr.MemberFunctionCall -> expr.args.any { hasNonDeterministicCalls(it) } || hasNonDeterministicCalls(expr.obj)
+        is Expr.BinaryOp -> hasNonDeterministicCalls(expr.left) || hasNonDeterministicCalls(expr.right)
+        is Expr.UnaryMinus -> hasNonDeterministicCalls(expr.operand)
+        is Expr.PercentLiteral -> hasNonDeterministicCalls(expr.value)
+        is Expr.PercentOf -> hasNonDeterministicCalls(expr.percent) || hasNonDeterministicCalls(expr.base)
+        is Expr.PercentOff -> hasNonDeterministicCalls(expr.percent) || hasNonDeterministicCalls(expr.base)
+        is Expr.ReversePercentOf -> hasNonDeterministicCalls(expr.percent) || hasNonDeterministicCalls(expr.value)
+        is Expr.Quantity -> hasNonDeterministicCalls(expr.value)
+        is Expr.UnitConversion -> hasNonDeterministicCalls(expr.expr)
+        is Expr.CompositeQuantity -> expr.quantities.any { hasNonDeterministicCalls(it.value) }
+        is Expr.DateInterval -> hasNonDeterministicCalls(expr.start) || hasNonDeterministicCalls(expr.end)
+        is Expr.YearInterval -> hasNonDeterministicCalls(expr.fromYear) || hasNonDeterministicCalls(expr.toYear)
+        is Expr.DayCountQuery -> hasNonDeterministicCalls(expr.target)
+        is Expr.DateModifier -> hasNonDeterministicCalls(expr.expr)
+        is Expr.MemberAccess -> hasNonDeterministicCalls(expr.obj)
+        is Expr.NumberLiteral, is Expr.Variable, is Expr.StringLiteral -> false
+    }
+
+    private fun parseStoredResult(rawResult: String, context: MathContext): EvaluationResult? {
+        if (rawResult.isBlank() || rawResult == "Err") return null
+        val trimmed = rawResult.trim()
+
+        val spaceIndex = trimmed.indexOf(' ')
+        val (numStr, unitStr) = if (spaceIndex > 0) {
+            trimmed.substring(0, spaceIndex) to trimmed.substring(spaceIndex + 1).trim()
+        } else {
+            trimmed to null
+        }
+
+        val displayValue = numStr.toBigDecimalOrNull()
+        if (displayValue != null) {
+            val unitName = unitStr?.takeIf { it.isNotEmpty() }
+            val unit = unitName?.let { UnitConverter.findUnit(it) }
+            val baseValue = if (unit != null) {
+                UnitConverter.toBase(displayValue, unit, context.variables)
+            } else {
+                displayValue
+            }
+            val displayRational = Rational.fromBigDecimalSmart(displayValue)
+            val baseRational = if (unit != null && displayRational != null) {
+                UnitConverter.toBase(displayRational, unit, context.variables)
+            } else {
+                displayRational
+            }
+            return EvaluationResult(
+                value = baseValue,
+                unit = unitName,
+                rationalValue = baseRational
+            )
+        }
+
+        return null
+    }
+
+    private suspend fun processPrecedingLine(
+        line: LineEntity,
+        context: MathContext,
+        loader: FileContextLoader? = null,
+        loadingStack: Set<String> = emptySet()
+    ): EvaluationResult {
+        if (line.result.isNotBlank() && line.result != "Err") {
+            try {
+                val tokens = Lexer(line.expression).tokenize()
+                if (tokens.size > 1 || tokens[0].kind != TokenKind.EOF) {
+                    val statement = Parser(tokens).parse()
+                    if (hasNonDeterministicCalls(statement)) {
+                        val parsedResult = parseStoredResult(line.result, context)
+                        if (parsedResult != null) {
+                            when (statement) {
+                                is Statement.Assignment -> {
+                                    val target = statement.target
+                                    if (target is Expr.Variable) {
+                                        context.fileVariables.remove(target.name)
+                                        context.variables[target.name] = parsedResult
+                                    }
+                                    return parsedResult
+                                }
+                                is Statement.CompoundAssignment -> {
+                                    val target = statement.target
+                                    if (target is Expr.Variable) {
+                                        context.fileVariables.remove(target.name)
+                                        context.variables[target.name] = parsedResult
+                                    }
+                                    return parsedResult
+                                }
+                                is Statement.ExprStatement -> {
+                                    return parsedResult
+                                }
+                                else -> {}
+                            }
+                        }
+                    }
+                }
+            } catch (_: Exception) {
+                // If lexing/parsing fails here, fall back to evaluateLine
+            }
+        }
+        return evaluateLine(line.expression, context, loader, loadingStack)
+    }
+
     /**
      * Evaluate a single line expression within the given variable context.
      * Returns the numeric result.
@@ -657,12 +777,7 @@ object MathEngine {
 
         val (formattedResult, isTruncated) = if (isNumeralSystem) {
             if (value.remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) != 0) return "Err"
-            val radix = when (trimmedUnit) {
-                "bin" -> 2
-                "hex" -> 16
-                "oct" -> 8
-                else -> 10
-            }
+            val radix = UnitConverter.getRadix(trimmedUnit)
             formatNumeralSystem(value.toLong(), radix) to false
         } else {
             val roundsToZero = value.signum() != 0 && precision != Constants.PRECISION_OFF && safePrecision > 0 &&

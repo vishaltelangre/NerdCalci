@@ -207,8 +207,8 @@ class MixedUnitUsageTest {
     @Test
     fun `numeral system mixed with unitless passes`() {
         testCalculate("10 + 20 hex", "20 hex + 10") { result ->
-            assertEquals("0x14a", result[0].result.lowercase())
-            assertEquals("0x14a", result[1].result.lowercase())
+            assertEquals("0x1e", result[0].result.lowercase())
+            assertEquals("0x1e", result[1].result.lowercase())
         }
     }
 
@@ -602,6 +602,89 @@ class MixedUnitUsageTest {
             assertEquals("5.0 min", result[1].result)
             assertEquals("3.0 MW", result[2].result)
             assertEquals("2.0 min", result[3].result)
+        }
+    }
+
+    @Test
+    fun `compound units division creates rates`() {
+        testCalculate(
+            "50 liters / 2 hours",
+            "500 kg / 10 days"
+        ) { result ->
+            assertEquals("25.0 L/h", result[0].result)
+            assertEquals("50.0 kg/d", result[1].result)
+        }
+    }
+
+    @Test
+    fun `compound units multiplication cancels denominator`() {
+        testCalculate(
+            "25 L/h * 4 hours",
+            "4 hours * (25 L/h)",
+            "50 kg/day * 3 days"
+        ) { result ->
+            assertEquals("100.0 L", result[0].result)
+            assertEquals("100.0 L", result[1].result)
+            assertEquals("150.0 kg", result[2].result)
+        }
+    }
+
+    @Test
+    fun `quantity divided by compound unit cancels numerator`() {
+        testCalculate(
+            "100 liters / (25 L/h)",
+            "300 kg / (50 kg/day)"
+        ) { result ->
+            assertEquals("4.0 h", result[0].result)
+            assertEquals("6.0 d", result[1].result)
+        }
+    }
+
+    @Test
+    fun `compound units conversion`() {
+        testCalculate(
+            "(120 L/h) in L/min",
+            "(100 L/h) in gal/h"
+        ) { result ->
+            assertEquals("2.0 L/min", result[0].result)
+            assertEquals("26.41720523581484153798999216091626 gal/h", result[1].result)
+        }
+    }
+
+    @Test
+    fun `compound units addition and subtraction`() {
+        testCalculate(
+            "100 L/h + 50 L/h",
+            "100 L/h - 20 L/h"
+        ) { result ->
+            assertEquals("150.0 L/h", result[0].result)
+            assertEquals("80.0 L/h", result[1].result)
+        }
+    }
+
+    @Test
+    fun `data rate multiplication and division`() {
+        testCalculate(
+            "10 MB/s * 10 s",
+            "100 MB / 10 s",
+            "(1000 MB / (50 MB/s))"
+        ) { result ->
+            assertEquals("100.0 MB", result[0].result)
+            assertEquals("10.0 MB/s", result[1].result)
+            assertEquals("20.0 s", result[2].result)
+        }
+    }
+
+    @Test
+    fun `per syntax creates compound units`() {
+        testCalculate(
+            "50 liters per hour",
+            "(50 liters per hour) * 3 hours",
+            "(200 kg per day) * 5 days"
+        ) { result ->
+            assertEquals("50.0 L/h", result[0].result)
+            assertEquals("150.0 L", result[1].result)
+            assertEquals("1000.0 kg", result[2].result)
         }
     }
 }

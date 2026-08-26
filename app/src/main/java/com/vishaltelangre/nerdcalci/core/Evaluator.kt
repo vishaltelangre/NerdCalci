@@ -283,7 +283,7 @@ class Evaluator(
                 val fromUnit = evaluatedExpr.unit?.let { UnitConverter.findUnit(it) }
 
                 if (fromUnit != null) {
-                    val isCompatible = fromUnit.category == toUnit.category ||
+                    val isCompatible = UnitConverter.areCompatible(fromUnit, toUnit) ||
                             (fromUnit.category == UnitCategory.SCALAR && toUnit.category == UnitCategory.NUMERAL_SYSTEM) ||
                             (fromUnit.category == UnitCategory.NUMERAL_SYSTEM && toUnit.category == UnitCategory.SCALAR)
                     if (!isCompatible) {
@@ -355,59 +355,8 @@ class Evaluator(
             if (argExprs.size < minArity || argExprs.size > maxArity) {
                 throw ArityMismatchException(name, minArity, maxArity, argExprs.size)
             }
-
             val args = argExprs.map { evaluate(it) }
-            if (callStack.contains(name)) {
-                throw EvalException("Function `$name()` calls itself too many times which is not allowed")
-            }
-
-            // Create a strictly isolated scope
-            val localVars = mutableMapOf<String, EvaluationResult>()
-            for (i in localFunc.params.indices) {
-                val param = localFunc.params[i]
-                val value = if (i < args.size) {
-                    args[i]
-                } else {
-                    // evaluate the default in a context that includes previous parameters + outer scope
-                    val tempEvaluator = Evaluator(
-                        variables = variables + localVars,
-                        injectionErrors = injectionErrors,
-                        localFunctions = localFunctions,
-                        callStack = callStack,
-                        fileVariables = fileVariables,
-                        fileContextLoader = fileContextLoader,
-                        loadingStack = loadingStack,
-                        rationalMode = rationalMode,
-                        dateFormat = dateFormat
-                    )
-                    tempEvaluator.evaluate(param.default!!)
-                }
-                localVars[param.name] = value
-            }
-
-            // A new Evaluator handles the inner scope execution.
-            // We pass an empty map for `fileVariables` to ensure the function body
-            // is strictly isolated and cannot access external file variables.
-            val innerEvaluator = Evaluator(
-                variables = localVars,
-                localFunctions = localFunctions,
-                callStack = callStack + name,
-                fileVariables = emptyMap(),
-                fileContextLoader = fileContextLoader,
-                loadingStack = loadingStack,
-                rationalMode = rationalMode,
-                dateFormat = dateFormat,
-                isFunctionScope = true
-            )
-            val localContext = MathContext(variables = localVars)
-            var lastResult: EvaluationResult? = null
-            for (stmt in localFunc.body) {
-                val res = innerEvaluator.evaluateStatement(stmt, localContext)
-                if (res.value != null || res.dateTimeResult != null || res.stringResult != null) {
-                    lastResult = res
-                }
-            }
-            return lastResult ?: EvaluationResult(null)
+            return executeLocalFunction(name, localFunc, args)
         }
 
         if (name == "file") {
@@ -850,7 +799,7 @@ class Evaluator(
 
             // Strict unit check: if one is physical, the other must be physical of the same category
             if (leftIsPhysical || rightIsPhysical) {
-                if (!leftIsPhysical || !rightIsPhysical || leftUnit!!.category != rightUnit!!.category) {
+                if (!leftIsPhysical || !rightIsPhysical || !UnitConverter.areCompatible(leftUnit!!, rightUnit!!)) {
                     val leftDesc = getDimensionDescription(leftUnit)
                     val rightDesc = getDimensionDescription(rightUnit)
                     val opName = if (expr.op == TokenKind.PLUS) "Addition" else "Subtraction"
@@ -1188,6 +1137,64 @@ class Evaluator(
         return loader.loadContext(fileName, loadingStack + fileName) ?: throw EvalException("Failed to load file `$fileName`")
     }
 
+    internal suspend fun executeLocalFunction(
+        name: String,
+        localFunc: LocalFunction,
+        args: List<EvaluationResult>
+    ): EvaluationResult {
+        if (callStack.contains(name)) {
+            throw EvalException("Function `$name()` calls itself too many times which is not allowed")
+        }
+
+        // Create a strictly isolated scope
+        val localVars = mutableMapOf<String, EvaluationResult>()
+        for (i in localFunc.params.indices) {
+            val param = localFunc.params[i]
+            val value = if (i < args.size) {
+                args[i]
+            } else {
+                // evaluate the default in a context that includes previous parameters + outer scope
+                val tempEvaluator = Evaluator(
+                    variables = variables + localVars,
+                    injectionErrors = injectionErrors,
+                    localFunctions = localFunctions,
+                    callStack = callStack,
+                    fileVariables = fileVariables,
+                    fileContextLoader = fileContextLoader,
+                    loadingStack = loadingStack,
+                    rationalMode = rationalMode,
+                    dateFormat = dateFormat
+                )
+                tempEvaluator.evaluate(param.default!!)
+            }
+            localVars[param.name] = value
+        }
+
+        // A new Evaluator handles the inner scope execution.
+        // We pass an empty map for `fileVariables` to ensure the function body
+        // is strictly isolated and cannot access external file variables.
+        val innerEvaluator = Evaluator(
+            variables = localVars,
+            localFunctions = localFunctions,
+            callStack = callStack + name,
+            fileVariables = emptyMap(),
+            fileContextLoader = fileContextLoader,
+            loadingStack = loadingStack,
+            rationalMode = rationalMode,
+            dateFormat = dateFormat,
+            isFunctionScope = true
+        )
+        val localContext = MathContext(variables = localVars)
+        var lastResult: EvaluationResult? = null
+        for (stmt in localFunc.body) {
+            val res = innerEvaluator.evaluateStatement(stmt, localContext)
+            if (res.value != null || res.dateTimeResult != null || res.stringResult != null) {
+                lastResult = res
+            }
+        }
+        return lastResult ?: EvaluationResult(null)
+    }
+
     private suspend fun resolveMemberFunctionCall(expr: Expr.MemberFunctionCall): EvaluationResult {
         val obj = expr.obj
         val name = expr.name
@@ -1198,22 +1205,29 @@ class Evaluator(
             throw EvalException("`$name()` is a global function and should be called directly, not via dot notation")
         }
         val remoteContext = loadRemoteContext(fileName)
+        val localFunc = remoteContext.localFunctions[name]
+            ?: throw UnknownFunctionException(name)
 
-        val args = argExprs.map { evaluate(it) }
-        val evaluatedArgs = args.map {
-            val baseValue = it.value ?: BigDecimal.ZERO
-            if (it.unit != null) {
-                val unit = UnitConverter.findUnit(it.unit)
-                if (unit != null) {
-                    val visualValue = UnitConverter.fromBase(baseValue, unit, variables)
-                    Expr.Quantity(Expr.NumberLiteral(visualValue), it.unit)
-                } else {
-                    Expr.NumberLiteral(baseValue)
+        // Validate arity before evaluating arguments
+        val minArity = localFunc.params.count { it.default == null }
+        val maxArity = localFunc.params.size
+        if (argExprs.size < minArity || argExprs.size > maxArity) {
+            throw ArityMismatchException(name, minArity, maxArity, argExprs.size)
+        }
+
+        // Validate arguments
+        argExprs.forEach { argExpr ->
+            if (argExpr is Expr.Variable) {
+                if (argExpr.name == Constants.GLOBAL_NAMESPACE) {
+                    throw EvalException("`global` is a reserved namespace and cannot be passed to functions. Pass the specific values you need instead (e.g., `func(global.variable)`).")
                 }
-            } else {
-                Expr.NumberLiteral(baseValue)
+                if (fileVariables.containsKey(argExpr.name)) {
+                    throw EvalException("File references (like `${argExpr.name}`) cannot be passed to functions. Pass the specific values you need instead (e.g., `${name}(${argExpr.name}.variable)`).")
+                }
             }
         }
+
+        val args = argExprs.map { evaluate(it) }
 
         val remoteEvaluator = Evaluator(
             variables = remoteContext.variables,
@@ -1224,7 +1238,7 @@ class Evaluator(
             rationalMode = rationalMode,
             dateFormat = dateFormat
         )
-        return remoteEvaluator.evaluateFunction(name, evaluatedArgs)
+        return remoteEvaluator.executeLocalFunction(name, localFunc, args)
     }
 
     /**

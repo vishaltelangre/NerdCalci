@@ -429,7 +429,13 @@ object MathEngine {
             val resultCategory = resultUnit?.category
 
             if (expectedCategory != null) {
-                if (!isPhysicalCategory(resultCategory) || resultCategory != expectedCategory) {
+                val firstUnit = firstUnitSymbol?.let { UnitConverter.findUnit(it) }
+                val isComp = if (firstUnit != null && resultUnit != null) {
+                    UnitConverter.areCompatible(firstUnit, resultUnit)
+                } else {
+                    isPhysicalCategory(resultCategory) && resultCategory == expectedCategory
+                }
+                if (!isComp) {
                     val expectedName = firstUnitSymbol?.let { UnitConverter.findUnit(it)?.name?.lowercase()?.replaceFirstChar { it.uppercase() } } ?: expectedCategory.name.lowercase().replaceFirstChar { it.uppercase() }
                     val resultName = resultUnit?.name?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "unitless number"
                     throw EvalException("$operationName of `$expectedName` and `$resultName` is not supported")

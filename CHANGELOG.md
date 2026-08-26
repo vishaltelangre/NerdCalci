@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [4.9.7] - 2026-08-26
 ### Added
+- Added support for rate and compound units with automatic cancellation and conversion, e.g., `50 liters / 2 hours = 25 L/h`, `(25 L/h) * 4 hours = 100 L`, `1000 MB / (50 MB/s) = 20 s`, and `per` syntax (Issue: #160).
 - Added bottom border divider to the last calculation row (Issue: #226).
 
 ### Fixed

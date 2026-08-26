@@ -12,7 +12,8 @@ enum class UnitCategory {
     TIME, LENGTH, AREA, VOLUME, MASS, SPEED, ANGLE, TEMPERATURE, FREQUENCY, ENERGY, POWER, DATA, DATA_RATE,
     FORCE, FUEL_CONSUMPTION, PRESSURE, NUMERAL_SYSTEM, SCALAR,
     ELECTRIC_POTENTIAL, ELECTRIC_CURRENT, ELECTRIC_RESISTANCE, ELECTRIC_CHARGE, ELECTRIC_CAPACITANCE,
-    ELECTRIC_INDUCTANCE, MAGNETIC_FLUX, MAGNETIC_FLUX_DENSITY
+    ELECTRIC_INDUCTANCE, MAGNETIC_FLUX, MAGNETIC_FLUX_DENSITY,
+    COMPOUND
 }
 
 /**
@@ -24,6 +25,8 @@ enum class UnitCategory {
  * @property factor Scale factor relative to the category's base unit (multiplicative units only)
  * @property customToBase Optional custom lambda for non-linear units (e.g. Temperature) or dynamic units (CSS)
  * @property customFromBase Optional custom lambda for converting back from base
+ * @property compoundNumerator Optional numerator unit for compound/rate units (e.g. Liter in L/h)
+ * @property compoundDenominator Optional denominator unit for compound/rate units (e.g. Hour in L/h)
  */
 data class Unit(
     val name: String,
@@ -34,7 +37,9 @@ data class Unit(
     val customFromBase: ((BigDecimal, Map<String, EvaluationResult>) -> BigDecimal)? = null,
     val rationalFactor: Rational? = null,
     val customRationalToBase: ((Rational, Map<String, EvaluationResult>) -> Rational)? = null,
-    val customRationalFromBase: ((Rational, Map<String, EvaluationResult>) -> Rational)? = null
+    val customRationalFromBase: ((Rational, Map<String, EvaluationResult>) -> Rational)? = null,
+    val compoundNumerator: Unit? = null,
+    val compoundDenominator: Unit? = null
 ) {
     val factorRational: Rational? = rationalFactor ?: Rational.toRational(factor)
 }
@@ -651,7 +656,59 @@ object UnitConverter {
     }
 
     fun findUnit(token: String): Unit? {
-        return symbolMap[token] ?: symbolMap[token.lowercase()]
+        val trimmed = token.trim()
+        val direct = symbolMap[trimmed] ?: symbolMap[trimmed.lowercase()]
+        if (direct != null) return direct
+
+        // Check for compound units: e.g. "L/h", "liters per hour", "USD/month", "MB/s", "kg/day"
+        val slashIndex = trimmed.indexOf('/')
+        val perIndex = if (slashIndex == -1) {
+            val idx = trimmed.indexOf(" per ", ignoreCase = true)
+            if (idx != -1) idx else -1
+        } else -1
+
+        val (numStr, denStr) = when {
+            slashIndex != -1 -> {
+                trimmed.substring(0, slashIndex).trim() to trimmed.substring(slashIndex + 1).trim()
+            }
+            perIndex != -1 -> {
+                trimmed.substring(0, perIndex).trim() to trimmed.substring(perIndex + 5).trim()
+            }
+            else -> return null
+        }
+
+        if (numStr.isEmpty() || denStr.isEmpty()) return null
+
+        val numUnit = findUnit(numStr) ?: return null
+        val denUnit = findUnit(denStr) ?: return null
+
+        // Disallow affine temperature, numeral system, scalar, or nested compound units
+        if (numUnit.category == UnitCategory.TEMPERATURE || denUnit.category == UnitCategory.TEMPERATURE) return null
+        if (numUnit.category == UnitCategory.NUMERAL_SYSTEM || denUnit.category == UnitCategory.NUMERAL_SYSTEM) return null
+        if (numUnit.category == UnitCategory.SCALAR || denUnit.category == UnitCategory.SCALAR) return null
+        if (numUnit.category == UnitCategory.COMPOUND || denUnit.category == UnitCategory.COMPOUND) return null
+
+        val numSymbol = numUnit.symbols.first()
+        val denSymbol = denUnit.symbols.first()
+        val compoundSymbol = "$numSymbol/$denSymbol"
+        val compoundFactor = try {
+            numUnit.factor.divide(denUnit.factor, JavaMathContext.DECIMAL128)
+        } catch (_: Exception) {
+            BigDecimal.ONE
+        }
+        val compoundRational = if (numUnit.factorRational != null && denUnit.factorRational != null && denUnit.factorRational != Rational.ZERO) {
+            numUnit.factorRational / denUnit.factorRational
+        } else null
+
+        return Unit(
+            name = "${numUnit.name} per ${denUnit.name}",
+            symbols = listOf(compoundSymbol, trimmed),
+            category = UnitCategory.COMPOUND,
+            factor = compoundFactor,
+            rationalFactor = compoundRational,
+            compoundNumerator = numUnit,
+            compoundDenominator = denUnit
+        )
     }
 
     fun toBase(value: BigDecimal, unit: Unit, variables: Map<String, EvaluationResult>): BigDecimal {
@@ -690,8 +747,28 @@ object UnitConverter {
         }
     }
 
+    fun areCompatible(from: Unit, to: Unit): Boolean {
+        if (from.category == to.category) {
+            if (from.category == UnitCategory.COMPOUND) {
+                val fNum = from.compoundNumerator?.category
+                val fDen = from.compoundDenominator?.category
+                val tNum = to.compoundNumerator?.category
+                val tDen = to.compoundDenominator?.category
+                return fNum != null && fNum == tNum && fDen != null && fDen == tDen
+            }
+            return true
+        }
+        if (from.category == UnitCategory.SPEED && to.category == UnitCategory.COMPOUND) {
+            return to.compoundNumerator?.category == UnitCategory.LENGTH && to.compoundDenominator?.category == UnitCategory.TIME
+        }
+        if (from.category == UnitCategory.COMPOUND && to.category == UnitCategory.SPEED) {
+            return from.compoundNumerator?.category == UnitCategory.LENGTH && from.compoundDenominator?.category == UnitCategory.TIME
+        }
+        return false
+    }
+
     fun convert(value: BigDecimal, from: Unit, to: Unit, variables: Map<String, EvaluationResult>): BigDecimal {
-        if (from.category != to.category) {
+        if (!areCompatible(from, to)) {
             throw EvalException("Conversion of `${from.name}` to `${to.name}` is not supported")
         }
         val baseValue = toBase(value, from, variables)
@@ -705,7 +782,7 @@ object UnitConverter {
     }
 
     fun convert(value: Rational, from: Unit, to: Unit, variables: Map<String, EvaluationResult>): Rational? {
-        if (from.category != to.category) {
+        if (!areCompatible(from, to)) {
             throw EvalException("Conversion of `${from.name}` to `${to.name}` is not supported")
         }
         val baseValue = toBase(value, from, variables) ?: return null
@@ -721,12 +798,54 @@ object UnitConverter {
     fun deriveUnit(left: Unit?, right: Unit?, op: TokenKind): String? {
         if (left == null && right == null) return null
         if (left?.category == UnitCategory.SCALAR || right?.category == UnitCategory.SCALAR) return null
+        if (left?.category == UnitCategory.TEMPERATURE || right?.category == UnitCategory.TEMPERATURE) return null
+        if (left?.category == UnitCategory.FUEL_CONSUMPTION || right?.category == UnitCategory.FUEL_CONSUMPTION) return null
 
-        return when (op) {
-            TokenKind.STAR -> deriveByRules(left, right, MULTIPLICATION_RULES)
-            TokenKind.SLASH -> deriveByRules(left, right, DIVISION_RULES)
-            else -> null
+        if (op == TokenKind.STAR) {
+            val standard = deriveByRules(left, right, MULTIPLICATION_RULES)
+            if (standard != null) return standard
+
+            if (left != null && right != null) {
+                // Compound cancellation:
+                // Case 1: Compound(A, B) * B -> A
+                if (left.category == UnitCategory.COMPOUND && areCompatibleCategories(left.compoundDenominator?.category, right.category)) {
+                    return left.compoundNumerator?.symbols?.first()
+                }
+                // Case 2: B * Compound(A, B) -> A
+                if (right.category == UnitCategory.COMPOUND && areCompatibleCategories(right.compoundDenominator?.category, left.category)) {
+                    return right.compoundNumerator?.symbols?.first()
+                }
+            }
+            return null
+        } else if (op == TokenKind.SLASH) {
+            val standard = deriveByRules(left, right, DIVISION_RULES)
+            if (standard != null) return standard
+
+            if (left != null && right != null) {
+                // Same category / compatible compound cancellation -> unitless
+                if (areCompatible(left, right)) {
+                    return "unitless"
+                }
+                // Case 1: A / Compound(A, B) -> B
+                if (right.category == UnitCategory.COMPOUND && areCompatibleCategories(right.compoundNumerator?.category, left.category)) {
+                    return right.compoundDenominator?.symbols?.first()
+                }
+                // Case 2: Simple / Simple -> fallback to dynamic compound unit
+                if (left.category != UnitCategory.NUMERAL_SYSTEM && right.category != UnitCategory.NUMERAL_SYSTEM &&
+                    left.category != UnitCategory.COMPOUND && right.category != UnitCategory.COMPOUND) {
+                    val leftSym = left.symbols.first()
+                    val rightSym = right.symbols.first()
+                    return "$leftSym/$rightSym"
+                }
+            }
+            return null
         }
+        return null
+    }
+
+    private fun areCompatibleCategories(cat1: UnitCategory?, cat2: UnitCategory?): Boolean {
+        if (cat1 == null || cat2 == null) return false
+        return cat1 == cat2
     }
 
     fun deriveUnitScale(left: Unit?, right: Unit?, op: TokenKind): BigDecimal {

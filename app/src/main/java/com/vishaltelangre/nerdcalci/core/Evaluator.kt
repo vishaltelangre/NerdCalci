@@ -283,7 +283,7 @@ class Evaluator(
                 val fromUnit = evaluatedExpr.unit?.let { UnitConverter.findUnit(it) }
 
                 if (fromUnit != null) {
-                    val isCompatible = fromUnit.category == toUnit.category ||
+                    val isCompatible = UnitConverter.areCompatible(fromUnit, toUnit) ||
                             (fromUnit.category == UnitCategory.SCALAR && toUnit.category == UnitCategory.NUMERAL_SYSTEM) ||
                             (fromUnit.category == UnitCategory.NUMERAL_SYSTEM && toUnit.category == UnitCategory.SCALAR)
                     if (!isCompatible) {
@@ -799,7 +799,7 @@ class Evaluator(
 
             // Strict unit check: if one is physical, the other must be physical of the same category
             if (leftIsPhysical || rightIsPhysical) {
-                if (!leftIsPhysical || !rightIsPhysical || leftUnit!!.category != rightUnit!!.category) {
+                if (!leftIsPhysical || !rightIsPhysical || !UnitConverter.areCompatible(leftUnit!!, rightUnit!!)) {
                     val leftDesc = getDimensionDescription(leftUnit)
                     val rightDesc = getDimensionDescription(rightUnit)
                     val opName = if (expr.op == TokenKind.PLUS) "Addition" else "Subtraction"

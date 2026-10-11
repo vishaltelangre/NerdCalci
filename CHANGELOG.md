@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.8] - 2026-10-11
+### Added
+- Added support for Unicode letters (including Greek math symbols like `δ`, `θ`, `α`, `λ`, and scripts like Devanagari, Vietnamese, Cyrillic, CJK) and multi-word names with underscores in variable and function names (Issue: #236).
+
+### Fixed
+- Fixed Fastlane changelogs exceeding the 500-character store limit by trimming oversized entries and adding automated validation in CI and unit tests (Issue: #233).
+
 ## [4.9.7] - 2026-08-26
 ### Added
 - Added support for rate and compound units with automatic cancellation and conversion, e.g., `50 liters / 2 hours = 25 L/h`, `(25 L/h) * 4 hours = 100 L`, `1000 MB / (50 MB/s) = 20 s`, and `per` syntax (Issue: #160).

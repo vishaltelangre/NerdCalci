@@ -12,8 +12,8 @@ android {
         applicationId = "com.vishaltelangre.nerdcalci"
         minSdk = 23
         targetSdk = 36
-        versionCode = 497
-        versionName = "4.9.7"
+        versionCode = 498
+        versionName = "4.9.8"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -34,6 +34,11 @@ android {
             // when community calcis are added, modified, or removed.
             it.inputs.dir(rootProject.file("community-submissions"))
                 .withPropertyName("communitySubmissions")
+                .withPathSensitivity(PathSensitivity.RELATIVE)
+
+            // Register fastlane changelogs directory to invalidate unit test cache when changelogs change.
+            it.inputs.dir(rootProject.file("fastlane/metadata/android/en-US/changelogs"))
+                .withPropertyName("fastlaneChangelogs")
                 .withPathSensitivity(PathSensitivity.RELATIVE)
         }
     }

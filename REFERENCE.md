@@ -169,12 +169,23 @@ NerdCalci maintains variable state seamlessly across multiple lines. You can ass
 
 ### Assignment
 
-Use the `=` operator to create or update a variable. Variable names must start with a letter or underscore, and can contain numbers (`price`, `tax_rate`, `taxRate2`).
+Use the `=` operator to create or update a variable. Variable names must start with a letter (including Greek / math symbols like `δ`, `θ`, `α`, `λ`, `μ`, `σ`, `ω`, `ρ`, `ε`, `Δ`, `Ω`, or scripts like Devanagari) or underscore, and can contain letters, combining marks, numbers, and underscores (`price`, `tax_rate`, `taxRate2`, `δ`, `θ_1`, `घर_खर्च`).
 
 ```text
 price = 100
 tax = 15
 total = price + tax     # evaluates to 115
+
+# Greek symbols
+δ = 5
+θ = 45
+λ = 10
+δ + θ                   # evaluates to 50
+
+# Unicode and multi-word names
+घर_खर्च = 15000
+किराणा_खर्च = 5000
+एकूण_खर्च = घर_खर्च + किराणा_खर्च   # evaluates to 20000
 ```
 
 ### Compound assignment

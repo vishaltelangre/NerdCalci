@@ -1778,7 +1778,7 @@ private fun LineRow(
             // Checks for dot notation expression with either:
             // - a normal variable identifier (e.g., myFile)
             // - a file() expression (e.g., file("OtherFile"))
-            val dotRegex = Regex("""(\w+|\bfile\(\s*"[^"]*"\s*\))\s*\.\s*(\w*)$""")
+            val dotRegex = Regex("""([\p{L}\p{N}_]+|\bfile\(\s*"[^"]*"\s*\))\s*\.\s*([\p{L}\p{N}_]*)$""")
             val dotMatch = dotRegex.find(beforeCursor)
             if (dotMatch != null) {
                 val objectName = dotMatch.groupValues[1]

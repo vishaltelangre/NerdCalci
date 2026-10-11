@@ -57,8 +57,13 @@ jobs:
         OUTPUT_FILE="release_notes.txt"
 
         if [ -f "$CHANGELOG_FILE" ]; then
+          CHANGELOG_LEN=$(wc -m < "$CHANGELOG_FILE" | tr -d ' ')
+          if [ "$CHANGELOG_LEN" -gt 500 ]; then
+            echo "::error file=$CHANGELOG_FILE::Changelog length ($CHANGELOG_LEN chars) exceeds the 500 character limit for Google Play and F-Droid!"
+            exit 1
+          fi
           cat "$CHANGELOG_FILE" > "$OUTPUT_FILE"
-          echo "Changelog found for version $VERSION_NAME"
+          echo "Changelog found for version $VERSION_NAME ($CHANGELOG_LEN chars)"
         else
           echo "Release $VERSION_NAME" > "$OUTPUT_FILE"
           echo "" >> "$OUTPUT_FILE"

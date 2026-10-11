@@ -56,7 +56,11 @@ object SyntaxUtils {
 
                 char.isLetter() || char == '_' -> {
                     val start = i
-                    while (i < text.length && (text[i].isLetterOrDigit() || text[i] == '_')) i++
+                    while (i < text.length && (text[i].isLetterOrDigit() || text[i] == '_' ||
+                        Character.getType(text[i]).let { t ->
+                            t == Character.NON_SPACING_MARK.toInt() ||
+                            t == Character.COMBINING_SPACING_MARK.toInt()
+                        })) i++
                     val word = text.substring(start, i)
                     val wordLower = word.lowercase()
 
@@ -98,13 +102,21 @@ object SyntaxUtils {
 fun String.getIdentifierRangeAt(index: Int): IntRange {
     var start = index
     // Walk back until we hit a non-identifier character
-    while (start > 0 && (this[start - 1].isLetterOrDigit() || this[start - 1] == '_')) {
+    while (start > 0 && (this[start - 1].isLetterOrDigit() || this[start - 1] == '_' ||
+        Character.getType(this[start - 1]).let { t ->
+            t == Character.NON_SPACING_MARK.toInt() ||
+            t == Character.COMBINING_SPACING_MARK.toInt()
+        })) {
         start--
     }
 
     var end = index
     // Walk forward until we hit a non-identifier character
-    while (end < this.length && (this[end].isLetterOrDigit() || this[end] == '_')) {
+    while (end < this.length && (this[end].isLetterOrDigit() || this[end] == '_' ||
+        Character.getType(this[end]).let { t ->
+            t == Character.NON_SPACING_MARK.toInt() ||
+            t == Character.COMBINING_SPACING_MARK.toInt()
+        })) {
         end++
     }
     return start until end
@@ -146,7 +158,7 @@ fun getSuggestionContext(
         }
 
         // Check for dot notation suggestions (e.g. file("").)
-        val dotRegex = Regex("""(\w+|\bfile\(\s*"[^"]*"\s*\))\s*\.\s*(\w*)$""")
+        val dotRegex = Regex("""([\p{L}\p{N}_]+|\bfile\(\s*"[^"]*"\s*\))\s*\.\s*([\p{L}\p{N}_]*)$""")
         val dotMatch = dotRegex.find(beforeCursor)
         if (dotMatch != null) {
             val objectName = dotMatch.groupValues[1]

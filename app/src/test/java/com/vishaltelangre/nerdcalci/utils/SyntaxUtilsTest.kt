@@ -769,4 +769,54 @@ class SyntaxUtilsTest {
         val result = getSuggestionContext(beforeCursor, beforeCursor, beforeCursor.length, emptyMap())
         assertEquals(SuggestionType.DATE_PROJECTION, result.type)
     }
+
+    @Test
+    fun `greek variable tokenizes as Variable`() {
+        assertSingleToken("δ", TokenType.Variable)
+        assertSingleToken("θ", TokenType.Variable)
+        assertSingleToken("α", TokenType.Variable)
+        assertSingleToken("λ", TokenType.Variable)
+        assertSingleToken("θ_1", TokenType.Variable)
+    }
+
+    @Test
+    fun `greek function call tokenizes as Function`() {
+        val result = tokens("θ(5)")
+        assertEquals(TokenType.Function, result[0].type)
+        assertEquals("θ", "θ(5)".substring(result[0].start, result[0].end))
+    }
+
+    @Test
+    fun `getSuggestionContext identifies dot notation with greek variable`() {
+        val beforeCursor = "global.θ"
+        val result = getSuggestionContext(beforeCursor, beforeCursor, beforeCursor.length, emptyMap())
+        assertEquals("θ", result.word)
+        assertEquals(SuggestionType.VARIABLE, result.type)
+        assertTrue(result.isExplicitTrigger)
+    }
+
+    @Test
+    fun `getSuggestionContext identifies dot notation on greek file variable`() {
+        val beforeCursor = "α.x"
+        val fileVars = mapOf("α" to "OtherFile")
+        val result = getSuggestionContext(beforeCursor, beforeCursor, beforeCursor.length, fileVars)
+        assertEquals("x", result.word)
+        assertEquals(SuggestionType.VARIABLE, result.type)
+        assertTrue(result.isExplicitTrigger)
+    }
+
+    @Test
+    fun `devanagari variable tokenizes as Variable`() {
+        assertSingleToken("घर_खर्च", TokenType.Variable)
+        assertSingleToken("किराणा_खर्च", TokenType.Variable)
+        assertSingleToken("एकूण_खर्च", TokenType.Variable)
+        assertSingleToken("निव्वळ_उत्पन्न", TokenType.Variable)
+    }
+
+    @Test
+    fun `devanagari function call tokenizes as Function`() {
+        val result = tokens("निव्वळ_उत्पन्न(50000)")
+        assertEquals(TokenType.Function, result[0].type)
+        assertEquals("निव्वळ_उत्पन्न", "निव्वळ_उत्पन्न(50000)".substring(result[0].start, result[0].end))
+    }
 }

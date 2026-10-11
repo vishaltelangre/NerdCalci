@@ -3972,5 +3972,199 @@ class MathEngineTest {
         assertEquals(1, affected.size)
         assertEquals("7000.0 g", affected[0].result)
     }
+
+    @Test
+    fun `greek symbols evaluate correctly as variable names`() = runBlocking {
+        testCalculate(
+            "δ = 5",
+            "Δ = 10",
+            "θ = 45",
+            "α = 1.5",
+            "λ = 2.0",
+            "μ = 0.5",
+            "σ = 2.0",
+            "ω = 3",
+            "ρ = 1000",
+            "ε = 8.85",
+            "Ω = 50",
+            "δ * 2",
+            "Δ / 2",
+            "α * λ",
+            "μ + σ",
+            "ω ^ 2",
+            "ρ * ε",
+            "Ω + 10"
+        ) { result ->
+            assertEquals("5.0", result[0].result)
+            assertEquals("10.0", result[1].result)
+            assertEquals("45.0", result[2].result)
+            assertEquals("1.5", result[3].result)
+            assertEquals("2.0", result[4].result)
+            assertEquals("0.5", result[5].result)
+            assertEquals("2.0", result[6].result)
+            assertEquals("3.0", result[7].result)
+            assertEquals("1000.0", result[8].result)
+            assertEquals("8.85", result[9].result)
+            assertEquals("50.0", result[10].result)
+            assertEquals("10.0", result[11].result)
+            assertEquals("5.0", result[12].result)
+            assertEquals("3.0", result[13].result)
+            assertEquals("2.5", result[14].result)
+            assertEquals("9.0", result[15].result)
+            assertEquals("8850.0", result[16].result)
+            assertEquals("60.0", result[17].result)
+        }
+    }
+
+    @Test
+    fun `greek symbols in user-defined functions`() = runBlocking {
+        testCalculate(
+            "f(θ) = θ ^ 2",
+            "f(5)",
+            "θ(x) = x * 2",
+            "θ(6)",
+            "λ(α, β) = α * β",
+            "λ(3, 4)"
+        ) { result ->
+            assertEquals("", result[0].result)
+            assertEquals("25.0", result[1].result)
+            assertEquals("", result[2].result)
+            assertEquals("12.0", result[3].result)
+            assertEquals("", result[4].result)
+            assertEquals("12.0", result[5].result)
+        }
+    }
+
+    @Test
+    fun `greek symbols with compound assignments and increment decrement`() = runBlocking {
+        testCalculate(
+            "δ = 5",
+            "δ += 3",
+            "δ",
+            "θ = 10",
+            "θ++",
+            "θ",
+            "λ = 10",
+            "λ--",
+            "λ"
+        ) { result ->
+            assertEquals("5.0", result[0].result)
+            assertEquals("8.0", result[1].result)
+            assertEquals("8.0", result[2].result)
+            assertEquals("10.0", result[3].result)
+            assertEquals("11.0", result[4].result)
+            assertEquals("11.0", result[5].result)
+            assertEquals("10.0", result[6].result)
+            assertEquals("9.0", result[7].result)
+            assertEquals("9.0", result[8].result)
+        }
+    }
+
+    @Test
+    fun `builtin pi constant cannot be reassigned`() = runBlocking {
+        testCalculate("π = 3") { result ->
+            assertError("`π` is a reserved name and cannot be changed", result, 0)
+        }
+    }
 }
 
+
+class UnicodeMultiWordVarTest {
+    @Test
+    fun `devanagari multi-word variable names with underscore`() = runBlocking {
+        testCalculate(
+            "घर_खर्च = 15000",
+            "किराणा_खर्च = 5000",
+            "एकूण_खर्च = घर_खर्च + किराणा_खर्च",
+            "बचत_दर = 0.2",
+            "मासिक_बचत = एकूण_खर्च * बचत_दर",
+            "घर_खर्च * 12"
+        ) { result ->
+            assertEquals("15000.0", result[0].result)
+            assertEquals("5000.0", result[1].result)
+            assertEquals("20000.0", result[2].result)
+            assertEquals("0.2", result[3].result)
+            assertEquals("4000.0", result[4].result)
+            assertEquals("180000.0", result[5].result)
+        }
+    }
+
+    @Test
+    fun `devanagari variable in user-defined function`() = runBlocking {
+        testCalculate(
+            "कर(उत्पन्न) = उत्पन्न * 0.3",
+            "कर(50000)",
+            "निव्वळ_उत्पन्न(उत्पन्न) = उत्पन्न - कर(उत्पन्न)",
+            "निव्वळ_उत्पन्न(80000)"
+        ) { result ->
+            assertEquals("", result[0].result)
+            assertEquals("15000.0", result[1].result)
+            assertEquals("", result[2].result)
+            assertEquals("56000.0", result[3].result)
+        }
+    }
+
+    @Test
+    fun `vietnamese multi-word variable names with underscore`() = runBlocking {
+        testCalculate(
+            "giá_bán = 200",
+            "chi_phí = 120",
+            "lợi_nhuận = giá_bán - chi_phí",
+            "tỷ_lệ_lợi_nhuận = lợi_nhuận / giá_bán * 100"
+        ) { result ->
+            assertEquals("200.0", result[0].result)
+            assertEquals("120.0", result[1].result)
+            assertEquals("80.0", result[2].result)
+            assertEquals("40.0", result[3].result)
+        }
+    }
+
+    @Test
+    fun `cyrillic multi-word variable names with underscore`() = runBlocking {
+        testCalculate(
+            "цена_товара = 500",
+            "скидка_процент = 0.15",
+            "скидка = цена_товара * скидка_процент",
+            "итого = цена_товара - скидка"
+        ) { result ->
+            assertEquals("500.0", result[0].result)
+            assertEquals("0.15", result[1].result)
+            assertEquals("75.0", result[2].result)
+            assertEquals("425.0", result[3].result)
+        }
+    }
+
+    @Test
+    fun `mixed script names are each distinct variables`() = runBlocking {
+        testCalculate(
+            "price = 100",
+            "prix = 200",
+            "preis = 300",
+            "цена = 400",
+            "価格 = 500",
+            "giá = 600",
+            "price + prix + preis + цена + 価格 + giá"
+        ) { result ->
+            assertEquals("100.0", result[0].result)
+            assertEquals("200.0", result[1].result)
+            assertEquals("300.0", result[2].result)
+            assertEquals("400.0", result[3].result)
+            assertEquals("500.0", result[4].result)
+            assertEquals("600.0", result[5].result)
+            assertEquals("2100.0", result[6].result)
+        }
+    }
+
+    @Test
+    fun `unicode variable with leading underscore`() = runBlocking {
+        testCalculate(
+            "_δ = 99",
+            "_घर = 42",
+            "_δ + _घर"
+        ) { result ->
+            assertEquals("99.0", result[0].result)
+            assertEquals("42.0", result[1].result)
+            assertEquals("141.0", result[2].result)
+        }
+    }
+}

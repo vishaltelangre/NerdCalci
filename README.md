@@ -47,11 +47,20 @@ IzzyOnDroid">](https://apt.izzysoft.de/packages/com.vishaltelangre.nerdcalci)
 > All supported operators, functions, and advanced syntax is extensively explained and documented in the [reference guide](REFERENCE.md).
 
 - #### Variable support
+  
+  Supports Unicode letters, Greek symbols, and multi-word names across different languages:
 
   ```text
   a = 100
   b = 200
   total = a + b  # 300
+
+  δ = 5
+  θ = 45
+
+  घर_खर्च = 15000
+  किराणा_खर्च = 5000
+  एकूण_खर्च = घर_खर्च + किराणा_खर्च  # 20000
   ```
 
 - #### Composite operations

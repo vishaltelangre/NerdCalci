@@ -38,11 +38,17 @@ object Constants {
     // Variable/Function naming
     /**
      * Regex pattern for valid variable and function names in calculator expressions.
-     * Names must start with a letter or underscore, followed by letters, digits, or underscores.
-     * Examples: "price", "rate_2", "rate3", "_private", "__internal__"
+     * Names must start with a letter or underscore, followed by letters, combining marks,
+     * digits, or underscores. Supports Unicode scripts including Greek, Devanagari,
+     * Vietnamese, Cyrillic, CJK, etc.
+     * Examples: "price", "rate_2", "δ", "θ", "घर_खर्च", "giá_bán", "цена_товара"
      * Invalid: "2rate", "rate-disc", "rate with disc"
+     *
+     * \p{L} = Unicode Letter, \p{M} = Unicode Combining Mark (needed for scripts like
+     * Devanagari where conjunct consonants use a non-spacing virama, e.g. खर्च = ख+र+्+च),
+     * \p{N} = Unicode Number.
      */
-    const val VAR_FUNC_NAME_PATTERN = "^[a-zA-Z_][a-zA-Z0-9_]*$"
+    const val VAR_FUNC_NAME_PATTERN = "^[\\p{L}_][\\p{L}\\p{M}\\p{N}_]*$"
 
     // Decimal precision settings
     const val SYNC_ENGINE_PRECISION = "precision"

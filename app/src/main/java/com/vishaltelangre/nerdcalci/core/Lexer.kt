@@ -152,7 +152,21 @@ class Lexer(private val source: String) {
     }
 
     private fun scanIdentifier(start: Int): Token {
-        while (pos < source.length && (source[pos].isLetterOrDigit() || source[pos] == '_' || source[pos] == '²' || source[pos] == '³' || source[pos] == '°')) pos++
+        while (pos < source.length) {
+            val c = source[pos]
+            // isLetterOrDigit covers ASCII, Greek, Cyrillic, CJK, etc.
+            // NON_SPACING_MARK (type 6, \p{Mn}) covers virama ् (U+094D), forming conjuncts like खर्च, उत्पन्न.
+            // COMBINING_SPACING_MARK (type 8, \p{Mc}) covers Devanagari vowel signs like ा (U+093E),
+            // needed for words like किराणा, शाळा, घर, etc.
+            val type = Character.getType(c)
+            if (c.isLetterOrDigit() || c == '_' || c == '²' || c == '³' || c == '°' ||
+                type == Character.NON_SPACING_MARK.toInt() ||
+                type == Character.COMBINING_SPACING_MARK.toInt()) {
+                pos++
+            } else {
+                break
+            }
+        }
         val lexeme = source.substring(start, pos)
         val kind = keywords[lexeme] ?: TokenKind.IDENTIFIER
         return Token(kind, lexeme, position = start)

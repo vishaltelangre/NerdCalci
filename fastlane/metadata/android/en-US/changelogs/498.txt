@@ -1,0 +1,2 @@
+- Added support for Unicode letters (including Greek math symbols like δ, θ, α, λ, and scripts like Devanagari, Vietnamese, Cyrillic, CJK) and multi-word names with underscores in variable and function names (Issue: #236).
+- Added automated validation to ensure release changelogs adhere to the 500-character limit (Issue: #233).
